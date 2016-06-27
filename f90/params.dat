@@ -1,0 +1,9 @@
+nbuffer        =  100
+verbose        =  .true.
+ndomain        =  1
+datadir        =  sphere_1meshdom/
+file_ICs       =  ICs_photons_n5e6.dat
+fileout        =  photons_done.dat
+overwritegas   =  .true.
+temp_fix       =  1.d1
+tau0_fix       =  1.d5
