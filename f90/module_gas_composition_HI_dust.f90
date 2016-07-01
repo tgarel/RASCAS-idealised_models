@@ -2,7 +2,6 @@ module module_gas_composition
 
   use module_HI_model
   use module_dust_model
-  use ramses_info_utils, only read_conversion_scales;
 
   implicit none
   
@@ -30,10 +29,7 @@ module module_gas_composition
       integer(kind=4)                   :: ileaf
       type(leaf_cell)                   :: leaf
 
-      ! make sure conversion factors are set 
-      call read_conversion_scales(repository,snapnum)
-
-      ! allocate gas-element array
+       ! allocate gas-element array
       allocate(g(nleaf))
 
       ! compute gas props. leaf by leaf

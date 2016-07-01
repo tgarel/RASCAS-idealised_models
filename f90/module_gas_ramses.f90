@@ -1,7 +1,5 @@
 module module_gas_composition
 
-  use ramses_cell_utils
-
   implicit none
 
   type gas

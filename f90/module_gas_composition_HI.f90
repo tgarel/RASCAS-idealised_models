@@ -3,7 +3,6 @@ module module_gas_composition
   ! Leo: simplified model with no dust, no D and isotrope angular redistribution
 
   use module_HI_model
-  use ramses_info_utils, only read_conversion_scales;
 
   implicit none
   
@@ -30,9 +29,6 @@ module module_gas_composition
       integer(kind=4)                   :: ileaf
       ! what is a type leaf_cell???
       type(leaf_cell)                   :: leaf
-
-      ! make sure conversion factors are set 
-      call read_conversion_scales(repository,snapnum)
 
       ! allocate gas-element array
       allocate(g(nleaf))

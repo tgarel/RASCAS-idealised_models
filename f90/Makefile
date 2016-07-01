@@ -2,12 +2,12 @@
 # Fortran compiler options and directives
 
 #SYSTYPE="CCF"
-#SYSTYPE="mac"
-SYSTYPE="Pmac"
+SYSTYPE="mac"
+#SYSTYPE="Pmac"
 
 
 OPTIONS = -cpp
-OPTIONS += -DSWITCH_OFF_UPARALLEL
+#OPTIONS += -DSWITCH_OFF_UPARALLEL
 #OPTIONS += -DDEBUG
 
 
@@ -23,8 +23,8 @@ endif
 
 ifeq ($(SYSTYPE),"mac")
 F90         = gfortran-mp-4.8 ###-fopenmp
-#FFLAGS      = -g -fcheck=all -ffree-line-length-none -ffree-form -trapuv
-FFLAGS      = -O2
+FFLAGS      = -g -fcheck=all -ffree-line-length-none -ffree-form -ftrapv
+##FFLAGS      = -O2
 FFLAGS += $(OPTIONS)
 ###FFLAGS      = -O3
 LDFLAGS     = 
@@ -42,12 +42,11 @@ endif
 
 #############################################################################
 # All objects
-#OBJSCOM = ramses_info_utils.o ramses_cell_utils.o module_gas_ramses.o module_select.o \
-#	module_domain.o module_mesh.o
+#OBJSCOM = module_ramses.o module_gas_ramses.o module_select.o module_domain.o module_mesh.o
 
 GASOBJS = module_constants.o module_random.o module_uparallel.o module_HI_model.o module_gas_composition_HI_homogeneous.o
 
-OBJSCOM = ramses_info_utils.o ramses_cell_utils.o $(GASOBJS) module_select.o \
+OBJSCOM = module_ramses.o $(GASOBJS) module_select.o \
 	module_domain.o module_mesh.o
 
 OBJS1 = $(OBJSCOM) output2subvol.o

@@ -1,7 +1,7 @@
 program CreateSphere
 
   use module_domain
-  use ramses_cell_utils
+  use module_ramses
   use module_mesh
   use module_gas_composition
   use module_select
@@ -25,7 +25,7 @@ program CreateSphere
   character(10) :: typechar
 
   integer,parameter :: snapnum = 1
-  character(2000),parameter :: repository='/Users/leo/WORKDIR/dev/rascas/data/'
+  character(2000),parameter :: repository='/Users/leo/WORKDIR/dev/rascas-dev-svn/data/'
 
 
   typechar ='sphere'
