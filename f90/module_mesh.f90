@@ -1,7 +1,6 @@
 module module_mesh
 
   use module_domain
-  !use ramses_cell_utils     ! => why?
   use module_gas_composition
 
   implicit none

@@ -1,7 +1,7 @@
 program output2subvol
 
   use module_domain
-  use ramses_cell_utils
+  use module_ramses
   use module_mesh
   use module_gas_composition
   use module_select
