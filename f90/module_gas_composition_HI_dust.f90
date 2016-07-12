@@ -2,9 +2,11 @@ module module_gas_composition
 
   use module_HI_model
   use module_dust_model
+  use module_ramses
+  use module_random
 
   implicit none
-  
+
   type gas
      ! fluid
      real(kind=8) :: v(3)      ! gas velocity [cm/s]
@@ -16,6 +18,8 @@ module module_gas_composition
   end type gas
 
   contains
+
+
 
     subroutine gas_from_ramses_leaves(repository,snapnum,nleaf,nvar,ramses_var, g)
 
@@ -29,7 +33,10 @@ module module_gas_composition
       integer(kind=4)                   :: ileaf
       type(leaf_cell)                   :: leaf
 
-       ! allocate gas-element array
+      ! make sure conversion factors are set 
+      call read_conversion_scales(repository,snapnum)
+
+      ! allocate gas-element array
       allocate(g(nleaf))
 
       ! compute gas props. leaf by leaf
@@ -43,6 +50,7 @@ module module_gas_composition
       return
       
     end subroutine gas_from_ramses_leaves
+
 
 
     function get_gas_velocity(cell_gas)
@@ -61,9 +69,9 @@ module module_gas_composition
 
       ! check whether scattering occurs within cell (scatter_flag > 0) or not (scatter_flag==0)
       type(gas),intent(in)                  :: cell_gas
-      real(kind=8),intent(inout)               :: distance_to_border_cm
+      real(kind=8),intent(inout)            :: distance_to_border_cm
       real(kind=8),intent(in)               :: nu_cell
-      real(kind=8),intent(inout)               :: tau_abs                ! tau at which scattering is set to occur. 
+      real(kind=8),intent(inout)            :: tau_abs                ! tau at which scattering is set to occur. 
       integer(kind=4)                       :: gas_get_scatter_flag 
       real(kind=8)                          :: tau_HI, tau_dust, tau_cell
       
@@ -85,7 +93,7 @@ module module_gas_composition
          tirage = ran3(iran)
          if(tirage <= one_proba)then
             gas_get_scatter_flag = 1
-         else
+         else ! interaction with dust
             gas_get_scatter_flag = 3
          endif
          ! et transformer distance_to_border_cm en distance_to_absorption_cm ...
@@ -109,14 +117,14 @@ module module_gas_composition
       case(1)
          call scatter_HI(cell_gas%v, cell_gas%nHI, cell_gas%dopwidth, nu_cell, k, nu_ext, iran)
       case(3)
-         call scatter_dust(cell_gas%v, cell_gas%ndust, nu_cell, k, nu_ext, iran)
+         call scatter_dust(cell_gas%v, nu_cell, k, nu_ext, iran)
       end select
 
     end subroutine gas_scatter
 
 
 
-    subroutine dump_gas(unit,g)
+   subroutine dump_gas(unit,g)
       
       type(gas),dimension(:),intent(in) :: g
       integer,intent(in)                :: unit
@@ -152,6 +160,7 @@ module module_gas_composition
       type(gas),dimension(:),allocatable,intent(inout) :: g
       deallocate(g)
     end subroutine gas_destructor
+
 
 
   end module module_gas_composition

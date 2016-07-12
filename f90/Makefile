@@ -22,7 +22,7 @@ LDFLAGS     =  -lmpi
 endif
 
 ifeq ($(SYSTYPE),"mac")
-F90         = gfortran-mp-4.7 ###-fopenmp
+F90         = gfortran-mp-4.8 ###-fopenmp
 FFLAGS      = -g -fcheck=all -ffree-line-length-none -ffree-form -ftrapv
 ##FFLAGS      = -O2
 FFLAGS += $(OPTIONS)

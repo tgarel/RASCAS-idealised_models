@@ -1,5 +1,6 @@
 module module_dust_model
 
+  use module_random
   use module_constants
   
   implicit none
@@ -8,12 +9,12 @@ module module_dust_model
   ! g parameter (g_dust) of the Henyey-Greenstein phase function for dust scattering:
   ! g_dust=0.68 &  dust_albedo=0.33 from Draine 2003 for MW dust, R_V=3.1
   ! dust_albedo=0.40 from Gordon et al. 1997 (ApJ, 487, 625) for SMC dust
-  real(kind=8),parameter :: dust_albedo=0.46                         ! Empirical values from Witt & Gordon 2000 (ApJ, 528, 799) for SMC dust
-  real(kind=8),parameter :: g_dust=0.73                              ! Laursen+09
-  real(kind=8),parameter  :: rd= 2.d-6                               ! radius of dust grain [cm]
-  real(kind=8),parameter  :: mpmd = 5.d-8                            ! proton over dust mass
-  real(kind=8),parameter  :: sigmad = (pi * rd**2)/(1.-dust_albedo)  ! total abs+scattering dust cross section for general value of albedo
-  real(kind=8)            :: albedo                                  ! proba of interacting with H
+  real(kind=8),parameter  :: dust_albedo=0.46                         ! Empirical values from Witt & Gordon 2000 (ApJ, 528, 799) for SMC dust
+  real(kind=8),parameter  :: g_dust=0.73                              ! Laursen+09
+  real(kind=8),parameter  :: rd= 2.d-6                                ! radius of dust grain [cm]
+  real(kind=8),parameter  :: mpmd = 5.d-8                             ! proton over dust mass
+  real(kind=8),parameter  :: sigmad = (pi * rd**2)/(1.-dust_albedo)   ! total abs+scattering dust cross section for general value of albedo
+  real(kind=8)            :: albedo                                   ! proba of interacting with H
 
 
   contains
@@ -27,70 +28,31 @@ module module_dust_model
 
     end function get_tau_dust
 
-
     
-    subroutine scatter_dust(v,ndust,nu_cell,k,nu_ext,iran)
+    subroutine scatter_dust(v,nu_cell,k,nu_ext,iran)
 
       implicit none 
 
-      !type(photon),intent(inout) :: p
-      !TIBO
-      ! ndust argument useless here
       real(kind=8), intent(inout)               :: nu_cell, nu_ext ! nu_cell in RASCAS = nu_int in MCLya
       real(kind=8), dimension(3), intent(inout) :: k
       integer, intent(inout)                    :: iran
       real(kind=8)                              :: phi, theta, mu, aors, scalar
       logical                                   :: ok
       real(kind=8), dimension(3)                :: knew
-      real(kind=8)                              :: nu_doppler, a, x_cell, st
-      real(kind=8), intent(in)                  :: dopwidth, ndust
-      !OBIT
+      real(kind=8)                              :: a, x_cell, st
       
       ! interaction with dust
-
       aors = ran3(iran)  ! aka "Absorption OR Scattering" ... 
       if (aors.gt.dust_albedo) then ! the photon is absorbed = lost
          iescape = 0
          return
-         !TIBO
-!!$      else                   ! the photon is scattered by dust
-!!$         !........dust angular redistribution
-!!$         xxx = 0.
-!!$         if (dipol.eq.4) then
-!!$            call emission_direction(xxx) ! indicates Henyey-Greenstein fct
-!!$         else
-!!$            dip=dipol
-!!$            dipol=2 ! indicates isotropic (for dust)
-!!$            call emission_direction(xxx)
-!!$            dipol=dip
-!!$         endif
-!!$         scalar =  a0 * vx_cell + b0 * vy_cell + c0 * vz_cell
-!!$         nu_ext = nu_int/( 1. - scalar/clight)
-!!$
-!!$      end if
       else
          ! 1/ determine scattering angle (in atom's frame)
-         
          ra=ran3(iran)
-         if (dipol.eq.4) then  ! use White 79 approximation for Henyey-Greenstein phase fct:
-            mu = (1.+g_dust*g_dust-((1.-g_dust*g_dust)/(1.-g_dust+2.*g_dust*ra))**2)/(2.*g_dust)
-         end if
-         
-!!$         ! Or rejection method...
-!!$         ! Divide by (1.-g_dust**2)*(1.+g_dust**2-2.*g_dust)^(-1.5) such that max(f)=1
-!!$         mu = 2.0d0*ran3(iran)-1.0d0
-!!$         if (dipol.eq.4) then  ! use Henyey-Greenstein phase fct only ?        
-!!$            ok = .false.
-!!$            do while (.not. ok)
-!!$               f = (1.-g_dust**2)*(1.+g_dust**2-2.*g_dust*mu)**(-1.5) / ((1.-g_dust**2)*(1.+g_dust**2-2.*g_dust)^(-1.5))
-!!$               ra = ran3(iran) 
-!!$               if (ra <= f) ok = .true.
-!!$            end do
-!!$         end if
-
+         ! use White 79 approximation for Henyey-Greenstein phase fct:
+         mu = (1.+g_dust*g_dust-((1.-g_dust*g_dust)/(1.-g_dust+2.*g_dust*ra))**2)/(2.*g_dust)
          theta = acos(mu)
-         phi   = 2.d0*pi*ran3(iran)
-
+         phi   = 2.d0*pi*ran3(iran)         
          !........director cosines
          st = sin(theta)
          knew(1) = st*cos(phi)   !x
@@ -103,9 +65,7 @@ module module_dust_model
          ! nu_cell has not changed; we implicitly assume that the interacting dust grain is at rest in cell's frame
          nu_ext = nu_cell/(1. - scalar/clight)
          k = knew
-
       end if
-      !OBIT
       
     end subroutine scatter_dust
     
