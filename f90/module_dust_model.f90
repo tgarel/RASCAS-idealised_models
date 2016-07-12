@@ -1,5 +1,7 @@
 module module_dust_model
 
+  use module_constants
+  
   implicit none
 
   ! Determine dust albedo at Lya wavelength (dust_albedo) and
@@ -18,7 +20,7 @@ module module_dust_model
 
 
     function get_tau_dust(ndust_cell, distance_to_border_cm)
-
+      
       real(kind=8),intent(in) :: ndust_cell,distance_to_border_cm
 
       get_tau_dust = sigmad * ndust_cell * distance_to_border_cm
@@ -29,13 +31,15 @@ module module_dust_model
     
     subroutine scatter_dust(v,ndust,nu_cell,k,nu_ext,iran)
 
+      implicit none 
+
       !type(photon),intent(inout) :: p
       !TIBO
       ! ndust argument useless here
       real(kind=8), intent(inout)               :: nu_cell, nu_ext ! nu_cell in RASCAS = nu_int in MCLya
       real(kind=8), dimension(3), intent(inout) :: k
       integer, intent(inout)                    :: iran
-      real(kind=8)                              :: phi, theta, mu, aors, f, scalar
+      real(kind=8)                              :: phi, theta, mu, aors, scalar
       logical                                   :: ok
       real(kind=8), dimension(3)                :: knew
       real(kind=8)                              :: nu_doppler, a, x_cell, st
@@ -44,7 +48,6 @@ module module_dust_model
       
       ! interaction with dust
 
-      if (i_diag.gt.0) print*, "the photon interacts with dust !!!"
       aors = ran3(iran)  ! aka "Absorption OR Scattering" ... 
       if (aors.gt.dust_albedo) then ! the photon is absorbed = lost
          iescape = 0

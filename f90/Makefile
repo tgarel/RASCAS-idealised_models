@@ -22,7 +22,7 @@ LDFLAGS     =  -lmpi
 endif
 
 ifeq ($(SYSTYPE),"mac")
-F90         = gfortran-mp-4.8 ###-fopenmp
+F90         = gfortran-mp-4.7 ###-fopenmp
 FFLAGS      = -g -fcheck=all -ffree-line-length-none -ffree-form -ftrapv
 ##FFLAGS      = -O2
 FFLAGS += $(OPTIONS)
@@ -54,7 +54,7 @@ OBJS1 = $(OBJSCOM) output2subvol.o
 OBJS2 = $(OBJSCOM) CreateDomDump.o
 
 OBJSMC = module_constants.o module_random.o module_uparallel.o module_HI_model.o module_gas_composition_HI_homogeneous.o module_domain.o \
-	module_mesh.o module_photon.o module_params.o
+	module_mesh.o module_photon.o module_params.o module_dust_model.o
 
 OBJSMPI = $(OBJSMC) module_parallel_mpi.o module_worker.o module_master.o MCLya.o
 
