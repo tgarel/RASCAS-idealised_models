@@ -53,7 +53,7 @@ OBJS1 = $(OBJSCOM) output2subvol.o
 
 OBJS2 = $(OBJSCOM) CreateDomDump.o
 
-OBJSMC = module_constants.o module_random.o module_uparallel.o module_HI_model.o module_gas_composition_HI_homogeneous.o module_domain.o \
+OBJSMC = module_constants.o module_random.o module_uparallel.o module_D_model.o module_HI_model.o module_gas_composition_HI_D_homogeneous.o module_domain.o \
 	module_mesh.o module_photon.o module_params.o
 
 OBJSMPI = $(OBJSMC) module_parallel_mpi.o module_worker.o module_master.o MCLya.o

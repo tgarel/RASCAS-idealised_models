@@ -1,110 +1,173 @@
 module module_D_model
 
-  implicit none
-
   use module_constants
-  use module_HI_model
-
-#ifdef POLARIZATION
-  use polar
-#endif
+  use module_uparallel
+  use module_random
+  
+  implicit none
 
   private
 
   ! Deuterium properties
-  real(kind=8),parameter   :: nu_0_deut       = nu_0 * (1.0d0+me/mp)/(1.0d0+me/mdeut) ! Hz
-  real(kind=8),parameter   :: deut2H_nb_ratio = 3.e-5                                 ! assumed Deuterium/H abundance (in number)
-  real(kind=8),parameter   :: mdeut=2.*mp                                             ![g] Deuterium mass
-  real(kind=8),parameter   :: sqrt_H2Deut_mass_ratio = 0.7071067811865d0              ! == sqrt(mp/mdeut) = 1/sqrt(2) 
+  real(kind=8),parameter   :: mdeut    = 2.d0 * mp           ! Deuterium atom's mass [ g ]
+  real(kind=8),parameter   :: lambda_0 = 1215.673d-8 * (1.0d0 + me/mdeut) / (1.0d0 + me/mp) ! wavelength of Lya of Deuterium [ cm ]
+  real(kind=8),parameter   :: nu_0     = clight / lambda_0   ! frequency of Deuterium's Lya [ Hz ]
+  real(kind=8),parameter   :: gamma    = 6.265d8             ! Einstein coeff. [ s^-1 ]
+  real(kind=8),parameter   :: f12      = 0.416               ! Oscillator strength for Deuterium Lya.
+  real(kind=8),parameter   :: sigma_factor = pi*e_ch**2*f12/ me / clight ! cross-section factor-> multiply by Voigt(x,a)/nu_D to get sigma.
 
+  ! JB- en attendant de mettre ca ailleurs:
+  logical,parameter :: recoil = .false.
+  ! -JB
+  
+! JB - the following is for gas composition... 
+!!$  real(kind=8),parameter   :: deut2H_nb_ratio = 3.e-5                                 ! assumed Deuterium/H abundance (in number)
+!!$  real(kind=8),parameter   :: sqrt_H2Deut_mass_ratio = 0.7071067811865d0              ! == sqrt(mp/mdeut) = 1/sqrt(2) 
+! - JB 
+  
+  public :: get_tau, scatter_isotrope 
 
-  public
-
-  logical              :: deuterium
-  ! => read params deuterium
-
-  contains
-    ! Routine list
-    ! function get_tau
-    ! subroutine scatter
-
-    function get_tau_D(nhi, dopwidth, distance_to_border_cm, nu_cell)
-
-      ! compute frequency in cell's moving frame
-      !scalar =  a0 * vx_cell + b0 * vy_cell + c0 * vz_cell
-      !nu_int = (1.d0 - scalar/clight) * nu_ext
-      ! => should be done before
-
-      real(kind=8),intent(in) :: nhi,dopwidth,distance_to_border_cm,nu_cell
-      real(kind=8)            :: cross_section
-
-      real(kind=8) :: nu_D,x_cell,sigmaH,sigma_deut,a,h
-      real(kind=8) :: x_deut,nu_D_deut ,a_deut,b_cell_deut
-
-      ! compute Doppler width and a-parameter, for Deuterium
-      nu_D = dopwidth * nu_0 / clight
-      a    = gamma / (4.d0 * pi * nu_D)
- 
-      nu_D_deut   = nu_D * sqrt_H2Deut_mass_ratio
-      a_deut      = a / sqrt_H2Deut_mass_ratio
-      b_cell_deut = nu_D_deut / nu_0_deut * clight
- 
-      ! Cross section of Deuterium
-      x_cell  = (nu_cell - nu_0)/nu_D
-      h       = voigt_fit(x_cell,a)
-      sigmaH  = sigmaH_factor / nu_D * h
-      x_deut     = (nu_cell - nu_0_deut) / nu_D_deut
-      h          = voigt_fit(x_deut,a_deut)
-      sigma_deut = sigmaH_factor / nu_D_deut * h
-
-      get_tau_D = sigma_deut * deut2H_nb_ratio * nhi * distance_to_border_cm
-
-      return
-
-    end function get_tau_D
+contains
+  ! Routine list
+  ! function get_tau
+  ! subroutine scatter
+  
+  function get_tau(ndi, vth, distance_to_border_cm, nu_cell)
     
-
-
-    subroutine scatter_D(p,cellProps)
-
-      type(photon_current),intent(inout) :: p
-      type(gas),intent(in) :: cellProps
-
-      real(kind=8) :: upar
-      
-      input_freq = 
-      therm_param = 
-
-
-      ! 1.1/ component parallel to photon's propagation
-      call uparallel(x_deut,a_deut,iran,upar)
-      upar = upar * b_cell_deut            ! upar is an x -> convert to a velocity 
-      ! 1.2/ component perpendicular to photon's propagation
-      ruper  = ran3(iran)
-      r2     = ran3(iran)
-      uper   = sqrt(-log(ruper))*cos(2.d0*pi*r2)
-      uper   = uper * b_cell_deut  ! from x to velocity
-      ! 3/ determine scattering angle (in atom's frame)
-      nu_atom = nu_int - nu_ext * upar/clight
-      x_atom = (nu_atom - nu_0_deut)/nu_D_deut
-      if (dipol.eq.4) then   ! dipol=4 signals QM scattering for Lya and Henyey-Greenstein for dust
-         dip=dipol           ! --> indicate that this is Lya here (dipol=3) not dust
-         dipol=3
-         call emission_direction(x_atom)
-         dipol=dip
-      else
-         call emission_direction(x_atom)
-      endif
-      ! 4/ treat recoil effect (in atom's frame):
-      if (recoil) then
-         nu_atom = nu_atom / (1.d0 + ((planck*nu_atom)/(mdeut*clight*clight))*(1.-mu))
-      endif
-      ! 5 compute atom freq. in external frame, after scattering
-      scalar =  a0 * vx_cell + b0 * vy_cell + c0 * vz_cell
-      nu_ext = nu_atom * (1.0d0 + scalar/clight + (upar*mu + sqrt(1-mu**2)*uper) / clight)
-
-    end subroutine scatter_D
-
- 
-
-  end module module_D_model
+    ! --------------------------------------------------------------------------
+    ! compute optical depth of Deuterium over a given distance
+    ! --------------------------------------------------------------------------
+    ! INPUTS:
+    ! - ndi      : number density of neutral D atoms                      [ cm^-3 ]
+    ! - vth      : thermal (+ small-scale turbulence) velocity of D atoms [ cm / s ]
+    ! - distance_to_border_cm : distance over which we compute tau        [ cm ]
+    ! - nu_cell  : photon's frequency in the frame of the cell            [ Hz ]
+    ! OUTPUT :
+    ! - get_tau_D : optical depth of Deuterium's Lya line over distance_to_border_cm
+    ! --------------------------------------------------------------------------
+    
+    real(kind=8),intent(in) :: ndi,vth,distance_to_border_cm,nu_cell
+    real(kind=8)            :: get_tau
+    real(kind=8)            :: delta_nu_D, a, x, h, s
+    
+    ! compute Doppler width and a-parameter
+    delta_nu_D = vth / lambda_0 ! == vth * nu_0 / clight
+    a          = gamma / (4.d0 * pi * delta_nu_D)
+    
+    ! Cross section of Deuterium
+    x = (nu_cell - nu_0)/delta_nu_D
+    h = voigt_fit(x,a)
+    s = sigma_factor / delta_nu_D * h  
+    
+    ! optical depth 
+    get_tau = s * ndi * distance_to_border_cm
+    
+    return
+    
+  end function get_tau
+  
+  
+  subroutine scatter_isotrope(vcell,vth, nu_cell, k, nu_ext, iran)
+    
+    ! --------------------------------------------------------------------------
+    ! perform scattering event on a Deuterium atom
+    ! --------------------------------------------------------------------------
+    ! INPUTS :
+    ! - vcell   : bulk velocity of the gas (i.e. cell velocity)       [ cm / s ] 
+    ! - vth     : thermal (+turbulent) velocity dispersion of D atoms [ cm / s ] 
+    ! - nu_cell : frequency of incoming photon in cell's rest-frame   [ Hz ] 
+    ! - k       : propagaction vector (normalized) 
+    ! - nu_ext  : frequency of incoming photon, in external frame     [ Hz ]
+    ! - iran    : random number generator seed
+    ! OUTPUTS :
+    ! - nu_cell : updated frequency in cell's frame   [ Hz ]
+    ! - nu_ext  : updated frequency in external frame [ Hz ]
+    ! - k       : updated propagation direction
+    ! _ iran    : updated value of seed
+    ! --------------------------------------------------------------------------
+    
+    real(kind=8), intent(inout)               :: nu_cell, nu_ext
+    real(kind=8), dimension(3), intent(inout) :: k
+    real(kind=8), dimension(3), intent(in)    :: vcell
+    real(kind=8), intent(in)                  :: vth
+    integer, intent(inout)                    :: iran
+    real(kind=8)               :: delta_nu_doppler, a, x_cell, blah, upar, ruper
+    real(kind=8)               :: r2, uper, nu_atom, phi, theta, st, mu, scalar
+    real(kind=8), dimension(3) :: knew
+    
+    
+    ! define x_cell & a
+    delta_nu_doppler = vth / lambda_0  ! [ Hz ]
+    a      = gamma / (4.d0 * pi * delta_nu_doppler) 
+    x_cell = (nu_cell - nu_0) / delta_nu_doppler
+    
+    ! 1/ component parallel to photon's propagation
+    ! -> get velocity of interacting atom parallel to propagation
+    blah = ran3(iran)
+#ifdef SWITCH_OFF_UPARALLEL
+    upar = 0.5  !!!!!todo get_uparallel(a,x_cell,blah)
+#else
+    upar = get_uparallel(a,x_cell,blah)
+#endif
+    upar = upar * vth    ! upar is an x -> convert to a velocity 
+    
+    ! 2/ component perpendicular to photon's propagation
+    ruper  = ran3(iran)
+    r2     = ran3(iran)
+    uper   = sqrt(-log(ruper))*cos(2.d0*pi*r2)
+    uper   = uper * vth  ! from x to velocity
+    
+    ! 3/ determine scattering angle (in atom's frame)
+    nu_atom = nu_cell - nu_ext * upar/clight 
+    phi   = 2.d0*pi*ran3(iran)
+    theta = acos(1d0-2d0*ran3(iran))
+    st = sin(theta)
+    knew(1) = st*cos(phi)   !x
+    knew(2) = st*sin(phi)   !y
+    knew(3) = cos(theta)    !z
+    mu = k(1)*knew(1) + k(2)*knew(2) + k(3)*knew(3) 
+    
+    ! 4/ pas de recul dans le modele simple...
+    if (recoil) then
+       nu_atom = nu_atom / (1.d0 + ((planck*nu_atom)/(mdeut*clight*clight))*(1.-mu))
+    endif
+    
+    ! 5/ compute atom freq. in external frame, after scattering
+    scalar  = knew(1) * vcell(1) + knew(2) * vcell(2) + knew(3)* vcell(3)
+    nu_ext  = nu_atom * (1.0d0 + scalar/clight + (upar*mu + sqrt(1-mu**2)*uper)/clight)
+    nu_cell = (1.d0 - scalar/clight) * nu_ext 
+    k       = knew
+    
+  end subroutine scatter_isotrope
+  
+  
+  !==================
+  ! private routines 
+  !==================
+  
+  ! peut-etre dans un module "atomic_physics_utils.f90" ? -> yes ! 
+  function voigt_fit(x,a)
+    
+    !use constant, only : pi,sqrtpi
+    
+    implicit none
+    
+    real(kind=8),intent(in) :: x,a
+    real(kind=8)            :: voigt_fit 
+    real(kind=8)            :: q,z,x2
+    
+    x2 = x**2
+    z  = (x2 - 0.855d0) / (x2 + 3.42d0)
+    if (z > 0) then 
+       q = z * (1.0d0 + 21.0d0/x2) * a / pi / (x2 + 1.0d0)
+       q = q * (((5.674d0*z - 9.207d0)*z + 4.421d0)*z + 0.1117)
+    else
+       q = 0.0d0 
+    end if
+    voigt_fit = q + exp(-x2) / sqrtpi
+    
+    return
+    
+  end function voigt_fit
+  
+end module module_D_model

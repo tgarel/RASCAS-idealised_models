@@ -258,7 +258,7 @@ contains
           distance_to_border_cm = distance_to_border * cell_size_cm ! cm
 
           ! check whether scattering occurs within cell (scatter_flag > 0) or not (scatter_flag==0)
-          scatter_flag = gas_get_scatter_flag(cell_gas, distance_to_border_cm, nu_cell, tau_abs)
+          scatter_flag = gas_get_scatter_flag(cell_gas, distance_to_border_cm, nu_cell, tau_abs, iran)  ! JB: need to pass iran ... 
 
 #ifdef DEBUG
           print*,'distance_to_border_cm =',distance_to_border_cm
