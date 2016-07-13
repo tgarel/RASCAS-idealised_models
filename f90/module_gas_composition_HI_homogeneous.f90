@@ -88,7 +88,7 @@ module module_gas_composition
 
 
 
-    function  gas_get_scatter_flag(cell_gas, distance_to_border_cm, nu_cell, tau_abs,iran)
+    function  gas_get_scatter_flag(cell_gas, distance_to_border_cm, nu_cell, tau_abs, iran)
 
       ! NB: also return distance to interaction (in variable distance_to_border_cm) ...
       ! LEo: and also update tau_abs if gas_get_scatter_flag = 0

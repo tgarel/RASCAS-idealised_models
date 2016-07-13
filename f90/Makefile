@@ -42,9 +42,12 @@ endif
 
 #############################################################################
 # All objects
-#OBJSCOM = module_ramses.o module_gas_ramses.o module_select.o module_domain.o module_mesh.o
 
-GASOBJS = module_params.o module_constants.o module_random.o module_uparallel.o module_HI_model.o module_gas_composition_HI_homogeneous.o
+#COMPOBJS = module_D_model.o module_HI_model.o module_gas_composition_HI_D_homogeneous.o
+#COMPOBJS = module_HI_model.o module_gas_composition_HI_homogeneous.o
+COMPOBJS = module_gas_ramses.o
+
+GASOBJS = module_params.o module_constants.o module_random.o module_uparallel.o $(COMPOBJS)
 
 OBJSCOM = module_ramses.o $(GASOBJS) module_select.o \
 	module_domain.o module_mesh.o
@@ -53,8 +56,7 @@ OBJS1 = $(OBJSCOM) output2subvol.o
 
 OBJS2 = $(OBJSCOM) CreateDomDump.o
 
-OBJSMC = module_params.o module_constants.o module_random.o module_uparallel.o module_D_model.o module_HI_model.o module_gas_composition_HI_D_homogeneous.o \
-	module_domain.o module_mesh.o module_photon.o 
+OBJSMC = $(GASOBJS) module_domain.o module_mesh.o module_photon.o 
 
 OBJSMPI = $(OBJSMC) module_parallel_mpi.o module_worker.o module_master.o MCLya.o
 

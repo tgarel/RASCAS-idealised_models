@@ -10,14 +10,14 @@ module module_D_model
   private
 
   ! Deuterium properties
-  real(kind=8),parameter   :: mdeut    = 2.d0 * mp           ! Deuterium atom's mass [ g ]
-  real(kind=8),parameter   :: lambda_0 = 1215.673d-8 * (1.0d0 + me/mdeut) / (1.0d0 + me/mp) ! wavelength of Lya of Deuterium [ cm ]
-  real(kind=8),parameter   :: nu_0     = clight / lambda_0   ! frequency of Deuterium's Lya [ Hz ]
-  real(kind=8),parameter   :: gamma    = 6.265d8             ! Einstein coeff. [ s^-1 ]
-  real(kind=8),parameter   :: f12      = 0.416               ! Oscillator strength for Deuterium Lya.
+  real(kind=8),parameter   :: mdeut        = 2.d0 * mp           ! Deuterium atom's mass [ g ]
+  real(kind=8),parameter   :: lambda_0_cm  = 1215.673d-8 * (1.0d0 + me/mdeut) / (1.0d0 + me/mp) ! wavelength of Lya of Deuterium [ cm ]
+  real(kind=8),parameter   :: nu_0         = clight / lambda_0_cm  ! frequency of Deuterium's Lya [ Hz ]
+  real(kind=8),parameter   :: gamma        = 6.265d8             ! Einstein coeff. [ s^-1 ]
+  real(kind=8),parameter   :: f12          = 0.416               ! Oscillator strength for Deuterium Lya.
   real(kind=8),parameter   :: sigma_factor = pi*e_ch**2*f12/ me / clight ! cross-section factor-> multiply by Voigt(x,a)/nu_D to get sigma.
     
-  public :: get_tau, scatter_isotrope 
+  public :: get_tau_D, scatter_D_isotrope 
 
 contains
   ! PUBLIC functions : 
@@ -27,7 +27,7 @@ contains
   ! - function voigt_fit(x,a)
   
   
-  function get_tau(ndi, vth, distance_to_border_cm, nu_cell)
+  function get_tau_D(ndi, vth, distance_to_border_cm, nu_cell)
     
     ! --------------------------------------------------------------------------
     ! compute optical depth of Deuterium over a given distance
@@ -42,11 +42,11 @@ contains
     ! --------------------------------------------------------------------------
     
     real(kind=8),intent(in) :: ndi,vth,distance_to_border_cm,nu_cell
-    real(kind=8)            :: get_tau
+    real(kind=8)            :: get_tau_D
     real(kind=8)            :: delta_nu_D, a, x, h, s
     
     ! compute Doppler width and a-parameter
-    delta_nu_D = vth / lambda_0 ! == vth * nu_0 / clight
+    delta_nu_D = vth / lambda_0_cm ! == vth * nu_0 / clight
     a          = gamma / (4.d0 * pi * delta_nu_D)
     
     ! Cross section of Deuterium
@@ -55,14 +55,14 @@ contains
     s = sigma_factor / delta_nu_D * h  
     
     ! optical depth 
-    get_tau = s * ndi * distance_to_border_cm
+    get_tau_D = s * ndi * distance_to_border_cm
     
     return
     
-  end function get_tau
+  end function get_tau_D
   
   
-  subroutine scatter_isotrope(vcell,vth, nu_cell, k, nu_ext, iran)
+  subroutine scatter_D_isotrope(vcell,vth, nu_cell, k, nu_ext, iran)
     
     ! --------------------------------------------------------------------------
     ! perform scattering event on a Deuterium atom
@@ -92,7 +92,7 @@ contains
     
     
     ! define x_cell & a
-    delta_nu_doppler = vth / lambda_0  ! [ Hz ]
+    delta_nu_doppler = vth / lambda_0_cm  ! [ Hz ]
     a      = gamma / (4.d0 * pi * delta_nu_doppler) 
     x_cell = (nu_cell - nu_0) / delta_nu_doppler
     
@@ -133,7 +133,7 @@ contains
     nu_cell = (1.d0 - scalar/clight) * nu_ext 
     k       = knew
     
-  end subroutine scatter_isotrope
+  end subroutine scatter_D_isotrope
   
   
   !==================

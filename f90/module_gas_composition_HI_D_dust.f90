@@ -2,8 +2,10 @@ module module_gas_composition
 
   use module_HI_model
   use module_dust_model
-  use module_D_model ! ?
+  use module_D_model
   use module_ramses
+  use module_constants, only : sqrt_H2Deut_mass_ratio
+  use module_params,    only : deut2H_nb_ratio
 
   implicit none
 
@@ -13,6 +15,9 @@ module module_gas_composition
      ! Hydrogen 
      real(kind=8) :: nHI       ! HI numerical density [HI/cm3]
      real(kind=8) :: dopwidth  ! Doppler width [cm/s]
+     ! Deuterium
+     ! -> density is computed as nHI * deut2H_nb_ratio
+     ! -> dopwidth is computed as dopwidth * sqrt_H2Deut_mass_ratio.
      ! dust
      real(kind=8) :: ndust     ! numerical density of dust particles [#/cm3]
   end type gas
@@ -79,11 +84,11 @@ module module_gas_composition
       ! compute optical depths for different components of the gas.
       tau_HI   = get_tau_HI(cell_gas%nHI, cell_gas%dopwidth, distance_to_border_cm, nu_cell)
       tau_dust = get_tau_dust(cell_gas%ndust, distance_to_border_cm)
-      tau_D    = get_tau_D(???)
+      tau_D    = get_tau_D(cell_gas%nHI * deut2H_nb_ratio, cell_gas%dopwidth * sqrt_H2Deut_mass_ratio,distance_to_border_cm, nu_cell)
       tau_cell = tau_HI + tau_D + tau_dust
       
       if (tau_abs > tau_cell) then  ! photon is due for absorption outside the cell 
-         gas_get_scatter_flag = 0
+         gas_get_scatter_flag = 0   ! no scatter
          tau_abs = tau_abs - tau_cell
          if (tau_abs.lt.0.d0) then
             print*, 'tau_abs est negatif'
@@ -95,11 +100,11 @@ module module_gas_composition
          two_proba = one_proba + tau_D / tau_cell
          tirage = ran3(iran)
          if(tirage <= one_proba)then
-            gas_get_scatter_flag = 1
-         else if (tirage <= two_proba) then ! interaction with a Deuterium atom 
-            gas_get_scatter_flag = 2
-         else ! interaction with dust
-            gas_get_scatter_flag = 3
+            gas_get_scatter_flag = 1 ! HI scatter
+         else if (tirage <= two_proba) then 
+            gas_get_scatter_flag = 2 ! interaction with a Deuterium atom 
+         else 
+            gas_get_scatter_flag = 3 ! interaction with dust
          endif
          ! et transformer distance_to_border_cm en distance_to_absorption_cm ...
          distance_to_border_cm = distance_to_border_cm * (tau_abs / tau_cell)
@@ -122,7 +127,7 @@ module module_gas_composition
       case(1)
          call scatter_HI(cell_gas%v, cell_gas%nHI, cell_gas%dopwidth, nu_cell, k, nu_ext, iran)
       case(2)
-         call scatter_D(???)
+         call scatter_D(cell_gas%v,cell_gas%dopwidth*sqrt_H2Deut_mass_ratio, nu_cell, k, nu_ext, iran)
       case(3)
          call scatter_dust(cell_gas%v, cell_gas%ndust, nu_cell, k, nu_ext, iran)
       end select

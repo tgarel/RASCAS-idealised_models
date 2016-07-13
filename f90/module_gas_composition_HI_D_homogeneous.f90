@@ -4,8 +4,8 @@ module module_gas_composition
   ! - The Deuterium density is set as a fraction of H density through the parameter deut2H_nb_ratio (in module_params.f90).
   ! - The thermal velocity of D is derived from the one of H using the mass ratio (sqrt_H2Deut_mass_ratio in module_constants.f90).
 
-  use module_HI_model, only: get_tau_H => get_tau_HI, scatter_H => scatter_HI_isotrope
-  use module_D_model,  only: get_tau_D => get_tau,    scatter_D => scatter_isotrope
+  use module_HI_model
+  use module_D_model
   use module_random
   use module_constants, only : sqrt_H2Deut_mass_ratio
   use module_params,    only : deut2H_nb_ratio
@@ -117,8 +117,8 @@ contains
       real(kind=8)                          :: tau_HI, tau_cell, tau_D, tirage, proba
       
       ! compute optical depths for different components of the gas.
-      tau_HI   = get_tau_H(cell_gas%nHI, cell_gas%dopwidth, distance_to_border_cm, nu_cell)
-      tau_D    = get_tau_D(cell_gas%nHI * deut2H_nb_ratio, cell_gas%dopwidth * sqrt_H2Deut_mass_ratio,distance_to_border_cm, nu_cell)
+      tau_HI   = get_tau_HI(cell_gas%nHI, cell_gas%dopwidth, distance_to_border_cm, nu_cell)
+      tau_D    = get_tau_D(cell_gas%nHI*deut2H_nb_ratio, cell_gas%dopwidth*sqrt_H2Deut_mass_ratio, distance_to_border_cm, nu_cell)
       tau_cell = tau_HI + tau_D
       
       if (tau_abs > tau_cell) then  ! photon is due for absorption outside the cell 
@@ -156,9 +156,9 @@ contains
 
       select case(flag)
       case(1)
-         call scatter_H(cell_gas%v, cell_gas%nHI, cell_gas%dopwidth, nu_cell, k, nu_ext, iran)
+         call scatter_HI_isotrope(cell_gas%v, cell_gas%nHI, cell_gas%dopwidth, nu_cell, k, nu_ext, iran)
       case(2)
-         call scatter_D(cell_gas%v,cell_gas%dopwidth*sqrt_H2Deut_mass_ratio, nu_cell, k, nu_ext, iran)
+         call scatter_D_isotrope(cell_gas%v,cell_gas%dopwidth*sqrt_H2Deut_mass_ratio, nu_cell, k, nu_ext, iran)
       end select
 
     end subroutine gas_scatter
@@ -186,7 +186,7 @@ contains
       integer,intent(in)                             :: unit,n
       type(gas),dimension(:),allocatable,intent(out) :: g
       integer                                        :: i
-      real(kind=8) :: D2H_ratio, sqrt_H2D_mratio
+      real(kind=8)                                   :: D2H_ratio, sqrt_H2D_mratio
       
       allocate(g(1:n))
 

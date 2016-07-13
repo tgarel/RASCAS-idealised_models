@@ -4,14 +4,26 @@ module module_params
 
   public
 
-  integer                                  :: nbuffer, ndomain
-  logical                                  :: verbose, overwritegas
-  character(2000)                          :: datadir,file_compute_dom,root_domain_file,file_ICs,fileout
+  ! MPI - load-balancing parameters
+  integer                                  :: nbuffer
+  logical                                  :: verbose
+
+  ! Repository/Data
+  character(2000)                          :: datadir,file_ICs,fileout
+
+  ! Domain decomposition
+  integer                                  :: ndomain
+  character(2000)                          :: file_compute_dom,root_domain_file
   character(2000),dimension(:),allocatable :: domain_file_list, mesh_file_list 
+
+  ! Special purpose parameters - Idealized cases
+  logical                                  :: overwritegas
   real(kind=8)                             :: temp_fix, tau0_fix
   real(kind=8)                             :: nhi_new, vth_new
 
+  ! Atomic physics
   logical                                  :: recoil ! if true, compute recoil effect for scatterings on H and D... 
+
   ! Deuterium parameters 
   real(kind=8)                             :: deut2H_nb_ratio ! nb ratio of Deuterium to Hydrogen atoms 
   
@@ -38,7 +50,7 @@ contains
     temp_fix            = 1.d4
     tau0_fix            = 1.d5
     recoil              = .true.
-    deut2H_nb_ratio     = 3.e-5
+    deut2H_nb_ratio     = 3.d-5
 
     ! Read namelist filename from command line argument
     narg = command_argument_count()
@@ -142,7 +154,7 @@ contains
     write(*,'(a,ES9.3)') '        temperature fix : ',temp_fix
     write(*,'(a,ES9.3)') '               tau0 fix : ',tau0_fix
 
-    write(*,*)           '                 recoil : ',recoil
+    write(*,'(a,L1)')    '                 recoil : ',recoil
     
     write(*,'(a,ES9.3)') '        deut2H_nb_ratio : ',deut2H_nb_ratio
 
