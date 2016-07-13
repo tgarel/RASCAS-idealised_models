@@ -11,6 +11,10 @@ module module_params
   real(kind=8)                             :: temp_fix, tau0_fix
   real(kind=8)                             :: nhi_new, vth_new
 
+  logical                                  :: recoil ! if true, compute recoil effect for scatterings on H and D... 
+  ! Deuterium parameters 
+  real(kind=8)                             :: deut2H_nb_ratio ! nb ratio of Deuterium to Hydrogen atoms 
+  
 contains
 
   subroutine read_params
@@ -33,6 +37,8 @@ contains
     overwritegas        = .true.
     temp_fix            = 1.d4
     tau0_fix            = 1.d5
+    recoil              = .true.
+    deut2H_nb_ratio     = 3.e-5
 
     ! Read namelist filename from command line argument
     narg = command_argument_count()
@@ -84,6 +90,10 @@ contains
           read(value,*) temp_fix
        case ('tau0_fix')
           read(value,*) tau0_fix
+       case ('recoil')
+          read(value,*) recoil
+       case ('deut2H_nb_ratio')
+          read(value,*) deut2H_nb_ratio
        end select
     end do
     close(10)
@@ -131,6 +141,10 @@ contains
     write(*,'(a,L1)')    '    overwrite gas props : ',overwritegas
     write(*,'(a,ES9.3)') '        temperature fix : ',temp_fix
     write(*,'(a,ES9.3)') '               tau0 fix : ',tau0_fix
+
+    write(*,*)           '                 recoil : ',recoil
+    
+    write(*,'(a,ES9.3)') '        deut2H_nb_ratio : ',deut2H_nb_ratio
 
   end subroutine print_params
 

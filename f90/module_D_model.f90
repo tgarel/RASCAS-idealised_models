@@ -3,6 +3,7 @@ module module_D_model
   use module_constants
   use module_uparallel
   use module_random
+  use module_params, only : recoil
   
   implicit none
 
@@ -15,8 +16,6 @@ module module_D_model
   real(kind=8),parameter   :: gamma    = 6.265d8             ! Einstein coeff. [ s^-1 ]
   real(kind=8),parameter   :: f12      = 0.416               ! Oscillator strength for Deuterium Lya.
   real(kind=8),parameter   :: sigma_factor = pi*e_ch**2*f12/ me / clight ! cross-section factor-> multiply by Voigt(x,a)/nu_D to get sigma.
-
-  logical,parameter :: recoil = .false.   ! -> move to module_params.f90 ? 
     
   public :: get_tau, scatter_isotrope 
 

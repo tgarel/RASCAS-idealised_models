@@ -7,6 +7,8 @@ module module_gas_composition
   use module_HI_model, only: get_tau_H => get_tau_HI, scatter_H => scatter_HI_isotrope
   use module_D_model,  only: get_tau_D => get_tau,    scatter_D => scatter_isotrope
   use module_random
+  use module_constants, only : sqrt_H2Deut_mass_ratio
+  use module_params,    only : deut2H_nb_ratio
 
   implicit none
 
@@ -20,10 +22,6 @@ module module_gas_composition
      ! -> density is computed as nHI * deut2H_nb_ratio
      ! -> dopwidth is computed as dopwidth * sqrt_H2Deut_mass_ratio.
   end type gas
-
-  real(kind=8),parameter :: deut2H_nb_ratio = 3.e-5                     ! assumed Deuterium/H abundance (in number) -> module_params ? 
-  real(kind=8),parameter :: sqrt_H2Deut_mass_ratio = 0.7071067811865d0  ! == sqrt(mp/mdeut) = 1/sqrt(2)  -> module_constants ? 
-
   
 contains
   

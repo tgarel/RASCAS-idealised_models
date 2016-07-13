@@ -3,7 +3,8 @@ module module_HI_model
   use module_constants
   use module_uparallel
   use module_random
-
+  use module_params, only : recoil
+  
 !#ifdef POLARIZATION
 !  use polar
 !#endif
@@ -49,7 +50,6 @@ contains
     return
 
   end function get_tau_HI
-
 
 
   subroutine scatter_HI_isotrope(v,nHI,dopwidth, nu_cell, k, nu_ext, iran)
@@ -101,7 +101,10 @@ contains
     knew(3) = cos(theta)    !z
     mu = k(1)*knew(1) + k(2)*knew(2) + k(3)*knew(3) 
 
-    ! 4/ pas de recul dans le modele simple...
+    ! 4/ recoil effect
+    if (recoil) then
+       nu_atom = nu_atom / (1.d0 + ((planck*nu_atom)/(mp*clight*clight))*(1.-mu))
+    endif
 
     ! 5/ compute atom freq. in external frame, after scattering
     scalar = knew(1) * v(1) + knew(2) * v(2) + knew(3)* v(3)
@@ -127,7 +130,7 @@ contains
 
   end subroutine scatter_HI_isotrope
 
-
+  
 
 
 !     subroutine scatter_HI(v,nHI,dopwidth, nu_cell, k, nu_ext)
