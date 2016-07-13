@@ -1,32 +1,37 @@
 module module_gas_composition
 
-  ! Simplified model with Hydrogen and Deuterium, but no dust.
-  ! Scattering events are isotropic. D density is a fraction of H density (-> no array)
+  ! Homogeneous and static mixture of Hydrogen and Deuterium (no dust), with isotropic scattering.
+  ! - The Deuterium density is set as a fraction of H density through the parameter deut2H_nb_ratio (in module_params.f90).
+  ! - The thermal velocity of D is derived from the one of H using the mass ratio (sqrt_H2Deut_mass_ratio in module_constants.f90).
 
   use module_HI_model, only: get_tau_H => get_tau_HI, scatter_H => scatter_HI_isotrope
   use module_D_model,  only: get_tau_D => get_tau,    scatter_D => scatter_isotrope
   use module_random
 
   implicit none
-  
+
   type gas
      ! fluid
      real(kind=8) :: v(3)      ! bulk velocity of the gas (i.e. cell velocity) [ cm / s ]
-     ! Hydrogen 
+     ! Hydrogen
      real(kind=8) :: nHI       ! HI numerical density [HI/cm3]
      real(kind=8) :: dopwidth  ! Doppler width [cm/s]
+     ! Deuterium
+     ! -> density is computed as nHI * deut2H_nb_ratio
+     ! -> dopwidth is computed as dopwidth * sqrt_H2Deut_mass_ratio.
   end type gas
-  ! Deuterium:
-  real(kind=8),parameter :: deut2H_nb_ratio = 3.e-5                     ! assumed Deuterium/H abundance (in number)
-  real(kind=8),parameter :: sqrt_H2Deut_mass_ratio = 0.7071067811865d0  ! == sqrt(mp/mdeut) = 1/sqrt(2) 
+
+  real(kind=8),parameter :: deut2H_nb_ratio = 3.e-5                     ! assumed Deuterium/H abundance (in number) -> module_params ? 
+  real(kind=8),parameter :: sqrt_H2Deut_mass_ratio = 0.7071067811865d0  ! == sqrt(mp/mdeut) = 1/sqrt(2)  -> module_constants ? 
 
   
-  contains
+contains
+  
     ! Routines list:
     ! - subroutine gas_from_ramses_leaves(ramses_var, g)
     ! - subroutine overwrite_gas(g,nhi,vth)
     ! - function get_gas_velocity(cell_gas)
-    ! - function  gas_get_scatter_flag(cell_gas, distance_to_border_cm, nu_cell, tau_abs)
+    ! - function  gas_get_scatter_flag(cell_gas, distance_to_border_cm, nu_cell, tau_abs,iran)
     ! - subroutine gas_scatter(flag,cell_gas,nu_cell,k,nu_ext,iran)
     ! - subroutine dump_gas(unit,g)
     ! - subroutine read_gas(unit,n,g)
@@ -36,15 +41,9 @@ module module_gas_composition
 
       ! define gas contents from ramses raw data
 
-      !character(2000),intent(in)        :: repository 
-      !integer(kind=4),intent(in)        :: snapnum
-      !integer(kind=4),intent(in)        :: nleaf,nvar
       real(kind=8),dimension(:,:),intent(in)         :: ramses_var
       type(gas),dimension(:),allocatable,intent(out) :: g
       integer(kind=4)                   :: ileaf,nleaf
-
-      ! make sure conversion factors are set 
-      ! call read_conversion_scales(repository,snapnum)
 
       nleaf = size(ramses_var,2)
 
@@ -212,7 +211,6 @@ module module_gas_composition
       type(gas),dimension(:),allocatable,intent(inout) :: g
       deallocate(g)
     end subroutine gas_destructor
-
 
 
   end module module_gas_composition

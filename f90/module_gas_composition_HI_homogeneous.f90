@@ -20,7 +20,7 @@ module module_gas_composition
     ! - subroutine gas_from_ramses_leaves(ramses_var, g)
     ! - subroutine overwrite_gas(g,nhi,vth)
     ! - function get_gas_velocity(cell_gas)
-    ! - function  gas_get_scatter_flag(cell_gas, distance_to_border_cm, nu_cell, tau_abs)
+    ! - function  gas_get_scatter_flag(cell_gas, distance_to_border_cm, nu_cell, tau_abs,iran)
     ! - subroutine gas_scatter(flag,cell_gas,nu_cell,k,nu_ext,iran)
     ! - subroutine dump_gas(unit,g)
     ! - subroutine read_gas(unit,n,g)
@@ -88,7 +88,7 @@ module module_gas_composition
 
 
 
-    function  gas_get_scatter_flag(cell_gas, distance_to_border_cm, nu_cell, tau_abs)
+    function  gas_get_scatter_flag(cell_gas, distance_to_border_cm, nu_cell, tau_abs,iran)
 
       ! NB: also return distance to interaction (in variable distance_to_border_cm) ...
       ! LEo: and also update tau_abs if gas_get_scatter_flag = 0
@@ -97,7 +97,8 @@ module module_gas_composition
       type(gas),intent(in)                  :: cell_gas
       real(kind=8),intent(inout)            :: distance_to_border_cm
       real(kind=8),intent(in)               :: nu_cell
-      real(kind=8),intent(inout)            :: tau_abs                ! tau at which scattering is set to occur. 
+      real(kind=8),intent(inout)            :: tau_abs                ! tau at which scattering is set to occur.
+      integer,intent(inout)                 :: iran 
       integer(kind=4)                       :: gas_get_scatter_flag 
       real(kind=8)                          :: tau_HI, tau_cell
       

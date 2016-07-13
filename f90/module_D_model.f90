@@ -16,21 +16,17 @@ module module_D_model
   real(kind=8),parameter   :: f12      = 0.416               ! Oscillator strength for Deuterium Lya.
   real(kind=8),parameter   :: sigma_factor = pi*e_ch**2*f12/ me / clight ! cross-section factor-> multiply by Voigt(x,a)/nu_D to get sigma.
 
-  ! JB- en attendant de mettre ca ailleurs:
-  logical,parameter :: recoil = .false.
-  ! -JB
-  
-! JB - the following is for gas composition... 
-!!$  real(kind=8),parameter   :: deut2H_nb_ratio = 3.e-5                                 ! assumed Deuterium/H abundance (in number)
-!!$  real(kind=8),parameter   :: sqrt_H2Deut_mass_ratio = 0.7071067811865d0              ! == sqrt(mp/mdeut) = 1/sqrt(2) 
-! - JB 
-  
+  logical,parameter :: recoil = .false.   ! -> move to module_params.f90 ? 
+    
   public :: get_tau, scatter_isotrope 
 
 contains
-  ! Routine list
-  ! function get_tau
-  ! subroutine scatter
+  ! PUBLIC functions : 
+  ! - function get_tau(ndi, vth, distance_to_border_cm, nu_cell)
+  ! - subroutine scatter_isotrope(vcell,vth, nu_cell, k, nu_ext, iran)
+  ! PRIVATE function :
+  ! - function voigt_fit(x,a)
+  
   
   function get_tau(ndi, vth, distance_to_border_cm, nu_cell)
     
@@ -127,7 +123,7 @@ contains
     knew(3) = cos(theta)    !z
     mu = k(1)*knew(1) + k(2)*knew(2) + k(3)*knew(3) 
     
-    ! 4/ pas de recul dans le modele simple...
+    ! 4/ recoil effect
     if (recoil) then
        nu_atom = nu_atom / (1.d0 + ((planck*nu_atom)/(mdeut*clight*clight))*(1.-mu))
     endif
