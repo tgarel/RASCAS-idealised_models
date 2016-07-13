@@ -3,7 +3,8 @@ module module_HI_model
   use module_constants
   use module_uparallel
   use module_random
-
+  use module_params, only : recoil
+  
 !#ifdef POLARIZATION
 !  use polar
 !#endif
@@ -27,11 +28,18 @@ contains
 
   function get_tau_HI(nhi, dopwidth, distance_to_border_cm, nu_cell)
 
-    ! compute frequency in cell's moving frame
-    !scalar =  a0 * vx_cell + b0 * vy_cell + c0 * vz_cell
-    !nu_int = (1.d0 - scalar/clight) * nu_ext
-    ! => should be done before
-
+    ! --------------------------------------------------------------------------
+    ! compute optical depth of Hydrogen over a given distance
+    ! --------------------------------------------------------------------------
+    ! INPUTS:
+    ! - nhi      : number density of neutral HI atoms                      [ cm^-3 ]
+    ! - dopwidth : thermal (+ small-scale turbulence) velocity of HI atoms [ cm / s ]
+    ! - distance_to_border_cm : distance over which we compute tau        [ cm ]
+    ! - nu_cell  : photon's frequency in the frame of the cell            [ Hz ]
+    ! OUTPUT :
+    ! - get_tau_HI : optical depth of Hydrogen's Lya line over distance_to_border_cm
+    ! --------------------------------------------------------------------------
+    
     real(kind=8),intent(in) :: nhi,dopwidth,distance_to_border_cm,nu_cell
     real(kind=8)            :: nu_D,x_cell,sigmaH,a,h, get_tau_HI
 
@@ -51,8 +59,25 @@ contains
   end function get_tau_HI
 
 
-
   subroutine scatter_HI_isotrope(v,nHI,dopwidth, nu_cell, k, nu_ext, iran)
+
+    ! ---------------------------------------------------------------------------------
+    ! perform scattering event on a Hydrogen atom with isotrope angular redistribution
+    ! ---------------------------------------------------------------------------------
+    ! INPUTS :
+    ! - v        : bulk velocity of the gas (i.e. cell velocity)       [ cm / s ] 
+    ! - nhi      : number density of neutral HI atoms                  [ cm^-3 ]
+    ! - dopwidth : thermal (+turbulent) velocity dispersion of H atoms [ cm / s ] 
+    ! - nu_cell  : frequency of incoming photon in cell's rest-frame   [ Hz ] 
+    ! - k        : propagaction vector (normalized) 
+    ! - nu_ext   : frequency of incoming photon, in external frame     [ Hz ]
+    ! - iran     : random number generator seed
+    ! OUTPUTS :
+    ! - nu_cell  : updated frequency in cell's frame   [ Hz ]
+    ! - nu_ext   : updated frequency in external frame [ Hz ]
+    ! - k        : updated propagation direction
+    ! _ iran     : updated value of seed
+    ! ---------------------------------------------------------------------------------
 
     real(kind=8), intent(inout)               :: nu_cell, nu_ext
     real(kind=8), dimension(3), intent(inout) :: k
@@ -101,7 +126,10 @@ contains
     knew(3) = cos(theta)    !z
     mu = k(1)*knew(1) + k(2)*knew(2) + k(3)*knew(3) 
 
-    ! 4/ pas de recul dans le modele simple...
+    ! 4/ recoil effect
+    if (recoil) then
+       nu_atom = nu_atom / (1.d0 + ((planck*nu_atom)/(mp*clight*clight))*(1.-mu))
+    endif
 
     ! 5/ compute atom freq. in external frame, after scattering
     scalar = knew(1) * v(1) + knew(2) * v(2) + knew(3)* v(3)
@@ -127,7 +155,7 @@ contains
 
   end subroutine scatter_HI_isotrope
 
-
+  
 
 
 !     subroutine scatter_HI(v,nHI,dopwidth, nu_cell, k, nu_ext)
