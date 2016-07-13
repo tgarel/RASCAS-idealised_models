@@ -128,6 +128,79 @@ contains
   end subroutine scatter_HI_isotrope
 
 
+  subroutine scatter_HI(vcell,vth,nu_cell,k,nu_ext,iran)
+
+    ! Angular redistribution :
+    ! - for core photons (|x| < 0.2) we use P(mu) = 11/24 + 3/24 * mu**2
+    ! - for wing photons (|x| > 0.2) we use P(mu) = 3/8 * (1 + mu**2)
+    ! with mu = cos(theta), (and theta in [0,pi]).
+    !
+    ! To draw theta values, we compute the cumulative probabilities from above :
+    ! - for core photons : P(< mu) = 1/2 + 11/24 * mu + 1/24 * mu**3
+    ! - for wing photons : P(< mu) = 1/2 + 3/8 * mu + 1/8 * mu**3
+    ! We fit the reciprocal functions of these with polynomials :
+    ! - for core photons (at better than 0.515% accuracy everywhere):
+    !    mu = -0.703204 x^3 + 1.054807 x^2 + 1.643182 x^1 -0.997392  
+    ! - for wing photons (at better than 0.529% accuracy everywhere):
+    !    mu = -24.901267 x^7 + 87.154434 x^6 -114.220525 x^5 + 67.665227 x^4 -18.389694 x^3 + 3.496531 x^2 + 1.191722 x^1 -0.998214
+
+    
+    real(kind=8), intent(inout)               :: nu_cell, nu_ext
+    real(kind=8), dimension(3), intent(inout) :: k
+    real(kind=8), dimension(3), intent(in)    :: v
+    real(kind=8), intent(in)                  :: vth
+    integer, intent(inout)                    :: iran
+
+    real(kind=8)               :: nu_doppler, a, x_cell, blah, upar, ruper
+    real(kind=8)               :: r2, uper, nu_atom, phi, theta, st, mu, scalar
+    real(kind=8), dimension(3) :: knew
+
+    ! define x_cell & a
+    nu_doppler = dopwidth * nu_0 / clight
+    a = gamma / (4.d0 * pi * nu_doppler)
+    x_cell = (nu_cell - nu_0) / nu_doppler
+
+    ! 1/ component parallel to photon's propagation
+    ! -> get velocity of interacting atom parallel to propagation
+    blah = ran3(iran)
+#ifdef SWITCH_OFF_UPARALLEL
+    upar = 0.5  !!!!!todo get_uparallel(a,x_cell,blah)
+#else
+    upar = get_uparallel(a,x_cell,blah)
+#endif
+    upar = upar * dopwidth    ! upar is an x -> convert to a velocity 
+
+    ! 2/ component perpendicular to photon's propagation
+    ruper  = ran3(iran)
+    r2     = ran3(iran)
+    uper   = sqrt(-log(ruper))*cos(2.d0*pi*r2)
+    uper   = uper * dopwidth  ! from x to velocity
+
+    ! 3/ determine scattering angle (in atom's frame)
+    nu_atom = nu_cell - nu_ext * upar/clight
+
+    phi   = 2.d0*pi*ran3(iran)
+    theta = acos(1d0-2d0*ran3(iran))
+    !........director cosines
+    st = sin(theta)
+    knew(1) = st*cos(phi)   !x
+    knew(2) = st*sin(phi)   !y
+    knew(3) = cos(theta)    !z
+    mu = k(1)*knew(1) + k(2)*knew(2) + k(3)*knew(3) 
+
+    ! 4/ pas de recul dans le modele simple...
+
+    ! 5/ compute atom freq. in external frame, after scattering
+    scalar = knew(1) * v(1) + knew(2) * v(2) + knew(3)* v(3)
+    nu_ext = nu_atom * (1.0d0 + scalar/clight + (upar*mu + sqrt(1-mu**2)*uper)/clight)
+    nu_cell = (1.d0 - scalar/clight) * nu_ext 
+    k = knew
+
+
+  end subroutine scatter_HI
+
+
+
 
 
 !     subroutine scatter_HI(v,nHI,dopwidth, nu_cell, k, nu_ext)
