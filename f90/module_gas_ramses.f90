@@ -84,7 +84,7 @@ module module_gas_composition
     ! end subroutine gas_get_taus
 
 
-    !function  gas_get_scatter_flag(cell_gas, distance_to_border_cm, nu_cell, tau_abs)
+    !function  gas_get_scatter_flag(cell_gas, distance_to_border_cm, nu_cell, tau_abs, iran)
     !   ! no need...
       
     !end function gas_get_scatter_flag

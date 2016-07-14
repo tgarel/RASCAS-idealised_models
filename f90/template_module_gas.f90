@@ -38,13 +38,14 @@ module module_gas_composition
 
 
 
-    function gas_get_scatter_flag(cell_gas, distance_to_border_cm, nu_cell, tau_abs)
+    function gas_get_scatter_flag(cell_gas, distance_to_border_cm, nu_cell, tau_abs, iran)
 
       ! check whether scattering occurs within cell (scatter_flag > 0) or not (scatter_flag==0)
       type(gas),intent(in)                  :: cell_gas
       real(kind=8),intent(inout)            :: distance_to_border_cm
       real(kind=8),intent(in)               :: nu_cell
-      real(kind=8),intent(inout)            :: tau_abs                ! tau at which scattering is set to occur. 
+      real(kind=8),intent(inout)            :: tau_abs                ! tau at which scattering is set to occur.
+      integer,intent(inout)                 :: iran 
  
       print *,"There is no cause for alarm, but there probably will be"
       print *," "
