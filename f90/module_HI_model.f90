@@ -3,6 +3,7 @@ module module_HI_model
   use module_constants
   use module_uparallel
   use module_random
+  use module_params, only : recoil
 
 !#ifdef POLARIZATION
 !  use polar
@@ -37,7 +38,7 @@ contains
 
     ! compute Doppler width and a-parameter, for H 
     nu_D = dopwidth * nu_0 / clight
-    a    = gamma / (4.d0 * pi * nu_D)
+    a    = gamma / (fourpi * nu_D)
  
     ! Cross section of H 
     x_cell  = (nu_cell - nu_0)/nu_D
@@ -60,7 +61,7 @@ contains
     real(kind=8), intent(in)                  :: nHI,dopwidth
     integer, intent(inout)                    :: iran
 
-    real(kind=8)               :: nu_doppler, a, x_cell, blah, upar, ruper
+    real(kind=8)               :: nu_doppler, a, x_cell, blah, upar, ruper, x
     real(kind=8)               :: r2, uper, nu_atom, phi, theta, st, mu, scalar
     real(kind=8), dimension(3) :: knew
 
@@ -70,7 +71,7 @@ contains
 
     ! define x_cell & a
     nu_doppler = dopwidth * nu_0 / clight
-    a = gamma / (4.d0 * pi * nu_doppler)
+    a = gamma / (fourpi * nu_doppler)
     x_cell = (nu_cell - nu_0) / nu_doppler
 
     ! 1/ component parallel to photon's propagation
@@ -86,13 +87,13 @@ contains
     ! 2/ component perpendicular to photon's propagation
     ruper  = ran3(iran)
     r2     = ran3(iran)
-    uper   = sqrt(-log(ruper))*cos(2.d0*pi*r2)
+    uper   = sqrt(-log(ruper))*cos(twopi*r2)
     uper   = uper * dopwidth  ! from x to velocity
 
     ! 3/ determine scattering angle (in atom's frame)
     nu_atom = nu_cell - nu_ext * upar/clight
 
-    phi   = 2.d0*pi*ran3(iran)
+    phi   = twopi*ran3(iran)
     theta = acos(1d0-2d0*ran3(iran))
     !........director cosines
     st = sin(theta)
@@ -132,7 +133,7 @@ contains
 
     ! Angular redistribution :
     ! - for core photons (|x| < 0.2) we use P(mu) = 11/24 + 3/24 * mu**2
-    ! - for wing photons (|x| > 0.2) we use P(mu) = 3/8 * (1 + mu**2)
+    ! - for wing photons (|x| > 0.2) we use P(mu) = 3/8 * (1 + mu**2) [this is Rayleigh]
     ! with mu = cos(theta), (and theta in [0,pi]).
     !
     ! To draw theta values, we compute the cumulative probabilities from above :
@@ -143,7 +144,6 @@ contains
     !    mu = -0.703204 x^3 + 1.054807 x^2 + 1.643182 x^1 -0.997392  
     ! - for wing photons (at better than 0.529% accuracy everywhere):
     !    mu = -24.901267 x^7 + 87.154434 x^6 -114.220525 x^5 + 67.665227 x^4 -18.389694 x^3 + 3.496531 x^2 + 1.191722 x^1 -0.998214
-
     
     real(kind=8), intent(inout)               :: nu_cell, nu_ext
     real(kind=8), dimension(3), intent(inout) :: k
@@ -156,8 +156,8 @@ contains
     real(kind=8), dimension(3) :: knew
 
     ! define x_cell & a
-    nu_doppler = dopwidth * nu_0 / clight
-    a = gamma / (4.d0 * pi * nu_doppler)
+    nu_doppler = vth * nu_0 / clight
+    a = gamma / (fourpi * nu_doppler)
     x_cell = (nu_cell - nu_0) / nu_doppler
 
     ! 1/ component parallel to photon's propagation
@@ -168,34 +168,58 @@ contains
 #else
     upar = get_uparallel(a,x_cell,blah)
 #endif
-    upar = upar * dopwidth    ! upar is an x -> convert to a velocity 
+    upar = upar * vth    ! upar is an x -> convert to a velocity 
 
     ! 2/ component perpendicular to photon's propagation
     ruper  = ran3(iran)
     r2     = ran3(iran)
-    uper   = sqrt(-log(ruper))*cos(2.d0*pi*r2)
-    uper   = uper * dopwidth  ! from x to velocity
+    uper   = sqrt(-log(ruper))*cos(twopi*r2)
+    uper   = uper * vth  ! from x to velocity
 
-    ! 3/ determine scattering angle (in atom's frame)
+    ! 3/ incoming frequency in atom's frame
     nu_atom = nu_cell - nu_ext * upar/clight
+    x_atom  = (nu_atom -nu_0) / nu_doppler
 
-    phi   = 2.d0*pi*ran3(iran)
-    theta = acos(1d0-2d0*ran3(iran))
-    !........director cosines
-    st = sin(theta)
-    knew(1) = st*cos(phi)   !x
-    knew(2) = st*sin(phi)   !y
-    knew(3) = cos(theta)    !z
-    mu = k(1)*knew(1) + k(2)*knew(2) + k(3)*knew(3) 
+    ! 4/ determine direction of scattered photon
+    ! 4.1/ relative to incoming photon 
+    phi = twopi * ran3(iran)
+    x   = ran3(iran)
+    if (abs(x_atom) < 0.2) then ! core scattering
+       mu = ((-0.703204*x + 1.054807)* x + 1.643182) * x - 0.997392  
+    else ! wing scattering
+       mu = ((((((-24.901267*x + 87.154434)*x -114.220525)*x + 67.665227)*x -18.389694)*x + 3.496531)*x + 1.191722)*x -0.998214
+    end if
+    ! 4.2/ in external frame (box coordinates)
+    ! angular description of k
+    cti = k(3)
+    sti = sqrt(1.d0 - cti*cti)  ! sin(theta) is positive for theta in [0,pi]. 
+    if (sti > 0) then 
+       cpi = k(1)/sti
+       spi = k(2)/sti
+    else
+       cpi = 1.
+       spi = 0.
+    end if
+    ! angular description of knew (relative to k)
+    ct1 = mu
+    st1 = sqrt(1.0d0 - ct1*ct1)
+    cp1 = cos(phi)
+    sp1 = sin(phi)
+    ! knew (such that indeed knew . k = ct1)
+    knew(1) = cti*cpi*st1*cp1 + sti*cpi*ct1 - spi*st1*sp1
+    knew(2) = cti*spi*st1*cp1 + sti*spi*ct1 + cpi*st1*sp1
+    knew(3) = -sti*st1*cp1 + cti*ct1
 
-    ! 4/ pas de recul dans le modele simple...
-
+    ! 5/ pas de recul dans le modele simple...
+    if (recoil) then 
+       nu_atom = nu_atom / (1.d0 + ((planck*nu_atom)/(mp*clight*clight))*(1.-mu))
+    end if
+    
     ! 5/ compute atom freq. in external frame, after scattering
     scalar = knew(1) * v(1) + knew(2) * v(2) + knew(3)* v(3)
     nu_ext = nu_atom * (1.0d0 + scalar/clight + (upar*mu + sqrt(1-mu**2)*uper)/clight)
     nu_cell = (1.d0 - scalar/clight) * nu_ext 
     k = knew
-
 
   end subroutine scatter_HI
 
