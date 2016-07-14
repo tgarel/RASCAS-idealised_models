@@ -43,9 +43,9 @@ endif
 #############################################################################
 # All objects
 
-#COMPOBJS = module_D_model.o module_HI_model.o module_gas_composition_HI_D_homogeneous.o
+COMPOBJS = module_D_model.o module_HI_model.o module_gas_composition_HI_D_homogeneous.o
 #COMPOBJS = module_HI_model.o module_gas_composition_HI_homogeneous.o
-COMPOBJS = module_gas_ramses.o
+#COMPOBJS = module_gas_ramses.o
 
 GASOBJS = module_params.o module_constants.o module_random.o module_uparallel.o $(COMPOBJS)
 
