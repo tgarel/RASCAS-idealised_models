@@ -115,12 +115,7 @@ contains
     
     ! 3/ determine scattering angle (in atom's frame)
     nu_atom = nu_cell - nu_ext * upar/clight 
-    phi   = 2.d0*pi*ran3(iran)
-    theta = acos(1d0-2d0*ran3(iran))
-    st = sin(theta)
-    knew(1) = st*cos(phi)   !x
-    knew(2) = st*sin(phi)   !y
-    knew(3) = cos(theta)    !z
+    call isotropic_direction(knew,iran)
     mu = k(1)*knew(1) + k(2)*knew(2) + k(3)*knew(3) 
     
     ! 4/ recoil effect
