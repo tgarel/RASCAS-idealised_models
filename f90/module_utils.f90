@@ -4,7 +4,8 @@ module module_utils
   ! 
   ! - voigt_fit
   ! - isotropic_direction
-  ! - anisotropic_direction1 
+  ! - anisotropic_direction_HIcore
+  ! - anisotropic_direction_Rayleigh
   
   use module_constants, only : pi, sqrtpi, twopi
   use module_random, only : ran3

@@ -1,7 +1,7 @@
 module module_D_model
 
   use module_constants
-  use module_utils, only : voigt_fit, isotropic_direction
+  use module_utils, only : voigt_fit, isotropic_direction, anisotropic_direction_HIcore, anisotropic_direction_Rayleigh
   use module_uparallel
   use module_random
   use module_params, only : recoil
@@ -12,19 +12,18 @@ module module_D_model
 
   ! Deuterium properties
   real(kind=8),parameter   :: mdeut        = 2.d0 * mp           ! Deuterium atom's mass [ g ]
-  real(kind=8),parameter   :: lambda_0_cm  = 1215.673d-8 * (1.0d0 + me/mdeut) / (1.0d0 + me/mp) ! wavelength of Lya of Deuterium [ cm ]
-  real(kind=8),parameter   :: nu_0         = clight / lambda_0_cm  ! frequency of Deuterium's Lya [ Hz ]
+  real(kind=8),parameter   :: lambda_0     = 1215.673 * (1.0d0 + me/mdeut) / (1.0d0 + me/mp) ! wavelength of Lya of Deuterium [ cm ]
   real(kind=8),parameter   :: gamma        = 6.265d8             ! Einstein coeff. [ s^-1 ]
   real(kind=8),parameter   :: f12          = 0.416               ! Oscillator strength for Deuterium Lya.
+  ! useful pre-computed quantities
+  real(kind=8),parameter   :: lambda_0_cm = lambda_0 / cmtoA              ! cm
+  real(kind=8),parameter   :: nu_0 = clight / lambda_0_cm                 ! Hz
   real(kind=8),parameter   :: sigma_factor = pi*e_ch**2*f12/ me / clight ! cross-section factor-> multiply by Voigt(x,a)/nu_D to get sigma.
+  real(kind=8),parameter   :: gamma_over_fourpi = gamma / fourpi
     
-  public :: get_tau_D, scatter_D_isotrope 
+  public :: get_tau_D, scatter_D_isotrope, scatter_D
 
 contains
-  ! PUBLIC functions : 
-  ! - function get_tau(ndi, vth, distance_to_border_cm, nu_cell)
-  ! - subroutine scatter_isotrope(vcell,vth, nu_cell, k, nu_ext, iran)
-  
   
   function get_tau_D(ndi, vth, distance_to_border_cm, nu_cell)
     
@@ -45,8 +44,8 @@ contains
     real(kind=8)            :: delta_nu_D, a, x, h, s
     
     ! compute Doppler width and a-parameter
-    delta_nu_D = vth / lambda_0_cm ! == vth * nu_0 / clight
-    a          = gamma / (4.d0 * pi * delta_nu_D)
+    delta_nu_D = vth / lambda_0_cm 
+    a          = gamma_over_fourpi / delta_nu_D
     
     ! Cross section of Deuterium
     x = (nu_cell - nu_0)/delta_nu_D
@@ -92,8 +91,9 @@ contains
     
     ! define x_cell & a
     delta_nu_doppler = vth / lambda_0_cm  ! [ Hz ]
-    a      = gamma / (4.d0 * pi * delta_nu_doppler) 
+    a      = gamma_over_fourpi / delta_nu_doppler
     x_cell = (nu_cell - nu_0) / delta_nu_doppler
+
     
     ! 1/ component parallel to photon's propagation
     ! -> get velocity of interacting atom parallel to propagation
@@ -128,5 +128,90 @@ contains
     k       = knew
     
   end subroutine scatter_D_isotrope
+
+  
+  subroutine scatter_D(vcell,vth,nu_cell,k,nu_ext,iran)
+
+    ! ---------------------------------------------------------------------------------
+    ! perform scattering event on a Deuterium atom with an anisotropic phase function
+    ! ---------------------------------------------------------------------------------
+    ! INPUTS :
+    ! - vcell    : bulk velocity of the gas (i.e. cell velocity)       [ cm / s ] 
+    ! - vth      : thermal (+turbulent) velocity dispersion of D atoms [ cm / s ] 
+    ! - nu_cell  : frequency of incoming photon in cell's rest-frame   [ Hz ] 
+    ! - k        : propagaction vector (normalized) 
+    ! - nu_ext   : frequency of incoming photon, in external frame     [ Hz ]
+    ! - iran     : random number generator seed
+    ! OUTPUTS :
+    ! - nu_cell  : updated frequency in cell's frame   [ Hz ]
+    ! - nu_ext   : updated frequency in external frame [ Hz ]
+    ! - k        : updated propagation direction
+    ! _ iran     : updated value of seed
+    ! ---------------------------------------------------------------------------------
+    !
+    ! Notes on the phase function :
+    ! -----------------------------
+    ! - for core photons (|x| < 0.2) we use P(mu) = 11/24 + 3/24 * mu**2
+    ! - for wing photons (|x| > 0.2) we use P(mu) = 3/8 * (1 + mu**2) [this is Rayleigh]
+    ! where mu = cos(theta), (and theta in [0,pi]).
+    ! ---------------------------------------------------------------------------------
+
+    real(kind=8), intent(inout)               :: nu_cell, nu_ext
+    real(kind=8), dimension(3), intent(inout) :: k
+    real(kind=8), dimension(3), intent(in)    :: vcell
+    real(kind=8), intent(in)                  :: vth
+    integer, intent(inout)                    :: iran
+    real(kind=8)               :: delta_nu_doppler, a, x_cell, blah, upar, ruper
+    real(kind=8)               :: r2, uper, nu_atom, phi, theta, st, mu, bu, scalar
+    real(kind=8)               :: cti,sti,cpi,spi,ct1,st1,cp1,sp1,x,x_atom
+    real(kind=8), dimension(3) :: knew
+
+    ! define x_cell & a
+    delta_nu_doppler = vth / lambda_0_cm 
+    a = gamma_over_fourpi / delta_nu_doppler
+    x_cell = (nu_cell - nu_0) / delta_nu_doppler
+
+    ! 1/ component parallel to photon's propagation
+    ! -> get velocity of interacting atom parallel to propagation
+    blah = ran3(iran)
+#ifdef SWITCH_OFF_UPARALLEL
+    upar = 0.5  !!!!!todo get_uparallel(a,x_cell,blah)
+#else
+    upar = get_uparallel(a,x_cell,blah)
+#endif
+    upar = upar * vth    ! upar is an x -> convert to a velocity 
+
+    ! 2/ component perpendicular to photon's propagation
+    ruper  = ran3(iran)
+    r2     = ran3(iran)
+    uper   = sqrt(-log(ruper))*cos(twopi*r2)
+    uper   = uper * vth  ! from x to velocity
+
+    ! 3/ incoming frequency in atom's frame
+    nu_atom = nu_cell - nu_ext * upar/clight
+    x_atom  = (nu_atom -nu_0) / delta_nu_doppler
+
+    ! 4/ determine direction of scattered photon
+    if (abs(x_atom) < 0.2) then ! core scattering 
+       call anisotropic_direction_HIcore(k,knew,mu,bu,iran)
+    else ! wing scattering 
+       call anisotropic_direction_Rayleigh(k,knew,mu,bu,iran)
+    end if
+
+    ! 5/ recoil effect 
+    if (recoil) then 
+       nu_atom = nu_atom / (1.d0 + ((planck*nu_atom)/(mdeut*clight*clight))*(1.-mu))
+    end if
+    
+    ! 6/ compute atom freq. in external frame, after scattering
+    scalar = knew(1) * vcell(1) + knew(2) * vcell(2) + knew(3)* vcell(3)
+    nu_ext = nu_atom * (1.0d0 + scalar/clight + (upar*mu + bu*uper)/clight)
+    nu_cell = (1.d0 - scalar/clight) * nu_ext 
+    k = knew
+
+  end subroutine scatter_D
+
+
+  
   
 end module module_D_model

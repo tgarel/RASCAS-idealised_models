@@ -28,25 +28,25 @@ module module_HI_model
   
 contains
 
-  function get_tau_HI(nhi, dopwidth, distance_to_border_cm, nu_cell)
+  function get_tau_HI(nhi, vth, distance_to_border_cm, nu_cell)
 
     ! --------------------------------------------------------------------------
     ! compute optical depth of Hydrogen over a given distance
     ! --------------------------------------------------------------------------
     ! INPUTS:
     ! - nhi      : number density of neutral HI atoms                      [ cm^-3 ]
-    ! - dopwidth : thermal (+ small-scale turbulence) velocity of HI atoms [ cm / s ]
+    ! - vth      : thermal (+ small-scale turbulence) velocity of HI atoms [ cm / s ]
     ! - distance_to_border_cm : distance over which we compute tau        [ cm ]
     ! - nu_cell  : photon's frequency in the frame of the cell            [ Hz ]
     ! OUTPUT :
     ! - get_tau_HI : optical depth of Hydrogen's Lya line over distance_to_border_cm
     ! --------------------------------------------------------------------------
     
-    real(kind=8),intent(in) :: nhi,dopwidth,distance_to_border_cm,nu_cell
+    real(kind=8),intent(in) :: nhi,vth,distance_to_border_cm,nu_cell
     real(kind=8)            :: nu_D,x_cell,sigmaH,a,h, get_tau_HI
 
     ! compute Doppler width and a-parameter, for H 
-    nu_D = dopwidth / lambda_0_cm 
+    nu_D = vth / lambda_0_cm 
     a    = gamma / (fourpi * nu_D)
  
     ! Cross section of H 
@@ -61,15 +61,14 @@ contains
   end function get_tau_HI
 
 
-  subroutine scatter_HI_isotrope(v,nHI,dopwidth, nu_cell, k, nu_ext, iran)
+  subroutine scatter_HI_isotrope(v,vth, nu_cell, k, nu_ext, iran)
 
     ! ---------------------------------------------------------------------------------
     ! perform scattering event on a Hydrogen atom with isotrope angular redistribution
     ! ---------------------------------------------------------------------------------
     ! INPUTS :
     ! - v        : bulk velocity of the gas (i.e. cell velocity)       [ cm / s ] 
-    ! - nhi      : number density of neutral HI atoms                  [ cm^-3 ]
-    ! - dopwidth : thermal (+turbulent) velocity dispersion of H atoms [ cm / s ] 
+    ! - vth      : thermal (+turbulent) velocity dispersion of H atoms [ cm / s ] 
     ! - nu_cell  : frequency of incoming photon in cell's rest-frame   [ Hz ] 
     ! - k        : propagaction vector (normalized) 
     ! - nu_ext   : frequency of incoming photon, in external frame     [ Hz ]
@@ -84,7 +83,7 @@ contains
     real(kind=8), intent(inout)               :: nu_cell, nu_ext
     real(kind=8), dimension(3), intent(inout) :: k
     real(kind=8), dimension(3), intent(in)    :: v
-    real(kind=8), intent(in)                  :: nHI,dopwidth
+    real(kind=8), intent(in)                  :: vth
     integer, intent(inout)                    :: iran
 
     real(kind=8)               :: nu_doppler, a, x_cell, blah, upar, ruper, x
@@ -92,11 +91,11 @@ contains
     real(kind=8), dimension(3) :: knew
 
 #ifdef DEBUG
-    print *,'-DEBUG- scatter routine, arguments =',v,nHI,dopwidth, nu_cell, k, nu_ext, iran
+    print *,'-DEBUG- scatter routine, arguments =',v,vth, nu_cell, k, nu_ext, iran
 #endif
 
     ! define x_cell & a
-    nu_doppler = dopwidth * nu_0 / clight
+    nu_doppler = vth * nu_0 / clight
     a = gamma / (fourpi * nu_doppler)
     x_cell = (nu_cell - nu_0) / nu_doppler
 
@@ -108,13 +107,13 @@ contains
 #else
     upar = get_uparallel(a,x_cell,blah)
 #endif
-    upar = upar * dopwidth    ! upar is an x -> convert to a velocity 
+    upar = upar * vth    ! upar is an x -> convert to a velocity 
 
     ! 2/ component perpendicular to photon's propagation
     ruper  = ran3(iran)
     r2     = ran3(iran)
     uper   = sqrt(-log(ruper))*cos(twopi*r2)
-    uper   = uper * dopwidth  ! from x to velocity
+    uper   = uper * vth  ! from x to velocity
 
     ! 3/ determine scattering angle (in atom's frame)
     nu_atom = nu_cell - nu_ext * upar/clight
@@ -142,7 +141,7 @@ contains
     print*,'nu_atom=',nu_atom
     print*,'nu_ext =',nu_ext
     print*,'nu_cell=',nu_cell
-    print*,'dopwidth=',dopwidth
+    print*,'vth=',vth
     print*,'ruper, r2 =',ruper,r2
     print*,'mu, scalar =',mu,scalar
     print*,'---------------------------'
