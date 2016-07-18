@@ -23,7 +23,7 @@ module module_dust_model
     function get_tau_dust(ndust_cell, distance_to_border_cm)
       
       real(kind=8),intent(in) :: ndust_cell,distance_to_border_cm
-
+      real(kind=8)            :: get_tau_dust
       get_tau_dust = sigmad * ndust_cell * distance_to_border_cm
 
     end function get_tau_dust
@@ -34,12 +34,13 @@ module module_dust_model
       implicit none 
 
       real(kind=8), intent(inout)               :: nu_cell, nu_ext ! nu_cell in RASCAS = nu_int in MCLya
-      real(kind=8), dimension(3), intent(inout) :: k
+      real(kind=8), dimension(3), intent(inout) :: k,v
       integer, intent(inout)                    :: iran
       real(kind=8)                              :: phi, theta, mu, aors, scalar
       logical                                   :: ok
       real(kind=8), dimension(3)                :: knew
-      real(kind=8)                              :: a, x_cell, st
+      real(kind=8)                              :: a, x_cell, st, ra
+      integer(kind=4)                           :: iescape
       
       ! interaction with dust
       aors = ran3(iran)  ! aka "Absorption OR Scattering" ... 

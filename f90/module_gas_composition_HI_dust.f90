@@ -18,24 +18,31 @@ module module_gas_composition
   end type gas
 
   contains
-
-
-
+    ! Routines list:
+    ! - subroutine gas_from_ramses_leaves(repository,snapnum,nleaf,nvar,ramses_var, g)
+    ! - function get_gas_velocity(cell_gas)
+    ! - function gas_get_scatter_flag(cell_gas, distance_to_border_cm, nu_cell, tau_abs)
+    ! - subroutine gas_scatter(flag,cell_gas,nu_cell,k,nu_ext,iran)
+    ! - subroutine dump_gas(unit,g)
+    ! - subroutine read_gas(unit,n,g)
+    ! - subroutine gas_destructor(g)
+    
     subroutine gas_from_ramses_leaves(repository,snapnum,nleaf,nvar,ramses_var, g)
 
       ! define gas contents from ramses raw data
 
-      character(2000),intent(in)        :: repository 
-      integer(kind=4),intent(in)        :: snapnum
-      integer(kind=4),intent(in)        :: nleaf,nvar
-      real(kind=8),intent(in)           :: ramses_var(nvar,nleaf)
-      type(gas),allocatable,intent(out) :: g
-      integer(kind=4)                   :: ileaf
-      type(leaf_cell)                   :: leaf
+      character(2000),intent(in)                     :: repository 
+      integer(kind=4),intent(in)                     :: snapnum
+      integer(kind=4),intent(in)                     :: nleaf,nvar
+      real(kind=8),dimension(:,:),intent(in)         :: ramses_var
+      type(gas),allocatable,intent(out)              :: g
+      integer(kind=4)                                :: ileaf
 
       ! make sure conversion factors are set 
       call read_conversion_scales(repository,snapnum)
 
+      nleaf = size(ramses_var,2)
+      
       ! allocate gas-element array
       allocate(g(nleaf))
 
@@ -62,7 +69,7 @@ module module_gas_composition
 
 
 
-    function  gas_get_scatter_flag(cell_gas, distance_to_border_cm, nu_cell, tau_abs)
+    function gas_get_scatter_flag(cell_gas, distance_to_border_cm, nu_cell, tau_abs)
 
       ! NB: also return distance to interaction (in variable distance_to_border_cm) ...
       ! LEo: and also update tau_abs if gas_get_scatter_flag = 0
@@ -73,7 +80,7 @@ module module_gas_composition
       real(kind=8),intent(in)               :: nu_cell
       real(kind=8),intent(inout)            :: tau_abs                ! tau at which scattering is set to occur. 
       integer(kind=4)                       :: gas_get_scatter_flag 
-      real(kind=8)                          :: tau_HI, tau_dust, tau_cell
+      real(kind=8)                          :: tau_HI, tau_cell, tau_dust, one_proba
       
       ! compute optical depths for different components of the gas.
       tau_HI   = get_tau_HI(cell_gas%nHI, cell_gas%dopwidth, distance_to_border_cm, nu_cell)
@@ -87,7 +94,7 @@ module module_gas_composition
             print*, 'tau_abs est negatif'
             stop
          endif
-      else  ! the scattering happens inside the cell. 
+      else  ! the scattering happens inside the cell
          ! decider si HI ou dust selon rapport des tau
          one_proba = tau_HI / tau_cell         
          tirage = ran3(iran)
@@ -124,7 +131,7 @@ module module_gas_composition
 
 
 
-   subroutine dump_gas(unit,g)
+    subroutine dump_gas(unit,g)
       
       type(gas),dimension(:),intent(in) :: g
       integer,intent(in)                :: unit

@@ -78,7 +78,7 @@ module module_gas_composition
       ! compute optical depths for different components of the gas.
       tau_HI   = get_tau_HI(cell_gas%nHI, cell_gas%dopwidth, distance_to_border_cm, nu_cell)
       tau_dust = get_tau_dust(cell_gas%ndust, distance_to_border_cm)
-      !tau_D    = get_tau_D(???)
+      tau_D    = get_tau_D(???)
       tau_cell = tau_HI + tau_D + tau_dust
       
       if (tau_abs > tau_cell) then  ! photon is due for absorption outside the cell 
