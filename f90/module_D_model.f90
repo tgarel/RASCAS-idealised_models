@@ -1,7 +1,7 @@
 module module_D_model
 
   use module_constants
-  use module_utils, only : voigt_fit
+  use module_utils, only : voigt_fit, isotropic_direction
   use module_uparallel
   use module_random
   use module_params, only : recoil
@@ -24,8 +24,6 @@ contains
   ! PUBLIC functions : 
   ! - function get_tau(ndi, vth, distance_to_border_cm, nu_cell)
   ! - subroutine scatter_isotrope(vcell,vth, nu_cell, k, nu_ext, iran)
-  ! PRIVATE function :
-  ! - function voigt_fit(x,a)
   
   
   function get_tau_D(ndi, vth, distance_to_border_cm, nu_cell)
