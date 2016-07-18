@@ -1,6 +1,7 @@
 module module_HI_model
 
   use module_constants
+  use module_utils, only : voigt_fit
   use module_uparallel
   use module_random
   use module_params, only : recoil
@@ -23,8 +24,6 @@ module module_HI_model
   real(kind=8),parameter   :: sigmaH_factor = pi*e_ch**2*f12/ me / clight ! H cross-section factor-> multiply by Voigt(x,a)/nu_D to get sigma.
   real(kind=8),parameter   :: gamma_over_fourpi = gamma / fourpi
   
-  private :: voigt_fit
-
   public :: get_tau_HI, scatter_HI_isotrope
   
 contains
@@ -182,7 +181,8 @@ contains
     ! -----------------------------
     ! - for core photons (|x| < 0.2) we use P(mu) = 11/24 + 3/24 * mu**2
     ! - for wing photons (|x| > 0.2) we use P(mu) = 3/8 * (1 + mu**2) [this is Rayleigh]
-    ! with mu = cos(theta), (and theta in [0,pi]).
+    ! where mu = cos(theta), (and theta in [0,pi]).
+    ! 
     ! To draw theta values, we compute the cumulative probabilities from above :
     ! - for core photons : P(< mu) = 1/2 + 11/24 * mu + 1/24 * mu**3
     ! - for wing photons : P(< mu) = 1/2 + 3/8 * mu + 1/8 * mu**3
@@ -191,7 +191,8 @@ contains
     !    mu = -0.703204 x^3 + 1.054807 x^2 + 1.643182 x^1 -0.997392  
     ! - for wing photons (at better than 0.529% accuracy everywhere):
     !    mu = -24.901267 x^7 + 87.154434 x^6 -114.220525 x^5 + 67.665227 x^4 -18.389694 x^3 + 3.496531 x^2 + 1.191722 x^1 -0.998214
-    ! This allows us to get mu for x a random number between 0 and 1. 
+    ! -> to get a value of mu (hence theta), we draw x in [0,1] and compute mu from the above
+    ! fits, depending on x_atom of the incoming photon.
     ! ---------------------------------------------------------------------------------
 
     real(kind=8), intent(inout)               :: nu_cell, nu_ext
@@ -273,35 +274,5 @@ contains
 
   end subroutine scatter_HI
 
-  !==================
-  ! private routines 
-  !==================
-  
-  ! peut-etre dans un module "atomic_physics_utils.f90" ?
-  function voigt_fit(x,a)
-    
-    !use constant, only : pi,sqrtpi
-    
-    implicit none
-    
-    real(kind=8),intent(in) :: x,a
-    real(kind=8)            :: voigt_fit 
-    real(kind=8)            :: q,z,x2
-    
-    x2 = x**2
-    z  = (x2 - 0.855d0) / (x2 + 3.42d0)
-    if (z > 0) then 
-       q = z * (1.0d0 + 21.0d0/x2) * a / pi / (x2 + 1.0d0)
-       q = q * (((5.674d0*z - 9.207d0)*z + 4.421d0)*z + 0.1117)
-    else
-       q = 0.0d0 
-    end if
-    voigt_fit = q + exp(-x2) / sqrtpi
-    
-    return
-    
-  end function voigt_fit
-  
-  
 
   end module Module_HI_model
