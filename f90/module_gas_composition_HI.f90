@@ -1,9 +1,11 @@
 module module_gas_composition
 
-  ! Leo: simplified model with no dust, no D and isotrope angular redistribution
+  ! Pure Hydrogen gas, from a ramses output. 
 
   use module_HI_model
-
+  use module_constants, only : kb, mp
+  use module_ramses, only : ramses_get_velocity_cgs, ramses_get_T_nhi_cgs
+  
   implicit none
   
   type gas
@@ -16,7 +18,6 @@ module module_gas_composition
 
   contains
 
-
     subroutine gas_from_ramses_leaves(repository,snapnum,nleaf,nvar,ramses_var, g)
 
       ! define gas contents from ramses raw data
@@ -27,23 +28,55 @@ module module_gas_composition
       real(kind=8),intent(in)           :: ramses_var(nvar,nleaf)
       type(gas),dimension(:),allocatable,intent(out) :: g
       integer(kind=4)                   :: ileaf
-      ! what is a type leaf_cell???
-      type(leaf_cell)                   :: leaf
-
+      real(kind=8),allocatable          :: v(:,:), T(:), nhi(:)
+      
       ! allocate gas-element array
       allocate(g(nleaf))
 
-      ! compute gas props. leaf by leaf
+      ! compute velocities in cm / s 
+      allocate(v(3,nleaf))
+      call ramses_get_velocity_cgs(repository,snapnum,nleaf,nvar,ramses_var,v)
       do ileaf = 1,nleaf
-         g(ileaf)%v        = get_velocity_cgs(ramses_var,ileaf)
-         g(ileaf)%nHI      = get_HI_density(ramses_var,ileaf) 
-         g(ileaf)%dopwidth = get_doppler_velocity_cgs(ramses_var,ileaf,vturb=10.)
+         g(ileaf)%v = v(:,ileaf)
       end do
+      deallocate(v)
+      
+      ! get nHI and temperature from ramses
+      allocate(T(nleaf),nhi(nleaf))
+      call ramses_get_T_nhi_cgs(repository,snapnum,nleaf,nvar,ramses_var,T,nhi)
+      do ileaf = 1,nleaf
+         g(ileaf)%nHI = nhi(ileaf)
+      end do
+      ! compute thermal velocity 
+      T = sqrt((2.0d0*kb/mp)*T)   ! [ cm/s ]
+      ! ++++++ TURBULENT VELOCITY >>>>> parameter to add and use here
+      do ileaf = 1,nleaf
+         g(ileaf)%dopwidth = T(ileaf)
+      end do
+      deallocate(T,nhi)
 
       return
       
     end subroutine gas_from_ramses_leaves
 
+    subroutine overwrite_gas(g,nhi,vth)
+      type(gas),dimension(:),intent(inout) :: g
+      real(kind=8),intent(in)              :: nhi,vth
+      integer                              :: nleaf
+
+      nleaf = size(g)
+      g(:)%nhi = nhi
+      g(:)%dopwidth = vth
+
+#ifdef DEBUG
+      print*,'in overwrite_gas: allocated g?',shape(g)
+      print*,'in overwrite_gas: ',nhi,vth
+      print*,'in overwrite_gas: ',nleaf,nhi
+      print*,'in overwrite_gas: ',minval(g%nhi),maxval(g%nhi)
+      print*,'in overwrite_gas: ',minval(g%dopwidth),maxval(g%dopwidth)
+#endif
+
+    end subroutine overwrite_gas
 
 
     function get_gas_velocity(cell_gas)
@@ -52,7 +85,6 @@ module module_gas_composition
       get_gas_velocity(:) = cell_gas%v(:)
       return
     end function get_gas_velocity
-
 
 
     function  gas_get_scatter_flag(cell_gas, distance_to_border_cm, nu_cell, tau_abs,iran)
@@ -101,7 +133,7 @@ module module_gas_composition
 
       select case(flag)
       case(1)
-         call scatter_HI_isotrope(cell_gas%v, cell_gas%nHI, cell_gas%dopwidth, nu_cell, k, nu_ext, iran)
+         call scatter_HI_isotrope(cell_gas%v, cell_gas%dopwidth, nu_cell, k, nu_ext, iran)
       end select
 
     end subroutine gas_scatter

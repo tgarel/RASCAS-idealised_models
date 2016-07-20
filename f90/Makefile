@@ -43,13 +43,13 @@ endif
 #############################################################################
 # All objects
 
-COMPOBJS = module_D_model.o module_HI_model.o module_gas_composition_HI_D_homogeneous.o
+COMPOBJS = module_D_model.o module_HI_model.o module_gas_composition_HI.o #_D_homogeneous.o
 #COMPOBJS = module_HI_model.o module_gas_composition_HI_homogeneous.o
 #COMPOBJS = module_gas_ramses.o
 
-GASOBJS = module_params.o module_constants.o module_random.o module_utils.o module_uparallel.o $(COMPOBJS)
+GASOBJS = module_params.o module_constants.o module_ramses.o module_random.o module_utils.o module_uparallel.o $(COMPOBJS)
 
-OBJSCOM = module_ramses.o $(GASOBJS) module_select.o \
+OBJSCOM = $(GASOBJS) module_select.o \
 	module_domain.o module_mesh.o
 
 OBJS1 = $(OBJSCOM) output2subvol.o

@@ -133,7 +133,6 @@ contains
   end subroutine anisotropic_direction_HIcore
 
   
-
   subroutine anisotropic_direction_Rayleigh(kin,kout,mu,bu,iran)
 
     ! ---------------------------------------------------------------------------------
