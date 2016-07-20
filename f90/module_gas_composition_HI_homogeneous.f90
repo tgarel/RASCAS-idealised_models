@@ -136,7 +136,7 @@ module module_gas_composition
 
       select case(flag)
       case(1)
-         call scatter_HI_isotrope(cell_gas%v, cell_gas%nHI, cell_gas%dopwidth, nu_cell, k, nu_ext, iran)
+         call scatter_HI_isotrope(cell_gas%v, cell_gas%dopwidth, nu_cell, k, nu_ext, iran)
       end select
 
     end subroutine gas_scatter

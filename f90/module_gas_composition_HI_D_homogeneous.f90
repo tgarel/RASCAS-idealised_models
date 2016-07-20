@@ -156,9 +156,9 @@ contains
 
       select case(flag)
       case(1)
-         call scatter_HI_isotrope(cell_gas%v, cell_gas%nHI, cell_gas%dopwidth, nu_cell, k, nu_ext, iran)
+         call scatter_HI_isotrope(cell_gas%v, cell_gas%dopwidth, nu_cell, k, nu_ext, iran)
       case(2)
-         call scatter_D_isotrope(cell_gas%v,cell_gas%dopwidth*sqrt_H2Deut_mass_ratio, nu_cell, k, nu_ext, iran)
+         call scatter_D_isotrope(cell_gas%v, cell_gas%dopwidth*sqrt_H2Deut_mass_ratio, nu_cell, k, nu_ext, iran)
       end select
 
     end subroutine gas_scatter

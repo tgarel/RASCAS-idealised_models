@@ -1,7 +1,7 @@
 module module_HI_model
 
   use module_constants
-  use module_utils, only : voigt_fit
+  use module_utils, only : voigt_fit, isotropic_direction, anisotropic_direction_HIcore, anisotropic_direction_Rayleigh
   use module_uparallel
   use module_random
   use module_params, only : recoil
@@ -24,29 +24,29 @@ module module_HI_model
   real(kind=8),parameter   :: sigmaH_factor = pi*e_ch**2*f12/ me / clight ! H cross-section factor-> multiply by Voigt(x,a)/nu_D to get sigma.
   real(kind=8),parameter   :: gamma_over_fourpi = gamma / fourpi
   
-  public :: get_tau_HI, scatter_HI_isotrope
+  public :: get_tau_HI, scatter_HI_isotrope, scatter_HI
   
 contains
 
-  function get_tau_HI(nhi, dopwidth, distance_to_border_cm, nu_cell)
+  function get_tau_HI(nhi, vth, distance_to_border_cm, nu_cell)
 
     ! --------------------------------------------------------------------------
     ! compute optical depth of Hydrogen over a given distance
     ! --------------------------------------------------------------------------
     ! INPUTS:
     ! - nhi      : number density of neutral HI atoms                      [ cm^-3 ]
-    ! - dopwidth : thermal (+ small-scale turbulence) velocity of HI atoms [ cm / s ]
+    ! - vth      : thermal (+ small-scale turbulence) velocity of HI atoms [ cm / s ]
     ! - distance_to_border_cm : distance over which we compute tau        [ cm ]
     ! - nu_cell  : photon's frequency in the frame of the cell            [ Hz ]
     ! OUTPUT :
     ! - get_tau_HI : optical depth of Hydrogen's Lya line over distance_to_border_cm
     ! --------------------------------------------------------------------------
     
-    real(kind=8),intent(in) :: nhi,dopwidth,distance_to_border_cm,nu_cell
+    real(kind=8),intent(in) :: nhi,vth,distance_to_border_cm,nu_cell
     real(kind=8)            :: nu_D,x_cell,sigmaH,a,h, get_tau_HI
 
     ! compute Doppler width and a-parameter, for H 
-    nu_D = dopwidth / lambda_0_cm 
+    nu_D = vth / lambda_0_cm 
     a    = gamma / (fourpi * nu_D)
  
     ! Cross section of H 
@@ -61,15 +61,14 @@ contains
   end function get_tau_HI
 
 
-  subroutine scatter_HI_isotrope(v,nHI,dopwidth, nu_cell, k, nu_ext, iran)
+  subroutine scatter_HI_isotrope(v,vth, nu_cell, k, nu_ext, iran)
 
     ! ---------------------------------------------------------------------------------
     ! perform scattering event on a Hydrogen atom with isotrope angular redistribution
     ! ---------------------------------------------------------------------------------
     ! INPUTS :
     ! - v        : bulk velocity of the gas (i.e. cell velocity)       [ cm / s ] 
-    ! - nhi      : number density of neutral HI atoms                  [ cm^-3 ]
-    ! - dopwidth : thermal (+turbulent) velocity dispersion of H atoms [ cm / s ] 
+    ! - vth      : thermal (+turbulent) velocity dispersion of H atoms [ cm / s ] 
     ! - nu_cell  : frequency of incoming photon in cell's rest-frame   [ Hz ] 
     ! - k        : propagaction vector (normalized) 
     ! - nu_ext   : frequency of incoming photon, in external frame     [ Hz ]
@@ -84,7 +83,7 @@ contains
     real(kind=8), intent(inout)               :: nu_cell, nu_ext
     real(kind=8), dimension(3), intent(inout) :: k
     real(kind=8), dimension(3), intent(in)    :: v
-    real(kind=8), intent(in)                  :: nHI,dopwidth
+    real(kind=8), intent(in)                  :: vth
     integer, intent(inout)                    :: iran
 
     real(kind=8)               :: nu_doppler, a, x_cell, blah, upar, ruper, x
@@ -92,11 +91,11 @@ contains
     real(kind=8), dimension(3) :: knew
 
 #ifdef DEBUG
-    print *,'-DEBUG- scatter routine, arguments =',v,nHI,dopwidth, nu_cell, k, nu_ext, iran
+    print *,'-DEBUG- scatter routine, arguments =',v,vth, nu_cell, k, nu_ext, iran
 #endif
 
     ! define x_cell & a
-    nu_doppler = dopwidth * nu_0 / clight
+    nu_doppler = vth * nu_0 / clight
     a = gamma / (fourpi * nu_doppler)
     x_cell = (nu_cell - nu_0) / nu_doppler
 
@@ -108,13 +107,13 @@ contains
 #else
     upar = get_uparallel(a,x_cell,blah)
 #endif
-    upar = upar * dopwidth    ! upar is an x -> convert to a velocity 
+    upar = upar * vth    ! upar is an x -> convert to a velocity 
 
     ! 2/ component perpendicular to photon's propagation
     ruper  = ran3(iran)
     r2     = ran3(iran)
     uper   = sqrt(-log(ruper))*cos(twopi*r2)
-    uper   = uper * dopwidth  ! from x to velocity
+    uper   = uper * vth  ! from x to velocity
 
     ! 3/ determine scattering angle (in atom's frame)
     nu_atom = nu_cell - nu_ext * upar/clight
@@ -142,7 +141,7 @@ contains
     print*,'nu_atom=',nu_atom
     print*,'nu_ext =',nu_ext
     print*,'nu_cell=',nu_cell
-    print*,'dopwidth=',dopwidth
+    print*,'vth=',vth
     print*,'ruper, r2 =',ruper,r2
     print*,'mu, scalar =',mu,scalar
     print*,'---------------------------'
@@ -175,17 +174,6 @@ contains
     ! - for core photons (|x| < 0.2) we use P(mu) = 11/24 + 3/24 * mu**2
     ! - for wing photons (|x| > 0.2) we use P(mu) = 3/8 * (1 + mu**2) [this is Rayleigh]
     ! where mu = cos(theta), (and theta in [0,pi]).
-    ! 
-    ! To draw theta values, we compute the cumulative probabilities from above :
-    ! - for core photons : P(< mu) = 1/2 + 11/24 * mu + 1/24 * mu**3
-    ! - for wing photons : P(< mu) = 1/2 + 3/8 * mu + 1/8 * mu**3
-    ! We fit the reciprocal functions of these with polynomials :
-    ! - for core photons (at better than 0.515% accuracy everywhere):
-    !    mu = -0.703204 x^3 + 1.054807 x^2 + 1.643182 x^1 -0.997392  
-    ! - for wing photons (at better than 0.529% accuracy everywhere):
-    !    mu = -24.901267 x^7 + 87.154434 x^6 -114.220525 x^5 + 67.665227 x^4 -18.389694 x^3 + 3.496531 x^2 + 1.191722 x^1 -0.998214
-    ! -> to get a value of mu (hence theta), we draw x in [0,1] and compute mu from the above
-    ! fits, depending on x_atom of the incoming photon.
     ! ---------------------------------------------------------------------------------
 
     real(kind=8), intent(inout)               :: nu_cell, nu_ext
@@ -193,9 +181,8 @@ contains
     real(kind=8), dimension(3), intent(in)    :: vcell
     real(kind=8), intent(in)                  :: vth
     integer, intent(inout)                    :: iran
-
     real(kind=8)               :: delta_nu_doppler, a, x_cell, blah, upar, ruper
-    real(kind=8)               :: r2, uper, nu_atom, phi, theta, st, mu, scalar
+    real(kind=8)               :: r2, uper, nu_atom, phi, theta, st, mu, bu, scalar
     real(kind=8)               :: cti,sti,cpi,spi,ct1,st1,cp1,sp1,x,x_atom
     real(kind=8), dimension(3) :: knew
 
@@ -225,34 +212,11 @@ contains
     x_atom  = (nu_atom -nu_0) / delta_nu_doppler
 
     ! 4/ determine direction of scattered photon
-    ! 4.1/ relative to incoming photon 
-    phi = twopi * ran3(iran)
-    x   = ran3(iran)
-    if (abs(x_atom) < 0.2) then ! core scattering
-       mu = ((-0.703204*x + 1.054807)* x + 1.643182) * x - 0.997392  
-    else ! wing scattering
-       mu = ((((((-24.901267*x + 87.154434)*x -114.220525)*x + 67.665227)*x -18.389694)*x + 3.496531)*x + 1.191722)*x -0.998214
+    if (abs(x_atom) < 0.2) then ! core scattering 
+       call anisotropic_direction_HIcore(k,knew,mu,bu,iran)
+    else ! wing scattering 
+       call anisotropic_direction_Rayleigh(k,knew,mu,bu,iran)
     end if
-    ! 4.2/ in external frame (box coordinates)
-    ! angular description of k
-    cti = k(3)
-    sti = sqrt(1.d0 - cti*cti)  ! sin(theta) is positive for theta in [0,pi]. 
-    if (sti > 0) then 
-       cpi = k(1)/sti
-       spi = k(2)/sti
-    else
-       cpi = 1.
-       spi = 0.
-    end if
-    ! angular description of knew (relative to k)
-    ct1 = mu
-    st1 = sqrt(1.0d0 - ct1*ct1)
-    cp1 = cos(phi)
-    sp1 = sin(phi)
-    ! knew (such that indeed knew . k = ct1)
-    knew(1) = cti*cpi*st1*cp1 + sti*cpi*ct1 - spi*st1*sp1
-    knew(2) = cti*spi*st1*cp1 + sti*spi*ct1 + cpi*st1*sp1
-    knew(3) = -sti*st1*cp1 + cti*ct1
 
     ! 5/ recoil effect 
     if (recoil) then 
@@ -261,11 +225,11 @@ contains
     
     ! 6/ compute atom freq. in external frame, after scattering
     scalar = knew(1) * vcell(1) + knew(2) * vcell(2) + knew(3)* vcell(3)
-    nu_ext = nu_atom * (1.0d0 + scalar/clight + (upar*mu + sqrt(1-mu**2)*uper)/clight)
+    nu_ext = nu_atom * (1.0d0 + scalar/clight + (upar*mu + bu*uper)/clight)
     nu_cell = (1.d0 - scalar/clight) * nu_ext 
     k = knew
 
   end subroutine scatter_HI
 
 
-  end module Module_HI_model
+end module Module_HI_model
