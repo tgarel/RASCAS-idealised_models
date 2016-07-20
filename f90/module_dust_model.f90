@@ -50,7 +50,7 @@ module module_dust_model
       else
          ! 1/ determine scattering angle (in atom's frame)
          ra=ran3(iran)
-         ! use White 79 approximation for Henyey-Greenstein phase fct:
+         ! use White 79 approximation for the "reciprocal" of cumulative Henyey-Greenstein phase fct:
          mu = (1.+g_dust*g_dust-((1.-g_dust*g_dust)/(1.-g_dust+2.*g_dust*ra))**2)/(2.*g_dust)
          theta = acos(mu)
          phi   = 2.d0*pi*ran3(iran)         
