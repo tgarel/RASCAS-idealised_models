@@ -18,8 +18,8 @@ program CreateDomDump
   integer,dimension(:),allocatable         :: leaf_level, leaflevel_sel, ind_sel
 
   integer :: noctsnap,nleaftot,nvar,nleaf_sel,ndomain,i
-  integer,parameter :: snapnum = 100
-  character(2000),parameter :: repository='/Users/leo/ASTROPHYSICS/data/Disks/Run31/'
+  integer,parameter :: snapnum = 23 !100
+  character(2000),parameter :: repository='/cral2/blaizot/SIMULATIONS/P13-20h-1Mpc-MUSIC/Zoom-7-1290/hdRun-LSS150pkpc-new-new-prime/'!'/Users/leo/ASTROPHYSICS/data/Disks/Run31/'
   character(2000) :: fichier,toto,meshroot
   character(2000),dimension(:),allocatable :: domain_file_list, mesh_file_list
   real(kind=8),dimension(3) :: pos

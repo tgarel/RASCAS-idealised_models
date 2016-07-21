@@ -184,6 +184,8 @@ module module_mesh
       m%nbor = nbor
 
       ! allocate & fill m%gas
+      !JB- the allocation seems to be necessary (fixes a crash).
+      allocate(m%gas(nleaf))
       m%gas = leaves
       
       ! check code
@@ -1047,22 +1049,23 @@ module module_mesh
       end do
 
 
-      ! for each leaf cell check level
-      countleaf=0
-      do i=1,m%nOct
-         do ind=1,8
-            icell = m%nCoarse + i + (ind-1)*m%nOct
-            if(m%son(icell)<0)then
-               countleaf=countleaf+1
-               if(m%octlevel(i)/=8)then
-                  print*,'pb with mesh',icell,i,m%son(icell),m%octlevel(i)
-                  stop
-               endif
-            endif
-         enddo
-      enddo
-      print*,'nleaves =',countleaf
-
+! JB - the test below is meant to work for any simulation, right? -> i comment it out. 
+!!$      ! for each leaf cell check level
+!!$      countleaf=0
+!!$      do i=1,m%nOct
+!!$         do ind=1,8
+!!$            icell = m%nCoarse + i + (ind-1)*m%nOct
+!!$            if(m%son(icell)<0)then
+!!$               countleaf=countleaf+1
+!!$               if(m%octlevel(i)/=8)then
+!!$                  print*,'pb with mesh',icell,i,m%son(icell),m%octlevel(i)
+!!$                  stop
+!!$               endif
+!!$            endif
+!!$         enddo
+!!$      enddo
+!!$      print*,'nleaves =',countleaf
+! -JB
       print*,'end of check: result = ok'
 
     end subroutine check_struct

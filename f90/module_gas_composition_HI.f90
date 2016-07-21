@@ -59,6 +59,7 @@ module module_gas_composition
       
     end subroutine gas_from_ramses_leaves
 
+
     subroutine overwrite_gas(g,nhi,vth)
       type(gas),dimension(:),intent(inout) :: g
       real(kind=8),intent(in)              :: nhi,vth
@@ -119,6 +120,7 @@ module module_gas_composition
       end if
       
       return
+      
     end function gas_get_scatter_flag
 
 

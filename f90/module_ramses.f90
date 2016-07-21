@@ -176,7 +176,7 @@ contains
     real(kind=8),intent(in)     :: ramses_var(nvar,nleaf) ! one cell only
     real(kind=8),intent(inout)  :: nhi(nleaf), temp(nleaf)
     integer(kind=4) :: ihx,ihy,i
-    real(kind=8)    :: xx,yy,dxx1,dxx2,dyy1,dyy2,f,nhtot
+    real(kind=8)    :: xx,yy,dxx1,dxx2,dyy1,dyy2,f
     integer(kind=4) :: if1,if2,jf1,jf2
 
     ! get conversion factors if necessary

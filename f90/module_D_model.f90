@@ -85,7 +85,7 @@ contains
     real(kind=8), intent(in)                  :: vth
     integer, intent(inout)                    :: iran
     real(kind=8)               :: delta_nu_doppler, a, x_cell, blah, upar, ruper
-    real(kind=8)               :: r2, uper, nu_atom, phi, theta, st, mu, scalar
+    real(kind=8)               :: r2, uper, nu_atom, mu, scalar
     real(kind=8), dimension(3) :: knew
     
     
@@ -162,8 +162,8 @@ contains
     real(kind=8), intent(in)                  :: vth
     integer, intent(inout)                    :: iran
     real(kind=8)               :: delta_nu_doppler, a, x_cell, blah, upar, ruper
-    real(kind=8)               :: r2, uper, nu_atom, phi, theta, st, mu, bu, scalar
-    real(kind=8)               :: cti,sti,cpi,spi,ct1,st1,cp1,sp1,x,x_atom
+    real(kind=8)               :: r2, uper, nu_atom, mu, bu, scalar
+    real(kind=8)               :: x_atom
     real(kind=8), dimension(3) :: knew
 
     ! define x_cell & a

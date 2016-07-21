@@ -2,13 +2,25 @@
 # Fortran compiler options and directives
 
 #SYSTYPE="CCF"
-SYSTYPE="mac"
+SYSTYPE="lyocral"
+#SYSTYPE="mac"
 #SYSTYPE="Pmac"
 
 
 OPTIONS = -cpp
 #OPTIONS += -DSWITCH_OFF_UPARALLEL
 #OPTIONS += -DDEBUG
+
+
+ifeq ($(SYSTYPE),"lyocral")
+F90         = ifort
+FFLAGS      = -g -traceback -fpp -check all -debug -warn all -ftrapuv 
+##FFLAGS      = -O3 -fpp -ftz  -xavx -sox -ipo -fno-alias -fno-fnalias -no-prec-div -no-prec-sqrt -align all
+##FFLAGS      = -O3 -fpp -ftz -ipo -fno-alias -fno-fnalias -no-prec-div -no-prec-sqrt -align all
+##FFLAGS      = -p -g
+FFLAGS += $(OPTIONS)
+LDFLAGS     =  
+endif
 
 
 ifeq ($(SYSTYPE),"CCF")
