@@ -1,7 +1,8 @@
 module module_dust_model
 
   use module_random
-  use module_constants
+  use module_constants, only : pi, clight
+  use module_utils, only : anisotropic_direction_Dust
   
   implicit none
 
@@ -14,8 +15,6 @@ module module_dust_model
   real(kind=8),parameter  :: rd= 2.d-6                                ! radius of dust grain [cm]
   real(kind=8),parameter  :: mpmd = 5.d-8                             ! proton over dust mass
   real(kind=8),parameter  :: sigmad = (pi * rd**2)/(1.-dust_albedo)   ! total abs+scattering dust cross section for general value of albedo
-  real(kind=8)            :: albedo                                   ! proba of interacting with H
-
 
   contains
 

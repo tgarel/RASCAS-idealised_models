@@ -2,8 +2,8 @@
 # Fortran compiler options and directives
 
 #SYSTYPE="CCF"
-SYSTYPE="lyocral"
-#SYSTYPE="mac"
+#SYSTYPE="lyocral"
+SYSTYPE="mac"
 #SYSTYPE="Pmac"
 
 
@@ -55,7 +55,7 @@ endif
 #############################################################################
 # All objects
 
-COMPOBJS = module_dust_model.o module_D_model.o module_HI_model.o module_gas_composition_HI.o #_D_homogeneous.o
+COMPOBJS = module_dust_model.o module_D_model.o module_HI_model.o module_gas_composition_HI_D_dust.o #_D_homogeneous.o
 #COMPOBJS = module_HI_model.o module_gas_composition_HI_homogeneous.o
 #COMPOBJS = module_gas_ramses.o
 

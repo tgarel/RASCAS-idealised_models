@@ -26,6 +26,11 @@ module module_params
 
   ! Deuterium parameters 
   real(kind=8)                             :: deut2H_nb_ratio ! nb ratio of Deuterium to Hydrogen atoms 
+
+  ! Dust parameters for the model of Verhamme+2012 
+  real(kind=8)                             :: dust_to_metal_ratio ! mass ratio of dust to metals (= 0.3, Inoue 2003)
+  real(kind=8)                             :: mH_over_mdust       ! mH / mdust (= 5e-8, Draine & Lee 1984)
+
   
 contains
 
@@ -51,7 +56,9 @@ contains
     tau0_fix            = 1.d5
     recoil              = .true.
     deut2H_nb_ratio     = 3.d-5
-
+    dust_to_metal_ratio = 0.3d0
+    mH_over_mdust       = 5e-8
+    
     ! Read namelist filename from command line argument
     narg = command_argument_count()
     IF(narg .LT. 1)THEN
@@ -106,6 +113,10 @@ contains
           read(value,*) recoil
        case ('deut2H_nb_ratio')
           read(value,*) deut2H_nb_ratio
+       case ('dust_to_metal_ratio')
+          read(value,*) dust_to_metal_ratio
+       case ('mH_over_mdust')
+          read(value,*) mH_over_mdust
        end select
     end do
     close(10)
@@ -157,6 +168,8 @@ contains
     write(*,'(a,L1)')    '                 recoil : ',recoil
     
     write(*,'(a,ES9.3)') '        deut2H_nb_ratio : ',deut2H_nb_ratio
+    write(*,'(a,ES9.3)') '    dust_to_metal_ratio : ',dust_to_metal_ratio
+    write(*,'(a,ES9.3)') '          mH_over_mdust : ',mH_over_mdust
 
   end subroutine print_params
 

@@ -1,6 +1,6 @@
 module module_ramses
 
-  use module_constants, only : kB, mp
+  use module_constants, only : kB, mp, XH
 
   implicit none
 
@@ -31,7 +31,6 @@ module module_ramses
   ! conversion factors (units)
   logical,private                :: conversion_scales_are_known = .False. 
   real(kind=8),private           :: dp_scale_l,dp_scale_d,dp_scale_t,dp_scale_T2,dp_scale_zsun,dp_scale_nh,dp_scale_v
-  real(kind=8),parameter,private :: XH = 0.76
 
   ! cooling-related stuff -------------------------------------------------------------
   type cooling_table
@@ -273,7 +272,26 @@ contains
     
   end subroutine ramses_get_velocity_cgs
 
+  subroutine ramses_get_metallicity(repository,snapnum,nleaf,nvar,ramses_var,metallicity)
 
+    implicit none
+    
+    character(1000),intent(in)  :: repository
+    integer(kind=4),intent(in)  :: snapnum
+    integer(kind=4),intent(in)  :: nleaf, nvar
+    real(kind=8),intent(in)     :: ramses_var(nvar,nleaf) ! one cell only
+    real(kind=8),intent(inout)  :: metallicity(nleaf)
+
+    if (nvar < 6) then
+       print*,'No metals !!! '
+       stop
+    end if
+    metallicity = ramses_var(6,:) 
+    
+    return
+
+  end subroutine ramses_get_metallicity
+    
     
   !subroutine ramses_read_star_particles(repository, snapnum, nstars, stars)
   !  character(2000),intent(in)                     :: repository

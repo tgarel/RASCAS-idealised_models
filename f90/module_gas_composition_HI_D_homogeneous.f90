@@ -175,7 +175,7 @@ contains
       write(unit) (g(i)%v(:), i=1,nleaf)
       write(unit) (g(i)%nHI, i=1,nleaf)
       write(unit) (g(i)%dopwidth, i=1,nleaf)
-      write(unit) deut2H_nb_ratio, sqrt_H2Deut_mass_ratio
+      write(unit) deut2H_nb_ratio
 
     end subroutine dump_gas
 
@@ -193,7 +193,7 @@ contains
       read(unit) (g(i)%v(:),i=1,n)
       read(unit) (g(i)%nHI,i=1,n)
       read(unit) (g(i)%dopwidth,i=1,n)
-      read(unit) D2H_ratio, sqrt_H2D_mratio  ! JB: not used ... 
+      read(unit) D2H_ratio  ! JB: not used ... 
       
 #ifdef DEBUG
       print*,'in read_gas:',n

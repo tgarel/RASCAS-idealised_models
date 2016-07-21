@@ -17,5 +17,7 @@ module module_constants
   real(kind=8),parameter :: e_ch    = 4.8067e-10          ![esu] electron charge
   real(kind=8),parameter :: planck  = 6.626196e-27        ![erg s] Planck's constant
   real(kind=8),parameter :: sqrt_H2Deut_mass_ratio = 0.7071067811865d0   ! == sqrt(mp/mdeut) = 1/sqrt(2).
-  
-end module module_constants
+  real(kind=8),parameter :: XH = 0.76
+
+end module module_constants  
+

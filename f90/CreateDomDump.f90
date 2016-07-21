@@ -39,7 +39,6 @@ program CreateDomDump
   nOctSnap = get_nGridTot(repository,snapnum)
 
   ! conversion des feuilles en proprietes voulues... -> construction du type gas
-  !call gas_from_ramses_leaves(ramses_var, gas_leaves)
   call gas_from_ramses_leaves(repository,snapnum,nleaftot,nvar,ramses_var, gas_leaves)
   
   
