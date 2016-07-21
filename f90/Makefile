@@ -34,7 +34,7 @@ LDFLAGS     =  -lmpi
 endif
 
 ifeq ($(SYSTYPE),"mac")
-F90         = gfortran-mp-4.8 ###-fopenmp
+F90         = gfortran-mp-4.7 ###-fopenmp
 FFLAGS      = -g -fcheck=all -ffree-line-length-none -ffree-form -ftrapv
 ##FFLAGS      = -O2
 FFLAGS += $(OPTIONS)
@@ -55,7 +55,7 @@ endif
 #############################################################################
 # All objects
 
-COMPOBJS = module_D_model.o module_HI_model.o module_gas_composition_HI.o #_D_homogeneous.o
+COMPOBJS = module_dust_model.o module_D_model.o module_HI_model.o module_gas_composition_HI.o #_D_homogeneous.o
 #COMPOBJS = module_HI_model.o module_gas_composition_HI_homogeneous.o
 #COMPOBJS = module_gas_ramses.o
 
