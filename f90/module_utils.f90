@@ -194,5 +194,67 @@ contains
     kout(3) = -sti*st1*cp1 + cti*ct1
 
   end subroutine anisotropic_direction_Rayleigh
+
+
+  subroutine anisotropic_direction_Dust(kin,kout,mu,iran,g_dust)
+
+    ! -------------------------------------------------------------------------------------------------
+    ! Returns new direction vector kout as a function of incident direction kin, for a phase function
+    ! given by Henyey-Greenstein.
+    ! INPUTS:
+    ! - kin  : normalized direction vector of incident photon
+    ! - iran : state of random number generator
+    ! OUTPUTS:
+    ! - kout : normalized direction vector of scattered photon
+    ! - mu   : dod-product between kin and kout (i.e. cos(theta))
+    ! - iran : updated state of random number generator
+    ! -------------------------------------------------------------------------------------------------
+
+    implicit none
+
+    real(kind=8),intent(in)       :: kin(3)
+    real(kind=8),intent(out)      :: kout(3)
+    real(kind=8),intent(out)      :: mu
+    integer(kind=4),intent(inout) :: iran
+    real(kind=8)                  :: phi,x,cti,sti,cpi,spi,ct1,st1,cp1,sp1,ra
+    real(kind=8),intent(in)       :: g_dust
+
+
+    !! determine scattering angle (in atom's frame)
+    ! use White 79 approximation for the "reciprocal" of cumulative Henyey-Greenstein phase fct:
+    ra=ran3(iran) 
+    mu = (1.+g_dust*g_dust-((1.-g_dust*g_dust)/(1.-g_dust+2.*g_dust*ra))**2)/(2.*g_dust)
+
+    !! angular description of kin in external frame (box coordinates)
+    ! ---------------------------------------------------------------------------------
+    ! kx = sin(theta) * cos(phi)
+    ! ky = sin(theta) * sin(phi)
+    ! kz = cos(theta)
+    ! cti, sti, cpi, spi correspond to kin
+    ! ---------------------------------------------------------------------------------
+    cti = kin(3)              
+    sti = sqrt(1.d0 - cti**2)  ! sin(theta) is positive for theta in [0,pi]. 
+    if (sti > 0) then 
+       cpi = kin(1)/sti       
+       spi = kin(2)/sti       
+    else
+       cpi = 1.
+       spi = 0.
+    end if
+    
+    !! angular description of kout (relative to kin)
+    ct1 = mu
+    st1 = sqrt(1.0d0 - ct1*ct1)
+    phi = twopi * ran3(iran)
+    cp1 = cos(phi)
+    sp1 = sin(phi)
+    
+    !! vector kout (such that indeed kout . kin = ct1) in external frame (box coords.)
+    kout(1) = cti*cpi*st1*cp1 + sti*cpi*ct1 - spi*st1*sp1
+    kout(2) = cti*spi*st1*cp1 + sti*spi*ct1 + cpi*st1*sp1
+    kout(3) = -sti*st1*cp1 + cti*ct1
+    
+  end subroutine anisotropic_direction_Dust
+
   
 end module module_utils

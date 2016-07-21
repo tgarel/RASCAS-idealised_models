@@ -26,42 +26,52 @@ module module_dust_model
       real(kind=8)            :: get_tau_dust
       get_tau_dust = sigmad * ndust_cell * distance_to_border_cm
 
+      return
+      
     end function get_tau_dust
 
     
     subroutine scatter_dust(v,nu_cell,k,nu_ext,iran)
 
       implicit none 
-
+      
+      ! ---------------------------------------------------------------------------------
+      ! perform scattering event on a Hydrogen atom with isotrope angular redistribution
+      ! ---------------------------------------------------------------------------------
+      ! INPUTS :
+      ! - v        : bulk velocity of the gas (i.e. cell velocity)       [ cm / s ] 
+      ! - nu_cell  : frequency of incoming photon in cell's rest-frame   [ Hz ] 
+      ! - k        : propagaction vector (normalized) 
+      ! - nu_ext   : frequency of incoming photon, in external frame     [ Hz ]
+      ! - iran     : random number generator seed
+      ! OUTPUTS :
+      ! - nu_cell  : updated frequency in cell's frame   [ Hz ]
+      ! - nu_ext   : updated frequency in external frame [ Hz ]
+      ! - k        : updated propagation direction
+      ! _ iran     : updated value of seed
+      ! ---------------------------------------------------------------------------------
+      
       real(kind=8), intent(inout)               :: nu_cell, nu_ext ! nu_cell in RASCAS = nu_int in MCLya
-      real(kind=8), dimension(3), intent(inout) :: k,v
+      real(kind=8), dimension(3), intent(inout) :: k
+      real(kind=8), dimension(3), intent(in)    :: v
       integer, intent(inout)                    :: iran
-      real(kind=8)                              :: phi, theta, mu, aors, scalar
+      real(kind=8)                              :: mu, aors, scalar
       logical                                   :: ok
       real(kind=8), dimension(3)                :: knew
-      real(kind=8)                              :: a, x_cell, st, ra
       integer(kind=4)                           :: iescape
-      
+
+#ifdef DEBUG
+      print *,'-DEBUG- scatter_dust routine, arguments =',v,nu_cell,k,nu_ext,iran
+#endif
+    
       ! interaction with dust
       aors = ran3(iran)  ! aka "Absorption OR Scattering" ... 
       if (aors.gt.dust_albedo) then ! the photon is absorbed = lost
          iescape = 0
          return
       else
-         ! 1/ determine scattering angle (in atom's frame)
-         ra=ran3(iran)
-         ! use White 79 approximation for the "reciprocal" of cumulative Henyey-Greenstein phase fct:
-         mu = (1.+g_dust*g_dust-((1.-g_dust*g_dust)/(1.-g_dust+2.*g_dust*ra))**2)/(2.*g_dust)
-         theta = acos(mu)
-         phi   = 2.d0*pi*ran3(iran)         
-         !........director cosines
-         st = sin(theta)
-         knew(1) = st*cos(phi)   !x
-         knew(2) = st*sin(phi)   !y
-         knew(3) = cos(theta)    !z
-         mu = k(1)*knew(1) + k(2)*knew(2) + k(3)*knew(3) 
-                  
-         ! 2/ compute atom freq. in external frame, after scattering
+         call anisotropic_direction_Dust(k,knew,mu,iran,g_dust)                         
+         ! compute atom freq. in external frame, after scattering
          scalar = knew(1) * v(1) + knew(2) * v(2) + knew(3)* v(3)
          ! nu_cell has not changed; we implicitly assume that the interacting dust grain is at rest in cell's frame
          nu_ext = nu_cell/(1. - scalar/clight)
