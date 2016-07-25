@@ -1,36 +1,37 @@
 module module_ramses
 
-  use module_constants, only : kB, mp, XH
+  use module_constants !, only : kB, mp, XH
 
   implicit none
 
-  ! private stuff ... 
+  private 
+  
   ! stuff read from AMR files
-  integer(kind=4),private          :: ncell,ncoarse,ngridmax
-  real(kind=8),allocatable,private :: xg(:,:)      ! grids position
-  integer,allocatable,private      :: nbor(:,:)    ! neighboring father cells
-  integer,allocatable,private      :: next(:)      ! next grid in list
-  integer,allocatable,private      :: son(:)       ! sons grids
-  integer,allocatable,private      :: cpu_map(:)  ! domain decomposition
-  integer,allocatable,private      :: headl(:,:),taill(:,:),numbl(:,:),numbtot(:,:)
-  integer,allocatable,private      :: headb(:,:),tailb(:,:),numbb(:,:)
-  real(KIND=8),dimension(1:3)::xbound=(/0d0,0d0,0d0/)    ! JB : private too ? 
+  integer(kind=4)                  :: ncell,ncoarse,ngridmax
+  real(kind=8),allocatable         :: xg(:,:)      ! grids position
+  integer,allocatable              :: nbor(:,:)    ! neighboring father cells
+  integer,allocatable              :: next(:)      ! next grid in list
+  integer,allocatable              :: son(:)       ! sons grids
+  integer,allocatable              :: cpu_map(:)  ! domain decomposition
+  integer,allocatable              :: headl(:,:),taill(:,:),numbl(:,:),numbtot(:,:)
+  integer,allocatable              :: headb(:,:),tailb(:,:),numbb(:,:)
+  real(KIND=8),dimension(1:3)      :: xbound=(/0d0,0d0,0d0/)  
 
-  ! Stop pretending this would work in 2D :       JB: not private ??? 
+  ! Stop pretending this would work in 2D 
   integer(kind=4),parameter :: ndim = 3
   integer(kind=4),parameter :: twondim = 6
   integer(kind=4),parameter :: twotondim= 8 
   
   ! stuff read from the HYDRO files
-  real(kind=8),allocatable,private :: var(:,:)
-  real(kind=8),allocatable,private :: cell_x(:),cell_y(:),cell_z(:)
-  integer,allocatable,private      :: cell_level(:)
+  real(kind=8),allocatable         :: var(:,:)
+  real(kind=8),allocatable         :: cell_x(:),cell_y(:),cell_z(:)
+  integer,allocatable              :: cell_level(:)
 
-  integer(kind=4),private :: ncpu,nvar
+  integer(kind=4)                  :: ncpu,nvar
 
   ! conversion factors (units)
-  logical,private                :: conversion_scales_are_known = .False. 
-  real(kind=8),private           :: dp_scale_l,dp_scale_d,dp_scale_t,dp_scale_T2,dp_scale_zsun,dp_scale_nh,dp_scale_v
+  logical                        :: conversion_scales_are_known = .False. 
+  real(kind=8)                   :: dp_scale_l,dp_scale_d,dp_scale_t,dp_scale_T2,dp_scale_zsun,dp_scale_nh,dp_scale_v
 
   ! cooling-related stuff -------------------------------------------------------------
   type cooling_table
@@ -59,7 +60,7 @@ module module_ramses
      real(kind=8)     :: T2_start,T2_step
   end type cool_interp
   type(cool_interp)  :: cool_int
-  logical,private :: cooling_is_read = .False. 
+  logical            :: cooling_is_read = .False. 
   ! ----------------------------------------------------------------------------------
 
   public  :: read_leaf_cells, get_ngridtot, ramses_get_velocity_cgs, ramses_get_T_nhi_cgs

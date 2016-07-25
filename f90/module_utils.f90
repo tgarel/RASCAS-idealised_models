@@ -7,8 +7,8 @@ module module_utils
   ! - anisotropic_direction_HIcore
   ! - anisotropic_direction_Rayleigh
   
-  use module_constants, only : pi, sqrtpi, twopi
-  use module_random, only : ran3
+  use module_constants ! , only : pi, sqrtpi, twopi
+  use module_random !, only : ran3
   
   public
 
@@ -122,7 +122,7 @@ contains
     ! angular description of kout (relative to k)
     ct1 = mu
     st1 = sqrt(1.0d0 - ct1*ct1)
-    bu  = mu
+    bu  = st1
     cp1 = cos(phi)
     sp1 = sin(phi)
     ! vector kout (such that indeed knew . k = ct1) in external frame (box coords.)
@@ -184,7 +184,7 @@ contains
     ! angular description of kout (relative to k)
     ct1 = mu
     st1 = sqrt(1.0d0 - ct1*ct1)
-    bu  = mu
+    bu  = st1
     cp1 = cos(phi)
     sp1 = sin(phi)
     ! vector kout (such that indeed knew . k = ct1) in external frame (box coords.)
