@@ -163,7 +163,7 @@ contains
     ! default parameter values are set at declaration (head of module)
     ! ---------------------------------------------------------------------------------
 
-    character(1000),intent(in) :: pfile
+    character(*),intent(in) :: pfile
     character(1000) :: line,name,value
     integer(kind=4) :: err,i
     logical         :: section_present

@@ -13,7 +13,6 @@ module module_gas_composition
   use module_ramses
   use module_utils
   use module_constants
-  ! use module_params,    only : deut2H_nb_ratio, dust_to_metal_ratio, mH_over_mdust
 
   implicit none
 
@@ -42,7 +41,7 @@ module module_gas_composition
   real(kind=8)             :: fix_ndust           = 0.0d0   ! ad-hoc dust number density (/cm3)
   real(kind=8)             :: fix_vel             = 0.0d0   ! ad-hoc cell velocity (cm/s) -> NEED BETTER PARAMETERIZATION for more than static... 
 
-  ! type(gas) goes public
+  ! type gas needs to be public 
   public :: gas
   ! public functions:
   public :: gas_from_ramses_leaves,overwrite_gas,get_gas_velocity,gas_get_scatter_flag,gas_scatter,dump_gas
@@ -253,11 +252,12 @@ contains
 
     ! ---------------------------------------------------------------------------------
     ! subroutine which reads parameters of current module in the parameter file pfile
-    !
     ! default parameter values are set at declaration (head of module)
+    !
+    ! ALSO read parameter form used modules (HI, D, dust models)
     ! ---------------------------------------------------------------------------------
 
-    character(1000),intent(in) :: pfile
+    character(*),intent(in) :: pfile
     character(1000) :: line,name,value
     integer(kind=4) :: err,i
     logical         :: section_present
@@ -292,11 +292,25 @@ contains
              read(value,*) dust_to_metal_ratio
           case ('mH_over_mdust')
              read(value,*) mH_over_mdust
+          case ('gas_overwrite')
+             read(value,*) gas_overwrite
+          case ('fix_nhi')
+             read(value,*) fix_nhi
+          case ('fix_vth')
+             read(value,*) fix_vth
+          case ('fix_ndust')
+             read(value,*) fix_ndust
+          case ('fix_vel')
+             read(value,*) fix_vel
           end select
        end do
     end if
     close(10)
 
+    call read_HI_params(pfile)
+    call read_D_params(pfile)
+    call read_dust_params(pfile)
+    
     return
 
   end subroutine read_gas_composition_params
@@ -317,11 +331,27 @@ contains
        write(unit,'(a,ES9.3)') '  deut2H_nb_ratio     : ',deut2H_nb_ratio
        write(unit,'(a,ES9.3)') '  dust_to_metal_ratio : ',dust_to_metal_ratio
        write(unit,'(a,ES9.3)') '  mH_over_mdust       : ',mH_over_mdust
+       write(unit,'(a,L1)')    '  gas_overwrite       : ',gas_overwrite
+       write(unit,'(a,ES9.3)') '  fix_nhi             : ',fix_nhi
+       write(unit,'(a,ES9.3)') '  fix_vth             : ',fix_vth
+       write(unit,'(a,ES9.3)') '  fix_ndust           : ',fix_ndust
+       write(unit,'(a,ES9.3)') '  fix_vel             : ',fix_vel
+       call print_HI_params(unit)
+       call print_D_params(unit)
+       call print_dust_params(unit)
     else
        write(*,'(a,a,a)') '[gas_composition]'
        write(*,'(a,ES9.3)') '  deut2H_nb_ratio     : ',deut2H_nb_ratio
        write(*,'(a,ES9.3)') '  dust_to_metal_ratio : ',dust_to_metal_ratio
        write(*,'(a,ES9.3)') '  mH_over_mdust       : ',mH_over_mdust
+       write(*,'(a,L1)')    '  gas_overwrite       : ',gas_overwrite
+       write(*,'(a,ES9.3)') '  fix_nhi             : ',fix_nhi
+       write(*,'(a,ES9.3)') '  fix_vth             : ',fix_vth
+       write(*,'(a,ES9.3)') '  fix_ndust           : ',fix_ndust
+       write(*,'(a,ES9.3)') '  fix_vel             : ',fix_vel
+       call print_HI_params
+       call print_D_params
+       call print_dust_params
     end if
 
     return

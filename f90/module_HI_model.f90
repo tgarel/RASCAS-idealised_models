@@ -4,7 +4,6 @@ module module_HI_model
   use module_utils, only : voigt_fit, isotropic_direction, anisotropic_direction_HIcore, anisotropic_direction_Rayleigh
   use module_uparallel
   use module_random
-!  use module_params, only : recoil
 
 !#ifdef POLARIZATION
 !  use polar
@@ -163,7 +162,7 @@ contains
     ! default parameter values are set at declaration (head of module)
     ! ---------------------------------------------------------------------------------
 
-    character(1000),intent(in) :: pfile
+    character(*),intent(in) :: pfile
     character(1000) :: line,name,value
     integer(kind=4) :: err,i
     logical         :: section_present
