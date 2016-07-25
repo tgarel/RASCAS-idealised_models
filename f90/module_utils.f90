@@ -7,8 +7,8 @@ module module_utils
   ! - anisotropic_direction_HIcore
   ! - anisotropic_direction_Rayleigh
   
-  use module_constants ! , only : pi, sqrtpi, twopi
-  use module_random !, only : ran3
+  use module_constants, only : pi, sqrtpi, twopi
+  use module_random, only : ran3
   
   public
 

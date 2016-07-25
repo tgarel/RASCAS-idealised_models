@@ -9,11 +9,11 @@ module module_gas_composition
   use module_HI_model
   use module_D_model
   use module_dust_model
-  !use module_random
+  use module_random
   use module_ramses
   use module_utils
-  !use module_constants !, only : sqrt_H2Deut_mass_ratio, XH
-  !use module_params,    only : deut2H_nb_ratio, dust_to_metal_ratio, mH_over_mdust
+  use module_constants
+  ! use module_params,    only : deut2H_nb_ratio, dust_to_metal_ratio, mH_over_mdust
 
   implicit none
 
@@ -42,8 +42,11 @@ module module_gas_composition
   real(kind=8)             :: fix_ndust           = 0.0d0   ! ad-hoc dust number density (/cm3)
   real(kind=8)             :: fix_vel             = 0.0d0   ! ad-hoc cell velocity (cm/s) -> NEED BETTER PARAMETERIZATION for more than static... 
 
-
+  ! type(gas) goes public
   public :: gas
+  ! public functions:
+  public :: gas_from_ramses_leaves,overwrite_gas,get_gas_velocity,gas_get_scatter_flag,gas_scatter,dump_gas
+  public :: read_gas,gas_destructor,read_gas_composition_params,print_gas_composition_params
   
 contains
 

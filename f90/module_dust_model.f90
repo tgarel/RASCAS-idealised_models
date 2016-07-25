@@ -1,8 +1,8 @@
 module module_dust_model
 
-  !use module_random
-  !use module_constants, only : pi, clight
-  use module_utils !, only : anisotropic_direction_Dust
+  use module_random
+  use module_constants, only : pi, clight
+  use module_utils, only : anisotropic_direction_Dust
 
   implicit none
 

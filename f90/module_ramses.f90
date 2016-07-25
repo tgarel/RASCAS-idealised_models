@@ -1,6 +1,6 @@
 module module_ramses
 
-  use module_constants !, only : kB, mp, XH
+  use module_constants, only : kB, mp, XH
 
   implicit none
 
@@ -63,8 +63,8 @@ module module_ramses
   logical            :: cooling_is_read = .False. 
   ! ----------------------------------------------------------------------------------
 
-  public  :: read_leaf_cells, get_ngridtot, ramses_get_velocity_cgs, ramses_get_T_nhi_cgs
-  private :: read_hydro, read_amr, get_nleaf, get_nvar, clear_amr, get_ncpu, get_param_real
+  public  :: read_leaf_cells, get_ngridtot, ramses_get_velocity_cgs, ramses_get_T_nhi_cgs, ramses_get_metallicity
+  ! default is private now ... !! private :: read_hydro, read_amr, get_nleaf, get_nvar, clear_amr, get_ncpu, get_param_real
 
   !==================================================================================
 contains

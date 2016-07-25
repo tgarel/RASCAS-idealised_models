@@ -1,9 +1,9 @@
 module module_HI_model
 
-!  use module_constants
-  use module_utils      !, only : voigt_fit, isotropic_direction, anisotropic_direction_HIcore, anisotropic_direction_Rayleigh
+  use module_constants
+  use module_utils, only : voigt_fit, isotropic_direction, anisotropic_direction_HIcore, anisotropic_direction_Rayleigh
   use module_uparallel
-!  use module_random
+  use module_random
 !  use module_params, only : recoil
 
 !#ifdef POLARIZATION
@@ -29,7 +29,7 @@ module module_HI_model
   logical                  :: isotropic    = .false.     ! if set to true, scattering events will be isotropic [default is false]
 
   public :: get_tau_HI, scatter_HI, read_HI_params, print_HI_params
-  
+
 contains
 
   function get_tau_HI(nhi, vth, distance_to_border_cm, nu_cell)

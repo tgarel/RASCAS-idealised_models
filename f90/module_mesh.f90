@@ -253,7 +253,7 @@ module module_mesh
       deallocate(farr2d)
 
       ! + read type gas
-      call read_gas(unit=13,n=m%nleaf,g=g)
+      call read_gas(13,m%nleaf,g)
       allocate(m%gas(1:m%nleaf))
       m%gas = g
 
@@ -265,19 +265,11 @@ module module_mesh
 
 
 
-    subroutine overwrite_mesh(m,nhi,vth)
+    subroutine overwrite_mesh(m)
 
       type(mesh),intent(inout)  :: m
-      real(kind=8),intent(in)   :: nhi,vth
 
-      call overwrite_gas(m%gas,nhi,vth)
-
-#ifdef DEBUG
-      print*,'in overwrite_mesh: ',nhi,vth
-      print*,'in overwrite_mesh: ',shape(m%gas)
-      print*,'in overwrite_mesh: ',m%ncoarse, m%noct, m%ncell, m%nleaf
-      print*,'in overwrite_mesh: ',minval(m%gas%nhi),maxval(m%gas%nhi)
-#endif
+      call overwrite_gas(m%gas)
 
     end subroutine overwrite_mesh
 
@@ -517,7 +509,7 @@ module module_mesh
       write(13) m%xoct(1:nOct,1:3)
 
       ! dump gas
-      call dump_gas(unit=13,g=m%gas)
+      call dump_gas(13,m%gas)
 
       close(13)
 
