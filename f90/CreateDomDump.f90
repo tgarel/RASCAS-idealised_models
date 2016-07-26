@@ -75,7 +75,8 @@ program CreateDomDump
   write(10,*) 'computational_domain_file = ',trim(fichier)
   write(10,*) 'Ndomain = ',ndomain
   do i=1,ndomain
-     write(10,*) 'mesh_domain_file = ',trim(domain_file_list(i))
+     write(10,*) 'domain_file = ',trim(domain_file_list(i))
+     write(10,*) 'mesh_file   = ',trim(mesh_file_list(i))
      call domain_write_file(domain_file_list(i),domain_list(i))
   end do
   close(10)

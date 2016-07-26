@@ -42,7 +42,7 @@ module module_gas_composition
   ! possibility to overwrite ramses values with an ad-hoc model 
   logical                  :: gas_overwrite       = .false. ! if true, define cell values from following parameters 
   real(kind=8)             :: fix_nhi             = 0.0d0   ! ad-hoc HI density (H/cm3)
-  real(kind=8)             :: fix_vth             = 0.0d0   ! ad-hoc thermal velocity (cm/s)
+  real(kind=8)             :: fix_vth             = 1.0d5   ! ad-hoc thermal velocity (cm/s)
   real(kind=8)             :: fix_ndust           = 0.0d0   ! ad-hoc dust number density (/cm3)
   real(kind=8)             :: fix_vel             = 0.0d0   ! ad-hoc cell velocity (cm/s) -> NEED BETTER PARAMETERIZATION for more than static... 
   real(kind=8)             :: fix_box_size_cm     = 1.0d8   ! ad-hoc box size in cm. 
@@ -96,7 +96,7 @@ contains
        ! get ndust (Use Verhamme 2012, Eq. 3.)
        if (verbose) write(*,*) '-- module_gas_composition_HI_D_dust : extracting ndust form ramses '
        allocate(metallicity(nleaf))
-       call ramses_get_metallicity(repository,snapnum,nleaf,nvar,ramses_var,metallicity)
+       call ramses_get_metallicity(nleaf,nvar,ramses_var,metallicity)
        g(:)%ndust = (dust_to_metal_ratio * mH_over_mdust / XH) * metallicity * g(:)%nHI     !! JB: To test ... 
        deallocate(metallicity)
     end if

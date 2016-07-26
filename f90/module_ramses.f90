@@ -273,12 +273,10 @@ contains
     
   end subroutine ramses_get_velocity_cgs
 
-  subroutine ramses_get_metallicity(repository,snapnum,nleaf,nvar,ramses_var,metallicity)
+  subroutine ramses_get_metallicity(nleaf,nvar,ramses_var,metallicity)
 
     implicit none
     
-    character(1000),intent(in)  :: repository
-    integer(kind=4),intent(in)  :: snapnum
     integer(kind=4),intent(in)  :: nleaf, nvar
     real(kind=8),intent(in)     :: ramses_var(nvar,nleaf) ! one cell only
     real(kind=8),intent(inout)  :: metallicity(nleaf)

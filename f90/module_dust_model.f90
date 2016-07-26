@@ -66,7 +66,6 @@ contains
     real(kind=8), dimension(3), intent(in)    :: v
     integer, intent(inout)                    :: iran
     real(kind=8)                              :: mu, aors, scalar
-    logical                                   :: ok
     real(kind=8), dimension(3)                :: knew
     integer(kind=4)                           :: iescape
 

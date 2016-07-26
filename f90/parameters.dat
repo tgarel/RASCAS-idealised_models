@@ -1,5 +1,6 @@
-# Parameters for CreateDomDump
+# Parameters for CreateDomDump, and Serial 
 
+!--------------------------------------------------------------------------------
 [CreateDomDump]
 # input outputs:
   fichier    = compute_domain.dom
@@ -7,51 +8,78 @@
   snapnum    = 101
 # computational domain : 
   pos        = 0.5, 0.5, 0.5
-  rvir       = 0.3
+  rvir       = 0.1
   typechar   = sphere
 
 # domain decomposition :
   decomp_dom_type = shell
-  ndomain         = 1     # 2
-  rin             = 0.00  # 0.00, 0.1
-  rout            = 0.35  # 0.05, 0.35
+  ndomain         = 1     
+  rin             = 0.00 
+  rout            = 0.15 
 
 # miscelaneous :
   verbose    = T
+!--------------------------------------------------------------------------------
 
 
+
+!--------------------------------------------------------------------------------
+[serial]
+  DataDir      = data/
+  DomDumpFile  = MCLya_domain_params.dat
+  PhotonICFile = ICs_photons_n5e4.dat
+  outfile      = data/mes_photons.dat
+  verbose = T
+!--------------------------------------------------------------------------------
+
+
+
+!--------------------------------------------------------------------------------
 [mesh]
-verbose = F
+  verbose = F
+  box_size_cm = -1 ! 
+!--------------------------------------------------------------------------------
 
 
+
+!--------------------------------------------------------------------------------
 [gas_composition] 
 # mixture parameters
   deut2H_nb_ratio     = 3.000E-05
   dust_to_metal_ratio = 3.000E-01
   mH_over_mdust       = 5.000E-08
 # overwrite parameters
-  gas_overwrite       = F
-  fix_nhi             = 0.000E+00
-  fix_vth             = 0.000E+00
-  fix_ndust           = 0.000E+00
-  fix_vel             = 0.000E+00
+  gas_overwrite       = T
+  fix_nhi             = 1.0e0
+  fix_vth             = 1.0d5
+  fix_ndust           = 0.000
+  fix_vel             = 0.000
+  fix_box_size_cm     = 1.000E+08
 # miscelaneous parameters
-  verbose             = F
+  verbose             = T
+!--------------------------------------------------------------------------------
 
 
-################# IONS #################
 
+!--------------------------------------------------------------------------------
 [HI]
   recoil    = T
   isotropic = F
+!--------------------------------------------------------------------------------
 
 
+
+!--------------------------------------------------------------------------------
 [Deuterium]
   recoil    = T
   isotropic = F
+!--------------------------------------------------------------------------------
 
 
+
+!--------------------------------------------------------------------------------
 [dust]
   albedo       = 4.600E-01
   g_dust       = 7.300E-01
   grain_radius = 2.000E-06
+!--------------------------------------------------------------------------------

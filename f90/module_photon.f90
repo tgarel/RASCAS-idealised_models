@@ -188,11 +188,12 @@ contains
     ind   = (icell - domesh%nCoarse - 1) / domesh%nOct + 1   ! JB: should we make a few simple functions to do all this ? 
     ioct  = icell - domesh%nCoarse - (ind - 1) * domesh%nOct
 
-    if((domesh%son(icell)<0).and.(domesh%octlevel(ioct)/=8))then
-       print*,'>>>>> leaf cell at level lower than 8!!!!!!'
-       stop
-    endif
-
+!JB--
+!!$    if((domesh%son(icell)<0).and.(domesh%octlevel(ioct)/=8))then
+!!$       print*,'>>>>> leaf cell at level lower than 8!!!!!!'
+!!$       stop
+!!$    endif
+!--JB
 
 #ifdef DEBUG
     print *,'--> cell where photon starts',icell,ileaf,ind,ioct
@@ -344,10 +345,13 @@ contains
              ileaf = - domesh%son(icell)
              ind   = (icell - domesh%nCoarse - 1) / domesh%nOct + 1   ! JB: should we make a few simple functions to do all this ? 
              ioct  = icell - domesh%nCoarse - (ind - 1) * domesh%nOct
-             if((domesh%son(icell)<0).and.(domesh%octlevel(ioct)/=8))then
-                print*,'>>>>> leaf cell at level lower than 8!!!!!!'
-                stop
-             endif
+!JB-- 
+!!$             if((domesh%son(icell)<0).and.(domesh%octlevel(ioct)/=8))then
+!!$                print*,'>>>>> leaf cell at level lower than 8!!!!!!'
+!!$                stop
+!!$             endif
+!--JB
+
              ! there has been no interaction in the cell, tau_abs has been updated in gas_get_scatter_flag
              ! => move to next cell
 #ifdef DEBUG

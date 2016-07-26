@@ -1039,7 +1039,8 @@ module module_mesh
       integer,dimension(1:n), intent(in) :: ileaf
       type(mesh),intent(in)     :: m
 
-      integer                   :: i,ic,ind,icell
+      integer                   :: i,ic
+!!$      integer                   :: icell,ind
       real(kind=8),dimension(3) :: xc
 
       do i=1,n

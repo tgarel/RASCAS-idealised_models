@@ -215,7 +215,7 @@ contains
     real(kind=8),intent(out)      :: kout(3)
     real(kind=8),intent(out)      :: mu
     integer(kind=4),intent(inout) :: iran
-    real(kind=8)                  :: phi,x,cti,sti,cpi,spi,ct1,st1,cp1,sp1,ra
+    real(kind=8)                  :: phi,cti,sti,cpi,spi,ct1,st1,cp1,sp1,ra
     real(kind=8),intent(in)       :: g_dust
 
 

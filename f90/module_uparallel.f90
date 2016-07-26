@@ -253,7 +253,9 @@ contains
 
     ! initialise on first call
     if (.not. tables_initialized) then
+       print*,'initialising u_parallel tables'
        call init_uparallel_tables
+       print*,'--done initialising u_parallel tables'
     end if
     
     xin   = sign(xxin,-1.0d0) ! -> force x_int to be negative

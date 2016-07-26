@@ -35,7 +35,7 @@ endif
 
 ifeq ($(SYSTYPE),"mac")
 F90         = gfortran-mp-4.7 ###-fopenmp
-FFLAGS      = -g -fcheck=all -ffree-line-length-none -ffree-form -ftrapv
+FFLAGS      = -g -fcheck=all -ffree-line-length-none -ffree-form -ftrapv -fbacktrace -Wall
 ##FFLAGS      = -O2
 FFLAGS += $(OPTIONS)
 ###FFLAGS      = -O3
@@ -55,11 +55,11 @@ endif
 #############################################################################
 # All objects
 
-COMPOBJS = module_dust_model.o module_D_model.o module_HI_model.o module_gas_composition_HI_D_dust.o #_D_homogeneous.o
+COMPOBJS = module_dust_model.o module_D_model.o module_HI_model.o module_gas_composition_HI_D_dust.o 
 #COMPOBJS = module_HI_model.o module_gas_composition_HI_homogeneous.o
 #COMPOBJS = module_gas_ramses.o
 
-GASOBJS = module_params.o module_constants.o module_ramses.o module_random.o module_utils.o module_uparallel.o $(COMPOBJS)
+GASOBJS = module_constants.o module_ramses.o module_random.o module_utils.o module_uparallel.o $(COMPOBJS)
 
 OBJSCOM = $(GASOBJS) module_select.o \
 	module_domain.o module_mesh.o
@@ -81,7 +81,7 @@ OBJSMPI = $(OBJSMC) module_parallel_mpi.o module_worker.o module_master.o MCLya.
 	$(F90) $(FFLAGS) -c $^ -o $@
 
 #############################################################################
-all: serial
+all: clean CreateDomDump PhotonsMonoPointSource serial
 
 PhotonsMonoPointSource: $(OBJSMC) PhotonsMonoPointSource.o
 	$(F90) $(FFLAGS) $(LDFLAGS) -o $@ $(OBJSMC) PhotonsMonoPointSource.o
