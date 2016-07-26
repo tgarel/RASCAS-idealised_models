@@ -10,7 +10,7 @@ module module_photon
 
   !use ramses_info_utils, only box_size_cm   ! => not defined in this module....
   ! todonext
-  real(kind=8) :: box_size_cm 
+!  real(kind=8) :: box_size_cm  -> moved to module_gas_composition
   ! also todonext define accuracy
   real(kind=8),parameter :: accuracy=1.d-15
 

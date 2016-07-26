@@ -18,7 +18,7 @@ module module_gas_composition
 
   private
 
-  type gas
+  type, public :: gas
      ! fluid
      real(kind=8) :: v(3)      ! gas velocity [cm/s]
      ! Hydrogen 
@@ -30,7 +30,8 @@ module module_gas_composition
      ! dust
      real(kind=8) :: ndust     ! numerical density of dust particles [#/cm3]
   end type gas
-
+  real(kind=8),public :: box_size_cm   ! size of simulation box in cm. 
+  
   ! --------------------------------------------------------------------------
   ! user-defined parameters - read from section [gas_composition] of the parameter file
   ! --------------------------------------------------------------------------
@@ -44,12 +45,11 @@ module module_gas_composition
   real(kind=8)             :: fix_vth             = 0.0d0   ! ad-hoc thermal velocity (cm/s)
   real(kind=8)             :: fix_ndust           = 0.0d0   ! ad-hoc dust number density (/cm3)
   real(kind=8)             :: fix_vel             = 0.0d0   ! ad-hoc cell velocity (cm/s) -> NEED BETTER PARAMETERIZATION for more than static... 
+  real(kind=8)             :: fix_box_size_cm     = 1.0d8   ! ad-hoc box size in cm. 
   ! miscelaneous
   logical                  :: verbose             = .false. ! display some run-time info on this module
   ! --------------------------------------------------------------------------
 
-  ! type gas needs to be public 
-  public :: gas
   ! public functions:
   public :: gas_from_ramses_leaves,get_gas_velocity,gas_get_scatter_flag,gas_scatter,dump_gas
   public :: read_gas,gas_destructor,read_gas_composition_params,print_gas_composition_params
@@ -75,6 +75,7 @@ contains
     if (gas_overwrite) then
        call overwrite_gas(g)
     else
+       box_size_cm = ramses_get_box_size_cm(repository,snapnum)
        ! compute velocities in cm / s
        if (verbose) write(*,*) '-- module_gas_composition_HI_D_dust : extracting velocities form ramses '
        allocate(v(3,nleaf))
@@ -110,6 +111,8 @@ contains
 
     type(gas),dimension(:),intent(inout) :: g
 
+    box_size_cm   = fix_box_size_cm
+    
     g(:)%v(1)     = fix_vel
     g(:)%v(2)     = fix_vel
     g(:)%v(3)     = fix_vel
@@ -123,6 +126,7 @@ contains
     print*,'in overwrite_gas: ',minval(g%dopwidth),maxval(g%dopwidth)
     print*,'in overwrite_gas: ',minval(g%ndust),maxval(g%ndust)
     print*,'in overwrite_gas: ',minval(g%v),maxval(g%v)
+    print*,'in overwrite_gas: ',box_size_cm
 #endif
 
   end subroutine overwrite_gas
@@ -229,6 +233,7 @@ contains
     write(unit) (g(i)%nHI, i=1,nleaf)
     write(unit) (g(i)%dopwidth, i=1,nleaf)
     write(unit) (g(i)%ndust, i=1,nleaf)
+    write(unit) box_size_cm 
   end subroutine dump_gas
 
 
@@ -245,6 +250,7 @@ contains
        read(unit) (g(i)%nHI,i=1,n)
        read(unit) (g(i)%dopwidth,i=1,n)
        read(unit) (g(i)%ndust,i=1,n)
+       read(unit) box_size_cm 
     end if
   end subroutine read_gas
 
@@ -313,6 +319,8 @@ contains
              read(value,*) fix_vel
           case ('verbose')
              read(value,*) verbose
+          case ('fix_box_size_cm')
+             read(value,*) fix_box_size_cm
           end select
        end do
     end if
@@ -349,6 +357,7 @@ contains
        write(unit,'(a,ES9.3)') '  fix_vth             = ',fix_vth
        write(unit,'(a,ES9.3)') '  fix_ndust           = ',fix_ndust
        write(unit,'(a,ES9.3)') '  fix_vel             = ',fix_vel
+       write(unit,'(a,ES9.3)') '  fix_box_size_cm     = ',fix_box_size_cm
        write(unit,'(a)')       '# miscelaneous parameters'
        write(unit,'(a,L1)')    '  verbose             = ',verbose
        write(unit,'(a)')             ' '
@@ -369,6 +378,7 @@ contains
        write(*,'(a,ES9.3)') '  fix_vth             = ',fix_vth
        write(*,'(a,ES9.3)') '  fix_ndust           = ',fix_ndust
        write(*,'(a,ES9.3)') '  fix_vel             = ',fix_vel
+       write(*,'(a,ES9.3)') '  fix_box_size_cm     = ',fix_box_size_cm
        write(*,'(a)')       '# miscelaneous parameters'
        write(*,'(a,L1)')    '  verbose             = ',verbose
        write(*,'(a)')             ' '

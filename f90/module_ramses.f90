@@ -63,7 +63,7 @@ module module_ramses
   logical            :: cooling_is_read = .False. 
   ! ----------------------------------------------------------------------------------
 
-  public  :: read_leaf_cells, get_ngridtot, ramses_get_velocity_cgs, ramses_get_T_nhi_cgs, ramses_get_metallicity
+  public  :: read_leaf_cells, get_ngridtot, ramses_get_velocity_cgs, ramses_get_T_nhi_cgs, ramses_get_metallicity, ramses_get_box_size_cm
   ! default is private now ... !! private :: read_hydro, read_amr, get_nleaf, get_nvar, clear_amr, get_ncpu, get_param_real
 
   !==================================================================================
@@ -292,7 +292,28 @@ contains
     return
 
   end subroutine ramses_get_metallicity
+
+  
+  function ramses_get_box_size_cm(repository,snapnum)
+
+    implicit none
     
+    character(1000),intent(in)  :: repository
+    integer(kind=4),intent(in)  :: snapnum
+    real(kind=8)                :: ramses_get_box_size_cm 
+    
+    ! get conversion factors if necessary
+    if (.not. conversion_scales_are_known) then 
+       call read_conversion_scales(repository,snapnum)
+       conversion_scales_are_known = .True.
+    end if
+    
+    ramses_get_box_size_cm = get_param_real(repository,snapnum,'boxlen') * dp_scale_l  ! [ cm ] 
+    
+    return
+    
+  end function ramses_get_box_size_cm
+
     
   !subroutine ramses_read_star_particles(repository, snapnum, nstars, stars)
   !  character(2000),intent(in)                     :: repository
