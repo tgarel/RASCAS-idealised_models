@@ -23,9 +23,12 @@ module module_HI_model
   real(kind=8),parameter   :: sigmaH_factor = pi*e_ch**2*f12/ me / clight ! H cross-section factor-> multiply by Voigt(x,a)/nu_D to get sigma.
   real(kind=8),parameter   :: gamma_over_fourpi = gamma / fourpi
 
+  ! --------------------------------------------------------------------------
   ! user-defined parameters - read from section [HI] in the parameter file 
+  ! --------------------------------------------------------------------------
   logical                  :: recoil       = .true.      ! if set to true, recoil effect is computed [default is true]
   logical                  :: isotropic    = .false.     ! if set to true, scattering events will be isotropic [default is false]
+  ! --------------------------------------------------------------------------
 
   public :: get_tau_HI, scatter_HI, read_HI_params, print_HI_params
 
@@ -216,12 +219,12 @@ contains
 
     if (present(unit)) then 
        write(unit,'(a,a,a)') '[HI]'
-       write(unit,'(a,L1)') '  recoil    : ',recoil
-       write(unit,'(a,L1)') '  isotropic : ',isotropic
+       write(unit,'(a,L1)') '  recoil    = ',recoil
+       write(unit,'(a,L1)') '  isotropic = ',isotropic
     else
        write(*,'(a,a,a)') '[HI]'
-       write(*,'(a,L1)') '  recoil    : ',recoil
-       write(*,'(a,L1)') '  isotropic : ',isotropic
+       write(*,'(a,L1)') '  recoil    = ',recoil
+       write(*,'(a,L1)') '  isotropic = ',isotropic
     end if
 
     return

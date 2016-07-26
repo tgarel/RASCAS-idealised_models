@@ -39,10 +39,16 @@ module module_mesh
   !
   real(kind=8),dimension(:,:),allocatable :: xleaf
   integer,dimension(:),allocatable        :: leaflevel
+
+  ! --------------------------------------------------------------------------
+  ! user-defined parameters - read from section [mesh] in the parameter file 
+  ! --------------------------------------------------------------------------
+  logical :: verbose = .false.      ! set to true to display floods of messages ... 
+  ! --------------------------------------------------------------------------
   
 
   public :: mesh_from_leaves, mesh_from_file, mesh_destructor, dump_mesh, whereisphotongoing, digincell, &
-       in_cell_finder, get_cell_corner !! , overwrite_mesh
+       in_cell_finder, get_cell_corner, read_mesh_params, print_mesh_params !! , overwrite_mesh
   private :: add_oct_domain, make_nbor_array, xcson, get_nleaflocal, get_ileaflocal, icell2icell
 
 
@@ -130,8 +136,10 @@ module module_mesh
       enddo
       son(1)=1
 
-      write(*,*)
-      write(*,*)'...entering recursive loop...'
+      if (verbose) then 
+         write(*,*)
+         write(*,*)'...entering recursive loop...'
+      end if
 
       ! build the mesh
       call add_oct_domain(ilastoct,nLeaf,ileaf,xnew,lfather,ifathercell)
@@ -142,25 +150,31 @@ module module_mesh
       nOct  = nOctTrue
       nCell = nCoarse + 8*nOct
 
-      write(*,*)
-      write(*,*) 'nCoarse = ',nCoarse
-      write(*,*) 'nOct    = ',nOct
-      write(*,*) 'nLeaf   = ',nLeaf
-      write(*,*) 'nCell   = ',nCell
-
+      if (verbose) then 
+         write(*,*)
+         write(*,*) 'nCoarse = ',nCoarse
+         write(*,*) 'nOct    = ',nOct
+         write(*,*) 'nLeaf   = ',nLeaf
+         write(*,*) 'nCell   = ',nCell
+      end if
+      
       ! make nbor array
-      write(*,*)
-      write(*,*)'...building nbor array...'
+      if (verbose) then 
+         write(*,*)
+         write(*,*)'...building nbor array...'
+      end if
       allocate(nbor(nOct,6))
       nbor = 0
       call make_nbor_array
 
       ! work should be done
       ! == son, father, xoct, octlevel should be filled
-      write(*,*)'work done!'
-      write(*,*)'ilastoct = ',ilastoct
-      write(*,*)'cellules feuilles comptees =',countleaf
-      write(*,*)'cellules ~vides~ =',countempty
+      if (verbose) then 
+         write(*,*)'work done!'
+         write(*,*)'ilastoct = ',ilastoct
+         write(*,*)'cellules feuilles comptees =',countleaf
+         write(*,*)'cellules ~vides~ =',countempty
+      end if
       ! do some checks if you want
       call check_octtree(noctmax)
 
@@ -478,11 +492,11 @@ module module_mesh
       character(2000),intent(in) :: file
 
       ! dump data in binary format
-
-      write(*,*)
-      write(*,*) '...dump file...'
-      write(*,*)
-
+      if (verbose) then 
+         write(*,*)
+         write(*,*) '...dump file...'
+         write(*,*)
+      end if
 
 #ifdef DEBUG
       print *,'--> check mesh dom'
@@ -552,7 +566,7 @@ module module_mesh
 
       do ind=1,8
 
-         if(level==1)then
+         if(level==1 .and. verbose)then
             write(*,'(a,i1,a)')' level=1 cell # ',ind,' done'
          endif
 
@@ -765,12 +779,13 @@ module module_mesh
       real(kind=8)                            :: xc(3),xnbor(3),x(3),dx
       integer                                 :: noops1,noops2
 
-
-      write(*,*)'into make nbor array...'
-      write(*,*)ncoarse,noct
-      write(*,*)minval(son),maxval(son)
-      write(*,*)minval(octlevel),maxval(octlevel)
-
+      if (verbose) then 
+         write(*,*)'into make nbor array...'
+         write(*,*)ncoarse,noct
+         write(*,*)minval(son),maxval(son)
+         write(*,*)minval(octlevel),maxval(octlevel)
+      end if
+      
       if (ncoarse /= 1) then ! on a vraiment besoin de ca en fait... 
          Print*,'Oh no, ncoarse /= 1... '
          stop
@@ -846,7 +861,7 @@ module module_mesh
             end if
          end do
       end do
-      print*,noops1,noops2
+      if (verbose) print*,noops1,noops2
       !-JB
 
     end subroutine make_nbor_array
@@ -863,9 +878,11 @@ module module_mesh
 
       ncellnew = nCoarse+8*nnew
 
-      write(*,*)
-      write(*,*) '...resize arrays...'
-
+      if (verbose) then 
+         write(*,*)
+         write(*,*) '...resize arrays...'
+      end if
+      
       ! transform & resize father
       allocate(tmpi(nnew))
       do i=1,nnew
@@ -918,21 +935,21 @@ module module_mesh
       integer :: oct_status,i,ind,ioct,icount,icount2
 
       ! check results
-
-      write(*,*)
-      write(*,*)'...checking arrays...'
-      write(*,*)'min max son      ',minval(son(:)),maxval(son(:))
-      write(*,*)'min max father   ',minval(father(:)),maxval(father(:))
-      write(*,*)'min max octlevel ',minval(octlevel(:)),maxval(octlevel(:))
-      write(*,*)'min max xoct',minval(xoct(:,1)),maxval(xoct(:,1))
-      write(*,*)'min max xoct',minval(xoct(:,2)),maxval(xoct(:,3))
-      write(*,*)'min max xoct',minval(xoct(:,3)),maxval(xoct(:,2))
-
-      write(*,*)'min max octlevel (>0)',minval(octlevel, mask=(octlevel >= 0)), maxval(octlevel, mask=(octlevel >= 0))
-      write(*,*)'min max xoct (>0)',minval(xoct(:,1), mask=(xoct(:,1)>=0)),maxval(xoct(:,1), mask=(xoct(:,1)>=0))
-      write(*,*)'min max xoct (>0)',minval(xoct(:,2), mask=(xoct(:,2)>=0)),maxval(xoct(:,2), mask=(xoct(:,2)>=0))
-      write(*,*)'min max xoct (>0)',minval(xoct(:,3), mask=(xoct(:,3)>=0)),maxval(xoct(:,3), mask=(xoct(:,3)>=0))
-
+      if (verbose) then 
+         write(*,*)
+         write(*,*)'...checking arrays...'
+         write(*,*)'min max son      ',minval(son(:)),maxval(son(:))
+         write(*,*)'min max father   ',minval(father(:)),maxval(father(:))
+         write(*,*)'min max octlevel ',minval(octlevel(:)),maxval(octlevel(:))
+         write(*,*)'min max xoct',minval(xoct(:,1)),maxval(xoct(:,1))
+         write(*,*)'min max xoct',minval(xoct(:,2)),maxval(xoct(:,3))
+         write(*,*)'min max xoct',minval(xoct(:,3)),maxval(xoct(:,2))
+         
+         write(*,*)'min max octlevel (>0)',minval(octlevel, mask=(octlevel >= 0)), maxval(octlevel, mask=(octlevel >= 0))
+         write(*,*)'min max xoct (>0)',minval(xoct(:,1), mask=(xoct(:,1)>=0)),maxval(xoct(:,1), mask=(xoct(:,1)>=0))
+         write(*,*)'min max xoct (>0)',minval(xoct(:,2), mask=(xoct(:,2)>=0)),maxval(xoct(:,2), mask=(xoct(:,2)>=0))
+         write(*,*)'min max xoct (>0)',minval(xoct(:,3), mask=(xoct(:,3)>=0)),maxval(xoct(:,3), mask=(xoct(:,3)>=0))
+      end if
       !write(*,*)'min max ileaf      ',minval(ileaf(:)),maxval(ileaf(:))
 
       countleaf=0
@@ -944,7 +961,7 @@ module module_mesh
             countleaf=countleaf+1
          endif
       enddo
-      write(*,*) 'ncoarse, son(ncoarse) =',ncoarse,son(1:ncoarse)
+      if (verbose) write(*,*) 'ncoarse, son(ncoarse) =',ncoarse,son(1:ncoarse)
       do i=1,nOct
          do ind=1,8
             icount=icount+1
@@ -954,12 +971,13 @@ module module_mesh
             endif
          enddo
       enddo
-      write(*,*)'scan son array # of elements = ',icount
-      write(*,*)'nleaf in son                 = ',countleaf
-      write(*,*)'diff                         = ',icount-countleaf
+      if (verbose) then 
+         write(*,*)'scan son array # of elements = ',icount
+         write(*,*)'nleaf in son                 = ',countleaf
+         write(*,*)'diff                         = ',icount-countleaf
+         write(*,*)
+      end if
 
-
-      write(*,*)
       ! count incomplete octs...
       icount=0
       icount2=0
@@ -981,34 +999,33 @@ module module_mesh
          !!   print*,octlevel(i)
          !!endif
       enddo
-  
-      write(*,*)'incomplete & empty octs =',icount
-      write(*,*)'empty octs              =',icount2
-
-      write(*,*)'nOctTot - Noct          =',nOctmax-noct
-
-      write(*,*)
-
-      write(*,*)'Ncoarse + Nleaf + (Noct-1) + 8*NemptyOct =',nCoarse + nLeaf + (noct-1) + icount2*8
-      ! Leo: Noct-1 car la cellule coarse principale est aussi un oct maintenant !
-      !JB-
-      !ouh la la, vraiment ?
-      !-JB
-      write(*,*)'Ncell                   =',nCell
-      write(*,*)'nCell - (nOct + Nleaf)  =',nCell - nLeaf - nOct
       
-      write(*,*)
-      write(*,*)'...check father array...'
-      !icount=0
-      !do i=1,nOcttot
-      !   if(father(i)==-1)then
-      !      icount=icount+1
-      !   endif
-      !enddo
-      !write(*,*)'# of -1 in father array =',icount
-      write(*,*) '# of -1 in father array =', count(mask=(father==-1))
-      write(*,*) '# of  0 in father array =', count(mask=(father==0))
-      write(*,*) '# of >0 in father array =', count(mask=(father>0))
+      if (verbose) then 
+         write(*,*)'incomplete & empty octs =',icount
+         write(*,*)'empty octs              =',icount2
+         write(*,*)'nOctTot - Noct          =',nOctmax-noct
+         write(*,*)
+         write(*,*)'Ncoarse + Nleaf + (Noct-1) + 8*NemptyOct =',nCoarse + nLeaf + (noct-1) + icount2*8
+         ! Leo: Noct-1 car la cellule coarse principale est aussi un oct maintenant !
+         !JB-
+         !ouh la la, vraiment ?
+         !-JB
+         write(*,*)'Ncell                   =',nCell
+         write(*,*)'nCell - (nOct + Nleaf)  =',nCell - nLeaf - nOct
+         
+         write(*,*)
+         write(*,*)'...check father array...'
+         !icount=0
+         !do i=1,nOcttot
+         !   if(father(i)==-1)then
+         !      icount=icount+1
+         !   endif
+         !enddo
+         !write(*,*)'# of -1 in father array =',icount
+         write(*,*) '# of -1 in father array =', count(mask=(father==-1))
+         write(*,*) '# of  0 in father array =', count(mask=(father==0))
+         write(*,*) '# of >0 in father array =', count(mask=(father>0))
+      end if
       
     end subroutine check_octtree
 
@@ -1058,9 +1075,91 @@ module module_mesh
 !!$      enddo
 !!$      print*,'nleaves =',countleaf
 ! -JB
-      print*,'end of check: result = ok'
+      if (verbose) write(*,*) 'end of check: result = ok'
 
     end subroutine check_struct
 
+    
+
+  subroutine read_mesh_params(pfile)
+    
+    ! ---------------------------------------------------------------------------------
+    ! subroutine which reads parameters of current module in the parameter file pfile
+    ! default parameter values are set at declaration (head of module)
+    !
+    ! ALSO read parameter form used modules (gas_composition)
+    ! ---------------------------------------------------------------------------------
+
+    character(*),intent(in) :: pfile
+    character(1000) :: line,name,value
+    integer(kind=4) :: err,i
+    logical         :: section_present
+
+    section_present = .false.
+    open(unit=10,file=trim(pfile),status='old',form='formatted')
+    ! search for section start
+    do
+       read (10,'(a)',iostat=err) line
+       if(err/=0) exit
+       if (line(1:6) == '[mesh]') then
+          section_present = .true.
+          exit
+       end if
+    end do
+    ! read section if present
+    if (section_present) then 
+       do
+          read (10,'(a)',iostat=err) line
+          if(err/=0) exit
+          if (line(1:1) == '[') exit ! next section starting... -> leave
+          i = scan(line,'=')
+          if (i==0 .or. line(1:1)=='#' .or. line(1:1)=='!') cycle  ! skip blank or commented lines
+          name=trim(adjustl(line(:i-1)))
+          value=trim(adjustl(line(i+1:)))
+          i = scan(value,'!')
+          if (i /= 0) value = trim(adjustl(value(:i-1)))
+          select case (trim(name))
+          case ('verbose')
+             read(value,*) verbose
+          end select
+       end do
+    end if
+    close(10)
+
+    call read_gas_composition_params(pfile)
+
+    return
+    
+  end subroutine read_mesh_params
+
+
+  
+  subroutine print_mesh_params(unit)
+    
+    ! ---------------------------------------------------------------------------------
+    ! write parameter values to std output or to an open file if argument unit is
+    ! present.
+    ! ---------------------------------------------------------------------------------
+
+    integer(kind=4),optional,intent(in) :: unit
+
+    if (present(unit)) then 
+       write(unit,'(a,a,a)') '[mesh]'
+       write(unit,'(a,L1)')  '  verbose    = ',verbose
+       write(unit,'(a)')             ' '
+       call print_gas_composition_params(unit)
+    else
+       write(*,'(a,a,a)') '[mesh]'
+       write(*,'(a,L1)')  '  verbose    = ',verbose
+       write(*,'(a)')             ' '
+       call print_gas_composition_params
+    end if
+       
+    return
+    
+  end subroutine print_mesh_params
+  
+
+    
 
   end module module_mesh

@@ -217,12 +217,12 @@ contains
 
     if (present(unit)) then 
        write(unit,'(a,a,a)') '[Deuterium]'
-       write(unit,'(a,L1)') '  recoil    : ',recoil
-       write(unit,'(a,L1)') '  isotropic : ',isotropic
+       write(unit,'(a,L1)') '  recoil    = ',recoil
+       write(unit,'(a,L1)') '  isotropic = ',isotropic
     else
        write(*,'(a,a,a)') '[Deuterium]'
-       write(*,'(a,L1)') '  recoil    : ',recoil
-       write(*,'(a,L1)') '  isotropic : ',isotropic
+       write(*,'(a,L1)') '  recoil    = ',recoil
+       write(*,'(a,L1)') '  isotropic = ',isotropic
     end if
 
     return

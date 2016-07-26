@@ -17,28 +17,38 @@ program CreateDomDump
   real(kind=8),dimension(:,:),allocatable  :: ramses_var
   integer,dimension(:),allocatable         :: leaf_level, leaflevel_sel, ind_sel
 
-  integer :: noctsnap,nleaftot,nvar,nleaf_sel,ndomain,i
-  integer,parameter :: snapnum = 23 !100
-  character(2000),parameter :: repository='/cral2/blaizot/SIMULATIONS/P13-20h-1Mpc-MUSIC/Zoom-7-1290/hdRun-LSS150pkpc-new-new-prime/'!'/Users/leo/ASTROPHYSICS/data/Disks/Run31/'
-  character(2000) :: fichier,toto,meshroot
+  integer :: noctsnap,nleaftot,nvar,nleaf_sel,i
+  character(2000) :: toto,meshroot
   character(2000),dimension(:),allocatable :: domain_file_list, mesh_file_list
-  real(kind=8) :: rin,rout
-  
+
+  ! --------------------------------------------------------------------------
   ! user-defined parameters - read from section [CreateDomDump] of the parameter file
+  ! --------------------------------------------------------------------------
+  ! --- input / outputs
+  character(2000)           :: fichier = 'compute_domain.dom'  ! file to which computational domain will be written.
+  character(2000)           :: repository = './'               ! ramses run directory (where all output_xxxxx dirs are).
+  integer(kind=4)           :: snapnum = 1                     ! ramses output number to use
+  ! --- computational domain  
+  character(10)             :: typechar = 'sphere'    ! shape type of domain  // only sphere allowed now. 
   real(kind=8),dimension(3) :: pos = (/0.5,0.5,0.5/)  ! center of domain [code units]
   real(kind=8)              :: rvir = 0.3             ! radius of domain [code units]
-  character(10)             :: typechar = 'sphere'    ! shape type of domain
-
-  fichier = 'compute_domain.dom'
+  ! --- domain decomposition // Only works with a number of shells now, sharing center wiht sphere above.
+  character(10)             :: decomp_dom_type = 'shell' ! shape type of domain  // only shell allowed now.
+  integer(kind=4)           :: ndomain = 1               ! nb of domains in decomposition
+  real(kind=8),allocatable  :: rin(:)                    ! inner radius of shell [code units], default value 0
+  real(kind=8),allocatable  :: rout(:)                   ! outer radius of shell [code units], default value = min(rvir+0.05,0.5)
+  ! --- miscelaneous
+  logical                   :: verbose = .false.
+  ! --------------------------------------------------------------------------
 
   ! read user-defined parameters 
   call read_CreateDomDump_params('parameters.dat')
-  call print_CreateDomDump_params
-  stop
+  if (verbose) call print_CreateDomDump_params
   
-  ! def du domaine de calcul : sphere
+  ! Define a spherical computational domain. This domain describes the volume in which photons fly.
   call domain_constructor_from_scratch(domaine_de_calcul,typechar,xc=pos(1),yc=pos(2),zc=pos(3),r=rvir) 
 
+  
   ! lecture de toutes les feuilles de la simu
   call read_leaf_cells(repository, snapnum, nleaftot, nvar, x_leaf, ramses_var, leaf_level)
   nOctSnap = get_nGridTot(repository,snapnum)
@@ -46,40 +56,20 @@ program CreateDomDump
   ! conversion des feuilles en proprietes voulues... -> construction du type gas
   call gas_from_ramses_leaves(repository,snapnum,nleaftot,nvar,ramses_var, gas_leaves)
 
-
-  ! decomposition en domaine (geometrie)
+  ! domain decomposition 
   meshroot = 'domain_'
-  ndomain = 2
   allocate(domain_list(ndomain))
   allocate(domain_file_list(ndomain),mesh_file_list(ndomain))
-  !call domain_constructor_from_scratch(liste_domaines(1),spherechar,xc=pos(1),yc=pos(2),zc=pos(3),r=rvir)
-  !pos = (/0.25,0.25,0.25/)
-  !call domain_constructor_from_scratch(liste_domaines(2),spherechar,xc=pos(1),yc=pos(2),zc=pos(3),r=rvir)
-  ! 2 shells with overlap
-  typechar ='shell'
-  pos = (/0.5,0.5,0.5/)
-  rin  = 0.00000
-  rout = 0.03000
-  call domain_constructor_from_scratch(domain_list(1),typechar,xc=pos(1),yc=pos(2),zc=pos(3),r_inbound=rin,r_outbound=rout)
-  rin  = 0.02000
-  rout = 0.30000
-  call domain_constructor_from_scratch(domain_list(2),typechar,xc=pos(1),yc=pos(2),zc=pos(3),r_inbound=rin,r_outbound=rout)
-  !do idomain = 1,ndomains
-  ! def. du domaine courant
-  !rin  = ...
-  !rout = ... 
-  !liste_domaines(idomain) = domain_constructor('shell',xc=0.5,yc=0.5,zc=0.5,rin=rin,rout=rout) 
-  !end do
-
-  ! write master info ... a formater... 
-  do i=1,ndomain
-     write(domain_file_list(i),'(a,i2.2,a)') trim(meshroot),i,'.dom'
-     write(mesh_file_list(i),'(a,i2.2,a)') trim(meshroot),i,'.mesh'
-!!!toto = 'domain_'//trim(char(i))//'.dat'
-     !!print *,toto
-     !!domain_file_list(i)=trim(toto)
-     print *,i,trim(domain_file_list(i)),' ',trim(mesh_file_list(i))
+  do i = 1, ndomain
+     call domain_constructor_from_scratch(domain_list(i),decomp_dom_type,xc=pos(1),yc=pos(2),zc=pos(3),r_inbound=rin(i),r_outbound=rout(i))
+     write(toto,'(i8)') i
+     write(toto,'(a)') adjustl(toto)  ! remove leading spaces
+     write(domain_file_list(i),'(a,a,a)') trim(meshroot),trim(toto),'.dom'
+     write(mesh_file_list(i),'(a,a,a)') trim(meshroot),trim(toto),'.mesh'
+     if (verbose) print *,i,trim(domain_file_list(i)),' ',trim(mesh_file_list(i))
   end do
+
+  ! write master info
   call domain_write_file(fichier,domaine_de_calcul)
   open(unit=10, file="MCLya_domain_params.dat")
   write(10,*) 'computational_domain_file = ',trim(fichier)
@@ -112,15 +102,17 @@ contains
     ! subroutine which reads parameters of current module in the parameter file pfile
     ! default parameter values are set at declaration (head of module)
     !
-    ! ALSO read parameter form used modules (gas_composition)
+    ! ALSO read parameter form used modules (mesh)
     ! ---------------------------------------------------------------------------------
 
     character(*),intent(in) :: pfile
     character(1000) :: line,name,value
     integer(kind=4) :: err,i
     logical         :: section_present
-
+    logical         :: ndomain_present 
+    
     section_present = .false.
+    ndomain_present = .false.
     open(unit=10,file=trim(pfile),status='old',form='formatted')
     ! search for section start
     do
@@ -149,13 +141,37 @@ contains
           case ('rvir')
              read(value,*) rvir
           case ('typechar')
-             read(value,*) typechar
+             write(typechar,'(a)') trim(value)
+          case ('verbose')
+             read(value,*) verbose
+          case ('fichier')
+             write(fichier,'(a)') trim(value)
+          case ('repository')
+             write(repository,'(a)') trim(value)
+          case ('snapnum')
+             read(value,*) snapnum
+          case('decomp_dom_type')
+             write(decomp_dom_type,'(a)') trim(value)
+          case ('ndomain')
+             ndomain_present = .true.
+             read(value,*) ndomain
+             allocate(rin(ndomain),rout(ndomain))
+          case ('rin')
+             read(value,*) rin(:)
+          case ('rout')
+             read(value,*) rout(:)
           end select
        end do
     end if
     close(10)
 
-    call read_gas_composition_params(pfile)
+    if (.not. ndomain_present) then ! assign default values
+       allocate(rin(ndomain),rout(ndomain))
+       rin(1)  = 0.0d0
+       rout(1) = min(rvir + 0.05d0, 0.5d0)
+    end if
+    
+    call read_mesh_params(pfile)
     
     return
 
@@ -170,19 +186,48 @@ contains
     ! ---------------------------------------------------------------------------------
 
     integer(kind=4),optional,intent(in) :: unit
+    character(100) :: fmt
 
     if (present(unit)) then 
        write(unit,'(a,a,a)')         '[CreateDomDump]'
-       write(unit,'(a,3(ES9.3,1x))') '  pos      : ',pos(1),pos(2),pos(3)
-       write(unit,'(a,ES9.3)')       '  rvir     : ',rvir
-       write(unit,'(a,a)')           '  typechar : ',trim(typechar)
-       call print_gas_composition_params(unit)
+       write(unit,'(a)')             '# input / output parameters'
+       write(unit,'(a,a)')           '  fichier         = ',trim(fichier)
+       write(unit,'(a,a)')           '  repository      = ',trim(repository)
+       write(unit,'(a,i5)')          '  snapnum         = ',snapnum
+       write(unit,'(a)')             '# computational domain parameters'
+       write(unit,'(a,a)')           '  typechar        = ',trim(typechar)
+       write(unit,'(a,3(ES9.3,1x))') '  pos             = ',pos(1),pos(2),pos(3)
+       write(unit,'(a,ES9.3)')       '  rvir            = ',rvir
+       write(unit,'(a)')             '# domain decomposition parameters'
+       write(unit,'(a,a)')           '  decomp_dom_type = ',trim(decomp_dom_type)
+       write(unit,'(a,i5)')          '  ndomain         = ',ndomain
+       write(fmt,'(a,i3,a)') '(a,',ndomain,'(ES9.3,1x))'
+       write(unit,fmt)               '  rin             = ',rin(:)
+       write(unit,fmt)               '  rout            = ',rout(:)
+       write(unit,'(a)')             '# miscelaneous parameters'
+       write(unit,'(a,L1)')          '  verbose         = ',verbose
+       write(unit,'(a)')             ' '
+       call print_mesh_params(unit)
     else
        write(*,'(a,a,a)')         '[CreateDomDump]'
-       write(*,'(a,3(ES9.3,1x))') '  pos      : ',pos(1),pos(2),pos(3)
-       write(*,'(a,ES9.3)')       '  rvir     : ',rvir
-       write(*,'(a,a)')           '  typechar : ',trim(typechar)
-       call print_gas_composition_params
+       write(*,'(a)')             '# input / output parameters'
+       write(*,'(a,a)')           '  fichier    = ',trim(fichier)
+       write(*,'(a,a)')           '  repository = ',trim(repository)
+       write(*,'(a,i5)')          '  snapnum    = ',snapnum
+       write(*,'(a)')             '# computational domain parameters'
+       write(*,'(a,a)')           '  typechar   = ',trim(typechar)
+       write(*,'(a,3(ES9.3,1x))') '  pos        = ',pos(1),pos(2),pos(3)
+       write(*,'(a,ES9.3)')       '  rvir       = ',rvir
+       write(*,'(a)')             '# domain decomposition parameters'
+       write(*,'(a,a)')           '  decomp_dom_type = ',trim(decomp_dom_type)
+       write(*,'(a,i5)')          '  ndomain         = ',ndomain
+       write(fmt,'(a,i3,a)') '(a,',ndomain,'(ES9.3,1x))'
+       write(*,fmt)               '  rin             = ',rin(:)
+       write(*,fmt)               '  rout            = ',rout(:)
+       write(*,'(a)')             '# miscelaneous parameters'
+       write(*,'(a,L1)')          '  verbose    = ',verbose
+       write(*,'(a)')             ' '       
+       call print_mesh_params
     end if
 
     return

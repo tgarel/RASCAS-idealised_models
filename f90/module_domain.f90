@@ -38,7 +38,7 @@ contains
   ! -------------
   subroutine domain_constructor_from_scratch(dom,type,xc,yc,zc,r,r_inbound,r_outbound)
     character(10),intent(in)         :: type
-    real(kind=8),intent(in),optional          :: xc,yc,zc
+    real(kind=8),intent(in),optional :: xc,yc,zc
     real(kind=8),intent(in),optional :: r                     ! parameters for sphere
     real(kind=8),intent(in),optional :: r_inbound,r_outbound  ! parameters for sphere
     type(domain),intent(out)         :: dom

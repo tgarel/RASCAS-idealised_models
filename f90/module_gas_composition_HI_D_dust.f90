@@ -31,16 +31,23 @@ module module_gas_composition
      real(kind=8) :: ndust     ! numerical density of dust particles [#/cm3]
   end type gas
 
+  ! --------------------------------------------------------------------------
   ! user-defined parameters - read from section [gas_composition] of the parameter file
+  ! --------------------------------------------------------------------------
+  ! mixture parameters 
   real(kind=8)             :: deut2H_nb_ratio     = 3.d-5  ! D to H number ratio. Default is primordial value 0.46 
   real(kind=8)             :: dust_to_metal_ratio = 0.3d0  ! ask Thibault ... 
   real(kind=8)             :: mH_over_mdust       = 5.d-8  ! ask Thibault ... 
+  ! possibility to overwrite ramses values with an ad-hoc model 
   logical                  :: gas_overwrite       = .false. ! if true, define cell values from following parameters 
   real(kind=8)             :: fix_nhi             = 0.0d0   ! ad-hoc HI density (H/cm3)
   real(kind=8)             :: fix_vth             = 0.0d0   ! ad-hoc thermal velocity (cm/s)
   real(kind=8)             :: fix_ndust           = 0.0d0   ! ad-hoc dust number density (/cm3)
   real(kind=8)             :: fix_vel             = 0.0d0   ! ad-hoc cell velocity (cm/s) -> NEED BETTER PARAMETERIZATION for more than static... 
-  
+  ! miscelaneous
+  logical                  :: verbose             = .false. ! display some run-time info on this module
+  ! --------------------------------------------------------------------------
+
   ! type gas needs to be public 
   public :: gas
   ! public functions:
@@ -68,7 +75,8 @@ contains
     if (gas_overwrite) then
        call overwrite_gas(g)
     else
-       ! compute velocities in cm / s 
+       ! compute velocities in cm / s
+       if (verbose) write(*,*) '-- module_gas_composition_HI_D_dust : extracting velocities form ramses '
        allocate(v(3,nleaf))
        call ramses_get_velocity_cgs(repository,snapnum,nleaf,nvar,ramses_var,v)
        do ileaf = 1,nleaf
@@ -76,6 +84,7 @@ contains
        end do
        deallocate(v)
        ! get nHI and temperature from ramses
+       if (verbose) write(*,*) '-- module_gas_composition_HI_D_dust : extracting nHI and T form ramses '
        allocate(T(nleaf),nhi(nleaf))
        call ramses_get_T_nhi_cgs(repository,snapnum,nleaf,nvar,ramses_var,T,nhi)
        g(:)%nHI = nhi(:)
@@ -84,6 +93,7 @@ contains
        g(:)%dopwidth = sqrt((2.0d0*kb/mp)*T) ! [ cm/s ]
        deallocate(T,nhi)
        ! get ndust (Use Verhamme 2012, Eq. 3.)
+       if (verbose) write(*,*) '-- module_gas_composition_HI_D_dust : extracting ndust form ramses '
        allocate(metallicity(nleaf))
        call ramses_get_metallicity(repository,snapnum,nleaf,nvar,ramses_var,metallicity)
        g(:)%ndust = (dust_to_metal_ratio * mH_over_mdust / XH) * metallicity * g(:)%nHI     !! JB: To test ... 
@@ -301,6 +311,8 @@ contains
              read(value,*) fix_ndust
           case ('fix_vel')
              read(value,*) fix_vel
+          case ('verbose')
+             read(value,*) verbose
           end select
        end do
     end if
@@ -327,29 +339,43 @@ contains
 
     if (present(unit)) then 
        write(unit,'(a,a,a)') '[gas_composition]'
-       write(unit,'(a,ES9.3)') '  deut2H_nb_ratio     : ',deut2H_nb_ratio
-       write(unit,'(a,ES9.3)') '  dust_to_metal_ratio : ',dust_to_metal_ratio
-       write(unit,'(a,ES9.3)') '  mH_over_mdust       : ',mH_over_mdust
-       write(unit,'(a,L1)')    '  gas_overwrite       : ',gas_overwrite
-       write(unit,'(a,ES9.3)') '  fix_nhi             : ',fix_nhi
-       write(unit,'(a,ES9.3)') '  fix_vth             : ',fix_vth
-       write(unit,'(a,ES9.3)') '  fix_ndust           : ',fix_ndust
-       write(unit,'(a,ES9.3)') '  fix_vel             : ',fix_vel
+       write(unit,'(a)')       '# mixture parameters'
+       write(unit,'(a,ES9.3)') '  deut2H_nb_ratio     = ',deut2H_nb_ratio
+       write(unit,'(a,ES9.3)') '  dust_to_metal_ratio = ',dust_to_metal_ratio
+       write(unit,'(a,ES9.3)') '  mH_over_mdust       = ',mH_over_mdust
+       write(unit,'(a)')       '# overwrite parameters'
+       write(unit,'(a,L1)')    '  gas_overwrite       = ',gas_overwrite
+       write(unit,'(a,ES9.3)') '  fix_nhi             = ',fix_nhi
+       write(unit,'(a,ES9.3)') '  fix_vth             = ',fix_vth
+       write(unit,'(a,ES9.3)') '  fix_ndust           = ',fix_ndust
+       write(unit,'(a,ES9.3)') '  fix_vel             = ',fix_vel
+       write(unit,'(a)')       '# miscelaneous parameters'
+       write(unit,'(a,L1)')    '  verbose             = ',verbose
+       write(unit,'(a)')             ' '
        call print_HI_params(unit)
+       write(unit,'(a)')             ' '
        call print_D_params(unit)
+       write(unit,'(a)')             ' '
        call print_dust_params(unit)
     else
        write(*,'(a,a,a)') '[gas_composition]'
-       write(*,'(a,ES9.3)') '  deut2H_nb_ratio     : ',deut2H_nb_ratio
-       write(*,'(a,ES9.3)') '  dust_to_metal_ratio : ',dust_to_metal_ratio
-       write(*,'(a,ES9.3)') '  mH_over_mdust       : ',mH_over_mdust
-       write(*,'(a,L1)')    '  gas_overwrite       : ',gas_overwrite
-       write(*,'(a,ES9.3)') '  fix_nhi             : ',fix_nhi
-       write(*,'(a,ES9.3)') '  fix_vth             : ',fix_vth
-       write(*,'(a,ES9.3)') '  fix_ndust           : ',fix_ndust
-       write(*,'(a,ES9.3)') '  fix_vel             : ',fix_vel
+       write(*,'(a)')       '# mixture parameters'
+       write(*,'(a,ES9.3)') '  deut2H_nb_ratio     = ',deut2H_nb_ratio
+       write(*,'(a,ES9.3)') '  dust_to_metal_ratio = ',dust_to_metal_ratio
+       write(*,'(a,ES9.3)') '  mH_over_mdust       = ',mH_over_mdust
+       write(*,'(a)')       '# overwrite parameters'
+       write(*,'(a,L1)')    '  gas_overwrite       = ',gas_overwrite
+       write(*,'(a,ES9.3)') '  fix_nhi             = ',fix_nhi
+       write(*,'(a,ES9.3)') '  fix_vth             = ',fix_vth
+       write(*,'(a,ES9.3)') '  fix_ndust           = ',fix_ndust
+       write(*,'(a,ES9.3)') '  fix_vel             = ',fix_vel
+       write(*,'(a)')       '# miscelaneous parameters'
+       write(*,'(a,L1)')    '  verbose             = ',verbose
+       write(*,'(a)')             ' '
        call print_HI_params
+       write(*,'(a)')             ' '
        call print_D_params
+       write(*,'(a)')             ' '
        call print_dust_params
     end if
 

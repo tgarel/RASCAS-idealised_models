@@ -16,21 +16,6 @@ module module_params
   character(2000)                          :: file_compute_dom,root_domain_file
   character(2000),dimension(:),allocatable :: domain_file_list, mesh_file_list 
 
-  ! Special purpose parameters - Idealized cases
-  logical                                  :: overwritegas
-  real(kind=8)                             :: temp_fix, tau0_fix
-  real(kind=8)                             :: nhi_new, vth_new
-
-  ! Atomic physics
-  logical                                  :: recoil ! if true, compute recoil effect for scatterings on H and D... 
-
-  ! Deuterium parameters 
-  real(kind=8)                             :: deut2H_nb_ratio ! nb ratio of Deuterium to Hydrogen atoms 
-
-  ! Dust parameters for the model of Verhamme+2012 
-  real(kind=8)                             :: dust_to_metal_ratio ! mass ratio of dust to metals (= 0.3, Inoue 2003)
-  real(kind=8)                             :: mH_over_mdust       ! mH / mdust (= 5e-8, Draine & Lee 1984)
-
   
 contains
 
@@ -51,13 +36,6 @@ contains
     root_domain_file    = 'domain_'
     file_ICs            = 'ICs_photons_n1e6.dat'
     fileout             = 'photons_done.dat'
-    overwritegas        = .true.
-    temp_fix            = 1.d4
-    tau0_fix            = 1.d5
-    recoil              = .true.
-    deut2H_nb_ratio     = 3.d-5
-    dust_to_metal_ratio = 0.3d0
-    mH_over_mdust       = 5e-8
     
     ! Read namelist filename from command line argument
     narg = command_argument_count()
@@ -103,20 +81,6 @@ contains
           file_ICs=trim(value)   
        case ('fileout')
           fileout=trim(value)
-       case ('overwritegas')
-          read(value,*) overwritegas
-       case ('temp_fix')
-          read(value,*) temp_fix
-       case ('tau0_fix')
-          read(value,*) tau0_fix
-       case ('recoil')
-          read(value,*) recoil
-       case ('deut2H_nb_ratio')
-          read(value,*) deut2H_nb_ratio
-       case ('dust_to_metal_ratio')
-          read(value,*) dust_to_metal_ratio
-       case ('mH_over_mdust')
-          read(value,*) mH_over_mdust
        end select
     end do
     close(10)
@@ -160,16 +124,6 @@ contains
     enddo
     write(*,'(a,a)')     '         IC source file : ',trim(file_ICs)
     write(*,'(a,a)')     '           Results file : ',trim(fileout)
-
-    write(*,'(a,L1)')    '    overwrite gas props : ',overwritegas
-    write(*,'(a,ES9.3)') '        temperature fix : ',temp_fix
-    write(*,'(a,ES9.3)') '               tau0 fix : ',tau0_fix
-
-    write(*,'(a,L1)')    '                 recoil : ',recoil
-    
-    write(*,'(a,ES9.3)') '        deut2H_nb_ratio : ',deut2H_nb_ratio
-    write(*,'(a,ES9.3)') '    dust_to_metal_ratio : ',dust_to_metal_ratio
-    write(*,'(a,ES9.3)') '          mH_over_mdust : ',mH_over_mdust
 
   end subroutine print_params
 

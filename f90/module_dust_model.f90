@@ -160,14 +160,14 @@ contains
 
     if (present(unit)) then 
        write(unit,'(a,a,a)') '[dust]'
-       write(unit,'(a,ES9.3)') '  albedo       : ',albedo
-       write(unit,'(a,ES9.3)') '  g_dust       : ',g_dust
-       write(unit,'(a,ES9.3)') '  grain_radius : ',grain_radius
+       write(unit,'(a,ES9.3)') '  albedo       = ',albedo
+       write(unit,'(a,ES9.3)') '  g_dust       = ',g_dust
+       write(unit,'(a,ES9.3)') '  grain_radius = ',grain_radius
     else
        write(*,'(a,a,a)') '[dust]'
-       write(*,'(a,ES9.3)') '  albedo       : ',albedo
-       write(*,'(a,ES9.3)') '  g_dust       : ',g_dust
-       write(*,'(a,ES9.3)') '  grain_radius : ',grain_radius
+       write(*,'(a,ES9.3)') '  albedo       = ',albedo
+       write(*,'(a,ES9.3)') '  g_dust       = ',g_dust
+       write(*,'(a,ES9.3)') '  grain_radius = ',grain_radius
     end if
 
     return
