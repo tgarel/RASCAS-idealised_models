@@ -16,7 +16,7 @@ program main
   type(domain)                                  :: compute_dom
   integer                                       :: nphot
   real(kind=8)                                  :: tau_sphere, R_cm, density,sigma_0, temp, start, tmptime, finish
-
+  
 
   call cpu_time(start)
 
@@ -62,30 +62,30 @@ program main
   ! Pour les tests de la sphere uniquement 
   box_size_cm = 1.d18
   R_cm        = 0.4d0 * box_size_cm
-  sigma_0     = 5.88d-14 * (temp_fix/1.d4)**(-0.5) !cm^2 from Dijkstra14
-  nhi_new     = tau0_fix/sigma_0/R_cm
-  vth_new     = 12.9d0*sqrt(temp_fix/1.d4)*1.d5
+!  sigma_0     = 5.88d-14 * (temp_fix/1.d4)**(-0.5) !cm^2 from Dijkstra14
+!  nhi_new     = tau0_fix/sigma_0/R_cm
+!  vth_new     = 12.9d0*sqrt(temp_fix/1.d4)*1.d5
 
-  if(verbose)then
-     print *,'--> box size in cm ',R_cm,box_size_cm,box_size_cm/mpc*1.e6
-     print *,'--> tau =',tau0_fix
-     print *,'--> density =',nhi_new
-     print*,'--> precision stuff',precision(density),digits(density),epsilon(density)
-  endif
+!!$  if(verbose)then
+!!$     print *,'--> box size in cm ',R_cm,box_size_cm,box_size_cm/mpc*1.e6
+!!$     print *,'--> tau =',tau0_fix
+!!$     print *,'--> density =',nhi_new
+!!$     print*,'--> precision stuff',precision(density),digits(density),epsilon(density)
+!!$  endif
 
-  ! for idealized experiments
-  if(overwritegas)then
-     print*,'--> overwrite gas with nHI =',nhi_new
-     print*,'--> overwrite gas with vth =',vth_new
-     call overwrite_mesh(meshdom,nhi_new,vth_new)
-  endif
+!!$  ! for idealized experiments
+!!$  if(overwritegas)then
+!!$     print*,'--> overwrite gas with nHI =',nhi_new
+!!$     print*,'--> overwrite gas with vth =',vth_new
+!!$     call overwrite_mesh(meshdom)
+!!$  endif
 
 
   ! load uparallel table
-#ifndef SWITCH_OFF_UPARALLEL
-  print*,'--> loading uparallel tables...'
-  call init_uparallel_tables
-#endif
+!!$#ifndef SWITCH_OFF_UPARALLEL
+!!$  print*,'--> loading uparallel tables...'
+!!$  call init_uparallel_tables
+!!$#endif
 
   call cpu_time(tmptime)
   print '(" --> Time = ",f12.3," seconds.")',tmptime-start

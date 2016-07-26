@@ -46,11 +46,11 @@ contains
        ! if necessary read domain data
        if(jdomain/=mydom)then
 
-          call mesh_from_file(mesh_file_list(jdomain),meshdom)
+          call mesh_from_file(mesh_file_list(jdomain),meshdom) ! -> overwrites gas props if parameters are set to. 
           mydom=jdomain
-          if(overwritegas)then
-             call overwrite_mesh(meshdom,nhi_new,vth_new)
-          endif
+!!$          if(overwritegas)then
+!!$             call overwrite_mesh(meshdom,nhi_new,vth_new)
+!!$          endif
 
           if (rank==1 .and. verbose)then
              print*,'[worker 1] read mesh domain in file: ',trim(mesh_file_list(jdomain))

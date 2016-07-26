@@ -40,11 +40,11 @@ module module_gas_composition
   real(kind=8)             :: fix_vth             = 0.0d0   ! ad-hoc thermal velocity (cm/s)
   real(kind=8)             :: fix_ndust           = 0.0d0   ! ad-hoc dust number density (/cm3)
   real(kind=8)             :: fix_vel             = 0.0d0   ! ad-hoc cell velocity (cm/s) -> NEED BETTER PARAMETERIZATION for more than static... 
-
+  
   ! type gas needs to be public 
   public :: gas
   ! public functions:
-  public :: gas_from_ramses_leaves,overwrite_gas,get_gas_velocity,gas_get_scatter_flag,gas_scatter,dump_gas
+  public :: gas_from_ramses_leaves,get_gas_velocity,gas_get_scatter_flag,gas_scatter,dump_gas
   public :: read_gas,gas_destructor,read_gas_composition_params,print_gas_composition_params
   
 contains
@@ -214,29 +214,28 @@ contains
     type(gas),dimension(:),intent(in) :: g
     integer,intent(in)                :: unit
     integer                           :: i,nleaf
-
     nleaf = size(g)
     write(unit) (g(i)%v(:), i=1,nleaf)
     write(unit) (g(i)%nHI, i=1,nleaf)
     write(unit) (g(i)%dopwidth, i=1,nleaf)
     write(unit) (g(i)%ndust, i=1,nleaf)
-
   end subroutine dump_gas
 
 
 
   subroutine read_gas(unit,n,g)
-
     integer,intent(in)                             :: unit,n
     type(gas),dimension(:),allocatable,intent(out) :: g
     integer                                        :: i
-    
     allocate(g(1:n))
-    read(unit) (g(i)%v(:),i=1,n)
-    read(unit) (g(i)%nHI,i=1,n)
-    read(unit) (g(i)%dopwidth,i=1,n)
-    read(unit) (g(i)%ndust,i=1,n)
-
+    if (gas_overwrite) then
+       call overwrite_gas(g)
+    else
+       read(unit) (g(i)%v(:),i=1,n)
+       read(unit) (g(i)%nHI,i=1,n)
+       read(unit) (g(i)%dopwidth,i=1,n)
+       read(unit) (g(i)%ndust,i=1,n)
+    end if
   end subroutine read_gas
 
 

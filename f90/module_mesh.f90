@@ -42,7 +42,7 @@ module module_mesh
   
 
   public :: mesh_from_leaves, mesh_from_file, mesh_destructor, dump_mesh, whereisphotongoing, digincell, &
-       in_cell_finder, get_cell_corner, overwrite_mesh
+       in_cell_finder, get_cell_corner !! , overwrite_mesh
   private :: add_oct_domain, make_nbor_array, xcson, get_nleaflocal, get_ileaflocal, icell2icell
 
 
@@ -265,13 +265,13 @@ module module_mesh
 
 
 
-    subroutine overwrite_mesh(m)
-
-      type(mesh),intent(inout)  :: m
-
-      call overwrite_gas(m%gas)
-
-    end subroutine overwrite_mesh
+!!$    subroutine overwrite_mesh(m)
+!!$
+!!$      type(mesh),intent(inout)  :: m
+!!$
+!!$      call overwrite_gas(m%gas)
+!!$
+!!$    end subroutine overwrite_mesh
 
 
     !===============================================================================================
