@@ -3,13 +3,10 @@ program main
   use module_parallel_mpi
   use module_master
   use module_worker
-!!$  use module_params
 
   implicit none
 
-  real(kind=8) :: start,finish,intermed
-!!$  real(kind=8) :: tau_sphere, R_cm, density, sigma_0, temperature
-
+  real(kind=8) :: start,finish
   character(2000) :: parameter_file, line, file_compute_dom
   character(2000),allocatable,dimension(:) :: mesh_file_list, domain_file_list
   integer(kind=4) :: narg, i, j, ndomain
@@ -49,8 +46,6 @@ program main
      stop
   end if
   call get_command_argument(1, parameter_file)
-!!$  call read_params
-!!$  if(rank==1) call print_params
   call read_mclya_params(parameter_file)
   if(rank==0) call print_mclya_params
   ! ------------------------------------------------------------------------------------------  
@@ -172,7 +167,8 @@ contains
     PhotonICFile = trim(DataDir)//trim(PhotonICFile)
     DomDumpFile  = trim(DataDir)//trim(DomDumpFile)
     
-    call read_mesh_params(pfile)
+    call read_master_params(pfile)
+    call read_worker_params(pfile)
     
     return
 

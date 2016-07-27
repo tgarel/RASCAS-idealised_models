@@ -17,17 +17,17 @@ program CreateDomDump
   real(kind=8),dimension(:,:),allocatable  :: ramses_var
   integer,dimension(:),allocatable         :: leaf_level, leaflevel_sel, ind_sel
 
-  integer :: noctsnap,nleaftot,nvar,nleaf_sel,i
-  character(2000) :: toto,meshroot
+  integer :: noctsnap,nleaftot,nvar,nleaf_sel,i, narg
+  character(2000) :: toto,meshroot,parameter_file,fichier, fichier2
   character(2000),dimension(:),allocatable :: domain_file_list, mesh_file_list
 
   ! --------------------------------------------------------------------------
   ! user-defined parameters - read from section [CreateDomDump] of the parameter file
   ! --------------------------------------------------------------------------
   ! --- input / outputs
-  character(2000)           :: fichier = 'compute_domain.dom'  ! file to which computational domain will be written.
-  character(2000)           :: repository = './'               ! ramses run directory (where all output_xxxxx dirs are).
-  integer(kind=4)           :: snapnum = 1                     ! ramses output number to use
+  character(2000)           :: DataDir = 'test/'      ! directory to which outputs will be written
+  character(2000)           :: repository = './'      ! ramses run directory (where all output_xxxxx dirs are).
+  integer(kind=4)           :: snapnum = 1            ! ramses output number to use
   ! --- computational domain  
   character(10)             :: typechar = 'sphere'    ! shape type of domain  // only sphere allowed now. 
   real(kind=8),dimension(3) :: pos = (/0.5,0.5,0.5/)  ! center of domain [code units]
@@ -41,9 +41,21 @@ program CreateDomDump
   logical                   :: verbose = .false.
   ! --------------------------------------------------------------------------
 
-  ! read user-defined parameters 
-  call read_CreateDomDump_params('parameters.dat')
+
+  
+  ! -------------------- read parameters --------------------
+  narg = command_argument_count()
+  if(narg .lt. 1)then
+     write(*,*)'You should type: serial params.dat'
+     write(*,*)'File params.dat should contain a parameter namelist'
+     stop
+  end if
+  call get_command_argument(1, parameter_file)
+  call read_CreateDomDump_params(parameter_file)
   if (verbose) call print_CreateDomDump_params
+  ! ------------------------------------------------------------
+
+  ! read user-defined parameters 
   
   ! Define a spherical computational domain. This domain describes the volume in which photons fly.
   call domain_constructor_from_scratch(domaine_de_calcul,typechar,xc=pos(1),yc=pos(2),zc=pos(3),r=rvir) 
@@ -70,14 +82,17 @@ program CreateDomDump
   end do
 
   ! write master info
-  call domain_write_file(fichier,domaine_de_calcul)
-  open(unit=10, file="MCLya_domain_params.dat")
+  fichier = "compute_domain.dom"
+  call domain_write_file(trim(datadir)//trim(fichier),domaine_de_calcul)
+  fichier2 = "MCLya_domain_params.dat"
+  open(unit=10, file=trim(datadir)//trim(fichier2))
   write(10,*) 'computational_domain_file = ',trim(fichier)
   write(10,*) 'Ndomain = ',ndomain
   do i=1,ndomain
      write(10,*) 'domain_file = ',trim(domain_file_list(i))
      write(10,*) 'mesh_file   = ',trim(mesh_file_list(i))
-     call domain_write_file(domain_file_list(i),domain_list(i))
+     fichier = trim(datadir)//trim(domain_file_list(i))
+     call domain_write_file(fichier,domain_list(i))
   end do
   close(10)
 
@@ -90,7 +105,8 @@ program CreateDomDump
      nleaf_sel = size(ind_sel)
      call mesh_from_leaves(nOctSnap,domain_list(i),nleaf_sel, &
           selected_leaves,xleaf_sel,leaflevel_sel,domain_mesh)
-     call dump_mesh(domain_mesh, mesh_file_list(i))
+     fichier = trim(datadir)//trim(mesh_file_list(i))
+     call dump_mesh(domain_mesh, fichier)
      call mesh_destructor(domain_mesh)
   enddo
 
@@ -145,8 +161,8 @@ contains
              write(typechar,'(a)') trim(value)
           case ('verbose')
              read(value,*) verbose
-          case ('fichier')
-             write(fichier,'(a)') trim(value)
+          case ('DataDir')
+             write(DataDir,'(a)') trim(value)
           case ('repository')
              write(repository,'(a)') trim(value)
           case ('snapnum')
@@ -171,6 +187,9 @@ contains
        rin(1)  = 0.0d0
        rout(1) = min(rvir + 0.05d0, 0.5d0)
     end if
+
+    ! make sure DataDir ends with a /
+    DataDir = trim(datadir)//"/"
     
     call read_mesh_params(pfile)
     
@@ -192,7 +211,7 @@ contains
     if (present(unit)) then 
        write(unit,'(a,a,a)')         '[CreateDomDump]'
        write(unit,'(a)')             '# input / output parameters'
-       write(unit,'(a,a)')           '  fichier         = ',trim(fichier)
+       write(unit,'(a,a)')           '  DataDir         = ',trim(DataDir)
        write(unit,'(a,a)')           '  repository      = ',trim(repository)
        write(unit,'(a,i5)')          '  snapnum         = ',snapnum
        write(unit,'(a)')             '# computational domain parameters'
@@ -212,7 +231,7 @@ contains
     else
        write(*,'(a,a,a)')         '[CreateDomDump]'
        write(*,'(a)')             '# input / output parameters'
-       write(*,'(a,a)')           '  fichier    = ',trim(fichier)
+       write(*,'(a,a)')           '  DataDir    = ',trim(DataDir)
        write(*,'(a,a)')           '  repository = ',trim(repository)
        write(*,'(a,i5)')          '  snapnum    = ',snapnum
        write(*,'(a)')             '# computational domain parameters'

@@ -142,7 +142,7 @@ contains
 
        idcpu = status(MPI_SOURCE)
 
-       !print *,'[master] received from worker...',nbuffer
+       if (verbose) print *,'[master] received from worker...',nbuffer
        !print *,MPI_ANY_SOURCE,status
        !print *,idcpu
 
@@ -511,6 +511,8 @@ contains
        end do
     end if
     close(10)
+
+    call read_mesh_params(pfile)
 
     return
 

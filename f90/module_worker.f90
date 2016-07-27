@@ -29,7 +29,7 @@ contains
     integer(kind=4),intent(in)                    :: nbuffer
     
     integer                                       :: jdomain, mydom
-    logical                                       :: mpi_ok, newdomain
+    logical                                       :: mpi_ok
     type(photon_current),dimension(nbuffer)       :: photpacket
     type(mesh)                                    :: meshdom
     type(domain)                                  :: compute_dom
@@ -61,42 +61,31 @@ contains
        ! if necessary read domain data
        if(jdomain/=mydom)then
 
+          if(verbose) write(*,'(a,i4.4,a)') '[w',rank,'] : loading new domain'
+
           call mesh_from_file(mesh_file_list(jdomain),meshdom) ! -> overwrites gas props if parameters are set to. 
           mydom=jdomain
-!!$          if(overwritegas)then
-!!$             call overwrite_mesh(meshdom,nhi_new,vth_new)
-!!$          endif
 
-!!$          if (rank==1 .and. verbose)then
-!!$             print*,'[worker 1] read mesh domain in file: ',trim(mesh_file_list(jdomain))
-!!$             if(overwritegas)then
-!!$                print*,'  & overwrite gas with nHI =',nhi_new
-!!$                print*,'  & overwrite gas with vth =',vth_new
-!!$             endif
-!!$          endif
-
+          if(verbose) write(*,'(a,i4.4,a)') '[w',rank,'] : done loading new domain'
+          
        endif
 
        ! receive my list of photons to propagate
        call MPI_RECV(photpacket(1)%id, nbuffer, MPI_TYPE_PHOTON, 0, MPI_ANY_TAG, MPI_COMM_WORLD, status, IERROR)
 
-       !if(verbose)then
-       !   print*,'[worker] my rank',rank
-       !   print*,'[worker] just receive a photpacket and start processing it...'
-       !endif
+       if(verbose) write(*,'(a,i4.4,a)') '[w',rank,'] : just receive a photpacket and start processing it...' 
 
        ! do the RT stuff
        call MCRT(nbuffer,photpacket,meshdom,compute_dom)
        ! this is a single loop over photons
        ! but with all the RT stuff <= plugin with McLya
        !...
-
-       !print*,'[worker] finish packet of photons, sending back to master...',nbuffer,code
+       if(verbose) write(*,'(a,i4.4,a)') '[w',rank,'] : finish packet of photons, sending back to master ' 
 
        ! send my results
        call MPI_SEND(nbuffer, 1, MPI_INTEGER, 0, tag , MPI_COMM_WORLD, code)
 
-       !print*,'[worker] finish packet of photons, sending back to master...',photpacket(1)%id,code
+       !if (verbose) print*,'[worker] finish packet of photons, sending back to master...',rank,photpacket(1)%id!,code
 
        call MPI_SEND(photpacket(1)%id, nbuffer, MPI_TYPE_PHOTON, 0, tag , MPI_COMM_WORLD, code)
 
@@ -104,7 +93,7 @@ contains
 
     enddo
 
-    if(verbose) print *,'[worker] number',rank,' exit of loop...'
+    if(verbose) write(*,'(a,i4.4,a)') '[w',rank,'] : exit of loop...'
 
   end subroutine worker
 

@@ -1,10 +1,10 @@
 #############################################################################
 # Fortran compiler options and directives
 
-#SYSTYPE="CCF"
+SYSTYPE="CCF"
 #SYSTYPE="lyocral"
 #SYSTYPE="mac"
-SYSTYPE="Pmac"
+#SYSTYPE="Pmac"
 
 
 OPTIONS = -cpp
@@ -25,9 +25,9 @@ endif
 
 ifeq ($(SYSTYPE),"CCF")
 F90         = ifort
-##FFLAGS      = -g -fpp -check all -debug -warn all -ftrapuv
+FFLAGS      = -g -fpp -check all -debug -warn all -ftrapuv -traceback
 ##FFLAGS      = -O3 -fpp -ftz  -xavx -sox -ipo -fno-alias -fno-fnalias -no-prec-div -no-prec-sqrt -align all
-FFLAGS      = -O3 -fpp -ftz  -xavx -ipo -fno-alias -fno-fnalias -no-prec-div -no-prec-sqrt -align all
+#FFLAGS      = -O3 -fpp -ftz  -xavx -ipo -fno-alias -fno-fnalias -no-prec-div -no-prec-sqrt -align all
 ##FFLAGS      = -p -g
 FFLAGS += $(OPTIONS)
 LDFLAGS     =  -lmpi
@@ -55,7 +55,7 @@ endif
 #############################################################################
 # All objects
 
-COMPOBJS = module_dust_model.o module_D_model.o module_HI_model.o module_gas_composition_HI_dust.o
+COMPOBJS = module_dust_model.o module_D_model.o module_HI_model.o module_gas_composition_HI_D_dust.o
 #COMPOBJS = module_HI_model.o module_gas_composition_HI_homogeneous.o
 #COMPOBJS = module_gas_ramses.o
 
