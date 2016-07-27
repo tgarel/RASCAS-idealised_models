@@ -4,20 +4,35 @@ module module_worker
   use module_domain
   use module_photon
   use module_mesh
-  use module_params
+!!$  use module_params
   !!!use module_uparallel
 
+  private 
+
+  ! --------------------------------------------------------------------------
+  ! user-defined parameters - read from section [worker] of the parameter file
+  ! --------------------------------------------------------------------------
+  logical                   :: verbose = .false.
+  ! --------------------------------------------------------------------------
+
+  public :: worker, read_worker_params, print_worker_params
+  
 contains
 
-  subroutine worker
+  subroutine worker(file_compute_dom, ndomain, mesh_file_list, nbuffer)
 
     implicit none
     
-    integer                                 :: jdomain, mydom
-    logical                                 :: mpi_ok, newdomain
-    type(photon_current),dimension(nbuffer) :: photpacket
-    type(mesh)                              :: meshdom
-    type(domain)                            :: compute_dom
+    character(2000),intent(in)                    :: file_compute_dom
+    integer(kind=4),intent(in)                    :: ndomain
+    character(2000),dimension(ndomain),intent(in) :: mesh_file_list
+    integer(kind=4),intent(in)                    :: nbuffer
+    
+    integer                                       :: jdomain, mydom
+    logical                                       :: mpi_ok, newdomain
+    type(photon_current),dimension(nbuffer)       :: photpacket
+    type(mesh)                                    :: meshdom
+    type(domain)                                  :: compute_dom
 
     ! Question: est-ce qu'il faut d'abord initialiser quelque chose, un premier paquet de photos?
 
@@ -52,13 +67,13 @@ contains
 !!$             call overwrite_mesh(meshdom,nhi_new,vth_new)
 !!$          endif
 
-          if (rank==1 .and. verbose)then
-             print*,'[worker 1] read mesh domain in file: ',trim(mesh_file_list(jdomain))
-             if(overwritegas)then
-                print*,'  & overwrite gas with nHI =',nhi_new
-                print*,'  & overwrite gas with vth =',vth_new
-             endif
-          endif
+!!$          if (rank==1 .and. verbose)then
+!!$             print*,'[worker 1] read mesh domain in file: ',trim(mesh_file_list(jdomain))
+!!$             if(overwritegas)then
+!!$                print*,'  & overwrite gas with nHI =',nhi_new
+!!$                print*,'  & overwrite gas with vth =',vth_new
+!!$             endif
+!!$          endif
 
        endif
 
@@ -93,4 +108,80 @@ contains
 
   end subroutine worker
 
+
+  
+  subroutine read_worker_params(pfile)
+
+    ! ---------------------------------------------------------------------------------
+    ! subroutine which reads parameters of current module in the parameter file pfile
+    ! default parameter values are set at declaration (head of module)
+    !
+    ! NB: does not call read_params of depdencies (master module does that). 
+    ! ---------------------------------------------------------------------------------
+
+    character(*),intent(in) :: pfile
+    character(1000) :: line,name,value
+    integer(kind=4) :: err,i
+    logical         :: section_present
+    
+    section_present = .false.
+    open(unit=10,file=trim(pfile),status='old',form='formatted')
+    ! search for section start
+    do
+       read (10,'(a)',iostat=err) line
+       if(err/=0) exit
+       if (line(1:8) == '[worker]') then
+          section_present = .true.
+          exit
+       end if
+    end do
+    ! read section if present
+    if (section_present) then 
+       do
+          read (10,'(a)',iostat=err) line
+          if(err/=0) exit
+          if (line(1:1) == '[') exit ! next section starting... -> leave
+          i = scan(line,'=')
+          if (i==0 .or. line(1:1)=='#' .or. line(1:1)=='!') cycle  ! skip blank or commented lines
+          name=trim(adjustl(line(:i-1)))
+          value=trim(adjustl(line(i+1:)))
+          i = scan(value,'!')
+          if (i /= 0) value = trim(adjustl(value(:i-1)))
+          select case (trim(name))
+          case ('verbose')
+             read(value,*) verbose
+          end select
+       end do
+    end if
+    close(10)
+
+    return
+
+  end subroutine read_worker_params
+
+
+  
+  subroutine print_worker_params(unit)
+
+    ! ---------------------------------------------------------------------------------
+    ! write parameter values to std output or to an open file if argument unit is
+    ! present.
+    ! ---------------------------------------------------------------------------------
+
+    integer(kind=4),optional,intent(in) :: unit
+
+    if (present(unit)) then 
+       write(unit,'(a)')             '[worker]'
+       write(unit,'(a,L1)')          '  verbose        = ',verbose
+       write(unit,'(a)')             ' '
+    else
+       write(*,'(a)')             '[worker]'
+       write(*,'(a,L1)')          '  verbose        = ',verbose
+       write(*,'(a)')             ' '       
+    end if
+
+    return
+
+  end subroutine print_worker_params
+  
 end module module_worker

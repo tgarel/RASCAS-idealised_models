@@ -3,8 +3,8 @@
 
 #SYSTYPE="CCF"
 #SYSTYPE="lyocral"
-SYSTYPE="mac"
-#SYSTYPE="Pmac"
+#SYSTYPE="mac"
+SYSTYPE="Pmac"
 
 
 OPTIONS = -cpp
@@ -44,9 +44,9 @@ endif
 
 
 ifeq ($(SYSTYPE),"Pmac")
-F90         = mpif90-openmpi-mp
-###FFLAGS      = -g -fcheck=all -ffree-line-length-none -ffree-form -ftrapv -fbounds-check -fbacktrace
-FFLAGS      = -O3
+F90         = mpif90-openmpi-gcc48  # mpif90-openmpi-mp
+FFLAGS      = -g -fcheck=all -ffree-line-length-none -ffree-form -ftrapv -fbounds-check -fbacktrace
+#FFLAGS      = -O3
 FFLAGS += $(OPTIONS)
 LDFLAGS     = #-lmpi
 endif
@@ -55,7 +55,7 @@ endif
 #############################################################################
 # All objects
 
-COMPOBJS = module_dust_model.o module_D_model.o module_HI_model.o module_gas_composition_HI_D_dust.o 
+COMPOBJS = module_dust_model.o module_D_model.o module_HI_model.o module_gas_composition_HI_dust.o
 #COMPOBJS = module_HI_model.o module_gas_composition_HI_homogeneous.o
 #COMPOBJS = module_gas_ramses.o
 
@@ -81,7 +81,7 @@ OBJSMPI = $(OBJSMC) module_parallel_mpi.o module_worker.o module_master.o MCLya.
 	$(F90) $(FFLAGS) -c $^ -o $@
 
 #############################################################################
-all: clean CreateDomDump PhotonsMonoPointSource serial
+all: clean CreateDomDump PhotonsMonoPointSource serial MCLya
 
 PhotonsMonoPointSource: $(OBJSMC) PhotonsMonoPointSource.o
 	$(F90) $(FFLAGS) $(LDFLAGS) -o $@ $(OBJSMC) PhotonsMonoPointSource.o

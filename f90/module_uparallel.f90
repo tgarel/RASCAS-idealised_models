@@ -251,6 +251,11 @@ contains
     real(kind=8)            :: la,ccc,lc
     real(kind=8)            :: dc1,dc2
 
+#ifdef SWITCH_OFF_UPARALLEL
+    get_uparallel = 0.0d0
+    return
+#endif
+    
     ! initialise on first call
     if (.not. tables_initialized) then
        print*,'initialising u_parallel tables'

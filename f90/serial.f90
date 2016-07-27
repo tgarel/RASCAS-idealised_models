@@ -21,7 +21,7 @@ program main
   integer(kind=4) :: narg, i, j, ndomain
   
   ! --------------------------------------------------------------------------
-  ! user-defined parameters - read from section [CreateDomDump] of the parameter file
+  ! user-defined parameters - read from section [serial] of the parameter file
   ! --------------------------------------------------------------------------
   ! --- inputs 
   character(2000)           :: DataDir      = 'test/'                   ! where input files below are 
@@ -164,10 +164,8 @@ contains
     character(1000) :: line,name,value
     integer(kind=4) :: err,i
     logical         :: section_present
-    logical         :: ndomain_present 
     
     section_present = .false.
-    ndomain_present = .false.
     open(unit=10,file=trim(pfile),status='old',form='formatted')
     ! search for section start
     do
