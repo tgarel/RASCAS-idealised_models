@@ -25,9 +25,9 @@ endif
 
 ifeq ($(SYSTYPE),"CCF")
 F90         = ifort
-FFLAGS      = -g -fpp -check all -debug -warn all -ftrapuv -traceback
+#FFLAGS      = -g -fpp -check all -debug -warn all -ftrapuv -traceback
 ##FFLAGS      = -O3 -fpp -ftz  -xavx -sox -ipo -fno-alias -fno-fnalias -no-prec-div -no-prec-sqrt -align all
-#FFLAGS      = -O3 -fpp -ftz  -xavx -ipo -fno-alias -fno-fnalias -no-prec-div -no-prec-sqrt -align all
+FFLAGS      = -O3 -fpp -ftz  -xavx -ipo -fno-alias -fno-fnalias -no-prec-div -no-prec-sqrt -align all
 ##FFLAGS      = -p -g
 FFLAGS += $(OPTIONS)
 LDFLAGS     =  -lmpi

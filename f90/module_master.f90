@@ -3,7 +3,6 @@ module module_master
   use module_parallel_mpi
   use module_domain
   use module_photon
-!!$  use module_params
 
   implicit none
 
@@ -45,20 +44,13 @@ contains
     logical :: init,everything_not_done
     real(kind=8) :: start_initphot, end_initphot
 
-    !init=.true.
-    !if(init)then
-    !   call make_the_IC_photons_list
-    !else
-    !   call read_photons
-    !endif
-
     call cpu_time(start_initphot)
 
     ! read ICs photons
-    print *,'--> reading ICs photons in file: ',trim(file_ICs)
+    if (verbose) print *,'[master] --> reading ICs photons in file: ',trim(file_ICs)
     call init_photons_from_file(file_ICs,photgrid)
     nphot = size(photgrid)
-    print *,'--> Nphoton =',nphot
+    if (verbose) print *,'[master] --> Nphoton =',nphot
 
     allocate(photpacket(nbuffer))
     allocate(cpu(1:nslave))
@@ -68,16 +60,16 @@ contains
     allocate(domain_list(ndomain))
 
 
-    print *,'--> reading domain and mesh...'
+    if (verbose) print *,'[master] --> reading domain and mesh...'
     ! Get domain properties
     call domain_constructor_from_file(file_compute_dom,compute_dom)
-    print*,'Ndomain =',ndomain
-    print*,'|_ ',trim(file_compute_dom)
+    if (verbose) print *,'[master] --> Ndomain =',ndomain
+    if (verbose) print *,'[master] --> |_ ',trim(file_compute_dom)
 
     ! get list of domains and their properties
     do i=1,ndomain
        call domain_constructor_from_file(domain_file_list(i),domain_list(i))
-       print*,'|_ ',trim(domain_file_list(i))
+       if (verbose) print *,'[master] --> |_ ',trim(domain_file_list(i))
     end do
 
     ! initialize the queue for each domain
@@ -94,8 +86,8 @@ contains
     call init_loadb(nbuffer,ndomain)
 
     call cpu_time(end_initphot)
-    print '(" --> time to initialize photons in master = ",f12.3," seconds.")',end_initphot-start_initphot
-    if(verbose) print*,'[master] send a first chunk of photons to each worker'
+    if (verbose) print *,'[master] --> time to initialize photons in master = ",f12.3," seconds.")',end_initphot-start_initphot
+    if (verbose) print*,'[master] send a first chunk of photons to each worker'
 
     ! send a first chunk of photons to each worker
     do icpu=1,nslave
@@ -126,7 +118,7 @@ contains
     count=0
     ncpuended=0
     
-    if(verbose)print*,'[master] starting loop...'
+    if(verbose) print*,'[master] starting loop...'
 
     ! Receive and append to pertinent domain list
     do while(everything_not_done)
@@ -148,8 +140,8 @@ contains
 
        call MPI_RECV(photpacket(1)%id, nbuffer, MPI_TYPE_PHOTON, idcpu, DONE_TAG, MPI_COMM_WORLD, status, IERROR)
 
-       if(verbose)print*,'[master] receive a packet of',nbuffer,' photons from worker',idcpu
-       if(verbose) print *,photpacket(1)%id
+       if (verbose) print*,'[master] receive a packet of',nbuffer,' photons from worker',idcpu
+       if (verbose) print*,'[master] ', photpacket(1)%id
        count = count+1
        !if(verbose)print*,'count =',count
 
@@ -244,7 +236,7 @@ contains
 
 
     print *,' '
-    print*,'--> writing results in file: ',trim(fileout)
+    print*,'[master] --> writing results in file: ',trim(fileout)
     call dump_photons(fileout,photgrid)
 
 

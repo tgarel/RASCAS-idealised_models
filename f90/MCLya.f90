@@ -52,7 +52,7 @@ program main
 
   
   ! -------------------- Read domain list from CreateDomDump param file --------------------
-  if (verbose) print *,'--> reading domain and mesh...'
+  if (verbose .and. rank==0) print *,'--> reading domain and mesh...'
   open(unit=18,file=DomDumpFile,status='old',form='formatted')
   read(18,'(a)') line ; i = scan(line,'=') ; file_compute_dom = trim(DataDir)//trim(adjustl(line(i+1:)))
   read(18,'(a)') line ; i = scan(line,'=') ; read(line(i+1:),*) ndomain
@@ -66,23 +66,6 @@ program main
 
   
   call MPI_BARRIER(MPI_COMM_WORLD,code)
-
-! JB -> done in gas_compotion module   
-!!$  !! some settings
-!!$  box_size_cm = 1.d18
-!!$  R_cm        = 0.4d0 * box_size_cm
-!!$  sigma_0     = 5.88d-14 * (temp_fix/1.d4)**(-0.5) !cm^2 from Dijkstra14
-!!$  nhi_new     = tau0_fix/sigma_0/R_cm
-!!$  vth_new     = 12.9d0*sqrt(temp_fix/1.d4)*1.d5
-
-! JB -> initialisation of uparallel now done at first call of get_uparallel. 
-!!$  ! load uparallel table
-!!$#ifndef SWITCH_OFF_UPARALLEL
-!!$  if(rank==0) print*,'--> loading uparallel tables...'
-!!$  call init_uparallel_tables
-!!$  call cpu_time(intermed)
-!!$  if(rank==0) print '(" --> time to compute uparallel tables = ",f12.3," seconds.")',intermed-start
-!!$#endif
 
   ! Master - Worker separation
   if (rank == 0) then

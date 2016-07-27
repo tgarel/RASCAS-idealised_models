@@ -260,6 +260,7 @@ contains
     if (.not. tables_initialized) then
        print*,'initialising u_parallel tables'
        call init_uparallel_tables
+       tables_initialized = .true.
        print*,'--done initialising u_parallel tables'
     end if
     

@@ -37,18 +37,25 @@
 [MCLya]
   DataDir      = data/
   DomDumpFile  = MCLya_domain_params.dat
-  PhotonICFile = ICs_photons_n5e6.dat
+  PhotonICFile = ICs_photons_n1e6.dat
   outfile      = data/mes_photons.dat
   nbuffer      = 100
   verbose      = T
 !--------------------------------------------------------------------------------
 
 
+!--------------------------------------------------------------------------------
 [worker]
   verbose = T
+!--------------------------------------------------------------------------------
 
+
+!--------------------------------------------------------------------------------
 [master]
   verbose = T
+!--------------------------------------------------------------------------------
+
+
 
 !--------------------------------------------------------------------------------
 [mesh]
@@ -64,11 +71,11 @@
   mH_over_mdust       = 5.000E-08
 # overwrite parameters
   gas_overwrite       = T
-  fix_nhi             = 0.0
-  fix_vth             = 1.0d5
+  fix_nhi             = 1.0d0
+  fix_vth             = 4.063058d5 ! this is 1000K
   fix_ndust           = 0.000
   fix_vel             = 0.000
-  fix_box_size_cm     = 1.000E+08
+  fix_box_size_cm     = 1.34139428939d20  ! this does tau = 1e7 (with vth above).  
 # miscelaneous parameters
   verbose             = T
 !--------------------------------------------------------------------------------
