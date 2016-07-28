@@ -176,7 +176,7 @@ contains
     do
        read (10,'(a)',iostat=err) line
        if(err/=0) exit
-       if (line(1:4) == '[H1]') then
+       if (line(1:4) == '[HI]') then
           section_present = .true.
           exit
        end if

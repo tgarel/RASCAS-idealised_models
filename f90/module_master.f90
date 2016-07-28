@@ -127,6 +127,7 @@ contains
        if(verbose) then
           print*,'[master] waiting for worker...'
           print*,'[master] Nqueue =',nqueue(:)
+          print*,'[master] NCpuPerDom = ',ncpuperdom(:)
           print*,' '
        endif
 
