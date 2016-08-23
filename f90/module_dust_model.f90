@@ -41,7 +41,7 @@ contains
 
 
 
-  subroutine scatter_dust(v,nu_cell,k,nu_ext,iran)
+  subroutine scatter_dust(v,nu_cell,k,nu_ext,iran,ilost)
 
     implicit none 
     
@@ -59,6 +59,7 @@ contains
     ! - nu_ext   : updated frequency in external frame [ Hz ]
     ! - k        : updated propagation direction
     ! _ iran     : updated value of seed
+    ! _ ilost    : updated status of the photon telling if photon has been absorbed
     ! ---------------------------------------------------------------------------------
 
     real(kind=8), intent(inout)               :: nu_cell, nu_ext ! nu_cell in RASCAS = nu_int in MCLya
@@ -67,7 +68,7 @@ contains
     integer, intent(inout)                    :: iran
     real(kind=8)                              :: mu, aors, scalar
     real(kind=8), dimension(3)                :: knew
-    integer(kind=4)                           :: iescape
+    integer(kind=4),intent(out)               :: ilost
 
 #ifdef DEBUG
     print *,'-DEBUG- scatter_dust routine, arguments =',v,nu_cell,k,nu_ext,iran
@@ -75,8 +76,9 @@ contains
 
     ! interaction with dust
     aors = ran3(iran)  ! aka "Absorption OR Scattering" ... 
+    ilost = 0
     if (aors.gt.albedo) then ! the photon is absorbed = lost
-       iescape = 0
+       ilost = 1
        return
     else
        call anisotropic_direction_Dust(k,knew,mu,iran,g_dust)                         

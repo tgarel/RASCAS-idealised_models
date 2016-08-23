@@ -204,11 +204,12 @@ contains
 
   subroutine gas_scatter(flag,cell_gas,nu_cell,k,nu_ext,iran)
 
-    integer, intent(in)                       :: flag
+    integer, intent(inout)                    :: flag
     type(gas), intent(in)                     :: cell_gas
     real(kind=8), intent(inout)               :: nu_cell, nu_ext
     real(kind=8), dimension(3), intent(inout) :: k
     integer, intent(inout)                    :: iran
+    integer                                   :: ilost
 
     select case(flag)
     case(1)
@@ -216,7 +217,8 @@ contains
     case(2)
        call scatter_D(cell_gas%v,cell_gas%dopwidth*sqrt_H2Deut_mass_ratio, nu_cell, k, nu_ext, iran)
     case(3)
-       call scatter_dust(cell_gas%v, nu_cell, k, nu_ext, iran)
+       call scatter_dust(cell_gas%v, nu_cell, k, nu_ext, iran, ilost)
+       if(ilost==1)flag=4
     end select
 
   end subroutine gas_scatter

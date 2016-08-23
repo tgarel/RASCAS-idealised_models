@@ -147,10 +147,10 @@ contains
        !if(verbose)print*,'count =',count
 
        ! By construction, photons that arrive here are not going to go back to the same domain, 
-       !   i.e they are either dead either in transit
+       !   i.e they are either dead (status=1or2) either in transit (status=0)
        do i=1,nbuffer
 
-          if((photpacket(i)%status/=1).and.(ndomain==1))then
+          if((photpacket(i)%status==0).and.(ndomain==1))then
              print*,'pb with photon buffer in master...'
              stop
           endif
@@ -175,6 +175,7 @@ contains
              ! j'ai l'impression que la meme routine peut servir ici, check with JB
 
           else
+             ! it means that photon escaped (status=1) or has been absorbed by dust (status=2)
              !call write_result(photpacket(i)%ID)
              !...
           endif

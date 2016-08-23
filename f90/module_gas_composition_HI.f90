@@ -169,7 +169,7 @@ contains
 
   subroutine gas_scatter(flag,cell_gas,nu_cell,k,nu_ext,iran)
 
-    integer, intent(in)                       :: flag
+    integer, intent(inout)                    :: flag
     type(gas), intent(in)                     :: cell_gas
     real(kind=8), intent(inout)               :: nu_cell, nu_ext
     real(kind=8), dimension(3), intent(inout) :: k

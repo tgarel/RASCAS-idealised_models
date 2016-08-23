@@ -430,6 +430,20 @@ contains
              ! there has been an interaction -> reset tau_abs
              tau_abs = -1.0d0
 
+             ! scatter_flag allows to know the status (aborbed or not) of the photon in case of dust
+             if(scatter_flag==4)then
+                ! photon has been absorbed by dust, photon done, nothing else to do
+                p%status       = 2
+                p%xcurr        = ppos
+                p%time         = time
+                p%tau_abs_curr = tau_abs
+                p%iran         = iran
+#ifdef DEBUG
+                print*,'-exit propagation, photon is dead'
+#endif
+                exit photon_propagation
+             endif
+
              !if(mod(p%nb_abs,100)==0)then
              !   print*,p%nb_abs
              !   print*,ppos
