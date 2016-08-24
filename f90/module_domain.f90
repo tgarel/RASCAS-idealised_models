@@ -249,7 +249,7 @@ contains
 
 
   subroutine domain_write_file(file,dom)
-    character(2000),intent(in) :: file
+    character(*),intent(in) :: file
     type(domain),intent(in)    :: dom 
 
     !!!write(file ,'(a,a)') trim(fichier),'.dom'
