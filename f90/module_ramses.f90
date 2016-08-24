@@ -1,34 +1,70 @@
 module module_ramses
 
+  use module_constants, only : kB, mp, XH
+
   implicit none
 
-  ! private stuff ... 
+  private 
+  
   ! stuff read from AMR files
-  integer(kind=4),private          :: ncell,ncoarse,ngridmax
-  real(kind=8),allocatable,private :: xg(:,:)      ! grids position
-  integer,allocatable,private      :: nbor(:,:)    ! neighboring father cells
-  integer,allocatable,private      :: next(:)      ! next grid in list
-  integer,allocatable,private      :: son(:)       ! sons grids
-  integer,allocatable,private      :: cpu_map(:)  ! domain decomposition
-  integer,allocatable,private      :: headl(:,:),taill(:,:),numbl(:,:),numbtot(:,:)
-  integer,allocatable,private      :: headb(:,:),tailb(:,:),numbb(:,:)
-  real(KIND=8),dimension(1:3)::xbound=(/0d0,0d0,0d0/)
+  integer(kind=4)                  :: ncell,ncoarse,ngridmax
+  real(kind=8),allocatable         :: xg(:,:)      ! grids position
+  integer,allocatable              :: nbor(:,:)    ! neighboring father cells
+  integer,allocatable              :: next(:)      ! next grid in list
+  integer,allocatable              :: son(:)       ! sons grids
+  integer,allocatable              :: cpu_map(:)  ! domain decomposition
+  integer,allocatable              :: headl(:,:),taill(:,:),numbl(:,:),numbtot(:,:)
+  integer,allocatable              :: headb(:,:),tailb(:,:),numbb(:,:)
+  real(KIND=8),dimension(1:3)      :: xbound=(/0d0,0d0,0d0/)  
 
-  ! Stop pretending this would work in 2D : 
+  ! Stop pretending this would work in 2D 
   integer(kind=4),parameter :: ndim = 3
   integer(kind=4),parameter :: twondim = 6
   integer(kind=4),parameter :: twotondim= 8 
   
   ! stuff read from the HYDRO files
-  real(kind=8),allocatable,private :: var(:,:)
-  real(kind=8),allocatable,private :: cell_x(:),cell_y(:),cell_z(:)
-  integer,allocatable,private      :: cell_level(:)
+  real(kind=8),allocatable         :: var(:,:)
+  real(kind=8),allocatable         :: cell_x(:),cell_y(:),cell_z(:)
+  integer,allocatable              :: cell_level(:)
 
-  integer(kind=4),private :: ncpu,nvar
+  integer(kind=4)                  :: ncpu,nvar
 
+  ! conversion factors (units)
+  logical                        :: conversion_scales_are_known = .False. 
+  real(kind=8)                   :: dp_scale_l,dp_scale_d,dp_scale_t,dp_scale_T2,dp_scale_zsun,dp_scale_nh,dp_scale_v
 
-  public  :: read_leaf_cells, get_ngridtot
-  private :: read_hydro, read_amr, get_nleaf, get_nvar, clear_amr, get_ncpu, get_param_real
+  ! cooling-related stuff -------------------------------------------------------------
+  type cooling_table
+     integer(kind=4)          :: n11
+     integer(kind=4)          :: n22
+     real(kind=8),allocatable :: nH(:)    
+     real(kind=8),allocatable :: T2(:)    
+     real(kind=8),allocatable :: metal(:,:)  
+     real(kind=8),allocatable :: cool(:,:)  
+     real(kind=8),allocatable :: heat(:,:)  
+     real(kind=8),allocatable :: cool_com(:,:)  
+     real(kind=8),allocatable :: heat_com(:,:)  
+     real(kind=8),allocatable :: cool_com_prime(:,:)  
+     real(kind=8),allocatable :: heat_com_prime(:,:)  
+     real(kind=8),allocatable :: metal_prime(:,:)  
+     real(kind=8),allocatable :: cool_prime(:,:)  
+     real(kind=8),allocatable :: heat_prime(:,:)  
+     real(kind=8),allocatable :: mu(:,:)  
+     real(kind=8),allocatable :: spec(:,:,:)  ! last dimension (6) is n_e, n_HI, n_HII, n_HeI, n_HeII, n_HeIII
+  end type cooling_table
+  type(cooling_table) :: cooling
+  type cool_interp
+     integer(kind=4)  :: n_nH
+     real(kind=8)     :: nH_start,nH_step
+     integer(kind=4)  :: n_T2
+     real(kind=8)     :: T2_start,T2_step
+  end type cool_interp
+  type(cool_interp)  :: cool_int
+  logical            :: cooling_is_read = .False. 
+  ! ----------------------------------------------------------------------------------
+
+  public  :: read_leaf_cells, get_ngridtot, ramses_get_velocity_cgs, ramses_get_T_nhi_cgs, ramses_get_metallicity, ramses_get_box_size_cm
+  ! default is private now ... !! private :: read_hydro, read_amr, get_nleaf, get_nvar, clear_amr, get_ncpu, get_param_real
 
   !==================================================================================
 contains
@@ -129,24 +165,152 @@ contains
   end function get_nGridTot
 
 
-  function get_hi_density(nvar,ramses_var)
-    ! return array with HI density (at/cc), computed from ramses raw variables
-    integer(kind=4),intent(in) :: nvar
-    real(kind=8),intent(in)    :: ramses_var(nvar) ! one cell only
-    real(kind=8)               :: get_hi_density
+  
+  subroutine ramses_get_T_nhi_cgs(repository,snapnum,nleaf,nvar,ramses_var,temp,nhi)
 
-    stop
+    implicit none 
+
+    character(1000),intent(in)  :: repository
+    integer(kind=4),intent(in)  :: snapnum
+    integer(kind=4),intent(in)  :: nleaf, nvar
+    real(kind=8),intent(in)     :: ramses_var(nvar,nleaf) ! one cell only
+    real(kind=8),intent(inout)  :: nhi(nleaf), temp(nleaf)
+    integer(kind=4) :: ihx,ihy,i
+    real(kind=8)    :: xx,yy,dxx1,dxx2,dyy1,dyy2,f
+    integer(kind=4) :: if1,if2,jf1,jf2
+
+    ! get conversion factors if necessary
+    if (.not. conversion_scales_are_known) then 
+       call read_conversion_scales(repository,snapnum)
+       conversion_scales_are_known = .True.
+    end if
+
+    if (.not. cooling_is_read) then
+       call read_cooling(repository,snapnum)
+       cooling_is_read = .True.
+    end if
+    
+    nhi  = ramses_var(1,:) * dp_scale_nh  ! nb of H atoms per cm^3
+    temp = ramses_var(5,:) / ramses_var(1,:) * dp_scale_T2  ! T/mu [ K ]
+    
+    ! compute the ionization state and temperature using the 'cooling' tables
+    do i = 1, nleaf 
+       xx  = log10(nhi(i))
+       ihx = int((xx - cool_int%nh_start)/cool_int%nh_step) + 1
+       if (ihx < 1) then 
+          ihx = 1 
+       else if (ihx > cool_int%n_nh) then
+          ihx = cool_int%n_nh
+       end if
+       yy  = log10(temp(i))
+       ihy = int((yy - cool_int%t2_start)/cool_int%t2_step) + 1
+       if (ihy < 1) then 
+          ihy = 1 
+       else if (ihy > cool_int%n_t2) then
+          ihy = cool_int%n_t2
+       end if
+       ! 2D linear interpolation:
+       if (ihx < cool_int%n_nh) then 
+          dxx1  = max(xx - cooling%nh(ihx),0.0d0) / cool_int%nh_step 
+          dxx2  = min(cooling%nh(ihx+1) - xx,cool_int%nh_step) / cool_int%nh_step
+          if1  = ihx
+          if2  = ihx+1
+       else
+          dxx1  = 0.0d0
+          dxx2  = 1.0d0
+          if1  = ihx
+          if2  = ihx
+       end if
+       if (ihy < cool_int%n_t2) then 
+          dyy1  = max(yy - cooling%t2(ihy),0.0d0) / cool_int%t2_step
+          dyy2  = min(cooling%t2(ihy+1) - yy,cool_int%t2_step) / cool_int%t2_step
+          jf1  = ihy
+          jf2  = ihy + 1
+       else
+          dyy1  = 0.0d0
+          dyy2  = 1.0d0
+          jf1  = ihy
+          jf2  = ihy
+       end if
+       if (abs(dxx1+dxx2-1.0d0) > 1.0d-6 .or. abs(dyy1+dyy2-1.0d0) > 1.0d-6) then 
+          write(*,*) 'Fucked up the interpolation ... '
+          print*,dxx1+dxx2,dyy1+dyy2
+          stop
+       end if
+       ! neutral H density 
+       f = dxx1 * dyy1 * cooling%spec(if2,jf2,2) + dxx2 * dyy1 * cooling%spec(if1,jf2,2) &
+            & + dxx1 * dyy2 * cooling%spec(if2,jf1,2) + dxx2 * dyy2 * cooling%spec(if1,jf1,2)
+       nhi(i) = 10.0d0**f   ! nHI (cm^-3)
+       ! GET MU to convert T/MU into T ... 
+       f = dxx1 * dyy1 * cooling%mu(if2,jf2) + dxx2 * dyy1 * cooling%mu(if1,jf2) &
+            & + dxx1 * dyy2 * cooling%mu(if2,jf1) + dxx2 * dyy2 * cooling%mu(if1,jf1)
+       temp(i) = temp(i) * f   ! This is now T (in K) with no bloody mu ... 
+    end do
+       
     return
-  end function get_hi_density
 
-  function get_velocity_cgs(nvar,ramses_var)
-    integer(kind=4),intent(in) :: nvar
-    real(kind=8),intent(in)    :: ramses_var(nvar) ! one cell only
-    real(kind=8),dimension(3)  :: get_velocity_cgs
+  end subroutine ramses_get_T_nhi_cgs
+  
+  subroutine ramses_get_velocity_cgs(repository,snapnum,nleaf,nvar,ramses_var,velocity_cgs)
 
-    stop
+    implicit none
+    
+    character(1000),intent(in)  :: repository
+    integer(kind=4),intent(in)  :: snapnum
+    integer(kind=4),intent(in)  :: nleaf, nvar
+    real(kind=8),intent(in)     :: ramses_var(nvar,nleaf) ! one cell only
+    real(kind=8),intent(inout)  :: velocity_cgs(3,nleaf)
+
+    ! get conversion factors if necessary
+    if (.not. conversion_scales_are_known) then 
+       call read_conversion_scales(repository,snapnum)
+       conversion_scales_are_known = .True.
+    end if
+    
+    velocity_cgs = ramses_var(2:4,:) * dp_scale_v ! [ cm / s ]
+    
     return
-  end function get_velocity_cgs
+    
+  end subroutine ramses_get_velocity_cgs
+
+  subroutine ramses_get_metallicity(nleaf,nvar,ramses_var,metallicity)
+
+    implicit none
+    
+    integer(kind=4),intent(in)  :: nleaf, nvar
+    real(kind=8),intent(in)     :: ramses_var(nvar,nleaf) ! one cell only
+    real(kind=8),intent(inout)  :: metallicity(nleaf)
+
+    if (nvar < 6) then
+       print*,'No metals !!! '
+       stop
+    end if
+    metallicity = ramses_var(6,:) 
+    
+    return
+
+  end subroutine ramses_get_metallicity
+
+  
+  function ramses_get_box_size_cm(repository,snapnum)
+
+    implicit none
+    
+    character(1000),intent(in)  :: repository
+    integer(kind=4),intent(in)  :: snapnum
+    real(kind=8)                :: ramses_get_box_size_cm 
+    
+    ! get conversion factors if necessary
+    if (.not. conversion_scales_are_known) then 
+       call read_conversion_scales(repository,snapnum)
+       conversion_scales_are_known = .True.
+    end if
+    
+    ramses_get_box_size_cm = get_param_real(repository,snapnum,'boxlen') * dp_scale_l  ! [ cm ] 
+    
+    return
+    
+  end function ramses_get_box_size_cm
 
     
   !subroutine ramses_read_star_particles(repository, snapnum, nstars, stars)
@@ -635,6 +799,104 @@ contains
 
   end function get_param_real
   
+  subroutine read_conversion_scales(repository,snapnum)
+    
+    implicit none 
+
+    character(512),intent(in)  :: repository
+    integer(kind=4),intent(in) :: snapnum
+
+    ! set global variables 
+    dp_scale_l    = get_param_real(repository,snapnum,'unit_l')
+    dp_scale_d    = get_param_real(repository,snapnum,'unit_d')
+    dp_scale_t    = get_param_real(repository,snapnum,'unit_t')
+    dp_scale_nH   = XH/mp * dp_scale_d      ! convert mass density (code units) to numerical density of H atoms
+    dp_scale_v    = dp_scale_l/dp_scale_t   ! -> converts velocities into cm/s
+    dp_scale_T2   = mp/kB * dp_scale_v**2   ! -> converts P/rho to T/mu, in K
+    dp_scale_zsun = 1.d0/0.0127
+
+    return
+
+  end subroutine read_conversion_scales
+  
+!*****************************************************************************************************************
+
+  subroutine read_cooling(repository,snapnum)
+
+    implicit none
+    
+    character(1000),intent(in) :: repository
+    integer(kind=4),intent(in) :: snapnum
+    character(1024)            :: filename
+    integer(kind=4)            :: n1,n2
+
+    ! initialize cooling variables
+    call clear_cooling
+
+    ! read cooling variables from cooling.out file
+    write(filename,'(a,a,i5.5,a,i5.5,a)') trim(repository),'/output_',snapnum,"/cooling_",snapnum,".out"
+    open(unit=44,file=filename,form='unformatted')
+    read(44) n1,n2
+    cooling%n11 = n1
+    cooling%n22 = n2
+    allocate(cooling%nH(n1),cooling%T2(n2))
+    allocate(cooling%cool_com(n1,n2),cooling%heat_com(n1,n2),cooling%cool_com_prime(n1,n2),cooling%heat_com_prime(n1,n2))
+    allocate(cooling%cool(n1,n2),cooling%heat(n1,n2),cooling%mu(n1,n2))
+    allocate(cooling%cool_prime(n1,n2),cooling%heat_prime(n1,n2),cooling%metal_prime(n1,n2))
+    allocate(cooling%metal(n1,n2),cooling%spec(n1,n2,6))
+    read(44)cooling%nH
+    read(44)cooling%T2
+    read(44)cooling%cool
+    read(44)cooling%heat
+    read(44)cooling%cool_com
+    read(44)cooling%heat_com
+    read(44)cooling%metal
+    read(44)cooling%cool_prime
+    read(44)cooling%heat_prime
+    read(44)cooling%cool_com_prime
+    read(44)cooling%heat_com_prime
+    read(44)cooling%metal_prime
+    read(44)cooling%mu
+    read(44)cooling%spec
+    close(44)
+    
+    ! define useful quantities for interpolation 
+    cool_int%n_nh     = n1
+    cool_int%nh_start = minval(cooling%nh)
+    cool_int%nh_step  = cooling%nh(2) - cooling%nh(1)
+    cool_int%n_t2     = n2
+    cool_int%t2_start = minval(cooling%t2)
+    cool_int%t2_step  = cooling%t2(2) - cooling%t2(1)
+    
+    return
+
+  end subroutine read_cooling
+
+!*****************************************************************************************************************
+
+  subroutine clear_cooling
+
+    implicit none
+
+    if (cooling%n11 > 0 .or. cooling%n22 > 0) then 
+       cooling%n11 = 0
+       cooling%n22 = 0
+       deallocate(cooling%nH,cooling%T2,cooling%metal)
+       deallocate(cooling%heat_com,cooling%cool_com,cooling%heat_com_prime,cooling%cool_com_prime)
+       deallocate(cooling%cool,cooling%heat,cooling%metal_prime,cooling%cool_prime)
+       deallocate(cooling%heat_prime,cooling%mu,cooling%spec)
+    end if
+    
+    cool_int%n_nh = 0
+    cool_int%nh_start = 0.0d0
+    cool_int%nh_step  = 0.0d0
+    cool_int%n_t2 = 0
+    cool_int%t2_start = 0.0d0
+    cool_int%t2_step  = 0.0d0
+    
+    return
+
+  end subroutine clear_cooling
 
     
 end module module_ramses

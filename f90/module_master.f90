@@ -3,10 +3,11 @@ module module_master
   use module_parallel_mpi
   use module_domain
   use module_photon
-  use module_params
 
   implicit none
 
+  private
+  
   integer,dimension(:),allocatable              :: first,last,nqueue,ncpuperdom
   integer,dimension(:,:),allocatable            :: next
   integer,dimension(:), allocatable             :: cpu
@@ -16,32 +17,40 @@ module module_master
   type(domain)                                  :: compute_dom
   type(mesh)                                    :: meshdom
   type(domain),dimension(:),allocatable         :: domain_list
+  
+  ! --------------------------------------------------------------------------
+  ! user-defined parameters - read from section [worker] of the parameter file
+  ! --------------------------------------------------------------------------
+  logical                   :: verbose = .false.
+  ! --------------------------------------------------------------------------
 
+  public :: master, read_master_params, print_master_params
+  
 contains
 
-  subroutine master
+  subroutine master(file_compute_dom, ndomain, domain_file_list, file_ICs, nbuffer, fileout)
 
     implicit none
-
+    
+    character(2000),intent(in)                    :: file_compute_dom
+    integer(kind=4),intent(in)                    :: ndomain
+    character(2000),dimension(ndomain),intent(in) :: domain_file_list
+    character(2000),intent(in)                    :: file_ICs
+    integer(kind=4),intent(in)                    :: nbuffer
+    character(2000),intent(in)                    :: fileout
+    
     integer :: i,j,icpu,idcpu,jnewdom,nphottodo,count,ncpuended,ntest
     logical :: survivor
     logical :: init,everything_not_done
     real(kind=8) :: start_initphot, end_initphot
 
-    !init=.true.
-    !if(init)then
-    !   call make_the_IC_photons_list
-    !else
-    !   call read_photons
-    !endif
-
     call cpu_time(start_initphot)
 
     ! read ICs photons
-    print *,'--> reading ICs photons in file: ',trim(file_ICs)
+    if (verbose) print *,'[master] --> reading ICs photons in file: ',trim(file_ICs)
     call init_photons_from_file(file_ICs,photgrid)
     nphot = size(photgrid)
-    print *,'--> Nphoton =',nphot
+    if (verbose) print *,'[master] --> Nphoton =',nphot
 
     allocate(photpacket(nbuffer))
     allocate(cpu(1:nslave))
@@ -51,16 +60,16 @@ contains
     allocate(domain_list(ndomain))
 
 
-    print *,'--> reading domain and mesh...'
+    if (verbose) print *,'[master] --> reading domain and mesh...'
     ! Get domain properties
     call domain_constructor_from_file(file_compute_dom,compute_dom)
-    print*,'Ndomain =',ndomain
-    print*,'|_ ',trim(file_compute_dom)
+    if (verbose) print *,'[master] --> Ndomain =',ndomain
+    if (verbose) print *,'[master] --> |_ ',trim(file_compute_dom)
 
     ! get list of domains and their properties
     do i=1,ndomain
        call domain_constructor_from_file(domain_file_list(i),domain_list(i))
-       print*,'|_ ',trim(domain_file_list(i))
+       if (verbose) print *,'[master] --> |_ ',trim(domain_file_list(i))
     end do
 
     ! initialize the queue for each domain
@@ -74,11 +83,11 @@ contains
     enddo
 
     ! according to the distribution of photons in domains, ditribute cpus to each domain
-    call init_loadb
+    call init_loadb(nbuffer,ndomain)
 
     call cpu_time(end_initphot)
-    print '(" --> time to initialize photons in master = ",f12.3," seconds.")',end_initphot-start_initphot
-    if(verbose) print*,'[master] send a first chunk of photons to each worker'
+    if (verbose) print *,'[master] --> time to initialize photons in master = ",f12.3," seconds.")',end_initphot-start_initphot
+    if (verbose) print*,'[master] send a first chunk of photons to each worker'
 
     ! send a first chunk of photons to each worker
     do icpu=1,nslave
@@ -88,7 +97,7 @@ contains
        if(verbose) print*,'icpu / idom =',icpu,j
        
        ! build an array/list/buffer of photons to send
-       call fill_buffer(j,photpacket)
+       call fill_buffer(j,photpacket,nbuffer)
 
        ! Send the photon buffer to the workers
        ! TODO : definir le MPI_TYPE correspondant
@@ -109,7 +118,7 @@ contains
     count=0
     ncpuended=0
     
-    if(verbose)print*,'[master] starting loop...'
+    if(verbose) print*,'[master] starting loop...'
 
     ! Receive and append to pertinent domain list
     do while(everything_not_done)
@@ -118,6 +127,7 @@ contains
        if(verbose) then
           print*,'[master] waiting for worker...'
           print*,'[master] Nqueue =',nqueue(:)
+          print*,'[master] NCpuPerDom = ',ncpuperdom(:)
           print*,' '
        endif
 
@@ -125,22 +135,22 @@ contains
 
        idcpu = status(MPI_SOURCE)
 
-       !print *,'[master] received from worker...',nbuffer
+       if (verbose) print *,'[master] received from worker...',nbuffer
        !print *,MPI_ANY_SOURCE,status
        !print *,idcpu
 
        call MPI_RECV(photpacket(1)%id, nbuffer, MPI_TYPE_PHOTON, idcpu, DONE_TAG, MPI_COMM_WORLD, status, IERROR)
 
-       if(verbose)print*,'[master] receive a packet of',nbuffer,' photons from worker',idcpu
-       if(verbose) print *,photpacket(1)%id
+       if (verbose) print*,'[master] receive a packet of',nbuffer,' photons from worker',idcpu
+       if (verbose) print*,'[master] ', photpacket(1)%id
        count = count+1
        !if(verbose)print*,'count =',count
 
        ! By construction, photons that arrive here are not going to go back to the same domain, 
-       !   i.e they are either dead either in transit
+       !   i.e they are either dead (status=1or2) either in transit (status=0)
        do i=1,nbuffer
 
-          if((photpacket(i)%status/=1).and.(ndomain==1))then
+          if((photpacket(i)%status==0).and.(ndomain==1))then
              print*,'pb with photon buffer in master...'
              stop
           endif
@@ -165,6 +175,7 @@ contains
              ! j'ai l'impression que la meme routine peut servir ici, check with JB
 
           else
+             ! it means that photon escaped (status=1) or has been absorbed by dust (status=2)
              !call write_result(photpacket(i)%ID)
              !...
           endif
@@ -195,14 +206,14 @@ contains
           ! here, it should be checked wether the load-balancing is good...
           ! if not re-affect CPU to another domain..
           ! how to do that ?
-          call update_domain(idcpu)
+          call update_domain(idcpu,nbuffer,ndomain)
           !...
 
           j=cpu(idcpu)
           call MPI_SEND(j, 1, MPI_INTEGER, idcpu, tag, MPI_COMM_WORLD, code)
 
           ! Construct a new list of photons
-          call fill_buffer(j,photpacket)
+          call fill_buffer(j,photpacket,nbuffer)
 
           ! send it
           call MPI_SEND(photpacket(1)%id, nbuffer, MPI_TYPE_PHOTON, idcpu, tag , MPI_COMM_WORLD, code)
@@ -227,7 +238,7 @@ contains
 
 
     print *,' '
-    print*,'--> writing results in file: ',trim(fileout)
+    print*,'[master] --> writing results in file: ',trim(fileout)
     call dump_photons(fileout,photgrid)
 
 
@@ -283,10 +294,12 @@ contains
 
 
 
-  subroutine init_loadb
+  subroutine init_loadb(nbuffer,ndomain)
     ! give cpus to domains, according to the number of photons to deal with in each domain (=nqueue)
 
     implicit none
+    integer, intent(in) :: nbuffer
+    integer, intent(in) :: ndomain
     integer::nphottot,icpu,ndom,j
     integer,dimension(1)::jtoo
     
@@ -332,10 +345,12 @@ contains
 
 
 
-  subroutine update_domain(icpu)
+  subroutine update_domain(icpu,nbuffer,ndomain)
 
     implicit none
     integer, intent(in)::icpu
+    integer, intent(in) :: nbuffer
+    integer, intent(in) :: ndomain
     integer :: j,jold,nphot
     integer, dimension(1) :: jtarget, jnew
 
@@ -401,11 +416,12 @@ contains
 
 
 
-  subroutine fill_buffer(j,photpacket)
+  subroutine fill_buffer(j,photpacket,nbuffer)
     ! fill photpacket(nbuffer)
 
     implicit none
     integer, intent(in) :: j
+    integer, intent(in) :: nbuffer
     type(photon_current), dimension(nbuffer), intent(out) :: photpacket
     integer :: i,fsave
 
@@ -444,5 +460,85 @@ contains
 
   end subroutine update_grid
 
+
+  subroutine read_master_params(pfile)
+
+    ! ---------------------------------------------------------------------------------
+    ! subroutine which reads parameters of current module in the parameter file pfile
+    ! default parameter values are set at declaration (head of module)
+    !
+    ! ALSO call read_params of depdencies (mesh)
+    ! ---------------------------------------------------------------------------------
+
+    character(*),intent(in) :: pfile
+    character(1000) :: line,name,value
+    integer(kind=4) :: err,i
+    logical         :: section_present
+    
+    section_present = .false.
+    open(unit=10,file=trim(pfile),status='old',form='formatted')
+    ! search for section start
+    do
+       read (10,'(a)',iostat=err) line
+       if(err/=0) exit
+       if (line(1:8) == '[master]') then
+          section_present = .true.
+          exit
+       end if
+    end do
+    ! read section if present
+    if (section_present) then 
+       do
+          read (10,'(a)',iostat=err) line
+          if(err/=0) exit
+          if (line(1:1) == '[') exit ! next section starting... -> leave
+          i = scan(line,'=')
+          if (i==0 .or. line(1:1)=='#' .or. line(1:1)=='!') cycle  ! skip blank or commented lines
+          name=trim(adjustl(line(:i-1)))
+          value=trim(adjustl(line(i+1:)))
+          i = scan(value,'!')
+          if (i /= 0) value = trim(adjustl(value(:i-1)))
+          select case (trim(name))
+          case ('verbose')
+             read(value,*) verbose
+          end select
+       end do
+    end if
+    close(10)
+
+    call read_mesh_params(pfile)
+
+    return
+
+  end subroutine read_master_params
+
+
+  
+  subroutine print_master_params(unit)
+
+    ! ---------------------------------------------------------------------------------
+    ! write parameter values to std output or to an open file if argument unit is
+    ! present.
+    ! ---------------------------------------------------------------------------------
+
+    integer(kind=4),optional,intent(in) :: unit
+
+    if (present(unit)) then 
+       write(unit,'(a)')             '[master]'
+       write(unit,'(a,L1)')          '  verbose        = ',verbose
+       write(unit,'(a)')             ' '
+       call print_mesh_params(unit)
+    else
+       write(*,'(a)')             '[master]'
+       write(*,'(a,L1)')          '  verbose        = ',verbose
+       write(*,'(a)')             ' '       
+       call print_mesh_params
+    end if
+
+    return
+
+  end subroutine print_master_params
+
+  
 
 end module module_master

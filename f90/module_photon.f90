@@ -10,7 +10,7 @@ module module_photon
 
   !use ramses_info_utils, only box_size_cm   ! => not defined in this module....
   ! todonext
-  real(kind=8) :: box_size_cm 
+!  real(kind=8) :: box_size_cm  -> moved to module_gas_composition
   ! also todonext define accuracy
   real(kind=8),parameter :: accuracy=1.d-15
 
@@ -188,11 +188,12 @@ contains
     ind   = (icell - domesh%nCoarse - 1) / domesh%nOct + 1   ! JB: should we make a few simple functions to do all this ? 
     ioct  = icell - domesh%nCoarse - (ind - 1) * domesh%nOct
 
-    if((domesh%son(icell)<0).and.(domesh%octlevel(ioct)/=8))then
-       print*,'>>>>> leaf cell at level lower than 8!!!!!!'
-       stop
-    endif
-
+!JB--
+!!$    if((domesh%son(icell)<0).and.(domesh%octlevel(ioct)/=8))then
+!!$       print*,'>>>>> leaf cell at level lower than 8!!!!!!'
+!!$       stop
+!!$    endif
+!--JB
 
 #ifdef DEBUG
     print *,'--> cell where photon starts',icell,ileaf,ind,ioct
@@ -344,10 +345,13 @@ contains
              ileaf = - domesh%son(icell)
              ind   = (icell - domesh%nCoarse - 1) / domesh%nOct + 1   ! JB: should we make a few simple functions to do all this ? 
              ioct  = icell - domesh%nCoarse - (ind - 1) * domesh%nOct
-             if((domesh%son(icell)<0).and.(domesh%octlevel(ioct)/=8))then
-                print*,'>>>>> leaf cell at level lower than 8!!!!!!'
-                stop
-             endif
+!JB-- 
+!!$             if((domesh%son(icell)<0).and.(domesh%octlevel(ioct)/=8))then
+!!$                print*,'>>>>> leaf cell at level lower than 8!!!!!!'
+!!$                stop
+!!$             endif
+!--JB
+
              ! there has been no interaction in the cell, tau_abs has been updated in gas_get_scatter_flag
              ! => move to next cell
 #ifdef DEBUG
@@ -425,6 +429,20 @@ contains
              p%k = k
              ! there has been an interaction -> reset tau_abs
              tau_abs = -1.0d0
+
+             ! scatter_flag allows to know the status (aborbed or not) of the photon in case of dust
+             if(scatter_flag==4)then
+                ! photon has been absorbed by dust, photon done, nothing else to do
+                p%status       = 2
+                p%xcurr        = ppos
+                p%time         = time
+                p%tau_abs_curr = tau_abs
+                p%iran         = iran
+#ifdef DEBUG
+                print*,'-exit propagation, photon is dead'
+#endif
+                exit photon_propagation
+             endif
 
              !if(mod(p%nb_abs,100)==0)then
              !   print*,p%nb_abs

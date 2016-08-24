@@ -1,6 +1,6 @@
 module module_uparallel
 
-  public
+  private
 
   !
   ! contains tables (and functions to fill them up) which are used to 
@@ -60,6 +60,10 @@ module module_uparallel
   real(kind=8)              :: table2(nbins_c2,nbins_xint,nbins_a)  ! mid values of c
   real(kind=8)              :: table3(nbins_c3,nbins_xint,nbins_a)  ! high values of c
 
+  logical :: tables_initialized = .false.
+  
+  public :: get_uparallel
+  
 contains
 
   subroutine init_uparallel_tables
@@ -247,6 +251,19 @@ contains
     real(kind=8)            :: la,ccc,lc
     real(kind=8)            :: dc1,dc2
 
+#ifdef SWITCH_OFF_UPARALLEL
+    get_uparallel = 0.0d0
+    return
+#endif
+    
+    ! initialise on first call
+    if (.not. tables_initialized) then
+       print*,'initialising u_parallel tables'
+       call init_uparallel_tables
+       tables_initialized = .true.
+       print*,'--done initialising u_parallel tables'
+    end if
+    
     xin   = sign(xxin,-1.0d0) ! -> force x_int to be negative
     get_uparallel = 0.0d0
     

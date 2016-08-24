@@ -1,34 +1,37 @@
 module module_D_model
 
   use module_constants
+  use module_utils, only : voigt_fit, isotropic_direction, anisotropic_direction_HIcore, anisotropic_direction_Rayleigh
   use module_uparallel
   use module_random
-  use module_params, only : recoil
-  
+
   implicit none
 
   private
 
   ! Deuterium properties
   real(kind=8),parameter   :: mdeut        = 2.d0 * mp           ! Deuterium atom's mass [ g ]
-  real(kind=8),parameter   :: lambda_0_cm  = 1215.673d-8 * (1.0d0 + me/mdeut) / (1.0d0 + me/mp) ! wavelength of Lya of Deuterium [ cm ]
-  real(kind=8),parameter   :: nu_0         = clight / lambda_0_cm  ! frequency of Deuterium's Lya [ Hz ]
+  real(kind=8),parameter   :: lambda_0     = 1215.673 * (1.0d0 + me/mdeut) / (1.0d0 + me/mp) ! wavelength of Lya of Deuterium [ cm ]
   real(kind=8),parameter   :: gamma        = 6.265d8             ! Einstein coeff. [ s^-1 ]
   real(kind=8),parameter   :: f12          = 0.416               ! Oscillator strength for Deuterium Lya.
+  ! useful pre-computed quantities
+  real(kind=8),parameter   :: lambda_0_cm = lambda_0 / cmtoA              ! cm
+  real(kind=8),parameter   :: nu_0 = clight / lambda_0_cm                 ! Hz
   real(kind=8),parameter   :: sigma_factor = pi*e_ch**2*f12/ me / clight ! cross-section factor-> multiply by Voigt(x,a)/nu_D to get sigma.
-    
-  public :: get_tau_D, scatter_D_isotrope 
+  real(kind=8),parameter   :: gamma_over_fourpi = gamma / fourpi
+
+  ! user-defined parameters - read from section [Deuterium] of the parameter file 
+  logical                  :: recoil       = .true.      ! if set to true, recoil effect is computed [default is true]
+  logical                  :: isotropic    = .false.     ! if set to true, scattering events will be isotropic [default is false]
+
+  public :: get_tau_D, scatter_D, read_D_params, print_D_params
 
 contains
-  ! PUBLIC functions : 
-  ! - function get_tau(ndi, vth, distance_to_border_cm, nu_cell)
-  ! - subroutine scatter_isotrope(vcell,vth, nu_cell, k, nu_ext, iran)
-  ! PRIVATE function :
-  ! - function voigt_fit(x,a)
-  
-  
+
+
+
   function get_tau_D(ndi, vth, distance_to_border_cm, nu_cell)
-    
+
     ! --------------------------------------------------------------------------
     ! compute optical depth of Deuterium over a given distance
     ! --------------------------------------------------------------------------
@@ -40,62 +43,70 @@ contains
     ! OUTPUT :
     ! - get_tau_D : optical depth of Deuterium's Lya line over distance_to_border_cm
     ! --------------------------------------------------------------------------
-    
+
     real(kind=8),intent(in) :: ndi,vth,distance_to_border_cm,nu_cell
     real(kind=8)            :: get_tau_D
     real(kind=8)            :: delta_nu_D, a, x, h, s
-    
+
     ! compute Doppler width and a-parameter
-    delta_nu_D = vth / lambda_0_cm ! == vth * nu_0 / clight
-    a          = gamma / (4.d0 * pi * delta_nu_D)
-    
+    delta_nu_D = vth / lambda_0_cm 
+    a          = gamma_over_fourpi / delta_nu_D
+
     ! Cross section of Deuterium
     x = (nu_cell - nu_0)/delta_nu_D
     h = voigt_fit(x,a)
     s = sigma_factor / delta_nu_D * h  
-    
+
     ! optical depth 
     get_tau_D = s * ndi * distance_to_border_cm
-    
+
     return
-    
+
   end function get_tau_D
-  
-  
-  subroutine scatter_D_isotrope(vcell,vth, nu_cell, k, nu_ext, iran)
-    
-    ! --------------------------------------------------------------------------
-    ! perform scattering event on a Deuterium atom
-    ! --------------------------------------------------------------------------
+
+
+
+  subroutine scatter_D(vcell,vth,nu_cell,k,nu_ext,iran)
+
+    ! ---------------------------------------------------------------------------------
+    ! perform scattering event on a Deuterium atom with an anisotropic phase function
+    ! ---------------------------------------------------------------------------------
     ! INPUTS :
-    ! - vcell   : bulk velocity of the gas (i.e. cell velocity)       [ cm / s ] 
-    ! - vth     : thermal (+turbulent) velocity dispersion of D atoms [ cm / s ] 
-    ! - nu_cell : frequency of incoming photon in cell's rest-frame   [ Hz ] 
-    ! - k       : propagaction vector (normalized) 
-    ! - nu_ext  : frequency of incoming photon, in external frame     [ Hz ]
-    ! - iran    : random number generator seed
+    ! - vcell    : bulk velocity of the gas (i.e. cell velocity)       [ cm / s ] 
+    ! - vth      : thermal (+turbulent) velocity dispersion of D atoms [ cm / s ] 
+    ! - nu_cell  : frequency of incoming photon in cell's rest-frame   [ Hz ] 
+    ! - k        : propagaction vector (normalized) 
+    ! - nu_ext   : frequency of incoming photon, in external frame     [ Hz ]
+    ! - iran     : random number generator seed
     ! OUTPUTS :
-    ! - nu_cell : updated frequency in cell's frame   [ Hz ]
-    ! - nu_ext  : updated frequency in external frame [ Hz ]
-    ! - k       : updated propagation direction
-    ! _ iran    : updated value of seed
-    ! --------------------------------------------------------------------------
-    
+    ! - nu_cell  : updated frequency in cell's frame   [ Hz ]
+    ! - nu_ext   : updated frequency in external frame [ Hz ]
+    ! - k        : updated propagation direction
+    ! _ iran     : updated value of seed
+    ! ---------------------------------------------------------------------------------
+    !
+    ! Notes on the phase function :
+    ! -----------------------------
+    ! - for core photons (|x| < 0.2) we use P(mu) = 11/24 + 3/24 * mu**2
+    ! - for wing photons (|x| > 0.2) we use P(mu) = 3/8 * (1 + mu**2) [this is Rayleigh]
+    ! where mu = cos(theta), (and theta in [0,pi]).
+    ! ---------------------------------------------------------------------------------
+
     real(kind=8), intent(inout)               :: nu_cell, nu_ext
     real(kind=8), dimension(3), intent(inout) :: k
     real(kind=8), dimension(3), intent(in)    :: vcell
     real(kind=8), intent(in)                  :: vth
     integer, intent(inout)                    :: iran
     real(kind=8)               :: delta_nu_doppler, a, x_cell, blah, upar, ruper
-    real(kind=8)               :: r2, uper, nu_atom, phi, theta, st, mu, scalar
+    real(kind=8)               :: r2, uper, nu_atom, mu, bu, scalar
+    real(kind=8)               :: x_atom
     real(kind=8), dimension(3) :: knew
-    
-    
+
     ! define x_cell & a
-    delta_nu_doppler = vth / lambda_0_cm  ! [ Hz ]
-    a      = gamma / (4.d0 * pi * delta_nu_doppler) 
+    delta_nu_doppler = vth / lambda_0_cm 
+    a = gamma_over_fourpi / delta_nu_doppler
     x_cell = (nu_cell - nu_0) / delta_nu_doppler
-    
+
     ! 1/ component parallel to photon's propagation
     ! -> get velocity of interacting atom parallel to propagation
     blah = ran3(iran)
@@ -105,64 +116,118 @@ contains
     upar = get_uparallel(a,x_cell,blah)
 #endif
     upar = upar * vth    ! upar is an x -> convert to a velocity 
-    
+
     ! 2/ component perpendicular to photon's propagation
     ruper  = ran3(iran)
     r2     = ran3(iran)
-    uper   = sqrt(-log(ruper))*cos(2.d0*pi*r2)
+    uper   = sqrt(-log(ruper))*cos(twopi*r2)
     uper   = uper * vth  ! from x to velocity
-    
-    ! 3/ determine scattering angle (in atom's frame)
-    nu_atom = nu_cell - nu_ext * upar/clight 
-    phi   = 2.d0*pi*ran3(iran)
-    theta = acos(1d0-2d0*ran3(iran))
-    st = sin(theta)
-    knew(1) = st*cos(phi)   !x
-    knew(2) = st*sin(phi)   !y
-    knew(3) = cos(theta)    !z
-    mu = k(1)*knew(1) + k(2)*knew(2) + k(3)*knew(3) 
-    
-    ! 4/ recoil effect
-    if (recoil) then
-       nu_atom = nu_atom / (1.d0 + ((planck*nu_atom)/(mdeut*clight*clight))*(1.-mu))
-    endif
-    
-    ! 5/ compute atom freq. in external frame, after scattering
-    scalar  = knew(1) * vcell(1) + knew(2) * vcell(2) + knew(3)* vcell(3)
-    nu_ext  = nu_atom * (1.0d0 + scalar/clight + (upar*mu + sqrt(1-mu**2)*uper)/clight)
-    nu_cell = (1.d0 - scalar/clight) * nu_ext 
-    k       = knew
-    
-  end subroutine scatter_D_isotrope
-  
-  
-  !==================
-  ! private routines 
-  !==================
-  
-  ! peut-etre dans un module "atomic_physics_utils.f90" ? -> yes ! 
-  function voigt_fit(x,a)
-    
-    !use constant, only : pi,sqrtpi
-    
-    implicit none
-    
-    real(kind=8),intent(in) :: x,a
-    real(kind=8)            :: voigt_fit 
-    real(kind=8)            :: q,z,x2
-    
-    x2 = x**2
-    z  = (x2 - 0.855d0) / (x2 + 3.42d0)
-    if (z > 0) then 
-       q = z * (1.0d0 + 21.0d0/x2) * a / pi / (x2 + 1.0d0)
-       q = q * (((5.674d0*z - 9.207d0)*z + 4.421d0)*z + 0.1117)
+
+    ! 3/ incoming frequency in atom's frame
+    nu_atom = nu_cell - nu_ext * upar/clight
+
+    ! 4/ determine direction of scattered photon
+    if (isotropic) then
+       call isotropic_direction(knew,iran)
+       mu = k(1)*knew(1) + k(2)*knew(2) + k(3)*knew(3)
+       bu = sqrt(1.0d0 - mu*mu)
     else
-       q = 0.0d0 
+       x_atom  = (nu_atom -nu_0) / delta_nu_doppler
+       if (abs(x_atom) < 0.2) then ! core scattering 
+          call anisotropic_direction_HIcore(k,knew,mu,bu,iran)
+       else ! wing scattering 
+          call anisotropic_direction_Rayleigh(k,knew,mu,bu,iran)
+       end if
     end if
-    voigt_fit = q + exp(-x2) / sqrtpi
-    
+
+    ! 5/ recoil effect 
+    if (recoil) then 
+       nu_atom = nu_atom / (1.d0 + ((planck*nu_atom)/(mdeut*clight*clight))*(1.-mu))
+    end if
+
+    ! 6/ compute atom freq. in external frame, after scattering
+    scalar = knew(1) * vcell(1) + knew(2) * vcell(2) + knew(3)* vcell(3)
+    nu_ext = nu_atom * (1.0d0 + scalar/clight + (upar*mu + bu*uper)/clight)
+    nu_cell = (1.d0 - scalar/clight) * nu_ext 
+    k = knew
+
+  end subroutine scatter_D
+
+
+
+  subroutine read_D_params(pfile)
+
+    ! ---------------------------------------------------------------------------------
+    ! subroutine which reads parameters of current module in the parameter file pfile
+    !
+    ! default parameter values are set at declaration (head of module)
+    ! ---------------------------------------------------------------------------------
+
+    character(*),intent(in) :: pfile
+    character(1000) :: line,name,value
+    integer(kind=4) :: err,i
+    logical         :: section_present
+
+    section_present = .false.
+    open(unit=10,file=trim(pfile),status='old',form='formatted')
+    ! search for section start
+    do
+       read (10,'(a)',iostat=err) line
+       if(err/=0) exit
+       if (line(1:11) == '[Deuterium]') then
+          section_present = .true.
+          exit
+       end if
+    end do
+    ! read section if present
+    if (section_present) then 
+       do
+          read (10,'(a)',iostat=err) line
+          if(err/=0) exit
+          if (line(1:1) == '[') exit ! next section starting... -> leave
+          i = scan(line,'=')
+          if (i==0 .or. line(1:1)=='#' .or. line(1:1)=='!') cycle  ! skip blank or commented lines
+          name=trim(adjustl(line(:i-1)))
+          value=trim(adjustl(line(i+1:)))
+          i = scan(value,'!')
+          if (i /= 0) value = trim(adjustl(value(:i-1)))
+          select case (trim(name))
+          case ('recoil')
+             read(value,*) recoil
+          case ('isotropic')
+             read(value,*) isotropic
+          end select
+       end do
+    end if
+    close(10)
     return
-    
-  end function voigt_fit
-  
+
+  end subroutine read_D_params
+
+
+
+  subroutine print_D_params(unit)
+
+    ! ---------------------------------------------------------------------------------
+    ! write parameter values to std output or to an open file if argument unit is
+    ! present.
+    ! ---------------------------------------------------------------------------------
+
+    integer(kind=4),optional,intent(in) :: unit
+
+    if (present(unit)) then 
+       write(unit,'(a,a,a)') '[Deuterium]'
+       write(unit,'(a,L1)') '  recoil    = ',recoil
+       write(unit,'(a,L1)') '  isotropic = ',isotropic
+    else
+       write(*,'(a,a,a)') '[Deuterium]'
+       write(*,'(a,L1)') '  recoil    = ',recoil
+       write(*,'(a,L1)') '  isotropic = ',isotropic
+    end if
+
+    return
+
+  end subroutine print_D_params
+
+
 end module module_D_model
