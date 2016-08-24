@@ -8,7 +8,6 @@ module module_gas_composition
   use module_dust_model
   use module_random
   use module_ramses
-  use module_utils
   use module_constants
 
   implicit none

@@ -43,7 +43,7 @@ module module_mesh
   ! --------------------------------------------------------------------------
   ! user-defined parameters - read from section [mesh] in the parameter file 
   ! --------------------------------------------------------------------------
-  logical :: verbose = .false.      ! set to true to display floods of messages ... 
+  logical :: verbose = .true.      ! set to true to display floods of messages ... 
   ! --------------------------------------------------------------------------
   
 
@@ -137,6 +137,8 @@ module module_mesh
       son(1)=1
 
       if (verbose) then 
+         write(*,*)
+         write(*,*)'...building the mesh from the collection of leaves...'
          write(*,*)
          write(*,*)'...entering recursive loop...'
       end if

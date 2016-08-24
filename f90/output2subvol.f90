@@ -40,8 +40,7 @@ program output2subvol
   nOctSnap = get_nGridTot(repository,snapnum)
 
   ! conversion des feuilles en proprietes voulues... -> construction du type gas
-  call gas_from_ramses_leaves(ramses_var, gas_leaves)
-  ! deallocate(rho,vleaf,pressure,metallicity) ?? 
+  call gas_from_ramses_leaves(repository, snapnum, nleaftot, nvar, ramses_var, gas_leaves)
 
   ! creation de mesh
   !call select_leaves_in_domain(subvol, x_leaf, ramses_var, leaf_level, selected_leaves)
