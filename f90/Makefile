@@ -56,7 +56,7 @@ endif
 # All objects
 
 COMPOBJS = module_dust_model.o module_D_model.o module_HI_model.o module_gas_composition_HI_D_dust.o
-#COMPOBJS = module_HI_model.o module_gas_composition_HI_homogeneous.o
+#COMPOBJS = module_HI_model.o module_gas_composition_HI.o
 #COMPOBJS = module_gas_ramses.o
 
 GASOBJS = module_constants.o module_ramses.o module_random.o module_utils.o module_uparallel.o $(COMPOBJS)
@@ -97,9 +97,6 @@ output2subvol: $(OBJS1) output2subvol.o
 
 CreateDomDump: $(OBJS2) CreateDomDump.o
 	$(F90) $(FFLAGS) $(LDFLAGS) -o $@ $(OBJS2)
-
-CreateSphere: $(OBJSCOM) CreateSphere.o
-	$(F90) $(FFLAGS) $(LDFLAGS) -o $@ $(OBJSCOM) CreateSphere.o
 
 clean:
 	rm -f $(OBJS1) $(OBJS2) $(OBJSMC) $(OBJSMPI) *.o *.mod
