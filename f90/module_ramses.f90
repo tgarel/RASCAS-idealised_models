@@ -1,11 +1,12 @@
 module module_ramses
 
   use module_constants, only : kB, mp, XH
+  use module_domain
 
   implicit none
 
   private 
-  
+
   ! stuff read from AMR files
   integer(kind=4)                  :: ncell,ncoarse,ngridmax
   real(kind=8),allocatable         :: xg(:,:)      ! grids position
@@ -21,7 +22,7 @@ module module_ramses
   integer(kind=4),parameter :: ndim = 3
   integer(kind=4),parameter :: twondim = 6
   integer(kind=4),parameter :: twotondim= 8 
-  
+
   ! stuff read from the HYDRO files
   real(kind=8),allocatable         :: var(:,:)
   real(kind=8),allocatable         :: cell_x(:),cell_y(:),cell_z(:)
@@ -31,7 +32,7 @@ module module_ramses
 
   ! conversion factors (units)
   logical                        :: conversion_scales_are_known = .False. 
-  real(kind=8)                   :: dp_scale_l,dp_scale_d,dp_scale_t,dp_scale_T2,dp_scale_zsun,dp_scale_nh,dp_scale_v
+  real(kind=8)                   :: dp_scale_l,dp_scale_d,dp_scale_t,dp_scale_T2,dp_scale_zsun,dp_scale_nh,dp_scale_v,dp_scale_m
 
   ! cooling-related stuff -------------------------------------------------------------
   type cooling_table
@@ -63,7 +64,16 @@ module module_ramses
   logical            :: cooling_is_read = .False. 
   ! ----------------------------------------------------------------------------------
 
+  ! particle-related stuff -----------------------------------------------------------
+  character(30) :: ParticleFields(20)  ! array of particle fields (e.g. (/'pos','vel','mass','iord','level'/) for a DM-only run)
+  ! conformal time things
+  integer(kind=4),parameter             :: n_frw = 1000
+  real(KIND=8),dimension(:),allocatable :: aexp_frw,hexp_frw,tau_frw,t_frw
+  ! ----------------------------------------------------------------------------------
+  
+
   public  :: read_leaf_cells, get_ngridtot, ramses_get_velocity_cgs, ramses_get_T_nhi_cgs, ramses_get_metallicity, ramses_get_box_size_cm
+  public  :: ramses_read_stars_in_domain
   ! default is private now ... !! private :: read_hydro, read_amr, get_nleaf, get_nvar, clear_amr, get_ncpu, get_param_real
 
   !==================================================================================
@@ -72,7 +82,7 @@ contains
   ! ----------------
   ! public functions 
   ! ----------------
-  
+
   subroutine read_leaf_cells(repository, snapnum, nleaftot, nvar, &
        & xleaf, ramses_var, leaf_level)
 
@@ -81,7 +91,7 @@ contains
     ! positions (xleaf(3,nleaftot)) and levels (leaf_level).
 
     implicit none 
-    
+
     character(2000),intent(in)                :: repository
     integer(kind=4),intent(in)                :: snapnum
     integer(kind=4),intent(inout)             :: nleaftot, nvar
@@ -122,12 +132,12 @@ contains
     call clear_amr
 
     return
-    
+
   end subroutine read_leaf_cells
 
-  
+
   function get_nGridTot(repository,snapnum)
-    
+
     ! get total number of grids in the simulation 
 
     implicit none 
@@ -161,11 +171,11 @@ contains
     end do
 
     return
-    
+
   end function get_nGridTot
 
 
-  
+
   subroutine ramses_get_T_nhi_cgs(repository,snapnum,nleaf,nvar,ramses_var,temp,nhi)
 
     implicit none 
@@ -189,10 +199,10 @@ contains
        call read_cooling(repository,snapnum)
        cooling_is_read = .True.
     end if
-    
+
     nhi  = ramses_var(1,:) * dp_scale_nh  ! nb of H atoms per cm^3
     temp = ramses_var(5,:) / ramses_var(1,:) * dp_scale_T2  ! T/mu [ K ]
-    
+
     ! compute the ionization state and temperature using the 'cooling' tables
     do i = 1, nleaf 
        xx  = log10(nhi(i))
@@ -246,15 +256,15 @@ contains
             & + dxx1 * dyy2 * cooling%mu(if2,jf1) + dxx2 * dyy2 * cooling%mu(if1,jf1)
        temp(i) = temp(i) * f   ! This is now T (in K) with no bloody mu ... 
     end do
-       
+
     return
 
   end subroutine ramses_get_T_nhi_cgs
-  
+
   subroutine ramses_get_velocity_cgs(repository,snapnum,nleaf,nvar,ramses_var,velocity_cgs)
 
     implicit none
-    
+
     character(1000),intent(in)  :: repository
     integer(kind=4),intent(in)  :: snapnum
     integer(kind=4),intent(in)  :: nleaf, nvar
@@ -266,17 +276,18 @@ contains
        call read_conversion_scales(repository,snapnum)
        conversion_scales_are_known = .True.
     end if
-    
+
     velocity_cgs = ramses_var(2:4,:) * dp_scale_v ! [ cm / s ]
-    
+
     return
-    
+
   end subroutine ramses_get_velocity_cgs
+
 
   subroutine ramses_get_metallicity(nleaf,nvar,ramses_var,metallicity)
 
     implicit none
-    
+
     integer(kind=4),intent(in)  :: nleaf, nvar
     real(kind=8),intent(in)     :: ramses_var(nvar,nleaf) ! one cell only
     real(kind=8),intent(inout)  :: metallicity(nleaf)
@@ -286,33 +297,33 @@ contains
        stop
     end if
     metallicity = ramses_var(6,:) 
-    
+
     return
 
   end subroutine ramses_get_metallicity
 
-  
+
   function ramses_get_box_size_cm(repository,snapnum)
 
     implicit none
-    
+
     character(1000),intent(in)  :: repository
     integer(kind=4),intent(in)  :: snapnum
     real(kind=8)                :: ramses_get_box_size_cm 
-    
+
     ! get conversion factors if necessary
     if (.not. conversion_scales_are_known) then 
        call read_conversion_scales(repository,snapnum)
        conversion_scales_are_known = .True.
     end if
-    
+
     ramses_get_box_size_cm = get_param_real(repository,snapnum,'boxlen') * dp_scale_l  ! [ cm ] 
-    
+
     return
-    
+
   end function ramses_get_box_size_cm
 
-    
+
   !subroutine ramses_read_star_particles(repository, snapnum, nstars, stars)
   !  character(2000),intent(in)                     :: repository
   !  integer(kind=4),intent(in)                     :: snapnum
@@ -324,12 +335,12 @@ contains
   !end subroutine ramses_read_star_particles
 
 
-  
+
   !==================================================================================
   ! ----------------
   ! private functions 
   ! ----------------
-  
+
   subroutine read_hydro(repository,snapnum,icpu,do_allocs)
 
     implicit none
@@ -359,7 +370,7 @@ contains
     allocate(xc(1:twotondim,1:ndim))
 
     cell_level = -1
-    
+
     do ilevel=1,nlevelmax
 
        dx=0.5d0**ilevel
@@ -420,9 +431,9 @@ contains
 
   end subroutine read_hydro
 
-  
+
   subroutine read_amr(repository,snapnum,icpu,do_allocs)
-    
+
     implicit none 
 
     integer(kind=4),intent(in)  :: snapnum,icpu
@@ -572,7 +583,7 @@ contains
 
   end subroutine read_amr
 
-  
+
 
   subroutine clear_amr
 
@@ -581,9 +592,9 @@ contains
     deallocate(son,cpu_map,xg,nbor,next)
     deallocate(headl,taill,numbl,numbtot,headb,tailb,numbb)
     deallocate(var,cell_x,cell_y,cell_z,cell_level)
-    
+
     return
-    
+
   end subroutine clear_amr
 
 
@@ -591,7 +602,7 @@ contains
   function get_nleaf(repository,snapnum)
 
     implicit none
-    
+
     integer(kind=4),intent(in)  :: snapnum
     character(1000),intent(in)  :: repository
     integer(kind=4)             :: get_nleaf
@@ -607,7 +618,7 @@ contains
     integer(kind=4)             :: i,nx,ny,nz,nlevelmax,nboundary,ncell,ncoarse,ngridmax
     integer(kind=4)             :: ilevel,ncache,ibound,idim,ind,iskip
     integer(kind=4)             :: ndim,twondim,twotondim
-    
+
     ncpu = get_ncpu(repository,snapnum)
     get_nleaf = 0
     ndim = 3
@@ -674,7 +685,7 @@ contains
                 ncache=numbb(ibound-ncpu,ilevel)
              end if
              if(ncache>0)then
-                !!!if (ilevel < fg_levelmin) print*,'lev < levmin',ilevel
+!!!if (ilevel < fg_levelmin) print*,'lev < levmin',ilevel
                 allocate(ind_grid(1:ncache))
                 allocate(iig(1:ncache))
                 read(10)ind_grid ! Read grid index
@@ -701,7 +712,7 @@ contains
                       cpu_map(ind_grid(i)+iskip)=iig(i)
                    end do
                 end do
-              
+
                 do ind=1,twotondim
                    read(10) ! Read refinement map (skip)
                 end do
@@ -718,7 +729,7 @@ contains
        end do
     end do
     deallocate(son,cpu_map,numbl,numbb)
-        
+
     return
   end function get_nleaf
 
@@ -729,7 +740,7 @@ contains
     character(1000),intent(in)  :: repository
     character(1000)             :: nomfich
     integer(kind=4)             :: get_nvar,icpu
-  
+
     icpu = 1
     write(nomfich,'(a,a,i5.5,a,i5.5,a,i5.5)') trim(repository),'/output_',snapnum,'/hydro_',snapnum,'.out',icpu
     open(unit=10,file=nomfich,form='unformatted',status='old',action='read')
@@ -743,13 +754,13 @@ contains
   function get_ncpu(repository,snapnum)
 
     implicit none
-    
+
     integer(kind=4)            :: get_ncpu
     character(512),intent(in)  :: repository
     integer(kind=4),intent(in) :: snapnum
-    
+
     get_ncpu = nint(get_param_real(repository,snapnum,'ncpu'))
-    
+
     return
   end function get_ncpu
 
@@ -758,7 +769,7 @@ contains
   function get_param_real(repository,snapnum,param)
 
     implicit none 
-    
+
     real(kind=8)               :: get_param_real
     character(512),intent(in)  :: repository
     integer(kind=4),intent(in) :: snapnum
@@ -794,13 +805,13 @@ contains
        write(6,*) '> parameter not found in infoxxx.txt :',trim(param)
        stop
     end if
-    
+
     return
 
   end function get_param_real
-  
+
   subroutine read_conversion_scales(repository,snapnum)
-    
+
     implicit none 
 
     character(512),intent(in)  :: repository
@@ -810,21 +821,76 @@ contains
     dp_scale_l    = get_param_real(repository,snapnum,'unit_l')
     dp_scale_d    = get_param_real(repository,snapnum,'unit_d')
     dp_scale_t    = get_param_real(repository,snapnum,'unit_t')
-    dp_scale_nH   = XH/mp * dp_scale_d      ! convert mass density (code units) to numerical density of H atoms
+    dp_scale_nH   = XH/mp * dp_scale_d      ! convert mass density (code units) to numerical density of H atoms [/cm3]
     dp_scale_v    = dp_scale_l/dp_scale_t   ! -> converts velocities into cm/s
     dp_scale_T2   = mp/kB * dp_scale_v**2   ! -> converts P/rho to T/mu, in K
     dp_scale_zsun = 1.d0/0.0127
+    dp_scale_m    = dp_scale_d / dp_scale_l**3 ! convert mass in code units to cgs. 
 
     return
 
   end subroutine read_conversion_scales
-  
-!*****************************************************************************************************************
+
+  subroutine read_cosmo_params(repository,snapnum,omega_0,lambda_0,little_h)
+
+    implicit none 
+
+    character(512),intent(in)  :: repository
+    integer(kind=4),intent(in) :: snapnum
+    real(kind=8),intent(out)   :: omega_0,lambda_0,little_h
+
+    omega_0  = get_param_real(repository,snapnum,'omega_m')
+    lambda_0 = get_param_real(repository,snapnum,'omega_l')
+    little_h = get_param_real(repository,snapnum,'H0') / 100.0d0
+
+    return
+
+  end subroutine read_cosmo_params
+
+  subroutine get_fields_from_header(dir,ts,nfields)
+
+    implicit none
+
+    character(1000),intent(in)  :: dir
+    integer(kind=4),intent(in)  :: ts
+    integer(kind=4),intent(out) :: nfields
+    character(2000)             :: nomfich,line
+    integer(kind=4) :: i
+
+    write(nomfich,'(a,a,i5.5,a,i5.5,a)') trim(dir),'/output_',ts,'/header_',ts,'.txt'
+    open(unit=50,file=nomfich,status='old',action='read',form='formatted')
+    read(50,*) ! total nb of particles
+    read(50,*)
+    read(50,*) ! nb of DM particles
+    read(50,*)
+    read(50,*) ! nb of star particles
+    read(50,*)
+    read(50,*) ! nb of sinks
+    read(50,*)
+    read(50,*) ! Field list
+    read(50,'(a)') line
+    close(50)
+
+    ! parse the Field list ...
+    nfields = 0
+    do
+       i    = scan(line,' ') ! find a blank
+       nfields = nfields + 1
+       ParticleFields(nfields) = trim(adjustl(line(:i)))
+       line = trim(adjustl(line(i:)))
+       if (len_trim(line) == 0) exit
+    end do
+
+    return
+
+  end subroutine get_fields_from_header
+
+  !*****************************************************************************************************************
 
   subroutine read_cooling(repository,snapnum)
 
     implicit none
-    
+
     character(1000),intent(in) :: repository
     integer(kind=4),intent(in) :: snapnum
     character(1024)            :: filename
@@ -859,7 +925,7 @@ contains
     read(44)cooling%mu
     read(44)cooling%spec
     close(44)
-    
+
     ! define useful quantities for interpolation 
     cool_int%n_nh     = n1
     cool_int%nh_start = minval(cooling%nh)
@@ -867,12 +933,12 @@ contains
     cool_int%n_t2     = n2
     cool_int%t2_start = minval(cooling%t2)
     cool_int%t2_step  = cooling%t2(2) - cooling%t2(1)
-    
+
     return
 
   end subroutine read_cooling
 
-!*****************************************************************************************************************
+  !*****************************************************************************************************************
 
   subroutine clear_cooling
 
@@ -886,19 +952,395 @@ contains
        deallocate(cooling%cool,cooling%heat,cooling%metal_prime,cooling%cool_prime)
        deallocate(cooling%heat_prime,cooling%mu,cooling%spec)
     end if
-    
+
     cool_int%n_nh = 0
     cool_int%nh_start = 0.0d0
     cool_int%nh_step  = 0.0d0
     cool_int%n_t2 = 0
     cool_int%t2_start = 0.0d0
     cool_int%t2_step  = 0.0d0
-    
+
     return
 
   end subroutine clear_cooling
 
+
+
+  !==================================================================================
+  ! STARS utilities 
+
+  subroutine ramses_read_stars_in_domain(repository,snapnum,selection_domain,star_pos,star_age,star_mass,star_vel)
+
+    ! ONLY WORKS FOR COSMO RUNS (WITHOUT PROPER TIME OPTION)
+    ! -> this should be parameterised (and coded). 
     
+    implicit none
+
+    character(1000),intent(in) :: repository
+    integer(kind=4),intent(in) :: snapnum
+    type(domain),intent(in)    :: selection_domain
+    real(kind=8),allocatable,intent(inout) :: star_pos(:,:),star_age(:),star_mass(:),star_vel(:,:)
+    integer(kind=4)            :: nstars
+    real(kind=8)               :: omega_0,lambda_0,little_h,omega_k,H0
+    real(kind=8)               :: aexp,stime
+    integer(kind=4)            :: ncpu,ilast,icpu,npart,i,ifield,nfields
+    character(1000)            :: filename
+    integer(kind=4),allocatable :: id(:)
+    real(kind=8),allocatable    :: age(:),m(:),x(:,:),v(:,:),mets(:)
+    
+    
+    ! get cosmological parameters to convert conformal time into ages
+    call read_cosmo_params(repository,snapnum,omega_0,lambda_0,little_h)
+    omega_k = 0.0d0
+    h0      = little_h * 100.0d0
+    call ct_init_cosmo(omega_0,lambda_0,omega_k,h0)
+    ! compute cosmic time of simulation output (Myr)
+    aexp  = get_param_real(repository,snapnum,'aexp') ! exp. factor of output
+    stime = ct_aexp2time(aexp) ! cosmic time
+    ! read units 
+    call read_conversion_scales(repository,snapnum)
+
+    ! read stars 
+    nstars = get_tot_nstars(repository,snapnum)
+    if (nstars == 0) then
+       write(*,*) 'ERROR : no star particles in output '
+       stop
+    end if
+    allocate(star_pos(3,nstars),star_age(nstars),star_mass(nstars),star_vel(3,nstars))
+    ! get list of particle fields in outputs 
+    call get_fields_from_header(repository,snapnum,nfields)
+    ncpu  = get_ncpu(repository,snapnum)
+    ilast = 1
+    do icpu = 1, ncpu
+       write(filename,'(a,a,i5.5,a,i5.5,a,i5.5)') trim(repository), '/output_', snapnum, '/part_', snapnum, '.out', icpu
+       open(unit=11,file=filename,status='old',form='unformatted')
+       read(11)
+       read(11)
+       read(11)npart
+       read(11)
+       read(11)
+       read(11)
+       read(11)
+       read(11)
+       allocate(age(1:npart))
+       allocate(x(1:npart,1:ndim),m(npart))
+       allocate(id(1:npart))
+       allocate(mets(1:npart))
+       allocate(v(1:npart,1:ndim))
+       do ifield = 1,nfields
+          select case(trim(ParticleFields(ifield)))
+          case('pos')
+             do i = 1,ndim
+                read(11) x(1:npart,i)
+             end do
+          case('vel')
+             do i = 1,ndim 
+                read(11) v(1:npart,i)
+             end do
+          case('mass')
+             read(11) m(1:npart)
+          case('iord') 
+             read(11) id(1:npart)
+          case('level')
+             read(11)
+          case('tform')
+             read(11) age(1:npart)
+          case('metal')
+             read(11) mets(1:npart)
+          case default
+             print*,'Error, Field unknown: ',trim(ParticleFields(ifield))
+          end select
+       end do
+       close(11)
+
+       ! save star particles within selection region
+       do i = 1,npart
+          if (age(i).ne.0.0d0) then ! This is a star
+             if (domain_contains_point(x(i,:),selection_domain)) then ! it is inside the domain
+                ! Convert from conformal time to age in Myr
+                star_age(ilast)   = (stime - ct_conftime2time(age(i)))*1.d-6 ! Myr
+                star_mass(ilast)  = m(i)   * dp_scale_m ! [g]
+                star_pos(:,ilast) = x(i,:) * dp_scale_l ! [cm]
+                star_vel(:,ilast) = v(i,:) * dp_scale_v ! [cm/s]
+                ilast = ilast + 1
+             end if
+          end if
+       end do
+          
+       deallocate(age,m,x,id,mets,v)
+
+    end do
+
+    ! resize star arrays
+    nstars = ilast-1
+    ! ages
+    allocate(age(nstars))
+    age = star_age(1:nstars)
+    deallocate(star_age)
+    allocate(star_age(nstars))
+    star_age = age
+    deallocate(age)
+    ! masses
+    allocate(m(nstars))
+    m = star_mass(1:nstars)
+    deallocate(star_mass)
+    allocate(star_mass(nstars))
+    star_mass = m
+    deallocate(m)
+    ! positions
+    allocate(x(3,nstars))
+    do i = 1,nstars 
+       x(:,i) = star_pos(:,i)
+    end do
+    deallocate(star_pos)
+    allocate(star_pos(3,nstars))
+    star_pos = x
+    deallocate(x)
+    ! velocities
+    allocate(v(3,nstars))
+    do i = 1,nstars 
+       v(:,i) = star_vel(:,i)
+    end do
+    deallocate(star_vel)
+    allocate(star_vel(3,nstars))
+    star_vel = v
+    deallocate(v)
+
+    
+    return
+  end subroutine ramses_read_stars_in_domain
+
+
+  function get_tot_nstars(dir,ts)
+
+    implicit none 
+
+    integer(kind=4),intent(in) :: ts
+    character(1000),intent(in) :: dir
+    character(2000)            :: nomfich
+    integer(kind=4)            :: get_tot_nstars
+
+    get_tot_nstars = 0
+    write(nomfich,'(a,a,i5.5,a,i5.5,a)') trim(dir),'/output_',ts,'/header_',ts,'.txt'
+    open(unit=50,file=nomfich,status='old',action='read',form='formatted')
+    read(50,*) ! total nb of particles
+    read(50,*)
+    read(50,*) ! nb of DM particles
+    read(50,*)
+    read(50,*) ! nb of star particles 
+    read(50,*) get_tot_nstars
+    close(50)
+
+    return
+
+  end function get_tot_nstars
+
+  ! conformal time utils :
+    function ct_conftime2time(tau)
+
+    ! return look-back time in yr
+    
+    implicit none 
+    
+    real(kind=8),intent(in) :: tau
+    real(kind=8)            :: ct_conftime2time
+    integer(kind=4)         :: i
+    
+    
+    ! locate bracketing conf. times
+    i = 1
+    do while(tau_frw(i) > tau .and. i < n_frw)
+       i = i + 1
+    end do
+    ! Interploate time
+    ct_conftime2time = t_frw(i) * (tau-tau_frw(i-1))/(tau_frw(i)-tau_frw(i-1))+ &
+         & t_frw(i-1)        * (tau-tau_frw(i))/(tau_frw(i-1)-tau_frw(i))
+    
+    return
+
+  end function ct_conftime2time
+
+
+  function ct_aexp2time(aexp)
+
+    ! return look-back time in yr
+
+    implicit none
+
+    real(kind=8),intent(in) :: aexp
+    real(kind=8)            :: ct_aexp2time
+    integer(kind=4)         :: i
+
+    ! find bracketting aexp's 
+     i = 1
+     do while(aexp_frw(i)>aexp.and.i<n_frw)
+        i = i + 1
+     end do
+     ! Interploate time
+     ct_aexp2time = t_frw(i) * (aexp-aexp_frw(i-1))/(aexp_frw(i)-aexp_frw(i-1))+ &
+          & t_frw(i-1)    * (aexp-aexp_frw(i))/(aexp_frw(i-1)-aexp_frw(i))
+
+    return
+    
+  end function ct_aexp2time
+
+  
+  subroutine ct_init_cosmo(omega_m,omega_l,omega_k,h0)
+    
+    ! h0 is in km/s/Mpc
+
+    implicit none 
+    real(kind=8),intent(in) :: omega_m,omega_l,omega_k,h0
+    real(kind=8)            :: time_tot
+
+    allocate(aexp_frw(0:n_frw),hexp_frw(0:n_frw))
+    allocate(tau_frw(0:n_frw),t_frw(0:n_frw))
+    call ct_friedman(omega_m,omega_l,omega_k,1.d-6,1.d-3,aexp_frw,hexp_frw,tau_frw,t_frw,n_frw,time_tot)
+    ! convert time to yr
+    t_frw = t_frw / (h0 / 3.08d19) / (365.25*24.*3600.)
+
+    return
+    
+  end subroutine ct_init_cosmo
+
+
+  subroutine ct_clear_cosmo
+    
+    implicit none
+    
+    deallocate(aexp_frw,hexp_frw,tau_frw,t_frw)
+
+    return
+
+  end subroutine ct_clear_cosmo
+
+
+  subroutine ct_friedman(O_mat_0,O_vac_0,O_k_0,alpha,axp_min, &
+       & axp_out,hexp_out,tau_out,t_out,ntable,age_tot)
+
+    implicit none
+    integer::ntable
+    real(kind=8)::O_mat_0, O_vac_0, O_k_0
+    real(kind=8)::alpha,axp_min,age_tot
+    real(kind=8),dimension(0:ntable)::axp_out,hexp_out,tau_out,t_out
+    ! ######################################################!
+    ! This subroutine assumes that axp = 1 at z = 0 (today) !
+    ! and that t and tau = 0 at z = 0 (today).              !
+    ! axp is the expansion factor, hexp the Hubble constant !
+    ! defined as hexp=1/axp*daxp/dtau, tau the conformal    !
+    ! time, and t the look-back time, both in unit of 1/H0. !
+    ! alpha is the required accuracy and axp_min is the     !
+    ! starting expansion factor of the look-up table.       !
+    ! ntable is the required size of the look-up table.     !
+    ! ######################################################!
+    real(kind=8)::axp_tau, axp_t
+    real(kind=8)::axp_tau_pre, axp_t_pre
+    real(kind=8)::dtau,dt
+    real(kind=8)::tau,t
+    integer::nstep,nout,nskip
+
+    !  if( (O_mat_0+O_vac_0+O_k_0) .ne. 1.0D0 )then
+    !     write(*,*)'Error: non-physical cosmological constants'
+    !     write(*,*)'O_mat_0,O_vac_0,O_k_0=',O_mat_0,O_vac_0,O_k_0
+    !     write(*,*)'The sum must be equal to 1.0, but '
+    !     write(*,*)'O_mat_0+O_vac_0+O_k_0=',O_mat_0+O_vac_0+O_k_0
+    !     stop
+    !  end if
+
+    axp_tau = 1.0D0
+    axp_t = 1.0D0
+    tau = 0.0D0
+    t = 0.0D0
+    nstep = 0
+
+    do while ( (axp_tau .ge. axp_min) .or. (axp_t .ge. axp_min) ) 
+
+       nstep = nstep + 1
+       dtau = alpha * axp_tau / dadtau(axp_tau,O_mat_0,O_vac_0,O_k_0)
+       axp_tau_pre = axp_tau - dadtau(axp_tau,O_mat_0,O_vac_0,O_k_0)*dtau/2.d0
+       axp_tau = axp_tau - dadtau(axp_tau_pre,O_mat_0,O_vac_0,O_k_0)*dtau
+       tau = tau - dtau
+
+       dt = alpha * axp_t / dadt(axp_t,O_mat_0,O_vac_0,O_k_0)
+       axp_t_pre = axp_t - dadt(axp_t,O_mat_0,O_vac_0,O_k_0)*dt/2.d0
+       axp_t = axp_t - dadt(axp_t_pre,O_mat_0,O_vac_0,O_k_0)*dt
+       t = t - dt
+
+    end do
+
+    age_tot=-t
+!!$    write(*,666)-t
+!!$666 format(' Age of the Universe (in unit of 1/H0)=',1pe10.3)
+
+    nskip=nstep/ntable
+
+    axp_t = 1.d0
+    t = 0.d0
+    axp_tau = 1.d0
+    tau = 0.d0
+    nstep = 0
+    nout=0
+    t_out(nout)=t
+    tau_out(nout)=tau
+    axp_out(nout)=axp_tau
+    hexp_out(nout)=dadtau(axp_tau,O_mat_0,O_vac_0,O_k_0)/axp_tau
+
+    do while ( (axp_tau .ge. axp_min) .or. (axp_t .ge. axp_min) ) 
+
+       nstep = nstep + 1
+       dtau = alpha * axp_tau / dadtau(axp_tau,O_mat_0,O_vac_0,O_k_0)
+       axp_tau_pre = axp_tau - dadtau(axp_tau,O_mat_0,O_vac_0,O_k_0)*dtau/2.d0
+       axp_tau = axp_tau - dadtau(axp_tau_pre,O_mat_0,O_vac_0,O_k_0)*dtau
+       tau = tau - dtau
+
+       dt = alpha * axp_t / dadt(axp_t,O_mat_0,O_vac_0,O_k_0)
+       axp_t_pre = axp_t - dadt(axp_t,O_mat_0,O_vac_0,O_k_0)*dt/2.d0
+       axp_t = axp_t - dadt(axp_t_pre,O_mat_0,O_vac_0,O_k_0)*dt
+       t = t - dt
+
+       if(mod(nstep,nskip)==0)then
+          nout=nout+1
+          t_out(nout)=t
+          tau_out(nout)=tau
+          axp_out(nout)=axp_tau
+          hexp_out(nout)=dadtau(axp_tau,O_mat_0,O_vac_0,O_k_0)/axp_tau
+       end if
+
+    end do
+    t_out(ntable)=t
+    tau_out(ntable)=tau
+    axp_out(ntable)=axp_tau
+    hexp_out(ntable)=dadtau(axp_tau,O_mat_0,O_vac_0,O_k_0)/axp_tau
+
+  contains
+    function dadtau(axp_tau,O_mat_0,O_vac_0,O_k_0) 
+      implicit none 
+      real(kind=8)::dadtau,axp_tau,O_mat_0,O_vac_0,O_k_0
+      dadtau = axp_tau*axp_tau*axp_tau *  &
+           &   ( O_mat_0 + &
+           &     O_vac_0 * axp_tau*axp_tau*axp_tau + &
+           &     O_k_0   * axp_tau )
+      dadtau = sqrt(dadtau)
+      return
+    end function dadtau
+    
+    function dadt(axp_t,O_mat_0,O_vac_0,O_k_0)
+      implicit none
+      real(kind=8)::dadt,axp_t,O_mat_0,O_vac_0,O_k_0
+      dadt   = (1.0D0/axp_t)* &
+           &   ( O_mat_0 + &
+           &     O_vac_0 * axp_t*axp_t*axp_t + &
+           &     O_k_0   * axp_t )
+      dadt = sqrt(dadt)
+      return
+    end function dadt
+    
+  end subroutine ct_friedman
+
+
+
+
+
 end module module_ramses
 !==================================================================================
 !==================================================================================

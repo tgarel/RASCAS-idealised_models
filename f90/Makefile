@@ -1,9 +1,9 @@
 #############################################################################
 # Fortran compiler options and directives
 
-SYSTYPE="CCF"
+#SYSTYPE="CCF"
 #SYSTYPE="lyocral"
-#SYSTYPE="mac"
+SYSTYPE="mac"
 #SYSTYPE="Pmac"
 
 
@@ -34,9 +34,9 @@ LDFLAGS     =  -lmpi
 endif
 
 ifeq ($(SYSTYPE),"mac")
-F90         = gfortran-mp-4.7 ###-fopenmp
-FFLAGS      = -g -fcheck=all -ffree-line-length-none -ffree-form -ftrapv -fbacktrace -Wall
-##FFLAGS      = -O2
+F90         = gfortran-mp-4.7 -ffree-line-length-none -ffree-form  ###-fopenmp
+FFLAGS      = -g -fcheck=all -ftrapv -fbacktrace -Wall
+FFLAGS      = -O2
 FFLAGS += $(OPTIONS)
 ###FFLAGS      = -O3
 LDFLAGS     = 
@@ -59,19 +59,24 @@ COMPOBJS = module_dust_model.o module_D_model.o module_HI_model.o module_gas_com
 #COMPOBJS = module_HI_model.o module_gas_composition_HI_homogeneous.o
 #COMPOBJS = module_gas_ramses.o
 
-GASOBJS = module_constants.o module_ramses.o module_random.o module_utils.o module_uparallel.o $(COMPOBJS)
+#GASOBJS = module_constants.o module_ramses.o module_random.o module_utils.o module_uparallel.o $(COMPOBJS)
+GASOBJS = module_domain.o module_constants.o module_ramses.o module_random.o module_utils.o module_uparallel.o $(COMPOBJS)
 
-OBJSCOM = $(GASOBJS) module_select.o \
-	module_domain.o module_mesh.o
+#OBJSCOM = $(GASOBJS) module_select.o module_domain.o module_mesh.o
+OBJSCOM = $(GASOBJS) module_select.o module_mesh.o
 
 OBJS1 = $(OBJSCOM) output2subvol.o
 
 OBJS2 = $(OBJSCOM) CreateDomDump.o
 
-OBJSMC = $(GASOBJS) module_domain.o module_mesh.o module_photon.o 
+#OBJSMC = $(GASOBJS) module_domain.o module_mesh.o module_photon.o
+OBJSMC = $(GASOBJS) module_mesh.o module_photon.o 
 
 OBJSMPI = $(OBJSMC) module_parallel_mpi.o module_worker.o module_master.o MCLya.o
 
+JEJE = module_random.o module_constants.o module_uparallel.o module_domain.o \
+	module_utils.o module_HI_model.o module_ramses.o module_gas_composition_HI.o \
+	module_mesh.o module_photon.o
 #############################################################################
 #.SUFFIXES: .o .f90
 #.f90.o:
@@ -81,10 +86,13 @@ OBJSMPI = $(OBJSMC) module_parallel_mpi.o module_worker.o module_master.o MCLya.
 	$(F90) $(FFLAGS) -c $^ -o $@
 
 #############################################################################
-all: clean CreateDomDump PhotonsMonoPointSource serial MCLya
+all: clean CreateDomDump PhotonsMonoPointSource serial PhotonsFromStars ## MCLya
 
 PhotonsMonoPointSource: $(OBJSMC) PhotonsMonoPointSource.o
 	$(F90) $(FFLAGS) $(LDFLAGS) -o $@ $(OBJSMC) PhotonsMonoPointSource.o
+
+PhotonsFromStars: $(JEJE) PhotonsFromStars.o
+	$(F90) $(FFLAGS) $(LDFLAGS) -o $@ $(JEJE) PhotonsFromStars.o
 
 serial: $(OBJSMC) serial.o
 	$(F90) $(FFLAGS) $(LDFLAGS) -o $@ $(OBJSMC) serial.o

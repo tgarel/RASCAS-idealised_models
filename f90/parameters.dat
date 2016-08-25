@@ -1,4 +1,20 @@
-# Parameters for CreateDomDump, and Serial 
+# parameters for RASCAS ... 
+
+
+!--------------------------------------------------------------------------------
+[PhotonsFromStars]
+# input / output parameters
+  DataDir    = ./
+  repository = /Users/blaizot/Documents/Astro/SIMULATIONS/P13-20h-1Mpc-MUSIC/Zoom-7-1831/hdRun-LSS150pkpc-new-new-prime-fbk/
+  snapnum    = 68
+# computational domain parameters
+  typechar   = sphere
+  pos        = 5.000E-01 5.000E-01 5.000E-01
+  rvir       = 3.000E-01
+# miscelaneous parameters
+  verbose    = T
+!--------------------------------------------------------------------------------
+
 
 !--------------------------------------------------------------------------------
 [CreateDomDump]
@@ -70,7 +86,7 @@
   dust_to_metal_ratio = 3.000E-01
   mH_over_mdust       = 5.000E-08
 # overwrite parameters
-  gas_overwrite       = T
+  gas_overwrite       = F
   fix_nhi             = 1.0d0
   fix_vth             = 4.063058d5 ! this is 1000K
   fix_ndust           = 0.000
