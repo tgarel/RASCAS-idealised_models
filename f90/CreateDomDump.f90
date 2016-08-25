@@ -216,12 +216,12 @@ contains
        write(unit,'(a,i5)')          '  snapnum         = ',snapnum
        write(unit,'(a)')             '# computational domain parameters'
        write(unit,'(a,a)')           '  typechar        = ',trim(typechar)
-       write(unit,'(a,3(ES9.3,1x))') '  pos             = ',pos(1),pos(2),pos(3)
-       write(unit,'(a,ES9.3)')       '  rvir            = ',rvir
+       write(unit,'(a,3(ES10.3,1x))')'  pos             = ',pos(1),pos(2),pos(3)
+       write(unit,'(a,ES10.3)')      '  rvir            = ',rvir
        write(unit,'(a)')             '# domain decomposition parameters'
        write(unit,'(a,a)')           '  decomp_dom_type = ',trim(decomp_dom_type)
        write(unit,'(a,i5)')          '  ndomain         = ',ndomain
-       write(fmt,'(a,i3,a)') '(a,',ndomain,'(ES9.3,1x))'
+       write(fmt,'(a,i3,a)') '(a,',ndomain,'(ES10.3,1x))'
        write(unit,fmt)               '  rin             = ',rin(:)
        write(unit,fmt)               '  rout            = ',rout(:)
        write(unit,'(a)')             '# miscelaneous parameters'
@@ -236,12 +236,12 @@ contains
        write(*,'(a,i5)')          '  snapnum    = ',snapnum
        write(*,'(a)')             '# computational domain parameters'
        write(*,'(a,a)')           '  typechar   = ',trim(typechar)
-       write(*,'(a,3(ES9.3,1x))') '  pos        = ',pos(1),pos(2),pos(3)
-       write(*,'(a,ES9.3)')       '  rvir       = ',rvir
+       write(*,'(a,3(ES10.3,1x))')'  pos        = ',pos(1),pos(2),pos(3)
+       write(*,'(a,ES10.3)')      '  rvir       = ',rvir
        write(*,'(a)')             '# domain decomposition parameters'
        write(*,'(a,a)')           '  decomp_dom_type = ',trim(decomp_dom_type)
        write(*,'(a,i5)')          '  ndomain         = ',ndomain
-       write(fmt,'(a,i3,a)') '(a,',ndomain,'(ES9.3,1x))'
+       write(fmt,'(a,i3,a)') '(a,',ndomain,'(ES10.3,1x))'
        write(*,fmt)               '  rin             = ',rin(:)
        write(*,fmt)               '  rout            = ',rout(:)
        write(*,'(a)')             '# miscelaneous parameters'
