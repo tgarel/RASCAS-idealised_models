@@ -20,11 +20,17 @@ module module_domain
      real(kind=8)              :: radius
   end type sphere
 
+  type slab                                   ! infinite slab in xy direction (make use of periodic boundaries)
+     real(kind=8)              :: zc          ! position of the slab in the z direction
+     real(kind=8)              :: thickness   ! thickness of the slab in the z direction 
+  end type slab
+
   type domain
-     character(10) :: type  ! one of the possible shapes ('shell', 'cube', 'sphere')
+     character(10) :: type  ! one of the possible shapes ('shell', 'cube', 'sphere', 'slab')
      type(shell)   :: sh
      type(cube)    :: cu
      type(sphere)  :: sp
+     type(slab)    :: sl
   end type domain
   
 
@@ -36,12 +42,13 @@ contains
 
   ! constructeurs
   ! -------------
-  subroutine domain_constructor_from_scratch(dom,type,xc,yc,zc,r,r_inbound,r_outbound,size)
+  subroutine domain_constructor_from_scratch(dom,type,xc,yc,zc,r,r_inbound,r_outbound,size,thickness)
     character(10),intent(in)         :: type
     real(kind=8),intent(in),optional :: xc,yc,zc
     real(kind=8),intent(in),optional :: r                     ! parameters for sphere
     real(kind=8),intent(in),optional :: r_inbound,r_outbound  ! parameters for shell
     real(kind=8),intent(in),optional :: size                  ! parameters for cube
+    real(kind=8),intent(in),optional :: thickness             ! parameters for slab
     type(domain),intent(out)         :: dom
     logical :: ok
 
@@ -86,6 +93,18 @@ contains
        dom%cu%center(2)=yc
        dom%cu%center(3)=zc
        dom%cu%size=size
+
+
+    case('slab')
+       ! check if optional argument required for sphere are present
+       ok = present(zc).and.present(thickness)
+       if (.not.ok) then
+          print *,'arguments to construct a slab domain are missing...'
+          stop
+       endif
+       dom%type=type
+       dom%sl%zc=zc
+       dom%sl%thickness=thickness
 
     case default
        print *,'type not defined',type
@@ -188,6 +207,26 @@ contains
        indsel=tmpi
        deallocate(tmpi)
 
+
+    case('slab')
+       allocate(indsel(1:n))
+       indsel=0
+       ii=0
+       do i=1,n
+          if(abs(xp(i,3)-dom%sl%zc) <= dom%sl%thickness/2.)then
+             ii=ii+1
+             indsel(ii)=i
+          endif
+       enddo
+       nsel=ii
+       allocate(tmpi(1:nsel))
+       tmpi(1:nsel) = indsel(1:nsel)
+       deallocate(indsel)
+       allocate(indsel(1:nsel))
+       indsel=tmpi
+       deallocate(tmpi)
+
+
     case default
        print *,'type not defined',dom%type
        stop
@@ -213,6 +252,9 @@ contains
     case('cube')
        read(unit,*) dom%cu%center(:)
        read(unit,*) dom%cu%size
+    case('slab')
+       read(unit,*) dom%sl%zc
+       read(unit,*) dom%sl%thickness
     case default
        print *,'type not defined',dom%type
        stop
@@ -237,6 +279,9 @@ contains
     case('cube')
        read(unit) dom%cu%center(:)
        read(unit) dom%cu%size
+    case('slab')
+       read(unit) dom%sl%zc
+       read(unit) dom%sl%thickness
     case default
        print *,'type not defined',dom%type
        stop
@@ -261,6 +306,9 @@ contains
     case('cube')
        write(unit) dom%cu%center(:)
        write(unit) dom%cu%size
+    case('slab')
+       write(unit) dom%sl%zc
+       write(unit) dom%sl%thickness
     case default 
        print *,'type not defined',dom%type
        stop
@@ -286,6 +334,9 @@ contains
     case('cube')
        write(unit,'(3(f8.3))') dom%cu%center(:)
        write(unit,'(f8.3)') dom%cu%size
+    case('slab')
+       write(unit,'(f8.3)') dom%sl%zc
+       write(unit,'(f8.3)') dom%sl%thickness
     case default 
        print *,'type not defined',dom%type
        stop
@@ -327,6 +378,8 @@ contains
        if((abs(x(1)-dom%cu%center(1)) <= dom%cu%size/2.).and. & 
             (abs(x(2)-dom%cu%center(2)) <= dom%cu%size/2.).and. &
             (abs(x(3)-dom%cu%center(3)) <= dom%cu%size/2.))domain_contains_point=.true.
+    case('slab')
+       if(abs(x(3)-dom%sl%zc) <= dom%sl%thickness/2.)domain_contains_point=.true.
     end select
     return
   end function domain_contains_point
@@ -361,6 +414,10 @@ contains
           (x(2)-dx/2. <= dom%cu%center(2)-dom%cu%size/2.).and. &
           (x(3)+dx/2. <= dom%cu%center(3)+dom%cu%size/2.).and. &
           (x(3)-dx/2. <= dom%cu%center(3)-dom%cu%size/2.)) domain_contains_cell=.true.
+
+    case('slab')
+       if((x(3)+dx/2. <= dom%sl%zc+dom%sl%thickness/2.).and. &
+          (x(3)-dx/2. <= dom%sl%zc-dom%sl%thickness/2.)) domain_contains_cell=.true.
 
     end select
 
@@ -431,6 +488,9 @@ contains
        ddz = min((dom%cu%center(3)+dom%cu%size/2.-x(3)), (x(3)-dom%cu%center(3)-dom%cu%size/2.))
        domain_distance_to_border = min(ddx,ddy,ddz)
     
+    case('slab')
+       domain_distance_to_border = min((dom%sl%zc+dom%sl%thickness/2.-x(3)), (x(3)-dom%sl%zc-dom%sl%thickness)) 
+
     end select
 
   end function domain_distance_to_border
