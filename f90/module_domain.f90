@@ -12,7 +12,7 @@ module module_domain
 
   type cube
      real(kind=8),dimension(3) :: center
-     real(kind=8)              :: size                         ! define convention
+     real(kind=8)              :: size            ! convention: size is the full size of the cube, corners are x+-size/2
   end type cube
 
   type sphere
@@ -36,11 +36,12 @@ contains
 
   ! constructeurs
   ! -------------
-  subroutine domain_constructor_from_scratch(dom,type,xc,yc,zc,r,r_inbound,r_outbound)
+  subroutine domain_constructor_from_scratch(dom,type,xc,yc,zc,r,r_inbound,r_outbound,size)
     character(10),intent(in)         :: type
     real(kind=8),intent(in),optional :: xc,yc,zc
     real(kind=8),intent(in),optional :: r                     ! parameters for sphere
-    real(kind=8),intent(in),optional :: r_inbound,r_outbound  ! parameters for sphere
+    real(kind=8),intent(in),optional :: r_inbound,r_outbound  ! parameters for shell
+    real(kind=8),intent(in),optional :: size                  ! parameters for cube
     type(domain),intent(out)         :: dom
     logical :: ok
 
@@ -72,6 +73,19 @@ contains
        dom%sh%center(3)=zc
        dom%sh%r_inbound=r_inbound
        dom%sh%r_outbound=r_outbound
+
+    case('cube')
+       ! check if optional argument required for sphere are present
+       ok = present(xc).and.present(yc).and.present(zc).and.present(size)
+       if (.not.ok) then
+          print *,'arguments to construct a cube domain are missing...'
+          stop
+       endif
+       dom%type=type
+       dom%cu%center(1)=xc
+       dom%cu%center(2)=yc
+       dom%cu%center(3)=zc
+       dom%cu%size=size
 
     case default
        print *,'type not defined',type
@@ -153,6 +167,27 @@ contains
        indsel=tmpi
        deallocate(tmpi)
 
+
+    case('cube')
+       allocate(indsel(1:n))
+       indsel=0
+       ii=0
+       do i=1,n
+          if((abs(xp(i,1)-dom%cu%center(1)) <= dom%cu%size/2.).and. & 
+             (abs(xp(i,2)-dom%cu%center(2)) <= dom%cu%size/2.).and. &
+             (abs(xp(i,3)-dom%cu%center(3)) <= dom%cu%size/2.))then
+             ii=ii+1
+             indsel(ii)=i
+          endif
+       enddo
+       nsel=ii
+       allocate(tmpi(1:nsel))
+       tmpi(1:nsel) = indsel(1:nsel)
+       deallocate(indsel)
+       allocate(indsel(1:nsel))
+       indsel=tmpi
+       deallocate(tmpi)
+
     case default
        print *,'type not defined',dom%type
        stop
@@ -175,6 +210,9 @@ contains
        read(unit,*) dom%sh%center(:)
        read(unit,*) dom%sh%r_inbound
        read(unit,*) dom%sh%r_outbound
+    case('cube')
+       read(unit,*) dom%cu%center(:)
+       read(unit,*) dom%cu%size
     case default
        print *,'type not defined',dom%type
        stop
@@ -196,6 +234,9 @@ contains
        read(unit) dom%sh%center(:)
        read(unit) dom%sh%r_inbound
        read(unit) dom%sh%r_outbound
+    case('cube')
+       read(unit) dom%cu%center(:)
+       read(unit) dom%cu%size
     case default
        print *,'type not defined',dom%type
        stop
@@ -217,6 +258,9 @@ contains
        write(unit) dom%sh%center(:)
        write(unit) dom%sh%r_inbound
        write(unit) dom%sh%r_outbound
+    case('cube')
+       write(unit) dom%cu%center(:)
+       write(unit) dom%cu%size
     case default 
        print *,'type not defined',dom%type
        stop
@@ -239,6 +283,9 @@ contains
        write(unit,'(3(f8.3))') dom%sh%center(:)
        write(unit,'(f8.3)') dom%sh%r_inbound
        write(unit,'(f8.3)') dom%sh%r_outbound
+    case('cube')
+       write(unit,'(3(f8.3))') dom%cu%center(:)
+       write(unit,'(f8.3)') dom%cu%size
     case default 
        print *,'type not defined',dom%type
        stop
@@ -276,7 +323,10 @@ contains
     case('shell')
        rr = sqrt((x(1)-dom%sh%center(1))**2 + (x(2)-dom%sh%center(2))**2 + (x(3)-dom%sh%center(3))**2)
        if((rr>=dom%sh%r_inbound).and.(rr<dom%sh%r_outbound))domain_contains_point=.true.
-    !case('cube')
+    case('cube')
+       if((abs(x(1)-dom%cu%center(1)) <= dom%cu%size/2.).and. & 
+            (abs(x(2)-dom%cu%center(2)) <= dom%cu%size/2.).and. &
+            (abs(x(3)-dom%cu%center(3)) <= dom%cu%size/2.))domain_contains_point=.true.
     end select
     return
   end function domain_contains_point
@@ -303,6 +353,14 @@ contains
     case('shell')
        rr = sqrt((x(1)-dom%sh%center(1))**2 + (x(2)-dom%sh%center(2))**2 + (x(3)-dom%sh%center(3))**2)
        if(((rr-dx/sqrt(2.))>=dom%sh%r_inbound).and.((rr+dx/sqrt(2.))<dom%sh%r_outbound))domain_contains_cell=.true.
+
+    case('cube')
+       if((x(1)+dx/2. <= dom%cu%center(1)+dom%cu%size/2.).and. &
+          (x(1)-dx/2. <= dom%cu%center(1)-dom%cu%size/2.).and. &
+          (x(2)+dx/2. <= dom%cu%center(2)+dom%cu%size/2.).and. &
+          (x(2)-dx/2. <= dom%cu%center(2)-dom%cu%size/2.).and. &
+          (x(3)+dx/2. <= dom%cu%center(3)+dom%cu%size/2.).and. &
+          (x(3)-dx/2. <= dom%cu%center(3)-dom%cu%size/2.)) domain_contains_cell=.true.
 
     end select
 
@@ -355,7 +413,7 @@ contains
     ! return distance of point xyz to the closest border of domain dom
     real(kind=8),dimension(3),intent(in) :: x
     type(domain),intent(in)              :: dom
-    real(kind=8)                         :: domain_distance_to_border, rr
+    real(kind=8)                         :: domain_distance_to_border, rr, ddx, ddy, ddz
 
     select case(dom%type)
 
@@ -367,6 +425,12 @@ contains
        rr = sqrt((x(1)-dom%sh%center(1))**2 + (x(2)-dom%sh%center(2))**2 + (x(3)-dom%sh%center(3))**2)
        domain_distance_to_border = min((rr-dom%sh%r_inbound),(dom%sh%r_outbound-rr))
 
+    case('cube')
+       ddx = min((dom%cu%center(1)+dom%cu%size/2.-x(1)), (x(1)-dom%cu%center(1)-dom%cu%size/2.))
+       ddy = min((dom%cu%center(2)+dom%cu%size/2.-x(2)), (x(2)-dom%cu%center(2)-dom%cu%size/2.))
+       ddz = min((dom%cu%center(3)+dom%cu%size/2.-x(3)), (x(3)-dom%cu%center(3)-dom%cu%size/2.))
+       domain_distance_to_border = min(ddx,ddy,ddz)
+    
     end select
 
   end function domain_distance_to_border
