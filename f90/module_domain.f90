@@ -325,18 +325,18 @@ contains
     write(unit,'(a)') trim(dom%type)
     select case(dom%type)
     case('sphere')
-       write(unit,'(3(f8.3))') dom%sp%center(:)
-       write(unit,'(f8.3)') dom%sp%radius
+       write(unit,'(3(f14.10))') dom%sp%center(:)
+       write(unit,'(f14.10)') dom%sp%radius
     case('shell')
-       write(unit,'(3(f8.3))') dom%sh%center(:)
-       write(unit,'(f8.3)') dom%sh%r_inbound
-       write(unit,'(f8.3)') dom%sh%r_outbound
+       write(unit,'(3(f14.10))') dom%sh%center(:)
+       write(unit,'(f14.10)') dom%sh%r_inbound
+       write(unit,'(f14.10)') dom%sh%r_outbound
     case('cube')
-       write(unit,'(3(f8.3))') dom%cu%center(:)
-       write(unit,'(f8.3)') dom%cu%size
+       write(unit,'(3(f14.10))') dom%cu%center(:)
+       write(unit,'(f14.10)') dom%cu%size
     case('slab')
-       write(unit,'(f8.3)') dom%sl%zc
-       write(unit,'(f8.3)') dom%sl%thickness
+       write(unit,'(f14.10)') dom%sl%zc
+       write(unit,'(f14.10)') dom%sl%thickness
     case default 
        print *,'type not defined',dom%type
        stop
