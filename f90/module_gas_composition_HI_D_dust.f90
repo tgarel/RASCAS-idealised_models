@@ -349,18 +349,18 @@ contains
     if (present(unit)) then 
        write(unit,'(a,a,a)') '[gas_composition]'
        write(unit,'(a)')       '# mixture parameters'
-       write(unit,'(a,ES9.3)') '  deut2H_nb_ratio     = ',deut2H_nb_ratio
-       write(unit,'(a,ES9.3)') '  dust_to_metal_ratio = ',dust_to_metal_ratio
-       write(unit,'(a,ES9.3)') '  mH_over_mdust       = ',mH_over_mdust
+       write(unit,'(a,ES10.3)') '  deut2H_nb_ratio     = ',deut2H_nb_ratio
+       write(unit,'(a,ES10.3)') '  dust_to_metal_ratio = ',dust_to_metal_ratio
+       write(unit,'(a,ES10.3)') '  mH_over_mdust       = ',mH_over_mdust
        write(unit,'(a)')       '# overwrite parameters'
-       write(unit,'(a,L1)')    '  gas_overwrite       = ',gas_overwrite
-       write(unit,'(a,ES9.3)') '  fix_nhi             = ',fix_nhi
-       write(unit,'(a,ES9.3)') '  fix_vth             = ',fix_vth
-       write(unit,'(a,ES9.3)') '  fix_ndust           = ',fix_ndust
-       write(unit,'(a,ES9.3)') '  fix_vel             = ',fix_vel
-       write(unit,'(a,ES9.3)') '  fix_box_size_cm     = ',fix_box_size_cm
+       write(unit,'(a,L1)')    '  gas_overwrite        = ',gas_overwrite
+       write(unit,'(a,ES10.3)') '  fix_nhi             = ',fix_nhi
+       write(unit,'(a,ES10.3)') '  fix_vth             = ',fix_vth
+       write(unit,'(a,ES10.3)') '  fix_ndust           = ',fix_ndust
+       write(unit,'(a,ES10.3)') '  fix_vel             = ',fix_vel
+       write(unit,'(a,ES10.3)') '  fix_box_size_cm     = ',fix_box_size_cm
        write(unit,'(a)')       '# miscelaneous parameters'
-       write(unit,'(a,L1)')    '  verbose             = ',verbose
+       write(unit,'(a,L1)')    '  verbose              = ',verbose
        write(unit,'(a)')             ' '
        call print_HI_params(unit)
        write(unit,'(a)')             ' '
@@ -370,18 +370,18 @@ contains
     else
        write(*,'(a,a,a)') '[gas_composition]'
        write(*,'(a)')       '# mixture parameters'
-       write(*,'(a,ES9.3)') '  deut2H_nb_ratio     = ',deut2H_nb_ratio
-       write(*,'(a,ES9.3)') '  dust_to_metal_ratio = ',dust_to_metal_ratio
-       write(*,'(a,ES9.3)') '  mH_over_mdust       = ',mH_over_mdust
+       write(*,'(a,ES10.3)') '  deut2H_nb_ratio     = ',deut2H_nb_ratio
+       write(*,'(a,ES10.3)') '  dust_to_metal_ratio = ',dust_to_metal_ratio
+       write(*,'(a,ES10.3)') '  mH_over_mdust       = ',mH_over_mdust
        write(*,'(a)')       '# overwrite parameters'
-       write(*,'(a,L1)')    '  gas_overwrite       = ',gas_overwrite
-       write(*,'(a,ES9.3)') '  fix_nhi             = ',fix_nhi
-       write(*,'(a,ES9.3)') '  fix_vth             = ',fix_vth
-       write(*,'(a,ES9.3)') '  fix_ndust           = ',fix_ndust
-       write(*,'(a,ES9.3)') '  fix_vel             = ',fix_vel
-       write(*,'(a,ES9.3)') '  fix_box_size_cm     = ',fix_box_size_cm
+       write(*,'(a,L1)')    '  gas_overwrite        = ',gas_overwrite
+       write(*,'(a,ES10.3)') '  fix_nhi             = ',fix_nhi
+       write(*,'(a,ES10.3)') '  fix_vth             = ',fix_vth
+       write(*,'(a,ES10.3)') '  fix_ndust           = ',fix_ndust
+       write(*,'(a,ES10.3)') '  fix_vel             = ',fix_vel
+       write(*,'(a,ES10.3)') '  fix_box_size_cm     = ',fix_box_size_cm
        write(*,'(a)')       '# miscelaneous parameters'
-       write(*,'(a,L1)')    '  verbose             = ',verbose
+       write(*,'(a,L1)')    '  verbose              = ',verbose
        write(*,'(a)')             ' '
        call print_HI_params
        write(*,'(a)')             ' '
