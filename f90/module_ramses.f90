@@ -969,7 +969,7 @@ contains
   !==================================================================================
   ! STARS utilities 
 
-  subroutine ramses_read_stars_in_domain(repository,snapnum,selection_domain,star_pos,star_age,star_mass,star_vel)
+  subroutine ramses_read_stars_in_domain(repository,snapnum,selection_domain,star_pos,star_age,star_mass,star_vel,cosmo)
 
     ! ONLY WORKS FOR COSMO RUNS (WITHOUT PROPER TIME OPTION)
     ! -> this should be parameterised (and coded). 
@@ -982,11 +982,12 @@ contains
     real(kind=8),allocatable,intent(inout) :: star_pos(:,:),star_age(:),star_mass(:),star_vel(:,:)
     integer(kind=4)            :: nstars
     real(kind=8)               :: omega_0,lambda_0,little_h,omega_k,H0
-    real(kind=8)               :: aexp,stime
+    real(kind=8)               :: aexp,stime,time_cu,boxsize
     integer(kind=4)            :: ncpu,ilast,icpu,npart,i,ifield,nfields
     character(1000)            :: filename
     integer(kind=4),allocatable :: id(:)
     real(kind=8),allocatable    :: age(:),m(:),x(:,:),v(:,:),mets(:)
+    logical, intent(in)         :: cosmo
     
     
     ! get cosmological parameters to convert conformal time into ages
@@ -999,6 +1000,14 @@ contains
     stime = ct_aexp2time(aexp) ! cosmic time
     ! read units 
     call read_conversion_scales(repository,snapnum)
+
+    if(.not.cosmo)then
+       ! read time
+       time_cu = get_param_real(repository,snapnum,'time') ! code unit
+       write(*,*)'Time simu [Myr] =',time_cu, time_cu*dp_scale_t/(365.*24.*3600.*1d6)
+       boxsize = get_param_real(repository,snapnum,'boxlen') !!!* dp_scale_l  ! [ cm ]
+       write(*,*)'boxlen =',boxsize
+    endif
 
     ! read stars 
     nstars = get_tot_nstars(repository,snapnum)
@@ -1053,14 +1062,25 @@ contains
        end do
        close(11)
 
+       if(.not.cosmo)then
+          x=x/boxsize
+       endif
+
        ! save star particles within selection region
        do i = 1,npart
           if (age(i).ne.0.0d0) then ! This is a star
              if (domain_contains_point(x(i,:),selection_domain)) then ! it is inside the domain
-                ! Convert from conformal time to age in Myr
-                star_age(ilast)   = (stime - ct_conftime2time(age(i)))*1.d-6 ! Myr
+                if(cosmo)then
+                   ! Convert from conformal time to age in Myr
+                   star_age(ilast)   = (stime - ct_conftime2time(age(i)))*1.d-6 ! Myr
+                else
+                   ! convert from tborn to age in Myr
+                   star_age(ilast)   = max(0.d0, (time_cu - age(i)) * dp_scale_t / (365.d0*24.d0*3600.d0*1.d6))
+                endif
                 star_mass(ilast)  = m(i)   * dp_scale_m ! [g]
-                star_pos(:,ilast) = x(i,:) * dp_scale_l ! [cm]
+                ! LEO: positions are supposed to be in box unit...
+                !star_pos(:,ilast) = x(i,:) * dp_scale_l ! [cm]
+                star_pos(:,ilast) = x(i,:)
                 star_vel(:,ilast) = v(i,:) * dp_scale_v ! [cm/s]
                 ilast = ilast + 1
              end if

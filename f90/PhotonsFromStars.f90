@@ -22,7 +22,7 @@ program PhotonsFromStars
 
   
   ! --------------------------------------------------------------------------
-  ! user-defined parameters - read from section [CreateDomDump] of the parameter file
+  ! user-defined parameters - read from section [PhotonsFromStars] of the parameter file
   ! --------------------------------------------------------------------------
   ! --- input / outputs
   character(2000)           :: outputfile = 'PhotICs.dat' ! file to which outputs will be written
@@ -39,6 +39,7 @@ program PhotonsFromStars
   ! --- miscelaneous
   integer(kind=4)           :: ranseed = -100         ! seed for random generator
   logical                   :: verbose = .true.
+  logical                   :: cosmo = .true.         ! cosmo flag
   ! --------------------------------------------------------------------------
 
 
@@ -66,7 +67,7 @@ program PhotonsFromStars
   ! read star particles within domain
   ! --------------------------------------------------------------------------------------
   if (verbose) write(*,*) '> reading star particles'
-  call ramses_read_stars_in_domain(repository,snapnum,emission_domain,star_pos,star_age,star_mass,star_vel)
+  call ramses_read_stars_in_domain(repository,snapnum,emission_domain,star_pos,star_age,star_mass,star_vel,cosmo)
   ! --------------------------------------------------------------------------------------
 
   
@@ -187,6 +188,8 @@ contains
              read(value,*) verbose
           case ('ranseed')
              read(value,*) ranseed
+          case ('cosmo')
+             read(value,*) cosmo
           case ('outputfile')
              write(outputfile,'(a)') trim(value)
           case ('repository')
@@ -235,6 +238,7 @@ contains
        write(unit,'(a)')             '# miscelaneous parameters'
        write(unit,'(a,i8)')          '  ranseed         = ',ranseed
        write(unit,'(a,L1)')          '  verbose         = ',verbose
+       write(unit,'(a,L1)')          '  cosmo           = ',cosmo
        write(unit,'(a)')             ' '
     else
        write(*,'(a,a,a)')         '[PhotonsFromStars]'
@@ -253,6 +257,7 @@ contains
        write(*,'(a)')             '# miscelaneous parameters'
        write(*,'(a,i8)')          '  ranseed         = ',ranseed
        write(*,'(a,L1)')          '  verbose    = ',verbose
+       write(*,'(a,L1)')          '  cosmo      = ',cosmo
        write(*,'(a)')             ' '       
     end if
 
