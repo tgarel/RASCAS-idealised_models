@@ -56,7 +56,7 @@ endif
 # All objects
 
 COMPOBJS = module_dust_model.o module_D_model.o module_HI_model.o module_gas_composition_HI_D_dust.o
-#COMPOBJS = module_HI_model.o module_gas_composition_HI_homogeneous.o
+#COMPOBJS = module_HI_model.o module_gas_composition_HI.o
 #COMPOBJS = module_gas_ramses.o
 
 #GASOBJS = module_constants.o module_ramses.o module_random.o module_utils.o module_uparallel.o $(COMPOBJS)
@@ -74,9 +74,6 @@ OBJSMC = $(GASOBJS) module_mesh.o module_photon.o
 
 OBJSMPI = $(OBJSMC) module_parallel_mpi.o module_worker.o module_master.o MCLya.o
 
-JEJE = module_random.o module_constants.o module_uparallel.o module_domain.o \
-	module_utils.o module_HI_model.o module_ramses.o module_gas_composition_HI.o \
-	module_mesh.o module_photon.o
 #############################################################################
 #.SUFFIXES: .o .f90
 #.f90.o:
@@ -91,8 +88,8 @@ all: clean CreateDomDump PhotonsMonoPointSource serial PhotonsFromStars ## MCLya
 PhotonsMonoPointSource: $(OBJSMC) PhotonsMonoPointSource.o
 	$(F90) $(FFLAGS) $(LDFLAGS) -o $@ $(OBJSMC) PhotonsMonoPointSource.o
 
-PhotonsFromStars: $(JEJE) PhotonsFromStars.o
-	$(F90) $(FFLAGS) $(LDFLAGS) -o $@ $(JEJE) PhotonsFromStars.o
+PhotonsFromStars: $(OBJSMC) PhotonsFromStars.o
+	$(F90) $(FFLAGS) $(LDFLAGS) -o $@ $(OBJSMC) PhotonsFromStars.o
 
 serial: $(OBJSMC) serial.o
 	$(F90) $(FFLAGS) $(LDFLAGS) -o $@ $(OBJSMC) serial.o
