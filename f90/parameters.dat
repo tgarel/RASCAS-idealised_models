@@ -4,14 +4,20 @@
 !--------------------------------------------------------------------------------
 [PhotonsFromStars]
 # input / output parameters
-  DataDir    = ./
+  outputfile = PhotICs.dat
   repository = /Users/blaizot/Documents/Astro/SIMULATIONS/P13-20h-1Mpc-MUSIC/Zoom-7-1831/hdRun-LSS150pkpc-new-new-prime-fbk/
-  snapnum    = 68
+  snapnum    =    68
 # computational domain parameters
   typechar   = sphere
   pos        = 5.000E-01 5.000E-01 5.000E-01
   rvir       = 3.000E-01
+# how stars shine
+  nphot      = 1000000
+  max_age    = 1.000E+01 ! [Myr]
+  spec_type  = flat_fnu
+  nu_0       = 2.46606790E+15 ! [Hz]
 # miscelaneous parameters
+  ranseed    = -100
   verbose    = T
 !--------------------------------------------------------------------------------
 
@@ -32,7 +38,6 @@
   ndomain         = 2     
   rin             = 0.00, 0.15
   rout            = 0.2,  0.45 
-
 # miscelaneous :
   verbose    = T
 !--------------------------------------------------------------------------------
