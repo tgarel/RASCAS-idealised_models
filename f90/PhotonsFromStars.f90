@@ -17,7 +17,7 @@ program PhotonsFromStars
   real(kind=8),allocatable :: star_pos(:,:),star_age(:),star_mass(:),star_vel(:,:)
   real(kind=8),allocatable :: star_pos2(:,:),star_vel2(:,:)
   integer(kind=4) :: i,nstars,nyoung,ilast,j,iran
-  real(kind=8) :: minmass,scalar
+  real(kind=8) :: minmass,scalar,nu
   type(photon_init),dimension(:),allocatable :: photgrid
 
   
@@ -32,10 +32,16 @@ program PhotonsFromStars
   character(10)             :: typechar = 'sphere'    ! shape type of domain  // only sphere allowed now. 
   real(kind=8),dimension(3) :: pos = (/0.5,0.5,0.5/)  ! center of domain [code units]
   real(kind=8)              :: rvir = 0.3             ! radius of domain [code units]
-  ! --- how stars shine
+  ! --- which stars shine
   integer(kind=4)           :: nphot = 1000000        ! number of photons to generate
   real(kind=8)              :: max_age = 10.0d0       ! stars older than this don't shine [Myr]
-  real(kind=8)              :: nu_0    = clight/1215.6701d-8 ! emission frequency [Hz]
+  ! --- how stars shine
+  character(30)             :: spec_type = 'monochromatic' ! how to draw frequencies
+  ! ------ spec_type == 'monochromatic' : all photons at the same frequency nu_0
+  real(kind=8)              :: nu_0    = clight/1215.6701d-8 ! emission frequency [Hz] 
+  ! ------ spec_type == 'flat_fnu' : photons have a flat distribution in nu, between nu_min and nu_max
+  real(kind=8)              :: nu_min  = clight/1221d-8    ! min frequency [Hz]
+  real(kind=8)              :: nu_max  = clight/1210d-8    ! max frequency [Hz]
   ! --- miscelaneous
   integer(kind=4)           :: ranseed = -100         ! seed for random generator
   logical                   :: verbose = .true.
@@ -116,10 +122,19 @@ program PhotonsFromStars
      photgrid(i)%x_em  = star_pos2(:,j)
      photgrid(i)%iran  = iran
      call isotropic_direction(photgrid(i)%k_em,iran)
+     ! define star-particle-frame emission frequency
+     select case(trim(spec_type))
+     case('monochromatic')
+        nu = nu_0
+     case('flat_fnu')
+        nu = ran3(iran) * (nu_max-nu_min)
+     case default
+        print*,'ERROR: unknown spec_type :',trim(spec_type)
+     end select
      ! knowing the direction of emission and the velocity of the source (star particle), we
      ! compute the external-frame frequency :
      scalar = photgrid(i)%k_em(1)*star_vel2(1,j) + photgrid(i)%k_em(2)*star_vel2(2,j) + photgrid(i)%k_em(3)*star_vel2(3,j)
-     photgrid(i)%nu_em = nu_0 / (1d0 - scalar/clight)
+     photgrid(i)%nu_em = nu / (1d0 - scalar/clight)
   end do
   ! --------------------------------------------------------------------------------------
 
@@ -198,8 +213,14 @@ contains
              read(value,*) snapnum
           case ('max_age')
              read(value,*) max_age
+          case ('spec_type')
+             write(spec_type,'(a)') trim(value)
           case ('nu_0')
              read(value,*) nu_0
+          case ('nu_min')
+             read(value,*) nu_min
+          case ('nu_max')
+             read(value,*) nu_max
           case ('nphot')
              read(value,*) nphot
           end select
@@ -234,7 +255,16 @@ contains
        write(unit,'(a)')             '# how stars shine'
        write(unit,'(a,i8)')          '  nphot           = ',nphot
        write(unit,'(a,es9.3,a)')     '  max_age         = ',max_age, ' ! [Myr]' 
-       write(unit,'(a,es9.3,a)')     '  nu_0            = ',nu_0, ' ! [Hz]'
+       write(unit,'(a,a)')           '  spec_type       = ',trim(spec_type)
+       select case(trim(spec_type))
+       case('monochromatic')
+          write(unit,'(a,es9.3,a)')     '  nu_0            = ',nu_0, ' ! [Hz]'
+       case('flat_fnu')
+          write(unit,'(a,es9.3,a)')     '  nu_min          = ',nu_min, ' ! [Hz]'
+          write(unit,'(a,es9.3,a)')     '  nu_max          = ',nu_max, ' ! [Hz]'
+       case default
+          print*,'ERROR: unknown spec_type :',trim(spec_type)
+       end select
        write(unit,'(a)')             '# miscelaneous parameters'
        write(unit,'(a,i8)')          '  ranseed         = ',ranseed
        write(unit,'(a,L1)')          '  verbose         = ',verbose
@@ -253,7 +283,16 @@ contains
        write(*,'(a)')             '# how stars shine'
        write(*,'(a,i8)')          '  nphot           = ',nphot
        write(*,'(a,es9.3,a)')     '  max_age         = ',max_age, ' ! [Myr]'
-       write(*,'(a,es9.3,a)')     '  nu_0            = ',nu_0, ' ! [Hz]'
+       write(*,'(a,a)')           '  spec_type       = ',trim(spec_type)
+       select case(trim(spec_type))
+       case('monochromatic')
+          write(*,'(a,es9.3,a)')     '  nu_0            = ',nu_0, ' ! [Hz]'
+       case('flat_fnu')
+          write(*,'(a,es9.3,a)')     '  nu_min          = ',nu_min, ' ! [Hz]'
+          write(*,'(a,es9.3,a)')     '  nu_max          = ',nu_max, ' ! [Hz]'
+       case default
+          print*,'ERROR: unknown spec_type :',trim(spec_type)
+       end select
        write(*,'(a)')             '# miscelaneous parameters'
        write(*,'(a,i8)')          '  ranseed         = ',ranseed
        write(*,'(a,L1)')          '  verbose    = ',verbose
