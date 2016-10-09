@@ -11,7 +11,7 @@ module module_D_model
 
   ! Deuterium properties
   real(kind=8),parameter   :: mdeut        = 2.d0 * mp           ! Deuterium atom's mass [ g ]
-  real(kind=8),parameter   :: lambda_0     = 1215.673 * (1.0d0 + me/mdeut) / (1.0d0 + me/mp) ! wavelength of Lya of Deuterium [ cm ]
+  real(kind=8),parameter   :: lambda_0     = 1215.34d0           ! wavelength of Lya of Deuterium [ A ]
   real(kind=8),parameter   :: gamma        = 6.265d8             ! Einstein coeff. [ s^-1 ]
   real(kind=8),parameter   :: f12          = 0.416               ! Oscillator strength for Deuterium Lya.
   ! useful pre-computed quantities

@@ -107,6 +107,8 @@ contains
     allocate(ramses_var(nvar,nleaftot), xleaf(nleaftot,3), leaf_level(nleaftot))
     ncpu = get_ncpu(repository,snapnum)
 
+    print *,' '
+    print *,'...reading cells...'
     print *,'nleaftot, nvar, ncpu =',nleaftot,nvar,ncpu
 
     do_allocs = .true.

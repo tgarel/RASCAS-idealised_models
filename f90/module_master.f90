@@ -86,7 +86,7 @@ contains
     call init_loadb(nbuffer,ndomain)
 
     call cpu_time(end_initphot)
-    if (verbose) print *,'[master] --> time to initialize photons in master = ",f12.3," seconds.")',end_initphot-start_initphot
+    if (verbose) print '("[master] --> time to initialize photons in master = ",f12.3," seconds.")',end_initphot-start_initphot
     if (verbose) print*,'[master] send a first chunk of photons to each worker'
 
     ! send a first chunk of photons to each worker

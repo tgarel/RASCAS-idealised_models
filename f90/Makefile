@@ -103,9 +103,6 @@ output2subvol: $(OBJS1) output2subvol.o
 CreateDomDump: $(OBJS2) CreateDomDump.o
 	$(F90) $(FFLAGS) $(LDFLAGS) -o $@ $(OBJS2)
 
-CreateSphere: $(OBJSCOM) CreateSphere.o
-	$(F90) $(FFLAGS) $(LDFLAGS) -o $@ $(OBJSCOM) CreateSphere.o
-
 clean:
 	rm -f $(OBJS1) $(OBJS2) $(OBJSMC) $(OBJSMPI) *.o *.mod
 #############################################################################
