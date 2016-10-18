@@ -70,10 +70,21 @@ module module_ramses
   integer(kind=4),parameter             :: n_frw = 1000
   real(KIND=8),dimension(:),allocatable :: aexp_frw,hexp_frw,tau_frw,t_frw
   ! ----------------------------------------------------------------------------------
+
+
+  ! --------------------------------------------------------------------------
+  ! user-defined parameters - read from section [ramses] of the parameter file
+  ! --------------------------------------------------------------------------
+  ! ramses options (not guessable from outputs)
+  logical                  :: self_shielding = .true.  ! if true, reproduce self-shielding approx made in ramses to compute nHI. 
+  ! miscelaneous
+  logical                  :: verbose        = .false. ! display some run-time info on this module
+  ! --------------------------------------------------------------------------
+
   
 
   public  :: read_leaf_cells, get_ngridtot, ramses_get_velocity_cgs, ramses_get_T_nhi_cgs, ramses_get_metallicity, ramses_get_box_size_cm
-  public  :: ramses_read_stars_in_domain
+  public  :: ramses_read_stars_in_domain,read_ramses_params,print_ramses_params
   ! default is private now ... !! private :: read_hydro, read_amr, get_nleaf, get_nvar, clear_amr, get_ncpu, get_param_real
 
   !==================================================================================
@@ -187,6 +198,7 @@ contains
     integer(kind=4),intent(in)  :: nleaf, nvar
     real(kind=8),intent(in)     :: ramses_var(nvar,nleaf) ! one cell only
     real(kind=8),intent(inout)  :: nhi(nleaf), temp(nleaf)
+    real(kind=8)                :: boost(nleaf),xhi
     integer(kind=4) :: ihx,ihy,i
     real(kind=8)    :: xx,yy,dxx1,dxx2,dyy1,dyy2,f
     integer(kind=4) :: if1,if2,jf1,jf2
@@ -205,9 +217,18 @@ contains
     nhi  = ramses_var(1,:) * dp_scale_nh  ! nb of H atoms per cm^3
     temp = ramses_var(5,:) / ramses_var(1,:) * dp_scale_T2  ! T/mu [ K ]
 
+    if (self_shielding) then
+       do i=1,nleaf
+          boost(i)=MAX(exp(-nhi(i)/0.01),1.0D-20) ! same as hard-coded in RAMSES. 
+       end do
+    else
+       boost = 1.0d0
+    end if
+
+    
     ! compute the ionization state and temperature using the 'cooling' tables
-    do i = 1, nleaf 
-       xx  = log10(nhi(i))
+    do i = 1, nleaf
+       xx  = min(max(log10(nhi(i)/boost(i)),cooling%nh(1)),cooling%nh(cooling%n11))
        ihx = int((xx - cool_int%nh_start)/cool_int%nh_step) + 1
        if (ihx < 1) then 
           ihx = 1 
@@ -252,7 +273,8 @@ contains
        ! neutral H density 
        f = dxx1 * dyy1 * cooling%spec(if2,jf2,2) + dxx2 * dyy1 * cooling%spec(if1,jf2,2) &
             & + dxx1 * dyy2 * cooling%spec(if2,jf1,2) + dxx2 * dyy2 * cooling%spec(if1,jf1,2)
-       nhi(i) = 10.0d0**f   ! nHI (cm^-3)
+       xhi = 10.0d0**(f-xx)  ! this is xHI = nHI/nH where the n's include the boost. 
+       nhi(i) = xhi * nhi(i) ! nHI (cm^-3) (boost-free)
        ! GET MU to convert T/MU into T ... 
        f = dxx1 * dyy1 * cooling%mu(if2,jf2) + dxx2 * dyy1 * cooling%mu(if1,jf2) &
             & + dxx1 * dyy2 * cooling%mu(if2,jf1) + dxx2 * dyy2 * cooling%mu(if1,jf1)
@@ -1359,6 +1381,80 @@ contains
     
   end subroutine ct_friedman
 
+
+  subroutine read_ramses_params(pfile)
+    
+    ! ---------------------------------------------------------------------------------
+    ! subroutine which reads parameters of current module in the parameter file pfile
+    !
+    ! default parameter values are set at declaration (head of module)
+    ! ---------------------------------------------------------------------------------
+
+    character(*),intent(in) :: pfile
+    character(1000) :: line,name,value
+    integer(kind=4) :: err,i
+    logical         :: section_present
+
+    section_present = .false.
+    open(unit=10,file=trim(pfile),status='old',form='formatted')
+    ! search for section start
+    do
+       read (10,'(a)',iostat=err) line
+       if(err/=0) exit
+       if (line(1:8) == '[ramses]') then
+          section_present = .true.
+          exit
+       end if
+    end do
+    ! read section if present
+    if (section_present) then 
+       do
+          read (10,'(a)',iostat=err) line
+          if(err/=0) exit
+          if (line(1:1) == '[') exit ! next section starting... -> leave
+          i = scan(line,'=')
+          if (i==0 .or. line(1:1)=='#' .or. line(1:1)=='!') cycle  ! skip blank or commented lines
+          name=trim(adjustl(line(:i-1)))
+          value=trim(adjustl(line(i+1:)))
+          i = scan(value,'!')
+          if (i /= 0) value = trim(adjustl(value(:i-1)))
+          select case (trim(name))
+          case ('self_shielding')
+             read(value,*) self_shielding
+          case ('verbose')
+             read(value,*) verbose
+          end select
+       end do
+    end if
+    close(10)
+    return
+    
+  end subroutine read_ramses_params
+
+
+  
+  subroutine print_ramses_params(unit)
+    
+    ! ---------------------------------------------------------------------------------
+    ! write parameter values to std output or to an open file if argument unit is
+    ! present.
+    ! ---------------------------------------------------------------------------------
+
+    integer(kind=4),optional,intent(in) :: unit
+
+    if (present(unit)) then 
+       write(unit,'(a,a,a)') '[ramses]'
+       write(unit,'(a,L1)') '  self_shielding = ',self_shielding
+       write(unit,'(a,L1)') '  verbose        = ',verbose
+    else
+       write(*,'(a,a,a)') '[ramses]'
+       write(*,'(a,L1)') '  self_shielding = ',self_shielding
+       write(*,'(a,L1)') '  verbose        = ',verbose
+    end if
+
+    return
+    
+  end subroutine print_ramses_params
 
 
 
