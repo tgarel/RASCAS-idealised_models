@@ -52,13 +52,17 @@ contains
     nphot = size(photgrid)
     if (verbose) print *,'[master] --> Nphoton =',nphot
 
+    if(nbuffer*nslave>nphot)then
+       print *,'decrease nbuffer and/or ncpu'
+       call clean_stop
+    endif
+    
     allocate(photpacket(nbuffer))
     allocate(cpu(1:nslave))
     allocate(first(ndomain),last(ndomain),nqueue(ndomain),ncpuperdom(ndomain))
     allocate(next(nphot,ndomain))
     allocate(delta(ndomain))
     allocate(domain_list(ndomain))
-
 
     if (verbose) print *,'[master] --> reading domain and mesh...'
     ! Get domain properties
