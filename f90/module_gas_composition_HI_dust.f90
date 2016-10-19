@@ -89,7 +89,9 @@ contains
        if (verbose) write(*,*) '-- module_gas_composition_HI_D_dust : extracting ndust form ramses '
        allocate(metallicity(nleaf))
        call ramses_get_metallicity(nleaf,nvar,ramses_var,metallicity)
-       g(:)%ndust = (dust_to_metal_ratio * mH_over_mdust / XH) * metallicity * g(:)%nHI     !! JB: To test ... 
+       do ileaf = 1,nleaf
+          g(ileaf)%ndust = (dust_to_metal_ratio * mH_over_mdust / XH) * metallicity(ileaf) * g(ileaf)%nHI 
+       end do
        deallocate(metallicity)
     end if
 

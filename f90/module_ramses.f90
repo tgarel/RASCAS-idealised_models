@@ -198,7 +198,8 @@ contains
     integer(kind=4),intent(in)  :: nleaf, nvar
     real(kind=8),intent(in)     :: ramses_var(nvar,nleaf) ! one cell only
     real(kind=8),intent(inout)  :: nhi(nleaf), temp(nleaf)
-    real(kind=8)                :: boost(nleaf),xhi
+    real(kind=8),allocatable    :: boost(:)
+    real(kind=8)                :: xhi
     integer(kind=4) :: ihx,ihy,i
     real(kind=8)    :: xx,yy,dxx1,dxx2,dyy1,dyy2,f
     integer(kind=4) :: if1,if2,jf1,jf2
@@ -217,6 +218,7 @@ contains
     nhi  = ramses_var(1,:) * dp_scale_nh  ! nb of H atoms per cm^3
     temp = ramses_var(5,:) / ramses_var(1,:) * dp_scale_T2  ! T/mu [ K ]
 
+    allocate(boost(nleaf))
     if (self_shielding) then
        do i=1,nleaf
           boost(i)=MAX(exp(-nhi(i)/0.01),1.0D-20) ! same as hard-coded in RAMSES. 
@@ -281,6 +283,8 @@ contains
        temp(i) = temp(i) * f   ! This is now T (in K) with no bloody mu ... 
     end do
 
+    deallocate(boost)
+    
     return
 
   end subroutine ramses_get_T_nhi_cgs
