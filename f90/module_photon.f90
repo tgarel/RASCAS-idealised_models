@@ -319,7 +319,16 @@ contains
                 print*,'delta_ppos =', p%k * (distance_to_border + epsilon_cell)
                 print*,'ppos       =',ppos
                 print*,'cell_size  =',cell_size
+#ifdef DEBUG
                 stop
+#endif
+                ! does not stop/kill the job anymore in this case, just flag this photon as crap (=3)
+                p%status       = 3
+                p%xcurr        = ppos
+                p%time         = time
+                p%tau_abs_curr = tau_abs
+                p%iran         = iran
+                exit photon_propagation
              endif
              ! check if photon outside of cpu domain (flagoutvol)
              if(flagoutvol)then
@@ -470,7 +479,8 @@ contains
        stop
     endif
 
-    if(.not.(flagoutvol.or.(p%status==1).or.(p%status==2)))then
+    if(.not.(flagoutvol.or.(p%status==1).or.(p%status==2).or.(p%status==3)))then
+       ! not that status=3 is still problematic...
        print *,'--> problem 2 with photon propagation in module_photon.f90!',flagoutvol,p%status
        stop
     endif

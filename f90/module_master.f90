@@ -154,7 +154,7 @@ contains
              print*,'pb with photon buffer in master...'
              stop
           endif
-          if(photpacket(i)%status==3)exit
+          if(photpacket(i)%status==-1)exit
 
           !!!!write(*,*)'photon update',i,photpacket(i)%ID,photpacket(i)%status   !!!,photpacket(i)%pos(1)
 
@@ -187,7 +187,7 @@ contains
        enddo
 
        ! empty photpacket...
-       photpacket(:)%status=3
+       photpacket(:)%status=-1
 
        ! check end of work
        nphottodo=sum(nqueue)
@@ -274,6 +274,7 @@ contains
     print *,'# of photons             =',size(photgrid(:)%status)
     print *,'# of status=1 (escaped)  =',count(mask=(photgrid(:)%status==1))
     print *,'# of status=2 (absorbed) =',count(mask=(photgrid(:)%status==2))
+    print *,'# of status=3 (crap, pb with precision/in_cell_finder) =',count(mask=(photgrid(:)%status==3))
     print *,' '
     ! write results                                                                                               
     ! some check
