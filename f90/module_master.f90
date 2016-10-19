@@ -266,8 +266,15 @@ contains
 
     ! test status of photons
     do i=1,nphot
-       if(photgrid(i)%status /= 1)print*,'ohoho problem with photon status...',i,photgrid(i)%status
+       if(photgrid(i)%status == 0)print*,'ohoho problem with photon status...',i,photgrid(i)%status
     enddo
+    ! Some stats on photon status
+    print *,' '
+    print *,'--> photon status...'
+    print *,'# of photons             =',size(photgrid(:)%status)
+    print *,'# of status=1 (escaped)  =',count(mask=(photgrid(:)%status==1))
+    print *,'# of status=2 (absorbed) =',count(mask=(photgrid(:)%status==2))
+    print *,' '
     ! write results                                                                                               
     ! some check
     if(verbose)then
@@ -279,9 +286,7 @@ contains
        print *,'min max nb scatt    =',minval(photgrid%nb_abs),maxval(photgrid%nb_abs)
        print *,'min max nu          =',minval(photgrid%nu_ext),maxval(photgrid%nu_ext)
        print *,'min max lambda      =',clight/minval(photgrid%nu_ext)*cmtoA,clight/maxval(photgrid%nu_ext)*cmtoA
-
        print *,'min max travel time =',minval(photgrid%time),maxval(photgrid%time)
-
        print *,'Last scattering'
        print *,'min max pos x       =',minval(photgrid%xlast(1)),maxval(photgrid%xlast(1))
        print *,'min max pos y       =',minval(photgrid%xlast(2)),maxval(photgrid%xlast(2))
