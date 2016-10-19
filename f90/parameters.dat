@@ -22,16 +22,20 @@
   DataDir    = data
   repository = /scratch/dansac/Grid_for_RT/
   snapnum    = 1
-# computational domain : 
-  pos        = 0.5, 0.5, 0.5
-  rvir       = 0.4
-  typechar   = sphere
 
-# domain decomposition :
-  decomp_dom_type = shell
-  ndomain         = 2     
-  rin             = 0.00, 0.15
-  rout            = 0.2,  0.45 
+# computational domain parameters
+  comput_dom_type      = sphere
+  comput_dom_pos       =  0.5, 0.5, 0.5
+  comput_dom_rsp       =  0.4
+
+# domain decomposition parameters
+  decomp_dom_type      = shell
+  decomp_dom_ndomain   = 2
+  decomp_dom_xc        =  0.5, 0.5
+  decomp_dom_yc        =  0.5, 0.5
+  decomp_dom_zc        =  0.5, 0.5
+  decomp_dom_rin       =  0.0, 0.15
+  decomp_dom_rout      =  0.2, 0.45
 
 # miscelaneous :
   verbose    = T

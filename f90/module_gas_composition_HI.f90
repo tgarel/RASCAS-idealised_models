@@ -295,10 +295,10 @@ contains
        write(unit,'(a,a,a)') '[gas_composition]'
        write(unit,'(a)')       '# overwrite parameters'
        write(unit,'(a,L1)')    '  gas_overwrite       = ',gas_overwrite
-       write(unit,'(a,ES9.3)') '  fix_nhi             = ',fix_nhi
-       write(unit,'(a,ES9.3)') '  fix_vth             = ',fix_vth
-       write(unit,'(a,ES9.3)') '  fix_vel             = ',fix_vel
-       write(unit,'(a,ES9.3)') '  fix_box_size_cm     = ',fix_box_size_cm
+       write(unit,'(a,ES10.3)') '  fix_nhi            = ',fix_nhi
+       write(unit,'(a,ES10.3)') '  fix_vth            = ',fix_vth
+       write(unit,'(a,ES10.3)') '  fix_vel            = ',fix_vel
+       write(unit,'(a,ES10.3)') '  fix_box_size_cm    = ',fix_box_size_cm
        write(unit,'(a)')       '# miscelaneous parameters'
        write(unit,'(a,L1)')    '  verbose             = ',verbose
        write(unit,'(a)')             ' '
@@ -307,10 +307,10 @@ contains
        write(*,'(a,a,a)') '[gas_composition]'
        write(*,'(a)')       '# overwrite parameters'
        write(*,'(a,L1)')    '  gas_overwrite       = ',gas_overwrite
-       write(*,'(a,ES9.3)') '  fix_nhi             = ',fix_nhi
-       write(*,'(a,ES9.3)') '  fix_vth             = ',fix_vth
-       write(*,'(a,ES9.3)') '  fix_vel             = ',fix_vel
-       write(*,'(a,ES9.3)') '  fix_box_size_cm     = ',fix_box_size_cm
+       write(*,'(a,ES10.3)') '  fix_nhi            = ',fix_nhi
+       write(*,'(a,ES10.3)') '  fix_vth            = ',fix_vth
+       write(*,'(a,ES10.3)') '  fix_vel            = ',fix_vel
+       write(*,'(a,ES10.3)') '  fix_box_size_cm    = ',fix_box_size_cm
        write(*,'(a)')       '# miscelaneous parameters'
        write(*,'(a,L1)')    '  verbose             = ',verbose
        write(*,'(a)')             ' '
