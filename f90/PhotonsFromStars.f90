@@ -217,6 +217,14 @@ contains
              read(value,*) star_dom_rsp
           case ('star_dom_type')
              write(star_dom_type,'(a)') trim(value)
+          case ('star_dom_size')
+             read(value,*) star_dom_size
+          case ('star_dom_rin')
+             read(value,*) star_dom_rin
+          case ('star_dom_rout')
+             read(value,*) star_dom_rout
+          case ('star_dom_thickness')
+             read(value,*) star_dom_thickness
           case ('verbose')
              read(value,*) verbose
           case ('ranseed')
@@ -267,9 +275,13 @@ contains
        write(unit,'(a,a)')           '  repository      = ',trim(repository)
        write(unit,'(a,i5)')          '  snapnum         = ',snapnum
        write(unit,'(a)')             '# computational domain parameters'
-       write(unit,'(a,a)')           '  star_dom_type   = ',trim(star_dom_type)
-       write(unit,'(a,3(ES9.3,1x))') '  star_dom_pos    = ',star_dom_pos(1),star_dom_pos(2),star_dom_pos(3)
-       write(unit,'(a,ES9.3)')       '  star_dom_rsp    = ',star_dom_rsp
+       write(unit,'(a,a)')           '  star_dom_type      = ',trim(star_dom_type)
+       write(unit,'(a,3(ES9.3,1x))') '  star_dom_pos       = ',star_dom_pos(1),star_dom_pos(2),star_dom_pos(3)
+       write(unit,'(a,ES9.3)')       '  star_dom_rsp       = ',star_dom_rsp
+       write(unit,'(a,ES9.3)')       '  star_dom_size      = ',star_dom_size
+       write(unit,'(a,ES9.3)')       '  star_dom_rin       = ',star_dom_rin
+       write(unit,'(a,ES9.3)')       '  star_dom_rout      = ',star_dom_rout
+       write(unit,'(a,ES9.3)')       '  star_dom_thickness = ',star_dom_thickness
        write(unit,'(a)')             '# how stars shine'
        write(unit,'(a,i8)')          '  nphot           = ',nphot
        write(unit,'(a,es9.3,a)')     '  max_age         = ',max_age, ' ! [Myr]' 
@@ -295,9 +307,14 @@ contains
        write(*,'(a,a)')           '  repository    = ',trim(repository)
        write(*,'(a,i5)')          '  snapnum       = ',snapnum
        write(*,'(a)')             '# computational domain parameters'
-       write(*,'(a,a)')           '  star_dom_type = ',trim(star_dom_type)
-       write(*,'(a,3(ES9.3,1x))') '  star_dom_pos  = ',star_dom_pos(1),star_dom_pos(2),star_dom_pos(3)
-       write(*,'(a,ES9.3)')       '  star_dom_rsp  = ',star_dom_rsp
+       write(*,'(a,a)')           '  star_dom_type      = ',trim(star_dom_type)
+       write(*,'(a,3(ES9.3,1x))') '  star_dom_pos       = ',star_dom_pos(1),star_dom_pos(2),star_dom_pos(3)
+       write(*,'(a,ES9.3)')       '  star_dom_rsp       = ',star_dom_rsp
+       write(*,'(a,ES9.3)')       '  star_dom_size      = ',star_dom_size
+       write(*,'(a,ES9.3)')       '  star_dom_rin       = ',star_dom_rin
+       write(*,'(a,ES9.3)')       '  star_dom_rout      = ',star_dom_rout
+       write(*,'(a,ES9.3)')       '  star_dom_thickness = ',star_dom_thickness
+
        write(*,'(a)')             '# how stars shine'
        write(*,'(a,i8)')          '  nphot         = ',nphot
        write(*,'(a,es9.3,a)')     '  max_age       = ',max_age, ' ! [Myr]'
