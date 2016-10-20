@@ -145,7 +145,7 @@ program PhotonsFromStars
      case('monochromatic')
         nu = nu_0
      case('flat_fnu')
-        nu = ran3(iran) * (nu_max-nu_min)
+        nu = ran3(iran) * (nu_max-nu_min) + nu_min 
      case default
         print*,'ERROR: unknown spec_type :',trim(spec_type)
      end select
