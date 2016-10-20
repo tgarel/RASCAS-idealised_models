@@ -545,7 +545,8 @@ contains
     do i=1,n_photon
        pgrid(i)%ID           = pgridinit(i)%ID
        pgrid(i)%status       = 0
-       pgrid(i)%xlast        = (/-99.,-99.,-99./)
+       !pgrid(i)%xlast        = (/-99.,-99.,-99./)
+       pgrid(i)%xlast        = pgridinit(i)%x_em
        pgrid(i)%xcurr        = pgridinit(i)%x_em
        pgrid(i)%nu_ext       = pgridinit(i)%nu_em
        pgrid(i)%k            = pgridinit(i)%k_em
