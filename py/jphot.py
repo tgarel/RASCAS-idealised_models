@@ -1,5 +1,6 @@
 # nouvelle tentative de classe photons.
 import fortranfile
+import numpy as np
 import lya_utils as lya  # all lya-specific constants and conversions.
 
 class photonlist(object):
@@ -55,7 +56,52 @@ class photonlist(object):
         # time
         xx = f.readReals('d')
         self.time = xx
+        # k(3)
+        xx = f.readReals('d')
+        xx = xx.reshape((self.nphoton,3))
+        self.kx = xx[:,0]
+        self.ky = xx[:,1]
+        self.kz = xx[:,2]
         f.close()
 
-        
-
+    def project_pos(self,k,thetamax):
+        # compute projected positions (x,y) of photons going along k, in a plane perp. to k.
+        # NB: used with thetamax=180, this selects all photons and may be used to compute
+        #     a simple projection along any direction
+        # inputs :
+        #    - k: a 3D array [kx,ky,kz]
+        #    - thetamax : max angle away from k, in deg.
+        costheta = self.kx * k[0] + self.ky * k[1] + self.kz * k[2]
+        # select photons along k +/- some
+        ii = np.where(costheta > np.cos(thetamax*np.pi/180.)) 
+        x  = np.empty_like(ii)
+        y  = np.empty_like(ii)
+        # define projection basis
+        if (k[0] < 1.):  # then we k not colinear with x
+            #-> compute u1 as cross prod of k and x. 
+            u1_x = 0.
+            u1_y = k[2]
+            u1_z = -k[1]
+            # compute u2 as cross product of k and u1.
+            u2_x = k[1]*u1_z - k[2]*u1_y
+            u2_y = -k[0]*u1_z
+            u2_z = k[0]*u1_y
+            # normalize u1 and u2
+            mod_u1 = np.sqrt(u1_y*u1_y+u1_z*u1_z)
+            u1_y = u1_y / mod_u1
+            u1_z = u1_z / mod_u1
+            mod_u2 = np.sqrt(u2_x*u2_x+u2_y*u2_y+u2_z*u2_z)
+            u2_x = u2_x / mod_u2
+            u2_y = u2_y / mod_u2
+            u2_z = u2_z / mod_u2
+        else:   # k is along x -> use u1 = y, u2 = z
+            u1_x = 0.
+            u1_y = 1.
+            u1_z = 0.
+            u2_x = 0.
+            u2_y = 0.
+            u2_z = 1.
+        # compute projected coordinates
+        x = self.x[ii] * u1_x + self.y[ii] * u1_y + self.z[ii] * u1_z
+        y = self.x[ii] * u2_x + self.y[ii] * u2_y + self.z[ii] * u2_z
+        return x,y
