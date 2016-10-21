@@ -1,11 +1,11 @@
 #############################################################################
 # Fortran compiler options and directives
 
-SYSTYPE="CCF"
+#SYSTYPE="CCF"
 #SYSTYPE="lyocral"
 #SYSTYPE="mac"
-#SYSTYPE="Pmac"
-
+SYSTYPE="Pmac"
+#SYSTYPE="ccage"
 
 OPTIONS = -cpp
 #OPTIONS += -DSWITCH_OFF_UPARALLEL
@@ -44,11 +44,20 @@ endif
 
 
 ifeq ($(SYSTYPE),"Pmac")
-F90         = mpif90-openmpi-gcc48  # mpif90-openmpi-mp
+F90         = mpif90-openmpi-mp
 FFLAGS      = -g -fcheck=all -ffree-line-length-none -ffree-form -ftrapv -fbounds-check -fbacktrace
 #FFLAGS      = -O3
 FFLAGS += $(OPTIONS)
 LDFLAGS     = #-lmpi
+endif
+
+
+ifeq ($(SYSTYPE),"ccage")
+F90         = mpif90
+#FFLAGS      = -g -fcheck=all -ffree-line-length-none -ffree-form -ftrapv -fbounds-check -fbacktrace
+FFLAGS      = -O3 -ffree-line-length-none -ffree-form
+FFLAGS += $(OPTIONS)
+LDFLAGS     = 
 endif
 
 

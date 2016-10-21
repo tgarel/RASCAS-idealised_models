@@ -63,6 +63,13 @@ contains
   end subroutine finalisation_mpi
 
 
+  subroutine clean_stop
+
+    call MPI_FINALIZE(code)
+    stop
+
+  end subroutine clean_stop
+
 
   subroutine type_derive
 
