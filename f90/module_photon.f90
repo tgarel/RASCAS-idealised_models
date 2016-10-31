@@ -574,6 +574,7 @@ contains
     write(14) (pgrid(i)%status,  i=1,np)
     write(14) (pgrid(i)%xlast(:),i=1,np)
     write(14) (pgrid(i)%nu_ext,  i=1,np)
+    write(14) (pgrid(i)%k(:),    i=1,np)
     write(14) (pgrid(i)%nb_abs,  i=1,np)
     write(14) (pgrid(i)%time,    i=1,np)
     close(14)
