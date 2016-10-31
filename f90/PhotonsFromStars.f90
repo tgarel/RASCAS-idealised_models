@@ -19,7 +19,9 @@ program PhotonsFromStars
   integer(kind=4) :: i,nstars,nyoung,ilast,j,iran
   real(kind=8) :: minmass,scalar,nu
   type(photon_init),dimension(:),allocatable :: photgrid
-
+  ! for analysis purposes (a posteriori weighting) we want to save the emitter-frame
+  ! frequency (here the freq. in the emitting stellar particle's frame)
+  real(kind=8), allocatable :: nu_star(:)
   
   ! --------------------------------------------------------------------------
   ! user-defined parameters - read from section [PhotonsFromStars] of the parameter file
@@ -129,7 +131,7 @@ program PhotonsFromStars
   ! make particles shine
   ! --------------------------------------------------------------------------------------
   if (verbose) write(*,*) '> generating photons'
-  allocate(photgrid(nphot))
+  allocate(photgrid(nphot),nu_star(nphot))
   iran = ranseed
   do i = 1,nphot
      ! pick a star particle
@@ -149,6 +151,7 @@ program PhotonsFromStars
      case default
         print*,'ERROR: unknown spec_type :',trim(spec_type)
      end select
+     nu_star(i) = nu
      ! knowing the direction of emission and the velocity of the source (star particle), we
      ! compute the external-frame frequency :
      scalar = photgrid(i)%k_em(1)*star_vel2(1,j) + photgrid(i)%k_em(2)*star_vel2(2,j) + photgrid(i)%k_em(3)*star_vel2(3,j)
@@ -168,10 +171,11 @@ program PhotonsFromStars
   write(14) (photgrid(i)%x_em(:),i=1,nphot)
   write(14) (photgrid(i)%k_em(:),i=1,nphot)
   write(14) (photgrid(i)%iran,i=1,nphot)
+  write(14) (nu_star(i),i=1,nphot)
   close(14)
   ! --------------------------------------------------------------------------------------
 
-  deallocate(star_pos2,star_vel2,star_pos,star_vel,star_mass,star_age,photgrid)
+  deallocate(star_pos2,star_vel2,star_pos,star_vel,star_mass,star_age,photgrid,nu_star)
   
 contains
   
