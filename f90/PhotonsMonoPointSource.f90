@@ -34,7 +34,7 @@ program PhotonsMonoPointSource
      photgrid(i)%ID    = i
      photgrid(i)%nu_em = nu_0
      photgrid(i)%x_em  = xsource
-     photgrid(i)%iran  = iran
+     photgrid(i)%iran  = -1*i
      !print*,iran
      call emission_source(iran,k1,k2,k3)
      photgrid(i)%k_em  = (/k1,k2,k3/)
