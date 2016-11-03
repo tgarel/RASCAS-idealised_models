@@ -5,16 +5,19 @@ import lya_utils as lya  # all lya-specific constants and conversions.
 
 class photonlist(object):
     
-    def __init__(self,icFile,resFile):
+    def __init__(self,icFile,resFile,load=True):
         self.icFile  = icFile
         self.resFile = resFile
+        if load: 
+            self.load_ic()
+            self.load_res()
 
-        
+            
     def load_ic(self):
         # read photn IC file
         f = fortranfile.FortranFile(self.icFile)
-        [self.nphoton] = f.readInts()
-        [self.iseed_ic]   = f.readInts()
+        [self.nphoton]  = f.readInts()
+        [self.iseed_ic] = f.readInts()
         self.ID_ic = f.readInts()
         self.nu_ic = f.readReals('d')
         xx = f.readReals('d')
@@ -64,6 +67,37 @@ class photonlist(object):
         self.kz = xx[:,2]
         f.close()
 
+
+    def extract_sample(self,indexes):
+        # return a photon object, which is a subsample of self defined by indexes (i.e. self[indexes])
+        p = photonlist(self.icFile,self.resFile,load=False)
+        p.nphoton = len(indexes)
+        # simple copy of numbers 
+        p.iseed_ic = self.iseed_ic
+        # selection in arrays
+        p.ID_ic    = self.ID_ic[indexes]
+        p.nu_ic    = self.nu_ic[indexes]
+        p.x_ic     = self.x_ic[indexes]        
+        p.y_ic     = self.y_ic[indexes]
+        p.z_ic     = self.z_ic[indexes]
+        p.kx_ic    = self.kx_ic[indexes]        
+        p.ky_ic    = self.ky_ic[indexes]
+        p.kz_ic    = self.kz_ic[indexes]
+        p.iran_ic  = self.iran_ic[indexes]
+        p.ID       = self.ID[indexes]
+        p.status   = self.status[indexes]
+        p.x        = self.x[indexes]        
+        p.y        = self.y[indexes]
+        p.z        = self.z[indexes]
+        p.nu       = self.nu[indexes]
+        p.nscat    = self.nscat[indexes]
+        p.time     = self.time[indexes]
+        p.kx       = self.kx[indexes]        
+        p.ky       = self.ky[indexes]
+        p.kz       = self.kz[indexes]
+        return p      
+
+            
     def project_pos(self,k,thetamax):
         # compute projected positions (x,y) of photons going along k, in a plane perp. to k.
         # NB: used with thetamax=180, this selects all photons and may be used to compute
