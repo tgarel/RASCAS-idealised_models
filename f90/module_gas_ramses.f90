@@ -146,6 +146,9 @@ contains
        stop
     endif
 
+    call read_ramses_params(pfile)
+
+    
   end subroutine read_gas_composition_params
 
 
@@ -163,10 +166,12 @@ contains
        write(unit,'(a,a,a)') '[gas_composition]'
        write(unit,'(a)')       '# no parameter for this composition'
        write(unit,'(a)')             ' '
+       call print_ramses_params(unit)
     else
        write(*,'(a,a,a)') '[gas_composition]'
        write(*,'(a)')       '# no parameter for this composition'
        write(*,'(a)')             ' '
+       call print_ramses_params
     end if
 
   end subroutine print_gas_composition_params
