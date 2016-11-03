@@ -53,18 +53,18 @@ class photonlist(object):
         # nu_ext
         xx = f.readReals('d')
         self.nu = xx
-        # nb_abs
-        xx = f.readInts()
-        self.nscat = xx
-        # time
-        xx = f.readReals('d')
-        self.time = xx
         # k(3)
         xx = f.readReals('d')
         xx = xx.reshape((self.nphoton,3))
         self.kx = xx[:,0]
         self.ky = xx[:,1]
         self.kz = xx[:,2]
+        # nb_abs
+        xx = f.readInts()
+        self.nscat = xx
+        # time
+        xx = f.readReals('d')
+        self.time = xx
         f.close()
 
 
