@@ -143,7 +143,7 @@ program PhotonsFromStars
      ! define photon accordingly
      photgrid(i)%ID    = i
      photgrid(i)%x_em  = star_pos2(:,j)
-     photgrid(i)%iran  = iran
+     photgrid(i)%iran  = -i !! iran
      call isotropic_direction(photgrid(i)%k_em,iran)
      ! define star-particle-frame emission frequency
      select case(trim(spec_type))
