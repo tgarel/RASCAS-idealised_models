@@ -17,7 +17,7 @@ program PhotonsFromStars
   real(kind=8),allocatable :: star_pos(:,:),star_age(:),star_mass(:),star_vel(:,:)
   real(kind=8),allocatable :: star_pos2(:,:),star_vel2(:,:)
   integer(kind=4) :: i,nstars,nyoung,ilast,j,iran
-  real(kind=8) :: minmass,scalar,nu
+  real(kind=8) :: minmass,scalar,nu,r1,r2
   type(photon_init),dimension(:),allocatable :: photgrid
   ! for analysis purposes (a posteriori weighting) we want to save the emitter-frame
   ! frequency (here the freq. in the emitting stellar particle's frame)
@@ -48,6 +48,9 @@ program PhotonsFromStars
   ! ------ spec_type == 'flat_fnu' : photons have a flat distribution in nu, between nu_min and nu_max
   real(kind=8)              :: nu_min  = clight/1221d-8    ! min frequency [Hz]
   real(kind=8)              :: nu_max  = clight/1210d-8    ! max frequency [Hz]
+  ! ------ spec_type == 'gauss' : photons have a gaussian distribution in nu.
+  real(kind=8)              :: nu_cen   = clight / 1215.6701d-8 ! central frequency [Hz]
+  real(kind=8)              :: velwidth = 10.0                  ! line width in velocity [km/s]  
   ! --- miscelaneous
   integer(kind=4)           :: ranseed = -100         ! seed for random generator
   logical                   :: verbose = .true.
@@ -148,6 +151,11 @@ program PhotonsFromStars
         nu = nu_0
      case('flat_fnu')
         nu = ran3(iran) * (nu_max-nu_min) + nu_min 
+     case('gauss')
+        r1 = ran3(iran)
+        r2 = ran3(iran)
+        nu = sqrt(-log(r1)) * cos(2.0d0*pi*r2)
+        nu = (velwidth * 1d5 * nu_cen / clight) * nu + nu_cen
      case default
         print*,'ERROR: unknown spec_type :',trim(spec_type)
      end select
@@ -247,6 +255,10 @@ contains
              write(spec_type,'(a)') trim(value)
           case ('nu_0')
              read(value,*) nu_0
+          case ('nu_cen')
+             read(value,*) nu_cen
+          case ('velwidth')
+             read(value,*) velwidth
           case ('nu_min')
              read(value,*) nu_min
           case ('nu_max')
@@ -296,6 +308,9 @@ contains
        case('flat_fnu')
           write(unit,'(a,es9.3,a)')     '  nu_min          = ',nu_min, ' ! [Hz]'
           write(unit,'(a,es9.3,a)')     '  nu_max          = ',nu_max, ' ! [Hz]'
+       case('gauss')
+          write(unit,'(a,es9.3,a)')     '  nu_cen          = ',nu_cen, ' ! [Hz]'
+          write(unit,'(a,es9.3,a)')     '  velwidth        = ',velwidth, ' ! [km/s]'
        case default
           print*,'ERROR: unknown spec_type :',trim(spec_type)
        end select
@@ -329,6 +344,9 @@ contains
        case('flat_fnu')
           write(*,'(a,es9.3,a)')     '  nu_min          = ',nu_min, ' ! [Hz]'
           write(*,'(a,es9.3,a)')     '  nu_max          = ',nu_max, ' ! [Hz]'
+       case('gauss')
+          write(*,'(a,es9.3,a)')     '  nu_cen          = ',nu_cen, ' ! [Hz]'
+          write(*,'(a,es9.3,a)')     '  velwidth        = ',velwidth, ' ! [km/s]'
        case default
           print*,'ERROR: unknown spec_type :',trim(spec_type)
        end select
