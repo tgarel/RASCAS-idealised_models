@@ -97,6 +97,38 @@ class photonlist(object):
         p.kz       = self.kz[indexes]
         return p      
 
+
+    def append(self,p): 
+        # append a photonlist p to self.
+        self.icFile = 'mix'
+        self.resFile = 'mix'
+        self.nphoton = self.nphoton + p.nphoton
+        # reset seed to absurd value 
+        self.iseed_ic = 0
+        # selection in arrays
+        self.ID_ic    = np.append(self.ID_ic,p.ID_ic)
+        self.nu_ic    = np.append(self.nu_ic,p.nu_ic)
+        self.x_ic     = np.append(self.x_ic,p.x_ic)
+        self.y_ic     = np.append(self.y_ic,p.y_ic)
+        self.z_ic     = np.append(self.z_ic,p.z_ic)
+        self.kx_ic    = np.append(self.kx_ic,p.kx_ic)
+        self.ky_ic    = np.append(self.ky_ic,p.ky_ic)
+        self.kz_ic    = np.append(self.kz_ic, p.kz_ic)
+        self.iran_ic  = np.append(self.iran_ic,p.iran_ic)
+        self.ID       = np.append(self.ID,p.ID)
+        self.status   = np.append(self.status,p.status)
+        self.x        = np.append(self.x,p.x)
+        self.y        = np.append(self.y,p.y)
+        self.z        = np.append(self.z,p.z)
+        self.nu       = np.append(self.nu,p.nu)
+        self.nscat    = np.append(self.nscat,p.nscat)
+        self.time     = np.append(self.time,p.nscat)
+        self.kx       = np.append(self.kx,p.kx)
+        self.ky       = np.append(self.ky,p.ky)
+        self.kz       = np.append(self.kz,p.kz)
+        return p      
+
+    
             
     def project_pos(self,k,thetamax):
         # compute projected positions (x,y) of photons going along k, in a plane perp. to k.
