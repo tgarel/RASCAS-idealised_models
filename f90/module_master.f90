@@ -321,7 +321,7 @@ contains
     if (sum(ncpuperdom) < nslave) then
        jtoo=maxloc(ncpuperdom)
        ncpuperdom(jtoo) = ncpuperdom(jtoo) + nslave - sum(ncpuperdom)
-    else if (sum(ncpuperdom) > nslave)
+    else if (sum(ncpuperdom) > nslave) then 
        write(*,*) '[master] ERROR in init_loadb ... aborting'
        stop
     end if
