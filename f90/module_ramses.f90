@@ -608,9 +608,7 @@ contains
     close(10)
     return
 
-
   end subroutine read_amr
-
 
 
   subroutine clear_amr
@@ -853,7 +851,7 @@ contains
     dp_scale_v    = dp_scale_l/dp_scale_t   ! -> converts velocities into cm/s
     dp_scale_T2   = mp/kB * dp_scale_v**2   ! -> converts P/rho to T/mu, in K
     dp_scale_zsun = 1.d0/0.0127
-    dp_scale_m    = dp_scale_d / dp_scale_l**3 ! convert mass in code units to cgs. 
+    dp_scale_m    = dp_scale_d * dp_scale_l**3 ! convert mass in code units to cgs. 
 
     return
 
@@ -1016,6 +1014,7 @@ contains
     integer(kind=4),allocatable :: id(:)
     real(kind=8),allocatable    :: age(:),m(:),x(:,:),v(:,:),mets(:)
     logical, intent(in)         :: cosmo
+    real(kind=8)                :: temp(3)
     
     
     ! get cosmological parameters to convert conformal time into ages
@@ -1026,8 +1025,11 @@ contains
     ! compute cosmic time of simulation output (Myr)
     aexp  = get_param_real(repository,snapnum,'aexp') ! exp. factor of output
     stime = ct_aexp2time(aexp) ! cosmic time
-    ! read units 
-    call read_conversion_scales(repository,snapnum)
+    ! read units
+    if (.not. conversion_scales_are_known) then 
+       call read_conversion_scales(repository,snapnum)
+       conversion_scales_are_known = .True.
+    end if
 
     if(.not.cosmo)then
        ! read time
@@ -1097,7 +1099,8 @@ contains
        ! save star particles within selection region
        do i = 1,npart
           if (age(i).ne.0.0d0) then ! This is a star
-             if (domain_contains_point(x(i,:),selection_domain)) then ! it is inside the domain
+             temp(:) = x(i,:)
+             if (domain_contains_point(temp,selection_domain)) then ! it is inside the domain
                 if(cosmo)then
                    ! Convert from conformal time to age in Myr
                    star_age(ilast)   = (stime - ct_conftime2time(age(i)))*1.d-6 ! Myr

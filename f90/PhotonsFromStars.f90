@@ -117,6 +117,7 @@ program PhotonsFromStars
      open(unit=15,file=SED_file,status='old',form='formatted')
      read(15,*) ! skip header
      read(15,*) ! skip header
+     read(15,*) ! skip header
      read(15,*) sed_nage,sed_nmet
      allocate(sed_age(sed_nage),sed_met(sed_nmet),sed_flux(sed_nage,sed_nmet))
      read(15,*) sed_age ! in Myr
@@ -125,20 +126,23 @@ program PhotonsFromStars
         read(15,*) sed_flux(:,imet)  ! in erg/s/A/Msun 
      end do
      close(15)
+     print*,minval(star_mass)/1.989d33,maxval(star_mass)/1.989d33
      ! compute weight of each star particle
      nstars = size(star_age)
      allocate(sweight(nstars))
      do i = 1,nstars
         call locatedb(sed_met,sed_nmet,star_met(i),imet)
+        if (imet < 1) imet = 1
         call locatedb(sed_age,sed_nage,star_age(i),iage)
-        sweight(i) = star_mass(i) / 1.989e33 * sed_flux(iage,imet)  ! erg/s/A. 
+        if (iage < 1) iage = 1
+        sweight(i) = star_mass(i) / 1.989d33 * sed_flux(iage,imet)  ! erg/s/A. 
      end do
      ! the total flux and flux per photon are 
      total_flux = 0.0d0
      do i=1,nstars
         total_flux = total_flux + sweight(i)
      end do
-     photon_flux = total_flux / nphot
+     photon_flux = total_flux / nphot 
      if (verbose) write(*,*) '> Total flux and flux per photon (erg/s/A): ',total_flux, photon_flux
      ! construct the cumulative flux distribution, with enough bins to have the smallest star-particle flux in a bin. 
      minflux = minval(sweight)/3.  ! small factor to be somewhat less approximative on faint stars ...  
@@ -151,6 +155,8 @@ program PhotonsFromStars
      end do
      nflux = ilast
      ! now we can draw integers from 1 to nflux and assign photons to stars ...
+     allocate(photgrid(nphot),nu_star(nphot))
+     iran = ranseed
      do i = 1,nphot
         j = int(ran3(iran)*nflux)+1
         if (j > nflux) j = nflux
@@ -232,6 +238,7 @@ program PhotonsFromStars
         scalar = photgrid(i)%k_em(1)*star_vel2(1,j) + photgrid(i)%k_em(2)*star_vel2(2,j) + photgrid(i)%k_em(3)*star_vel2(3,j)
         photgrid(i)%nu_em = nu / (1d0 - scalar/clight)
      end do
+     deallocate(star_pos2,star_vel2)
      ! --------------------------------------------------------------------------------------
      
   end if
@@ -253,7 +260,7 @@ program PhotonsFromStars
   close(14)
   ! --------------------------------------------------------------------------------------
 
-  deallocate(star_pos2,star_vel2,star_pos,star_vel,star_mass,star_age,photgrid,nu_star,star_met)
+  deallocate(star_pos,star_vel,star_mass,star_age,photgrid,nu_star,star_met)
   
 contains
   
