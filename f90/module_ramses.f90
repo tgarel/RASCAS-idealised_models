@@ -997,7 +997,7 @@ contains
   !==================================================================================
   ! STARS utilities 
 
-  subroutine ramses_read_stars_in_domain(repository,snapnum,selection_domain,star_pos,star_age,star_mass,star_vel,cosmo)
+  subroutine ramses_read_stars_in_domain(repository,snapnum,selection_domain,star_pos,star_age,star_mass,star_vel,star_met,cosmo)
 
     ! ONLY WORKS FOR COSMO RUNS (WITHOUT PROPER TIME OPTION)
     ! -> this should be parameterised (and coded). 
@@ -1007,7 +1007,7 @@ contains
     character(1000),intent(in) :: repository
     integer(kind=4),intent(in) :: snapnum
     type(domain),intent(in)    :: selection_domain
-    real(kind=8),allocatable,intent(inout) :: star_pos(:,:),star_age(:),star_mass(:),star_vel(:,:)
+    real(kind=8),allocatable,intent(inout) :: star_pos(:,:),star_age(:),star_mass(:),star_vel(:,:),star_met(:)
     integer(kind=4)            :: nstars
     real(kind=8)               :: omega_0,lambda_0,little_h,omega_k,H0
     real(kind=8)               :: aexp,stime,time_cu,boxsize
@@ -1043,7 +1043,7 @@ contains
        write(*,*) 'ERROR : no star particles in output '
        stop
     end if
-    allocate(star_pos(3,nstars),star_age(nstars),star_mass(nstars),star_vel(3,nstars))
+    allocate(star_pos(3,nstars),star_age(nstars),star_mass(nstars),star_vel(3,nstars),star_met(nstars))
     ! get list of particle fields in outputs 
     call get_fields_from_header(repository,snapnum,nfields)
     ncpu  = get_ncpu(repository,snapnum)
@@ -1110,6 +1110,7 @@ contains
                 !star_pos(:,ilast) = x(i,:) * dp_scale_l ! [cm]
                 star_pos(:,ilast) = x(i,:)
                 star_vel(:,ilast) = v(i,:) * dp_scale_v ! [cm/s]
+                star_met(ilast) = mets(i) 
                 ilast = ilast + 1
              end if
           end if
@@ -1153,6 +1154,14 @@ contains
     allocate(star_vel(3,nstars))
     star_vel = v
     deallocate(v)
+    ! metals
+    allocate(mets(nstars))
+    mets = star_met(1:nstars)
+    deallocate(star_met)
+    allocate(star_met(nstars))
+    star_met = mets
+    deallocate(mets)
+
 
     
     return

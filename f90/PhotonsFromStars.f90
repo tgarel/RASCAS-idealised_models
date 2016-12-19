@@ -14,7 +14,7 @@ program PhotonsFromStars
   type(domain)    :: emission_domain
   integer         :: narg
   character(2000) :: parameter_file
-  real(kind=8),allocatable :: star_pos(:,:),star_age(:),star_mass(:),star_vel(:,:)
+  real(kind=8),allocatable :: star_pos(:,:),star_age(:),star_mass(:),star_vel(:,:),star_met(:)
   real(kind=8),allocatable :: star_pos2(:,:),star_vel2(:,:)
   integer(kind=4) :: i,nstars,nyoung,ilast,j,iran
   real(kind=8) :: minmass,scalar,nu,r1,r2
@@ -22,6 +22,10 @@ program PhotonsFromStars
   ! for analysis purposes (a posteriori weighting) we want to save the emitter-frame
   ! frequency (here the freq. in the emitting stellar particle's frame)
   real(kind=8), allocatable :: nu_star(:)
+  ! SED-related variables
+  integer(kind=4) :: sed_nage,sed_nmet,imet,iage,nflux,n
+  real(kind=8),allocatable :: sed_age(:),sed_met(:),sed_flux(:,:),sweight(:),cum_flux_prob(:)
+  real(kind=8) :: total_flux,photon_flux,minflux
   
   ! --------------------------------------------------------------------------
   ! user-defined parameters - read from section [PhotonsFromStars] of the parameter file
@@ -44,13 +48,16 @@ program PhotonsFromStars
   ! --- how stars shine
   character(30)             :: spec_type = 'monochromatic' ! how to draw frequencies
   ! ------ spec_type == 'monochromatic' : all photons at the same frequency nu_0
-  real(kind=8)              :: nu_0    = clight/1215.6701d-8 ! emission frequency [Hz] 
+  real(kind=8)              :: nu_0    = clight/1215.6701d-8 ! emission frequency [Hz]
   ! ------ spec_type == 'flat_fnu' : photons have a flat distribution in nu, between nu_min and nu_max
   real(kind=8)              :: nu_min  = clight/1221d-8    ! min frequency [Hz]
   real(kind=8)              :: nu_max  = clight/1210d-8    ! max frequency [Hz]
   ! ------ spec_type == 'gauss' : photons have a gaussian distribution in nu.
   real(kind=8)              :: nu_cen   = clight / 1215.6701d-8 ! central frequency [Hz]
-  real(kind=8)              :: velwidth = 10.0                  ! line width in velocity [km/s]  
+  real(kind=8)              :: velwidth = 10.0                  ! line width in velocity [km/s]
+  ! ------ spec_type == 'SED' : monochromatic emission with each star's contribution fixed by a table read as input.
+  real(kind=8)              :: nu_sed   = clight/1600.d-8  ! frequency [Hz]
+  character(2000)           :: SED_file = 'F1600.txt'      ! weights from BC03, in erg/s/A/Msun
   ! --- miscelaneous
   integer(kind=4)           :: ranseed = -100         ! seed for random generator
   logical                   :: verbose = .true.
@@ -96,76 +103,139 @@ program PhotonsFromStars
   ! read star particles within domain
   ! --------------------------------------------------------------------------------------
   if (verbose) write(*,*) '> reading star particles'
-  call ramses_read_stars_in_domain(repository,snapnum,emission_domain,star_pos,star_age,star_mass,star_vel,cosmo)
+  call ramses_read_stars_in_domain(repository,snapnum,emission_domain,star_pos,star_age,star_mass,star_vel,star_met,cosmo)
   ! --------------------------------------------------------------------------------------
 
-  
-  ! --------------------------------------------------------------------------------------
-  ! keep only stars younger than max_age and oversample according to mass of particles
-  ! --------------------------------------------------------------------------------------
-  if (verbose) write(*,*) '> selecting young star particles '
-  nstars = size(star_age)
-  nyoung = 0
-  minmass = minval(star_mass)
-  ! count stars in unit of min-mass-star-particles so that stars will emit proportionally to their mass ... 
-  do i = 1,nstars
-     if (star_age(i) <= max_age) nyoung = nyoung + nint(star_mass(i)/minmass)
-  end do
-  if (nyoung == 0) then
-     print*,'No young stars ... '
-     stop
-  end if
-  ! copy arrays
-  allocate(star_pos2(3,nyoung),star_vel2(3,nyoung))
-  ilast = 1
-  do i = 1,nstars
-     if (star_age(i) <= max_age) then
-        do j = ilast, ilast + nint(star_mass(i)/minmass)-1
-           star_pos2(:,j) = star_pos(:,i)
-           star_vel2(:,j) = star_pos(:,i)
-        end do
-        ilast = ilast + nint(star_mass(i)/minmass)
+
+  if (trim(spec_type) == 'SED') then
+
+     ! --------------------------------------------------------------------------------------
+     ! SED weighting ... 
+     ! --------------------------------------------------------------------------------------
+     if (verbose) write(*,*) '> performing SED weighting ... '
+     ! read weight tables (precomputed fluxes from BC03).
+     open(unit=15,file=SED_file,status='old',form='formatted')
+     read(15,*) ! skip header
+     read(15,*) ! skip header
+     read(15,*) sed_nage,sed_nmet
+     allocate(sed_age(sed_nage),sed_met(sed_nmet),sed_flux(sed_nage,sed_nmet))
+     read(15,*) sed_age ! in Myr
+     read(15,*) sed_met 
+     do imet = 1,sed_nmet
+        read(15,*) sed_flux(:,imet)  ! in erg/s/A/Msun 
+     end do
+     close(15)
+     ! compute weight of each star particle
+     nstars = size(star_age)
+     allocate(sweight(nstars))
+     do i = 1,nstars
+        call locatedb(sed_met,sed_nmet,star_met(i),imet)
+        call locatedb(sed_age,sed_nage,star_age(i),iage)
+        sweight(i) = star_mass(i) / 1.989e33 * sed_flux(iage,imet)  ! erg/s/A. 
+     end do
+     ! the total flux and flux per photon are 
+     total_flux = 0.0d0
+     do i=1,nstars
+        total_flux = total_flux + sweight(i)
+     end do
+     photon_flux = total_flux / nphot
+     if (verbose) write(*,*) '> Total flux and flux per photon (erg/s/A): ',total_flux, photon_flux
+     ! construct the cumulative flux distribution, with enough bins to have the smallest star-particle flux in a bin. 
+     minflux = minval(sweight)/3.  ! small factor to be somewhat less approximative on faint stars ...  
+     allocate(cum_flux_prob(int(total_flux / minflux)))
+     ilast = 1
+     do i=1,nstars
+        n = int(sweight(i)/minflux)
+        cum_flux_prob(ilast:ilast+n) = i
+        ilast = ilast + n 
+     end do
+     nflux = ilast
+     ! now we can draw integers from 1 to nflux and assign photons to stars ...
+     do i = 1,nphot
+        j = int(ran3(iran)*nflux)+1
+        if (j > nflux) j = nflux
+        j = cum_flux_prob(j) 
+        photgrid(i)%ID    = i
+        photgrid(i)%x_em  = star_pos(:,j)
+        photgrid(i)%iran  = -i !! iran
+        call isotropic_direction(photgrid(i)%k_em,iran)
+        nu = nu_sed
+        nu_star(i) = nu
+        scalar = photgrid(i)%k_em(1)*star_vel(1,j) + photgrid(i)%k_em(2)*star_vel(2,j) + photgrid(i)%k_em(3)*star_vel(3,j)
+        photgrid(i)%nu_em = nu / (1d0 - scalar/clight)
+     end do
+     ! --------------------------------------------------------------------------------------
+     
+  else
+
+     ! --------------------------------------------------------------------------------------
+     ! keep only stars younger than max_age and oversample according to mass of particles
+     ! --------------------------------------------------------------------------------------
+     if (verbose) write(*,*) '> selecting young star particles '
+     nstars = size(star_age)
+     nyoung = 0
+     minmass = minval(star_mass)
+     ! count stars in unit of min-mass-star-particles so that stars will emit proportionally to their mass ... 
+     do i = 1,nstars
+        if (star_age(i) <= max_age) nyoung = nyoung + nint(star_mass(i)/minmass)
+     end do
+     if (nyoung == 0) then
+        print*,'No young stars ... '
+        stop
      end if
-  end do
-  ! --------------------------------------------------------------------------------------
+     ! copy arrays
+     allocate(star_pos2(3,nyoung),star_vel2(3,nyoung))
+     ilast = 1
+     do i = 1,nstars
+        if (star_age(i) <= max_age) then
+           do j = ilast, ilast + nint(star_mass(i)/minmass)-1
+              star_pos2(:,j) = star_pos(:,i)
+              star_vel2(:,j) = star_pos(:,i)
+           end do
+           ilast = ilast + nint(star_mass(i)/minmass)
+        end if
+     end do
+     ! --------------------------------------------------------------------------------------
 
-  
-  ! --------------------------------------------------------------------------------------
-  ! make particles shine
-  ! --------------------------------------------------------------------------------------
-  if (verbose) write(*,*) '> generating photons'
-  allocate(photgrid(nphot),nu_star(nphot))
-  iran = ranseed
-  do i = 1,nphot
-     ! pick a star particle
-     j = int(ran3(iran)*nyoung) + 1
-     if (j > nyoung) j = nyoung
-     ! define photon accordingly
-     photgrid(i)%ID    = i
-     photgrid(i)%x_em  = star_pos2(:,j)
-     photgrid(i)%iran  = -i !! iran
-     call isotropic_direction(photgrid(i)%k_em,iran)
-     ! define star-particle-frame emission frequency
-     select case(trim(spec_type))
-     case('monochromatic')
-        nu = nu_0
-     case('flat_fnu')
-        nu = ran3(iran) * (nu_max-nu_min) + nu_min 
-     case('gauss')
-        r1 = ran3(iran)
-        r2 = ran3(iran)
-        nu = sqrt(-log(r1)) * cos(2.0d0*pi*r2)
-        nu = (velwidth * 1d5 * nu_cen / clight) * nu + nu_cen
-     case default
-        print*,'ERROR: unknown spec_type :',trim(spec_type)
-     end select
-     nu_star(i) = nu
-     ! knowing the direction of emission and the velocity of the source (star particle), we
-     ! compute the external-frame frequency :
-     scalar = photgrid(i)%k_em(1)*star_vel2(1,j) + photgrid(i)%k_em(2)*star_vel2(2,j) + photgrid(i)%k_em(3)*star_vel2(3,j)
-     photgrid(i)%nu_em = nu / (1d0 - scalar/clight)
-  end do
-  ! --------------------------------------------------------------------------------------
+     ! --------------------------------------------------------------------------------------
+     ! make particles shine
+     ! --------------------------------------------------------------------------------------
+     if (verbose) write(*,*) '> generating photons'
+     allocate(photgrid(nphot),nu_star(nphot))
+     iran = ranseed
+     do i = 1,nphot
+        ! pick a star particle
+        j = int(ran3(iran)*nyoung) + 1
+        if (j > nyoung) j = nyoung
+        ! define photon accordingly
+        photgrid(i)%ID    = i
+        photgrid(i)%x_em  = star_pos2(:,j)
+        photgrid(i)%iran  = -i !! iran
+        call isotropic_direction(photgrid(i)%k_em,iran)
+        ! define star-particle-frame emission frequency
+        select case(trim(spec_type))
+        case('monochromatic')
+           nu = nu_0
+        case('flat_fnu')
+           nu = ran3(iran) * (nu_max-nu_min) + nu_min 
+        case('gauss')
+           r1 = ran3(iran)
+           r2 = ran3(iran)
+           nu = sqrt(-log(r1)) * cos(2.0d0*pi*r2)
+           nu = (velwidth * 1d5 * nu_cen / clight) * nu + nu_cen
+        case default
+           print*,'ERROR: unknown spec_type :',trim(spec_type)
+        end select
+        nu_star(i) = nu
+        ! knowing the direction of emission and the velocity of the source (star particle), we
+        ! compute the external-frame frequency :
+        scalar = photgrid(i)%k_em(1)*star_vel2(1,j) + photgrid(i)%k_em(2)*star_vel2(2,j) + photgrid(i)%k_em(3)*star_vel2(3,j)
+        photgrid(i)%nu_em = nu / (1d0 - scalar/clight)
+     end do
+     ! --------------------------------------------------------------------------------------
+     
+  end if
+
 
   ! --------------------------------------------------------------------------------------
   ! write ICs
@@ -183,7 +253,7 @@ program PhotonsFromStars
   close(14)
   ! --------------------------------------------------------------------------------------
 
-  deallocate(star_pos2,star_vel2,star_pos,star_vel,star_mass,star_age,photgrid,nu_star)
+  deallocate(star_pos2,star_vel2,star_pos,star_vel,star_mass,star_age,photgrid,nu_star,star_met)
   
 contains
   
@@ -265,6 +335,10 @@ contains
              read(value,*) nu_max
           case ('nphot')
              read(value,*) nphot
+          case ('nu_sed')
+             read(value,*) nu_sed
+          case ('SED_file')
+             write(SED_file,'(a)') trim(value)
           end select
        end do
     end if
@@ -311,6 +385,9 @@ contains
        case('gauss')
           write(unit,'(a,es9.3,a)')     '  nu_cen          = ',nu_cen, ' ! [Hz]'
           write(unit,'(a,es9.3,a)')     '  velwidth        = ',velwidth, ' ! [km/s]'
+       case('SED')
+          write(unit,'(a,es9.3,a)')     '  nu_sed          = ',nu_sed, ' ! [Hz]'
+          write(unit,'(a,a)')           '  SED_file        = ',trim(SED_file)
        case default
           print*,'ERROR: unknown spec_type :',trim(spec_type)
        end select
@@ -347,6 +424,9 @@ contains
        case('gauss')
           write(*,'(a,es9.3,a)')     '  nu_cen          = ',nu_cen, ' ! [Hz]'
           write(*,'(a,es9.3,a)')     '  velwidth        = ',velwidth, ' ! [km/s]'
+       case('SED')
+          write(*,'(a,es9.3,a)')     '  nu_sed          = ',nu_sed, ' ! [Hz]'
+          write(*,'(a,a)')           '  SED_file        = ',trim(SED_file)
        case default
           print*,'ERROR: unknown spec_type :',trim(spec_type)
        end select
@@ -360,6 +440,33 @@ contains
     return
 
   end subroutine print_PhotonsFromStars_params
+
+  
+  subroutine locatedb(xx,n,x,j)
+
+    ! subroutine which locates the position j of a value x in an array xx of n elements
+    ! NB : here xx is double precision
+    
+    implicit none
+    
+    integer(kind=4) ::  n,j,jl,ju,jm
+    real(kind=8)    ::  xx(n),x
+    
+    jl = 0
+    ju = n+1
+    do while (ju-jl > 1) 
+       jm = (ju+jl)/2
+       if ((xx(n) > xx(1)) .eqv. (x > xx(jm))) then
+          jl = jm
+       else
+          ju = jm
+       endif
+    enddo
+    j = jl
+
+    return
+
+  end subroutine locatedb
 
 
   
