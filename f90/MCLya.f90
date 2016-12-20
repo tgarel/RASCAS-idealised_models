@@ -132,7 +132,7 @@ contains
           case ('verbose')
              read(value,*) verbose
           case ('DataDir')
-             write(DataDir,'(a)') trim(value)
+             write(DataDir,'(a,"/")') trim(value)
           case ('PhotonICFile')
              write(PhotonICFile,'(a)') trim(value)
           case ('DomDumpFile')
