@@ -15,7 +15,7 @@ program PhotonsMonoPointSource
   real(kind=8)                               :: lambda_0, lambda_0_cm, nu_0
 
   ! should improve since this is already defined in module_HI_model...
-  lambda_0    = 1215.6701
+  lambda_0    = 1215.67d0
   lambda_0_cm = lambda_0 / cmtoA
   nu_0        = clight/lambda_0_cm
 
@@ -34,7 +34,7 @@ program PhotonsMonoPointSource
      photgrid(i)%ID    = i
      photgrid(i)%nu_em = nu_0
      photgrid(i)%x_em  = xsource
-     photgrid(i)%iran  = iran
+     photgrid(i)%iran  = -1*i
      !print*,iran
      call emission_source(iran,k1,k2,k3)
      photgrid(i)%k_em  = (/k1,k2,k3/)

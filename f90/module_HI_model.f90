@@ -14,7 +14,7 @@ module module_HI_model
   private
 
   ! definition of atomic values
-  real(kind=8),parameter   :: lambda_0=1215.6701                          ![A] Lya wavelength
+  real(kind=8),parameter   :: lambda_0=1215.67d0                          ![A] Lya wavelength
   real(kind=8),parameter   :: gamma=6.265d8                               ! Einstein coeff = damping constant for Voigt Function(gamma_alpha)  
   real(kind=8),parameter   :: f12=0.416                                   ! oscillator strength for Ly-alpha
   ! useful pre-computed quantities

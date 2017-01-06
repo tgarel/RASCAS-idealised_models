@@ -3,9 +3,9 @@
 
 #SYSTYPE="CCF"
 #SYSTYPE="lyocral"
-SYSTYPE="mac"
-#SYSTYPE="Pmac"
-
+#SYSTYPE="mac"
+SYSTYPE="Pmac"
+#SYSTYPE="ccage"
 
 OPTIONS = -cpp
 #OPTIONS += -DSWITCH_OFF_UPARALLEL
@@ -44,11 +44,20 @@ endif
 
 
 ifeq ($(SYSTYPE),"Pmac")
-F90         = mpif90-openmpi-gcc48  # mpif90-openmpi-mp
+F90         = mpif90-openmpi-mp
 FFLAGS      = -g -fcheck=all -ffree-line-length-none -ffree-form -ftrapv -fbounds-check -fbacktrace
 #FFLAGS      = -O3
 FFLAGS += $(OPTIONS)
 LDFLAGS     = #-lmpi
+endif
+
+
+ifeq ($(SYSTYPE),"ccage")
+F90         = mpif90
+#FFLAGS      = -g -fcheck=all -ffree-line-length-none -ffree-form -ftrapv -fbounds-check -fbacktrace
+FFLAGS      = -O3 -ffree-line-length-none -ffree-form
+FFLAGS += $(OPTIONS)
+LDFLAGS     = 
 endif
 
 
@@ -74,9 +83,6 @@ OBJSMC = $(GASOBJS) module_mesh.o module_photon.o
 
 OBJSMPI = $(OBJSMC) module_parallel_mpi.o module_worker.o module_master.o MCLya.o
 
-JEJE = module_random.o module_constants.o module_uparallel.o module_domain.o \
-	module_utils.o module_HI_model.o module_ramses.o module_gas_composition_HI.o \
-	module_mesh.o module_photon.o
 #############################################################################
 #.SUFFIXES: .o .f90
 #.f90.o:
@@ -91,8 +97,8 @@ all: clean CreateDomDump PhotonsMonoPointSource serial PhotonsFromStars ## MCLya
 PhotonsMonoPointSource: $(OBJSMC) PhotonsMonoPointSource.o
 	$(F90) $(FFLAGS) $(LDFLAGS) -o $@ $(OBJSMC) PhotonsMonoPointSource.o
 
-PhotonsFromStars: $(JEJE) PhotonsFromStars.o
-	$(F90) $(FFLAGS) $(LDFLAGS) -o $@ $(JEJE) PhotonsFromStars.o
+PhotonsFromStars: $(OBJSMC) PhotonsFromStars.o
+	$(F90) $(FFLAGS) $(LDFLAGS) -o $@ $(OBJSMC) PhotonsFromStars.o
 
 serial: $(OBJSMC) serial.o
 	$(F90) $(FFLAGS) $(LDFLAGS) -o $@ $(OBJSMC) serial.o

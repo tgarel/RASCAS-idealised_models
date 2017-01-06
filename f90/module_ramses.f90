@@ -70,10 +70,21 @@ module module_ramses
   integer(kind=4),parameter             :: n_frw = 1000
   real(KIND=8),dimension(:),allocatable :: aexp_frw,hexp_frw,tau_frw,t_frw
   ! ----------------------------------------------------------------------------------
+
+
+  ! --------------------------------------------------------------------------
+  ! user-defined parameters - read from section [ramses] of the parameter file
+  ! --------------------------------------------------------------------------
+  ! ramses options (not guessable from outputs)
+  logical                  :: self_shielding = .true.  ! if true, reproduce self-shielding approx made in ramses to compute nHI. 
+  ! miscelaneous
+  logical                  :: verbose        = .false. ! display some run-time info on this module
+  ! --------------------------------------------------------------------------
+
   
 
   public  :: read_leaf_cells, get_ngridtot, ramses_get_velocity_cgs, ramses_get_T_nhi_cgs, ramses_get_metallicity, ramses_get_box_size_cm
-  public  :: ramses_read_stars_in_domain
+  public  :: ramses_read_stars_in_domain,read_ramses_params,print_ramses_params
   ! default is private now ... !! private :: read_hydro, read_amr, get_nleaf, get_nvar, clear_amr, get_ncpu, get_param_real
 
   !==================================================================================
@@ -187,6 +198,8 @@ contains
     integer(kind=4),intent(in)  :: nleaf, nvar
     real(kind=8),intent(in)     :: ramses_var(nvar,nleaf) ! one cell only
     real(kind=8),intent(inout)  :: nhi(nleaf), temp(nleaf)
+    real(kind=8),allocatable    :: boost(:)
+    real(kind=8)                :: xhi
     integer(kind=4) :: ihx,ihy,i
     real(kind=8)    :: xx,yy,dxx1,dxx2,dyy1,dyy2,f
     integer(kind=4) :: if1,if2,jf1,jf2
@@ -205,9 +218,19 @@ contains
     nhi  = ramses_var(1,:) * dp_scale_nh  ! nb of H atoms per cm^3
     temp = ramses_var(5,:) / ramses_var(1,:) * dp_scale_T2  ! T/mu [ K ]
 
+    allocate(boost(nleaf))
+    if (self_shielding) then
+       do i=1,nleaf
+          boost(i)=MAX(exp(-nhi(i)/0.01),1.0D-20) ! same as hard-coded in RAMSES. 
+       end do
+    else
+       boost = 1.0d0
+    end if
+
+    
     ! compute the ionization state and temperature using the 'cooling' tables
-    do i = 1, nleaf 
-       xx  = log10(nhi(i))
+    do i = 1, nleaf
+       xx  = min(max(log10(nhi(i)/boost(i)),cooling%nh(1)),cooling%nh(cooling%n11))
        ihx = int((xx - cool_int%nh_start)/cool_int%nh_step) + 1
        if (ihx < 1) then 
           ihx = 1 
@@ -252,13 +275,16 @@ contains
        ! neutral H density 
        f = dxx1 * dyy1 * cooling%spec(if2,jf2,2) + dxx2 * dyy1 * cooling%spec(if1,jf2,2) &
             & + dxx1 * dyy2 * cooling%spec(if2,jf1,2) + dxx2 * dyy2 * cooling%spec(if1,jf1,2)
-       nhi(i) = 10.0d0**f   ! nHI (cm^-3)
+       xhi = 10.0d0**(f-xx)  ! this is xHI = nHI/nH where the n's include the boost. 
+       nhi(i) = xhi * nhi(i) ! nHI (cm^-3) (boost-free)
        ! GET MU to convert T/MU into T ... 
        f = dxx1 * dyy1 * cooling%mu(if2,jf2) + dxx2 * dyy1 * cooling%mu(if1,jf2) &
             & + dxx1 * dyy2 * cooling%mu(if2,jf1) + dxx2 * dyy2 * cooling%mu(if1,jf1)
        temp(i) = temp(i) * f   ! This is now T (in K) with no bloody mu ... 
     end do
 
+    deallocate(boost)
+    
     return
 
   end subroutine ramses_get_T_nhi_cgs
@@ -827,7 +853,7 @@ contains
     dp_scale_v    = dp_scale_l/dp_scale_t   ! -> converts velocities into cm/s
     dp_scale_T2   = mp/kB * dp_scale_v**2   ! -> converts P/rho to T/mu, in K
     dp_scale_zsun = 1.d0/0.0127
-    dp_scale_m    = dp_scale_d / dp_scale_l**3 ! convert mass in code units to cgs. 
+    dp_scale_m    = dp_scale_d * dp_scale_l**3 ! convert mass in code units to cgs. 
 
     return
 
@@ -971,7 +997,7 @@ contains
   !==================================================================================
   ! STARS utilities 
 
-  subroutine ramses_read_stars_in_domain(repository,snapnum,selection_domain,star_pos,star_age,star_mass,star_vel)
+  subroutine ramses_read_stars_in_domain(repository,snapnum,selection_domain,star_pos,star_age,star_mass,star_vel,cosmo)
 
     ! ONLY WORKS FOR COSMO RUNS (WITHOUT PROPER TIME OPTION)
     ! -> this should be parameterised (and coded). 
@@ -984,11 +1010,12 @@ contains
     real(kind=8),allocatable,intent(inout) :: star_pos(:,:),star_age(:),star_mass(:),star_vel(:,:)
     integer(kind=4)            :: nstars
     real(kind=8)               :: omega_0,lambda_0,little_h,omega_k,H0
-    real(kind=8)               :: aexp,stime
+    real(kind=8)               :: aexp,stime,time_cu,boxsize
     integer(kind=4)            :: ncpu,ilast,icpu,npart,i,ifield,nfields
     character(1000)            :: filename
     integer(kind=4),allocatable :: id(:)
     real(kind=8),allocatable    :: age(:),m(:),x(:,:),v(:,:),mets(:)
+    logical, intent(in)         :: cosmo
     
     
     ! get cosmological parameters to convert conformal time into ages
@@ -1001,6 +1028,14 @@ contains
     stime = ct_aexp2time(aexp) ! cosmic time
     ! read units 
     call read_conversion_scales(repository,snapnum)
+
+    if(.not.cosmo)then
+       ! read time
+       time_cu = get_param_real(repository,snapnum,'time') ! code unit
+       write(*,*)'Time simu [Myr] =',time_cu, time_cu*dp_scale_t/(365.*24.*3600.*1d6)
+       boxsize = get_param_real(repository,snapnum,'boxlen') !!!* dp_scale_l  ! [ cm ]
+       write(*,*)'boxlen =',boxsize
+    endif
 
     ! read stars 
     nstars = get_tot_nstars(repository,snapnum)
@@ -1055,14 +1090,25 @@ contains
        end do
        close(11)
 
+       if(.not.cosmo)then
+          x=x/boxsize
+       endif
+
        ! save star particles within selection region
        do i = 1,npart
           if (age(i).ne.0.0d0) then ! This is a star
              if (domain_contains_point(x(i,:),selection_domain)) then ! it is inside the domain
-                ! Convert from conformal time to age in Myr
-                star_age(ilast)   = (stime - ct_conftime2time(age(i)))*1.d-6 ! Myr
+                if(cosmo)then
+                   ! Convert from conformal time to age in Myr
+                   star_age(ilast)   = (stime - ct_conftime2time(age(i)))*1.d-6 ! Myr
+                else
+                   ! convert from tborn to age in Myr
+                   star_age(ilast)   = max(0.d0, (time_cu - age(i)) * dp_scale_t / (365.d0*24.d0*3600.d0*1.d6))
+                endif
                 star_mass(ilast)  = m(i)   * dp_scale_m ! [g]
-                star_pos(:,ilast) = x(i,:) * dp_scale_l ! [cm]
+                ! LEO: positions are supposed to be in box unit...
+                !star_pos(:,ilast) = x(i,:) * dp_scale_l ! [cm]
+                star_pos(:,ilast) = x(i,:)
                 star_vel(:,ilast) = v(i,:) * dp_scale_v ! [cm/s]
                 ilast = ilast + 1
              end if
@@ -1339,6 +1385,80 @@ contains
     
   end subroutine ct_friedman
 
+
+  subroutine read_ramses_params(pfile)
+    
+    ! ---------------------------------------------------------------------------------
+    ! subroutine which reads parameters of current module in the parameter file pfile
+    !
+    ! default parameter values are set at declaration (head of module)
+    ! ---------------------------------------------------------------------------------
+
+    character(*),intent(in) :: pfile
+    character(1000) :: line,name,value
+    integer(kind=4) :: err,i
+    logical         :: section_present
+
+    section_present = .false.
+    open(unit=10,file=trim(pfile),status='old',form='formatted')
+    ! search for section start
+    do
+       read (10,'(a)',iostat=err) line
+       if(err/=0) exit
+       if (line(1:8) == '[ramses]') then
+          section_present = .true.
+          exit
+       end if
+    end do
+    ! read section if present
+    if (section_present) then 
+       do
+          read (10,'(a)',iostat=err) line
+          if(err/=0) exit
+          if (line(1:1) == '[') exit ! next section starting... -> leave
+          i = scan(line,'=')
+          if (i==0 .or. line(1:1)=='#' .or. line(1:1)=='!') cycle  ! skip blank or commented lines
+          name=trim(adjustl(line(:i-1)))
+          value=trim(adjustl(line(i+1:)))
+          i = scan(value,'!')
+          if (i /= 0) value = trim(adjustl(value(:i-1)))
+          select case (trim(name))
+          case ('self_shielding')
+             read(value,*) self_shielding
+          case ('verbose')
+             read(value,*) verbose
+          end select
+       end do
+    end if
+    close(10)
+    return
+    
+  end subroutine read_ramses_params
+
+
+  
+  subroutine print_ramses_params(unit)
+    
+    ! ---------------------------------------------------------------------------------
+    ! write parameter values to std output or to an open file if argument unit is
+    ! present.
+    ! ---------------------------------------------------------------------------------
+
+    integer(kind=4),optional,intent(in) :: unit
+
+    if (present(unit)) then 
+       write(unit,'(a,a,a)') '[ramses]'
+       write(unit,'(a,L1)') '  self_shielding = ',self_shielding
+       write(unit,'(a,L1)') '  verbose        = ',verbose
+    else
+       write(*,'(a,a,a)') '[ramses]'
+       write(*,'(a,L1)') '  self_shielding = ',self_shielding
+       write(*,'(a,L1)') '  verbose        = ',verbose
+    end if
+
+    return
+    
+  end subroutine print_ramses_params
 
 
 

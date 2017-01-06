@@ -52,13 +52,17 @@ contains
     nphot = size(photgrid)
     if (verbose) print *,'[master] --> Nphoton =',nphot
 
+    if(nbuffer*nslave>nphot)then
+       print *,'decrease nbuffer and/or ncpu'
+       call clean_stop
+    endif
+    
     allocate(photpacket(nbuffer))
     allocate(cpu(1:nslave))
     allocate(first(ndomain),last(ndomain),nqueue(ndomain),ncpuperdom(ndomain))
     allocate(next(nphot,ndomain))
     allocate(delta(ndomain))
     allocate(domain_list(ndomain))
-
 
     if (verbose) print *,'[master] --> reading domain and mesh...'
     ! Get domain properties
@@ -154,7 +158,7 @@ contains
              print*,'pb with photon buffer in master...'
              stop
           endif
-          if(photpacket(i)%status==3)exit
+          if(photpacket(i)%status==-1)exit
 
           !!!!write(*,*)'photon update',i,photpacket(i)%ID,photpacket(i)%status   !!!,photpacket(i)%pos(1)
 
@@ -187,7 +191,7 @@ contains
        enddo
 
        ! empty photpacket...
-       photpacket(:)%status=3
+       photpacket(:)%status=-1
 
        ! check end of work
        nphottodo=sum(nqueue)
@@ -266,8 +270,16 @@ contains
 
     ! test status of photons
     do i=1,nphot
-       if(photgrid(i)%status /= 1)print*,'ohoho problem with photon status...',i,photgrid(i)%status
+       if(photgrid(i)%status == 0)print*,'ohoho problem with photon status...',i,photgrid(i)%status
     enddo
+    ! Some stats on photon status
+    print *,' '
+    print *,'--> photon status...'
+    print *,'# of photons             =',size(photgrid(:)%status)
+    print *,'# of status=1 (escaped)  =',count(mask=(photgrid(:)%status==1))
+    print *,'# of status=2 (absorbed) =',count(mask=(photgrid(:)%status==2))
+    print *,'# of status=3 (crap, pb with precision/in_cell_finder) =',count(mask=(photgrid(:)%status==3))
+    print *,' '
     ! write results                                                                                               
     ! some check
     if(verbose)then
@@ -279,9 +291,7 @@ contains
        print *,'min max nb scatt    =',minval(photgrid%nb_abs),maxval(photgrid%nb_abs)
        print *,'min max nu          =',minval(photgrid%nu_ext),maxval(photgrid%nu_ext)
        print *,'min max lambda      =',clight/minval(photgrid%nu_ext)*cmtoA,clight/maxval(photgrid%nu_ext)*cmtoA
-
        print *,'min max travel time =',minval(photgrid%time),maxval(photgrid%time)
-
        print *,'Last scattering'
        print *,'min max pos x       =',minval(photgrid%xlast(1)),maxval(photgrid%xlast(1))
        print *,'min max pos y       =',minval(photgrid%xlast(2)),maxval(photgrid%xlast(2))
@@ -304,21 +314,17 @@ contains
     integer,dimension(1)::jtoo
     
     nphottot=sum(nqueue)
-    ncpuperdom(:)=nint(real(nslave*nqueue(:))/nphottot)
-    ! check wether rounding is ok
-    do while(sum(ncpuperdom)/=nslave)
-       if(sum(ncpuperdom)>nslave)then
-          ! quit one cpu
-          jtoo=maxloc(ncpuperdom)
-          ncpuperdom(jtoo)=ncpuperdom(jtoo)-1
-       else
-          if(sum(ncpuperdom)<nslave)then
-             ! add one cpu (to the max or to the min?)
-             jtoo=minloc(ncpuperdom)
-             ncpuperdom(jtoo)=ncpuperdom(jtoo)+1
-          endif
-       endif
-    end do
+    ncpuperdom(:)=int(real(nslave*nqueue(:))/nphottot) 
+
+    ! assign cpus left over by rounding error to the domain which has the max nb of photons.
+    ! (This is best guess and will be balanced dynamically later).
+    if (sum(ncpuperdom) < nslave) then
+       jtoo=maxloc(ncpuperdom)
+       ncpuperdom(jtoo) = ncpuperdom(jtoo) + nslave - sum(ncpuperdom)
+    else if (sum(ncpuperdom) > nslave) then 
+       write(*,*) '[master] ERROR in init_loadb ... aborting'
+       stop
+    end if
 
     if(verbose) write(*,*)'[master] init load-balancing',nslave,sum(ncpuperdom),ncpuperdom(:)
 

@@ -96,7 +96,9 @@ contains
        if (verbose) write(*,*) '-- module_gas_composition_HI_D_dust : extracting ndust form ramses '
        allocate(metallicity(nleaf))
        call ramses_get_metallicity(nleaf,nvar,ramses_var,metallicity)
-       g(:)%ndust = (dust_to_metal_ratio * mH_over_mdust / XH) * metallicity * g(:)%nHI     !! JB: To test ... 
+       do ileaf = 1,nleaf
+          g(ileaf)%ndust = (dust_to_metal_ratio * mH_over_mdust / XH) * metallicity(ileaf) * g(ileaf)%nHI 
+       end do
        deallocate(metallicity)
     end if
 
@@ -327,6 +329,7 @@ contains
     end if
     close(10)
 
+    call read_ramses_params(pfile)
     call read_HI_params(pfile)
     call read_D_params(pfile)
     call read_dust_params(pfile)
@@ -362,6 +365,8 @@ contains
        write(unit,'(a)')       '# miscelaneous parameters'
        write(unit,'(a,L1)')    '  verbose              = ',verbose
        write(unit,'(a)')             ' '
+       call print_ramses_params(unit)
+       write(unit,'(a)')             ' '
        call print_HI_params(unit)
        write(unit,'(a)')             ' '
        call print_D_params(unit)
@@ -382,6 +387,8 @@ contains
        write(*,'(a,ES10.3)') '  fix_box_size_cm     = ',fix_box_size_cm
        write(*,'(a)')       '# miscelaneous parameters'
        write(*,'(a,L1)')    '  verbose              = ',verbose
+       write(*,'(a)')             ' '
+       call print_ramses_params
        write(*,'(a)')             ' '
        call print_HI_params
        write(*,'(a)')             ' '

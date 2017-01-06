@@ -17,28 +17,44 @@ program PhotonsFromStars
   real(kind=8),allocatable :: star_pos(:,:),star_age(:),star_mass(:),star_vel(:,:)
   real(kind=8),allocatable :: star_pos2(:,:),star_vel2(:,:)
   integer(kind=4) :: i,nstars,nyoung,ilast,j,iran
-  real(kind=8) :: minmass,scalar
+  real(kind=8) :: minmass,scalar,nu,r1,r2
   type(photon_init),dimension(:),allocatable :: photgrid
-
+  ! for analysis purposes (a posteriori weighting) we want to save the emitter-frame
+  ! frequency (here the freq. in the emitting stellar particle's frame)
+  real(kind=8), allocatable :: nu_star(:)
   
   ! --------------------------------------------------------------------------
-  ! user-defined parameters - read from section [CreateDomDump] of the parameter file
+  ! user-defined parameters - read from section [PhotonsFromStars] of the parameter file
   ! --------------------------------------------------------------------------
   ! --- input / outputs
   character(2000)           :: outputfile = 'PhotICs.dat' ! file to which outputs will be written
   character(2000)           :: repository = './'      ! ramses run directory (where all output_xxxxx dirs are).
   integer(kind=4)           :: snapnum = 1            ! ramses output number to use
-  ! --- computational domain  
-  character(10)             :: typechar = 'sphere'    ! shape type of domain  // only sphere allowed now. 
-  real(kind=8),dimension(3) :: pos = (/0.5,0.5,0.5/)  ! center of domain [code units]
-  real(kind=8)              :: rvir = 0.3             ! radius of domain [code units]
-  ! --- how stars shine
-  integer(kind=4)           :: nphot = 1000000        ! number of photons to generate
+  ! --- domain whithin which star particles will be selected (should be within computational domain used for RT). 
+  character(10)             :: star_dom_type      = 'sphere'         ! shape type of domain  // default is sphere.
+  real(kind=8),dimension(3) :: star_dom_pos       = (/0.5,0.5,0.5/)  ! center of domain [code units]
+  real(kind=8)              :: star_dom_rsp       = 0.3              ! radius of spher [code units]
+  real(kind=8)              :: star_dom_size      = 0.3              ! size of cube [code units]
+  real(kind=8)              :: star_dom_rin       = 0.0              ! inner radius of shell [code units]
+  real(kind=8)              :: star_dom_rout      = 0.3              ! outer radius of shell [code units]
+  real(kind=8)              :: star_dom_thickness = 0.1              ! thickness of slab [code units]
+  ! --- which stars shine
+  integer(kind=4)           :: nphot   = 1000000      ! number of photons to generate
   real(kind=8)              :: max_age = 10.0d0       ! stars older than this don't shine [Myr]
-  real(kind=8)              :: nu_0    = clight/1215.6701d-8 ! emission frequency [Hz]
+  ! --- how stars shine
+  character(30)             :: spec_type = 'monochromatic' ! how to draw frequencies
+  ! ------ spec_type == 'monochromatic' : all photons at the same frequency nu_0
+  real(kind=8)              :: nu_0    = clight/1215.6701d-8 ! emission frequency [Hz] 
+  ! ------ spec_type == 'flat_fnu' : photons have a flat distribution in nu, between nu_min and nu_max
+  real(kind=8)              :: nu_min  = clight/1221d-8    ! min frequency [Hz]
+  real(kind=8)              :: nu_max  = clight/1210d-8    ! max frequency [Hz]
+  ! ------ spec_type == 'gauss' : photons have a gaussian distribution in nu.
+  real(kind=8)              :: nu_cen   = clight / 1215.6701d-8 ! central frequency [Hz]
+  real(kind=8)              :: velwidth = 10.0                  ! line width in velocity [km/s]  
   ! --- miscelaneous
   integer(kind=4)           :: ranseed = -100         ! seed for random generator
   logical                   :: verbose = .true.
+  logical                   :: cosmo = .true.         ! cosmo flag
   ! --------------------------------------------------------------------------
 
 
@@ -58,7 +74,21 @@ program PhotonsFromStars
 
   ! --------------------------------------------------------------------------------------
   ! define domain within which stars may shine
-  call domain_constructor_from_scratch(emission_domain,typechar,xc=pos(1),yc=pos(2),zc=pos(3),r=rvir)
+  ! --------------------------------------------------------------------------------------
+  select case(star_dom_type)
+  case('sphere')
+     call domain_constructor_from_scratch(emission_domain,star_dom_type, &
+          xc=star_dom_pos(1),yc=star_dom_pos(2),zc=star_dom_pos(3),r=star_dom_rsp)
+  case('shell')
+     call domain_constructor_from_scratch(emission_domain,star_dom_type, &
+          xc=star_dom_pos(1),yc=star_dom_pos(2),zc=star_dom_pos(3),r_inbound=star_dom_rin,r_outbound=star_dom_rout)
+  case('cube')
+     call domain_constructor_from_scratch(emission_domain,star_dom_type, & 
+          xc=star_dom_pos(1),yc=star_dom_pos(2),zc=star_dom_pos(3),size=star_dom_size)
+  case('slab')
+     call domain_constructor_from_scratch(emission_domain,star_dom_type, &
+          xc=star_dom_pos(1),yc=star_dom_pos(2),zc=star_dom_pos(3),thickness=star_dom_thickness)
+  end select
   ! --------------------------------------------------------------------------------------
 
   
@@ -66,7 +96,7 @@ program PhotonsFromStars
   ! read star particles within domain
   ! --------------------------------------------------------------------------------------
   if (verbose) write(*,*) '> reading star particles'
-  call ramses_read_stars_in_domain(repository,snapnum,emission_domain,star_pos,star_age,star_mass,star_vel)
+  call ramses_read_stars_in_domain(repository,snapnum,emission_domain,star_pos,star_age,star_mass,star_vel,cosmo)
   ! --------------------------------------------------------------------------------------
 
   
@@ -104,7 +134,7 @@ program PhotonsFromStars
   ! make particles shine
   ! --------------------------------------------------------------------------------------
   if (verbose) write(*,*) '> generating photons'
-  allocate(photgrid(nphot))
+  allocate(photgrid(nphot),nu_star(nphot))
   iran = ranseed
   do i = 1,nphot
      ! pick a star particle
@@ -113,12 +143,27 @@ program PhotonsFromStars
      ! define photon accordingly
      photgrid(i)%ID    = i
      photgrid(i)%x_em  = star_pos2(:,j)
-     photgrid(i)%iran  = iran
+     photgrid(i)%iran  = -i !! iran
      call isotropic_direction(photgrid(i)%k_em,iran)
+     ! define star-particle-frame emission frequency
+     select case(trim(spec_type))
+     case('monochromatic')
+        nu = nu_0
+     case('flat_fnu')
+        nu = ran3(iran) * (nu_max-nu_min) + nu_min 
+     case('gauss')
+        r1 = ran3(iran)
+        r2 = ran3(iran)
+        nu = sqrt(-log(r1)) * cos(2.0d0*pi*r2)
+        nu = (velwidth * 1d5 * nu_cen / clight) * nu + nu_cen
+     case default
+        print*,'ERROR: unknown spec_type :',trim(spec_type)
+     end select
+     nu_star(i) = nu
      ! knowing the direction of emission and the velocity of the source (star particle), we
      ! compute the external-frame frequency :
      scalar = photgrid(i)%k_em(1)*star_vel2(1,j) + photgrid(i)%k_em(2)*star_vel2(2,j) + photgrid(i)%k_em(3)*star_vel2(3,j)
-     photgrid(i)%nu_em = nu_0 / (1d0 - scalar/clight)
+     photgrid(i)%nu_em = nu / (1d0 - scalar/clight)
   end do
   ! --------------------------------------------------------------------------------------
 
@@ -134,10 +179,11 @@ program PhotonsFromStars
   write(14) (photgrid(i)%x_em(:),i=1,nphot)
   write(14) (photgrid(i)%k_em(:),i=1,nphot)
   write(14) (photgrid(i)%iran,i=1,nphot)
+  write(14) (nu_star(i),i=1,nphot)
   close(14)
   ! --------------------------------------------------------------------------------------
 
-  deallocate(star_pos2,star_vel2,star_pos,star_vel,star_mass,star_age,photgrid)
+  deallocate(star_pos2,star_vel2,star_pos,star_vel,star_mass,star_age,photgrid,nu_star)
   
 contains
   
@@ -177,16 +223,26 @@ contains
           i = scan(value,'!')
           if (i /= 0) value = trim(adjustl(value(:i-1)))
           select case (trim(name))
-          case ('pos')
-             read(value,*) pos(1),pos(2),pos(3)
-          case ('rvir')
-             read(value,*) rvir
-          case ('typechar')
-             write(typechar,'(a)') trim(value)
+          case ('star_dom_pos')
+             read(value,*) star_dom_pos(1),star_dom_pos(2),star_dom_pos(3)
+          case ('star_dom_rsp')
+             read(value,*) star_dom_rsp
+          case ('star_dom_type')
+             write(star_dom_type,'(a)') trim(value)
+          case ('star_dom_size')
+             read(value,*) star_dom_size
+          case ('star_dom_rin')
+             read(value,*) star_dom_rin
+          case ('star_dom_rout')
+             read(value,*) star_dom_rout
+          case ('star_dom_thickness')
+             read(value,*) star_dom_thickness
           case ('verbose')
              read(value,*) verbose
           case ('ranseed')
              read(value,*) ranseed
+          case ('cosmo')
+             read(value,*) cosmo
           case ('outputfile')
              write(outputfile,'(a)') trim(value)
           case ('repository')
@@ -195,8 +251,18 @@ contains
              read(value,*) snapnum
           case ('max_age')
              read(value,*) max_age
+          case ('spec_type')
+             write(spec_type,'(a)') trim(value)
           case ('nu_0')
              read(value,*) nu_0
+          case ('nu_cen')
+             read(value,*) nu_cen
+          case ('velwidth')
+             read(value,*) velwidth
+          case ('nu_min')
+             read(value,*) nu_min
+          case ('nu_max')
+             read(value,*) nu_max
           case ('nphot')
              read(value,*) nphot
           end select
@@ -225,34 +291,69 @@ contains
        write(unit,'(a,a)')           '  repository      = ',trim(repository)
        write(unit,'(a,i5)')          '  snapnum         = ',snapnum
        write(unit,'(a)')             '# computational domain parameters'
-       write(unit,'(a,a)')           '  typechar        = ',trim(typechar)
-       write(unit,'(a,3(ES9.3,1x))') '  pos             = ',pos(1),pos(2),pos(3)
-       write(unit,'(a,ES9.3)')       '  rvir            = ',rvir
+       write(unit,'(a,a)')           '  star_dom_type      = ',trim(star_dom_type)
+       write(unit,'(a,3(ES9.3,1x))') '  star_dom_pos       = ',star_dom_pos(1),star_dom_pos(2),star_dom_pos(3)
+       write(unit,'(a,ES9.3)')       '  star_dom_rsp       = ',star_dom_rsp
+       write(unit,'(a,ES9.3)')       '  star_dom_size      = ',star_dom_size
+       write(unit,'(a,ES9.3)')       '  star_dom_rin       = ',star_dom_rin
+       write(unit,'(a,ES9.3)')       '  star_dom_rout      = ',star_dom_rout
+       write(unit,'(a,ES9.3)')       '  star_dom_thickness = ',star_dom_thickness
        write(unit,'(a)')             '# how stars shine'
        write(unit,'(a,i8)')          '  nphot           = ',nphot
        write(unit,'(a,es9.3,a)')     '  max_age         = ',max_age, ' ! [Myr]' 
-       write(unit,'(a,es9.3,a)')     '  nu_0            = ',nu_0, ' ! [Hz]'
+       write(unit,'(a,a)')           '  spec_type       = ',trim(spec_type)
+       select case(trim(spec_type))
+       case('monochromatic')
+          write(unit,'(a,es9.3,a)')     '  nu_0            = ',nu_0, ' ! [Hz]'
+       case('flat_fnu')
+          write(unit,'(a,es9.3,a)')     '  nu_min          = ',nu_min, ' ! [Hz]'
+          write(unit,'(a,es9.3,a)')     '  nu_max          = ',nu_max, ' ! [Hz]'
+       case('gauss')
+          write(unit,'(a,es9.3,a)')     '  nu_cen          = ',nu_cen, ' ! [Hz]'
+          write(unit,'(a,es9.3,a)')     '  velwidth        = ',velwidth, ' ! [km/s]'
+       case default
+          print*,'ERROR: unknown spec_type :',trim(spec_type)
+       end select
        write(unit,'(a)')             '# miscelaneous parameters'
        write(unit,'(a,i8)')          '  ranseed         = ',ranseed
        write(unit,'(a,L1)')          '  verbose         = ',verbose
+       write(unit,'(a,L1)')          '  cosmo           = ',cosmo
        write(unit,'(a)')             ' '
     else
        write(*,'(a,a,a)')         '[PhotonsFromStars]'
        write(*,'(a)')             '# input / output parameters'
-       write(*,'(a,a)')           '  outputfile = ',trim(outputfile)
-       write(*,'(a,a)')           '  repository = ',trim(repository)
-       write(*,'(a,i5)')          '  snapnum    = ',snapnum
+       write(*,'(a,a)')           '  outputfile    = ',trim(outputfile)
+       write(*,'(a,a)')           '  repository    = ',trim(repository)
+       write(*,'(a,i5)')          '  snapnum       = ',snapnum
        write(*,'(a)')             '# computational domain parameters'
-       write(*,'(a,a)')           '  typechar   = ',trim(typechar)
-       write(*,'(a,3(ES9.3,1x))') '  pos        = ',pos(1),pos(2),pos(3)
-       write(*,'(a,ES9.3)')       '  rvir       = ',rvir
+       write(*,'(a,a)')           '  star_dom_type      = ',trim(star_dom_type)
+       write(*,'(a,3(ES9.3,1x))') '  star_dom_pos       = ',star_dom_pos(1),star_dom_pos(2),star_dom_pos(3)
+       write(*,'(a,ES9.3)')       '  star_dom_rsp       = ',star_dom_rsp
+       write(*,'(a,ES9.3)')       '  star_dom_size      = ',star_dom_size
+       write(*,'(a,ES9.3)')       '  star_dom_rin       = ',star_dom_rin
+       write(*,'(a,ES9.3)')       '  star_dom_rout      = ',star_dom_rout
+       write(*,'(a,ES9.3)')       '  star_dom_thickness = ',star_dom_thickness
+
        write(*,'(a)')             '# how stars shine'
-       write(*,'(a,i8)')          '  nphot           = ',nphot
-       write(*,'(a,es9.3,a)')     '  max_age         = ',max_age, ' ! [Myr]'
-       write(*,'(a,es9.3,a)')     '  nu_0            = ',nu_0, ' ! [Hz]'
+       write(*,'(a,i8)')          '  nphot         = ',nphot
+       write(*,'(a,es9.3,a)')     '  max_age       = ',max_age, ' ! [Myr]'
+       write(*,'(a,a)')           '  spec_type     = ',trim(spec_type)
+       select case(trim(spec_type))
+       case('monochromatic')
+          write(*,'(a,es9.3,a)')     '  nu_0            = ',nu_0, ' ! [Hz]'
+       case('flat_fnu')
+          write(*,'(a,es9.3,a)')     '  nu_min          = ',nu_min, ' ! [Hz]'
+          write(*,'(a,es9.3,a)')     '  nu_max          = ',nu_max, ' ! [Hz]'
+       case('gauss')
+          write(*,'(a,es9.3,a)')     '  nu_cen          = ',nu_cen, ' ! [Hz]'
+          write(*,'(a,es9.3,a)')     '  velwidth        = ',velwidth, ' ! [km/s]'
+       case default
+          print*,'ERROR: unknown spec_type :',trim(spec_type)
+       end select
        write(*,'(a)')             '# miscelaneous parameters'
-       write(*,'(a,i8)')          '  ranseed         = ',ranseed
+       write(*,'(a,i8)')          '  ranseed     = ',ranseed
        write(*,'(a,L1)')          '  verbose    = ',verbose
+       write(*,'(a,L1)')          '  cosmo      = ',cosmo
        write(*,'(a)')             ' '       
     end if
 
