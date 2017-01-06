@@ -314,21 +314,17 @@ contains
     integer,dimension(1)::jtoo
     
     nphottot=sum(nqueue)
-    ncpuperdom(:)=nint(real(nslave*nqueue(:))/nphottot)
-    ! check wether rounding is ok
-    do while(sum(ncpuperdom)/=nslave)
-       if(sum(ncpuperdom)>nslave)then
-          ! quit one cpu
-          jtoo=maxloc(ncpuperdom)
-          ncpuperdom(jtoo)=ncpuperdom(jtoo)-1
-       else
-          if(sum(ncpuperdom)<nslave)then
-             ! add one cpu (to the max or to the min?)
-             jtoo=minloc(ncpuperdom)
-             ncpuperdom(jtoo)=ncpuperdom(jtoo)+1
-          endif
-       endif
-    end do
+    ncpuperdom(:)=int(real(nslave*nqueue(:))/nphottot) 
+
+    ! assign cpus left over by rounding error to the domain which has the max nb of photons.
+    ! (This is best guess and will be balanced dynamically later).
+    if (sum(ncpuperdom) < nslave) then
+       jtoo=maxloc(ncpuperdom)
+       ncpuperdom(jtoo) = ncpuperdom(jtoo) + nslave - sum(ncpuperdom)
+    else if (sum(ncpuperdom) > nslave) then 
+       write(*,*) '[master] ERROR in init_loadb ... aborting'
+       stop
+    end if
 
     if(verbose) write(*,*)'[master] init load-balancing',nslave,sum(ncpuperdom),ncpuperdom(:)
 

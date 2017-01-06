@@ -853,7 +853,7 @@ contains
     dp_scale_v    = dp_scale_l/dp_scale_t   ! -> converts velocities into cm/s
     dp_scale_T2   = mp/kB * dp_scale_v**2   ! -> converts P/rho to T/mu, in K
     dp_scale_zsun = 1.d0/0.0127
-    dp_scale_m    = dp_scale_d / dp_scale_l**3 ! convert mass in code units to cgs. 
+    dp_scale_m    = dp_scale_d * dp_scale_l**3 ! convert mass in code units to cgs. 
 
     return
 
