@@ -314,7 +314,8 @@ contains
     integer,dimension(1)::jtoo
     
     nphottot=sum(nqueue)
-    ncpuperdom(:)=int(real(nslave*nqueue(:))/nphottot) 
+    ! due to limitation in integer precision (default is kind=4), nslave*nqueue could easily give an overflow...
+    ncpuperdom(:)=int(real(nslave)*real(nqueue(:))/nphottot)
 
     ! assign cpus left over by rounding error to the domain which has the max nb of photons.
     ! (This is best guess and will be balanced dynamically later).
