@@ -44,6 +44,8 @@ contains
     logical :: init,everything_not_done
     real(kind=8) :: start_initphot, end_initphot
 
+    integer :: iprec,intmax
+
     call cpu_time(start_initphot)
 
     ! read ICs photons
@@ -52,11 +54,24 @@ contains
     nphot = size(photgrid)
     if (verbose) print *,'[master] --> Nphoton =',nphot
 
+    ! some sanity checks
+    iprec = kind(1)
+    intmax = 2**(8*iprec-1) - 1
+    if(nphot>intmax)then
+       print *,'nphot is too big for its kind, use long integer'
+       call clean_stop
+    endif
     if(nbuffer*nslave>nphot)then
        print *,'decrease nbuffer and/or ncpu'
        call clean_stop
     endif
-    
+    ! guidance for a good load-balancing
+    if(4*nbuffer*nslave>nphot)then
+       print *,'decrease nbuffer for a good load-balancing of the code'
+       print *,'--> suggested nbuffer =', nphot/nslave/10
+       call clean_stop
+    endif
+
     allocate(photpacket(nbuffer))
     allocate(cpu(1:nslave))
     allocate(first(ndomain),last(ndomain),nqueue(ndomain),ncpuperdom(ndomain))
