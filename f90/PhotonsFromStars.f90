@@ -59,6 +59,10 @@ program PhotonsFromStars
   ! ------ spec_type == 'SED' : monochromatic emission with each star's contribution fixed by a table read as input.
   real(kind=8)              :: nu_sed   = clight/1600.d-8  ! frequency [Hz]
   character(2000)           :: SED_file = 'F1600.txt'      ! weights from BC03, in erg/s/A/Msun
+  ! ------ spec_type == 'SED-Gauss' : gaussian emission with each star's contribution fixed by a table read as input.
+  real(kind=8)              :: sed_gauss_nu       = clight/1215.6701d-8  ! frequency [Hz]
+  character(2000)           :: sed_gauss_file     = 'FLya.txt'           ! weights from BC03, in erg / s / Msun
+  real(kind=8)              :: sed_gauss_velwidth = 10.0                 ! line width in velocity [km/s]
   ! --- miscelaneous
   integer(kind=4)           :: ranseed = -100         ! seed for random generator
   logical                   :: verbose = .true.
@@ -108,7 +112,7 @@ program PhotonsFromStars
   ! --------------------------------------------------------------------------------------
 
 
-  if (trim(spec_type) == 'SED') then
+  if (trim(spec_type) == 'SED' .or. trim(spec_type)=='SED-Gauss') then
 
      ! --------------------------------------------------------------------------------------
      ! SED weighting ... 
@@ -124,7 +128,7 @@ program PhotonsFromStars
      read(15,*) sed_age ! in Myr
      read(15,*) sed_met 
      do imet = 1,sed_nmet
-        read(15,*) sed_flux(:,imet)  ! in erg/s/A/Msun 
+        read(15,*) sed_flux(:,imet)  ! in erg/s/A/Msun (or erg/s/Msun for Lya)
      end do
      close(15)
      ! compute weight of each star particle
@@ -135,8 +139,10 @@ program PhotonsFromStars
         if (imet < 1) imet = 1
         call locatedb(sed_age,sed_nage,star_age(i),iage)
         if (iage < 1) iage = 1
-        sweight(i) = star_mass(i) / 1.989d33 * sed_flux(iage,imet)  ! erg/s/A.
-        !! CORRECT FOR RECYCLING ... we want the mass of stars formed ... 
+        sweight(i) = star_mass(i) / 1.989d33 * sed_flux(iage,imet)  ! erg/s/A (or erg/s for Lya)
+        if (sed_age(iage) < 10.) then ! SNs go off at 10Myr ... 
+           sweight(i) = sweight(i)/0.8  !! correct for recycling ... we want the mass of stars formed ...
+        end if
      end do
      ! the total flux and flux per photon are 
      total_flux = 0.0d0
@@ -144,7 +150,7 @@ program PhotonsFromStars
         total_flux = total_flux + sweight(i)
      end do
      photon_flux = total_flux / nphot 
-     if (verbose) write(*,*) '> Total luminosity (erg/s/A): ',total_flux
+     if (verbose) write(*,*) '> Total luminosity (erg/s/A or erg/s): ',total_flux
      ! construct the cumulative flux distribution, with enough bins to have the smallest star-particle flux in a bin. 
      minflux = minval(sweight)/3.  ! small factor to be somewhat less approximative on faint stars ...  
      allocate(cum_flux_prob(int(total_flux / minflux)))
@@ -167,7 +173,15 @@ program PhotonsFromStars
         photgrid(i)%x_em  = star_pos(:,j)
         photgrid(i)%iran  = -i 
         call isotropic_direction(photgrid(i)%k_em,iran)
-        nu = nu_sed
+        select case(trim(spec_type))
+        case('SED-Gauss')
+           r1 = ran3(iran)
+           r2 = ran3(iran)
+           nu = sqrt(-log(r1)) * cos(2.0d0*pi*r2)
+           nu = (sed_gauss_velwidth * 1d5 * sed_gauss_nu / clight) * nu + sed_gauss_nu
+        case('SED')
+           nu = nu_sed
+        end select
         nu_star(i) = nu
         scalar = photgrid(i)%k_em(1)*star_vel(1,j) + photgrid(i)%k_em(2)*star_vel(2,j) + photgrid(i)%k_em(3)*star_vel(3,j)
         photgrid(i)%nu_em = nu / (1d0 - scalar/clight)
@@ -354,6 +368,12 @@ contains
              read(value,*) nu_sed
           case ('SED_file')
              write(SED_file,'(a)') trim(value)
+          case('sed_gauss_nu')
+             read(value,*) sed_gauss_nu
+          case('sed_gauss_file')
+             write(sed_gauss_file,'(a)') trim(sed_gauss_file)
+          case('sed_gauss_velwidth')
+             read(value,*) sed_gauss_velwidth
           end select
        end do
     end if
@@ -403,6 +423,10 @@ contains
        case('SED')
           write(unit,'(a,es9.3,a)')     '  nu_sed          = ',nu_sed, ' ! [Hz]'
           write(unit,'(a,a)')           '  SED_file        = ',trim(SED_file)
+       case('SED-Gauss')
+          write(unit,'(a,es9.3,a)')     '  sed_gauss_nu       = ',sed_gauss_nu, ' ! [Hz]'
+          write(unit,'(a,a)')           '  sed_gauss_file     = ',trim(sed_gauss_file)
+          write(unit,'(a,es9.3,a)')     '  sed_gauss_velwidth = ',sed_gauss_velwidth, ' ! [km/s]'
        case default
           print*,'ERROR: unknown spec_type :',trim(spec_type)
        end select
@@ -442,6 +466,10 @@ contains
        case('SED')
           write(*,'(a,es9.3,a)')     '  nu_sed          = ',nu_sed, ' ! [Hz]'
           write(*,'(a,a)')           '  SED_file        = ',trim(SED_file)
+       case('SED-Gauss')
+          write(*,'(a,es9.3,a)')     '  sed_gauss_nu       = ',sed_gauss_nu, ' ! [Hz]'
+          write(*,'(a,a)')           '  sed_gauss_file     = ',trim(sed_gauss_file)
+          write(*,'(a,es9.3,a)')     '  sed_gauss_velwidth = ',sed_gauss_velwidth, ' ! [km/s]'
        case default
           print*,'ERROR: unknown spec_type :',trim(spec_type)
        end select
