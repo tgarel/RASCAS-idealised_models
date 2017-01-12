@@ -26,6 +26,7 @@ program PhotonsFromStars
   integer(kind=4) :: sed_nage,sed_nmet,imet,iage,nflux,n
   real(kind=8),allocatable :: sed_age(:),sed_met(:),sed_flux(:,:),sweight(:),cum_flux_prob(:)
   real(kind=8) :: total_flux,photon_flux,minflux
+  character(2000) :: file
   
   ! --------------------------------------------------------------------------
   ! user-defined parameters - read from section [PhotonsFromStars] of the parameter file
@@ -126,7 +127,6 @@ program PhotonsFromStars
         read(15,*) sed_flux(:,imet)  ! in erg/s/A/Msun 
      end do
      close(15)
-     print*,minval(star_mass)/1.989d33,maxval(star_mass)/1.989d33
      ! compute weight of each star particle
      nstars = size(star_age)
      allocate(sweight(nstars))
@@ -135,7 +135,8 @@ program PhotonsFromStars
         if (imet < 1) imet = 1
         call locatedb(sed_age,sed_nage,star_age(i),iage)
         if (iage < 1) iage = 1
-        sweight(i) = star_mass(i) / 1.989d33 * sed_flux(iage,imet)  ! erg/s/A. 
+        sweight(i) = star_mass(i) / 1.989d33 * sed_flux(iage,imet)  ! erg/s/A.
+        !! CORRECT FOR RECYCLING ... we want the mass of stars formed ... 
      end do
      ! the total flux and flux per photon are 
      total_flux = 0.0d0
@@ -143,7 +144,7 @@ program PhotonsFromStars
         total_flux = total_flux + sweight(i)
      end do
      photon_flux = total_flux / nphot 
-     if (verbose) write(*,*) '> Total flux and flux per photon (erg/s/A): ',total_flux, photon_flux
+     if (verbose) write(*,*) '> Total luminosity (erg/s/A): ',total_flux
      ! construct the cumulative flux distribution, with enough bins to have the smallest star-particle flux in a bin. 
      minflux = minval(sweight)/3.  ! small factor to be somewhat less approximative on faint stars ...  
      allocate(cum_flux_prob(int(total_flux / minflux)))
@@ -154,6 +155,7 @@ program PhotonsFromStars
         ilast = ilast + n 
      end do
      nflux = ilast
+     print*,'nflux, size(cum_fllux_prob):', nflux, size(cum_flux_prob)
      ! now we can draw integers from 1 to nflux and assign photons to stars ...
      allocate(photgrid(nphot),nu_star(nphot))
      iran = ranseed
@@ -163,7 +165,7 @@ program PhotonsFromStars
         j = cum_flux_prob(j) 
         photgrid(i)%ID    = i
         photgrid(i)%x_em  = star_pos(:,j)
-        photgrid(i)%iran  = -i !! iran
+        photgrid(i)%iran  = -i 
         call isotropic_direction(photgrid(i)%k_em,iran)
         nu = nu_sed
         nu_star(i) = nu
@@ -258,6 +260,12 @@ program PhotonsFromStars
   write(14) (photgrid(i)%iran,i=1,nphot)
   write(14) (nu_star(i),i=1,nphot)
   close(14)
+  if (trim(spec_type) == 'SED') then ! write the total luminosity in a text file 
+     write(file,'(a,a)') trim(outputfile),'.tot_lum'
+     open(unit=14, file=trim(file), status='unknown',form='formatted',action='write')
+     write(14,'(e14.6)') total_flux
+     close(14)
+  end if
   ! --------------------------------------------------------------------------------------
 
   deallocate(star_pos,star_vel,star_mass,star_age,photgrid,nu_star,star_met)
