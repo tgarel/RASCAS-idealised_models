@@ -119,7 +119,12 @@ program PhotonsFromStars
      ! --------------------------------------------------------------------------------------
      if (verbose) write(*,*) '> performing SED weighting ... '
      ! read weight tables (precomputed fluxes from BC03).
-     open(unit=15,file=SED_file,status='old',form='formatted')
+     select case(trim(spec_type))
+     case('SED-Gauss')
+        open(unit=15,file=sed_gauss_file,status='old',form='formatted')
+     case('SED')
+        open(unit=15,file=SED_file,status='old',form='formatted')
+     end select
      read(15,*) ! skip header
      read(15,*) ! skip header
      read(15,*) ! skip header
@@ -274,7 +279,7 @@ program PhotonsFromStars
   write(14) (photgrid(i)%iran,i=1,nphot)
   write(14) (nu_star(i),i=1,nphot)
   close(14)
-  if (trim(spec_type) == 'SED') then ! write the total luminosity in a text file 
+  if (trim(spec_type) == 'SED' .or. trim(spec_type)=='SED-Gauss') then ! write the total luminosity in a text file 
      write(file,'(a,a)') trim(outputfile),'.tot_lum'
      open(unit=14, file=trim(file), status='unknown',form='formatted',action='write')
      write(14,'(e14.6)') total_flux
