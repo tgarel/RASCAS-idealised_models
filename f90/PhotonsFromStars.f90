@@ -16,16 +16,18 @@ program PhotonsFromStars
   character(2000) :: parameter_file
   real(kind=8),allocatable :: star_pos(:,:),star_age(:),star_mass(:),star_vel(:,:),star_met(:)
   real(kind=8),allocatable :: star_pos2(:,:),star_vel2(:,:)
-  integer(kind=4) :: i,nstars,nyoung,ilast,j,iran
+  integer(kind=4) :: iran
+  integer(kind=8) :: i,nstars,nyoung,ilast,j
   real(kind=8) :: minmass,scalar,nu,r1,r2
   type(photon_init),dimension(:),allocatable :: photgrid
   ! for analysis purposes (a posteriori weighting) we want to save the emitter-frame
   ! frequency (here the freq. in the emitting stellar particle's frame)
   real(kind=8), allocatable :: nu_star(:)
   ! SED-related variables
-  integer(kind=4) :: sed_nage,sed_nmet,imet,iage,nflux,n
+  integer(kind=4) :: sed_nage,sed_nmet,imet,iage
+  integer(kind=8) :: nflux,n
   real(kind=8),allocatable :: sed_age(:),sed_met(:),sed_flux(:,:),sweight(:),cum_flux_prob(:)
-  real(kind=8) :: total_flux,photon_flux,minflux
+  real(kind=8) :: total_flux,photon_flux,minflux,check_flux
   character(2000) :: file
   
   ! --------------------------------------------------------------------------
@@ -157,13 +159,27 @@ program PhotonsFromStars
      photon_flux = total_flux / nphot 
      if (verbose) write(*,*) '> Total luminosity (erg/s/A or erg/s): ',total_flux
      ! construct the cumulative flux distribution, with enough bins to have the smallest star-particle flux in a bin. 
-     minflux = minval(sweight)/3.  ! small factor to be somewhat less approximative on faint stars ...  
-     allocate(cum_flux_prob(int(total_flux / minflux)))
+     minflux = minval(sweight)
+     ! it may happen that the range of luminosities is too large (esp. for Lya). In that case we need to ignore faint particles.
+     if (total_flux / minflux > 1d8) minflux = total_flux / 1d8
+     ! check that we dont loose significant flux
+     check_flux = 0.0d0
+     do i=1,nstars
+        if (sweight(i)>minflux) check_flux = check_flux+sweight(i)
+     end do
+     print*,'sampling only this fraction of total flux: ',check_flux / total_flux
+     if ((total_flux - check_flux) / total_flux > 0.001) then
+        print*,'Flux losses > 0.1 percent... change algorithm ...'
+        stop
+     end if
+     allocate(cum_flux_prob(int(3*total_flux / minflux,kind=8)))
      ilast = 1
      do i=1,nstars
-        n = int(sweight(i)/minflux)
-        cum_flux_prob(ilast:ilast+n) = i
-        ilast = ilast + n 
+        if (sweight(i) > minflux) then 
+           n = int(3*sweight(i)/minflux,kind=8)
+           cum_flux_prob(ilast:ilast+n) = i
+           ilast = ilast + n
+        end if
      end do
      nflux = ilast
      print*,'nflux, size(cum_fllux_prob):', nflux, size(cum_flux_prob)
@@ -171,7 +187,7 @@ program PhotonsFromStars
      allocate(photgrid(nphot),nu_star(nphot))
      iran = ranseed
      do i = 1,nphot
-        j = int(ran3(iran)*nflux)+1
+        j = int(ran3(iran)*nflux,kind=8)+1
         if (j > nflux) j = nflux
         j = cum_flux_prob(j) 
         photgrid(i)%ID    = i
