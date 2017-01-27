@@ -77,15 +77,14 @@ module module_ramses
   ! --------------------------------------------------------------------------
   ! ramses options (not guessable from outputs)
   logical                  :: self_shielding = .true.  ! if true, reproduce self-shielding approx made in ramses to compute nHI. 
-  logical                  :: ramses_rt      = .false. ! if true, read ramses-RT output and compute nHI and T according to
+  logical                  :: ramses_rt      = .false. ! if true, read ramses-RT output and compute nHI and T accordingly.
   ! miscelaneous
   logical                  :: verbose        = .false. ! display some run-time info on this module
-  ! will become user params
+  ! variable indices, should become user params
   integer,parameter :: imetal = 6
   integer,parameter :: ihii   = 7
   integer,parameter :: iheii  = 8
   integer,parameter :: iheiii = 9
-
   ! --------------------------------------------------------------------------
 
   
