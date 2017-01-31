@@ -629,9 +629,7 @@ contains
     close(10)
     return
 
-
   end subroutine read_amr
-
 
 
   subroutine clear_amr
@@ -1018,7 +1016,7 @@ contains
   !==================================================================================
   ! STARS utilities 
 
-  subroutine ramses_read_stars_in_domain(repository,snapnum,selection_domain,star_pos,star_age,star_mass,star_vel,cosmo)
+  subroutine ramses_read_stars_in_domain(repository,snapnum,selection_domain,star_pos,star_age,star_mass,star_vel,star_met,cosmo)
 
     ! ONLY WORKS FOR COSMO RUNS (WITHOUT PROPER TIME OPTION)
     ! -> this should be parameterised (and coded). 
@@ -1028,7 +1026,7 @@ contains
     character(1000),intent(in) :: repository
     integer(kind=4),intent(in) :: snapnum
     type(domain),intent(in)    :: selection_domain
-    real(kind=8),allocatable,intent(inout) :: star_pos(:,:),star_age(:),star_mass(:),star_vel(:,:)
+    real(kind=8),allocatable,intent(inout) :: star_pos(:,:),star_age(:),star_mass(:),star_vel(:,:),star_met(:)
     integer(kind=4)            :: nstars
     real(kind=8)               :: omega_0,lambda_0,little_h,omega_k,H0
     real(kind=8)               :: aexp,stime,time_cu,boxsize
@@ -1037,6 +1035,7 @@ contains
     integer(kind=4),allocatable :: id(:)
     real(kind=8),allocatable    :: age(:),m(:),x(:,:),v(:,:),mets(:)
     logical, intent(in)         :: cosmo
+    real(kind=8)                :: temp(3)
     
     
     ! get cosmological parameters to convert conformal time into ages
@@ -1047,8 +1046,11 @@ contains
     ! compute cosmic time of simulation output (Myr)
     aexp  = get_param_real(repository,snapnum,'aexp') ! exp. factor of output
     stime = ct_aexp2time(aexp) ! cosmic time
-    ! read units 
-    call read_conversion_scales(repository,snapnum)
+    ! read units
+    if (.not. conversion_scales_are_known) then 
+       call read_conversion_scales(repository,snapnum)
+       conversion_scales_are_known = .True.
+    end if
 
     if(.not.cosmo)then
        ! read time
@@ -1064,7 +1066,7 @@ contains
        write(*,*) 'ERROR : no star particles in output '
        stop
     end if
-    allocate(star_pos(3,nstars),star_age(nstars),star_mass(nstars),star_vel(3,nstars))
+    allocate(star_pos(3,nstars),star_age(nstars),star_mass(nstars),star_vel(3,nstars),star_met(nstars))
     ! get list of particle fields in outputs 
     call get_fields_from_header(repository,snapnum,nfields)
     ncpu  = get_ncpu(repository,snapnum)
@@ -1118,7 +1120,8 @@ contains
        ! save star particles within selection region
        do i = 1,npart
           if (age(i).ne.0.0d0) then ! This is a star
-             if (domain_contains_point(x(i,:),selection_domain)) then ! it is inside the domain
+             temp(:) = x(i,:)
+             if (domain_contains_point(temp,selection_domain)) then ! it is inside the domain
                 if(cosmo)then
                    ! Convert from conformal time to age in Myr
                    star_age(ilast)   = (stime - ct_conftime2time(age(i)))*1.d-6 ! Myr
@@ -1131,6 +1134,7 @@ contains
                 !star_pos(:,ilast) = x(i,:) * dp_scale_l ! [cm]
                 star_pos(:,ilast) = x(i,:)
                 star_vel(:,ilast) = v(i,:) * dp_scale_v ! [cm/s]
+                star_met(ilast) = mets(i) 
                 ilast = ilast + 1
              end if
           end if
@@ -1174,6 +1178,14 @@ contains
     allocate(star_vel(3,nstars))
     star_vel = v
     deallocate(v)
+    ! metals
+    allocate(mets(nstars))
+    mets = star_met(1:nstars)
+    deallocate(star_met)
+    allocate(star_met(nstars))
+    star_met = mets
+    deallocate(mets)
+
 
     
     return
