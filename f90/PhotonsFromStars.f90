@@ -161,7 +161,7 @@ program PhotonsFromStars
      ! construct the cumulative flux distribution, with enough bins to have the smallest star-particle flux in a bin. 
      minflux = minval(sweight)
      ! it may happen that the range of luminosities is too large (esp. for Lya). In that case we need to ignore faint particles.
-     if (total_flux / minflux > 1d8) minflux = total_flux / 1d8
+     if (total_flux / minflux > 2d8) minflux = total_flux / 2d8
      ! check that we dont loose significant flux
      check_flux = 0.0d0
      do i=1,nstars
