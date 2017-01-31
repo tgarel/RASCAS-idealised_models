@@ -45,7 +45,7 @@ endif
 ifeq ($(SYSTYPE),"mac")
 F90         = gfortran-mp-4.7 -ffree-line-length-none -ffree-form  ###-fopenmp
 FFLAGS      = -g -fcheck=all -ftrapv -fbacktrace -Wall
-FFLAGS      = -O2
+##FFLAGS      = -O2
 FFLAGS += $(OPTIONS)
 ###FFLAGS      = -O3
 LDFLAGS     = 
@@ -101,10 +101,10 @@ OBJSMPI = $(OBJSMC) module_parallel_mpi.o module_worker.o module_master.o MCLya.
 	$(F90) $(FFLAGS) -c $^ -o $@
 
 #############################################################################
-all: clean CreateDomDump PhotonsMonoPointSource serial PhotonsFromStars ## MCLya
+all: clean CreateDomDump PhotonsFromSourceModel serial PhotonsFromStars ## MCLya
 
-PhotonsMonoPointSource: $(OBJSMC) PhotonsMonoPointSource.o
-	$(F90) $(FFLAGS) $(LDFLAGS) -o $@ $(OBJSMC) PhotonsMonoPointSource.o
+PhotonsFromSourceModel: $(OBJSMC) PhotonsFromSourceModel.o
+	$(F90) $(FFLAGS) $(LDFLAGS) -o $@ $(OBJSMC) PhotonsFromSourceModel.o
 
 PhotonsFromStars: $(OBJSMC) PhotonsFromStars.o
 	$(F90) $(FFLAGS) $(LDFLAGS) -o $@ $(OBJSMC) PhotonsFromStars.o
