@@ -6,10 +6,10 @@ program main
 
   implicit none
 
-  real(kind=8) :: start,finish
-  character(2000) :: parameter_file, line, file_compute_dom
+  real(kind=8)                             :: start,finish
+  character(2000)                          :: parameter_file, line, file_compute_dom
   character(2000),allocatable,dimension(:) :: mesh_file_list, domain_file_list
-  integer(kind=4) :: narg, i, j, ndomain
+  integer(kind=4)                          :: narg, i, j, ndomain
 
   ! --------------------------------------------------------------------------
   ! user-defined parameters - read from section [MCLya] of the parameter file
@@ -41,7 +41,7 @@ program main
   ! -------------------- read parameters -----------------------------------------------------
   narg = command_argument_count()
   if(narg .lt. 1)then
-     write(*,*)'You should type: serial params.dat'
+     write(*,*)'You should type: MCLya params.dat'
      write(*,*)'File params.dat should contain a parameter namelist'
      stop
   end if
@@ -76,8 +76,7 @@ program main
      call worker(file_compute_dom, ndomain, mesh_file_list, nbuffer)
   end if
 
-  ! write results
-
+  ! write results: this is done by master
 
   ! deallocations
   deallocate(mesh_file_list,domain_file_list)

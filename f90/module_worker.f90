@@ -4,8 +4,6 @@ module module_worker
   use module_domain
   use module_photon
   use module_mesh
-!!$  use module_params
-  !!!use module_uparallel
 
   private 
 
@@ -28,72 +26,66 @@ contains
     character(2000),dimension(ndomain),intent(in) :: mesh_file_list
     integer(kind=4),intent(in)                    :: nbuffer
     
-    integer                                       :: jdomain, mydom
-    logical                                       :: mpi_ok
+    integer(kind=4)                               :: jdomain, mydom
     type(photon_current),dimension(nbuffer)       :: photpacket
     type(mesh)                                    :: meshdom
     type(domain)                                  :: compute_dom
+    real(kind=8)                                  :: start_photpacket,end_photpacket
 
-    ! Question: est-ce qu'il faut d'abord initialiser quelque chose, un premier paquet de photos?
-
-    ! get the compute domain
-    ! how to get filename?
+    ! get the computational domain
     call domain_constructor_from_file(file_compute_dom,compute_dom)
 
-    ! load uparallel table
-    !!print*,'--> loading uparallel tables...'
-    !!call init_uparallel_tables
-
     mydom=-1
-    MPI_ok=.true.
 
-!!    do while (MPI_ok)
     do while (status(MPI_TAG) .ne. EXI_TAG)
 
-       ! receive my domain
-       ! Q: how to retreive the domain? through MPI or an integer jdomain is a key? 
+       ! receive my domain number
        call MPI_RECV(jdomain, 1, MPI_INTEGER, 0, MPI_ANY_TAG, MPI_COMM_WORLD, status, IERROR)
 
-       !print*,DONE_TAG, MPI_TAG
-       !print*,'[worker] status(MPI_TAG) =',status(MPI_TAG),EXI_TAG
        if(status(MPI_TAG) == EXI_TAG) exit
 
        ! if necessary read domain data
        if(jdomain/=mydom)then
 
-          if(verbose) write(*,'(a,i4.4,a)') '[w',rank,'] : loading new domain'
+          if(verbose) write(*,'(a,i4.4,a,i4)') ' [w',rank,'] : loading new domain',jdomain
 
           call mesh_from_file(mesh_file_list(jdomain),meshdom) ! -> overwrites gas props if parameters are set to. 
+
           mydom=jdomain
 
-          if(verbose) write(*,'(a,i4.4,a)') '[w',rank,'] : done loading new domain'
+          if(verbose) write(*,'(a,i4.4,a)') ' [w',rank,'] : done loading new domain'
           
        endif
 
        ! receive my list of photons to propagate
        call MPI_RECV(photpacket(1)%id, nbuffer, MPI_TYPE_PHOTON, 0, MPI_ANY_TAG, MPI_COMM_WORLD, status, IERROR)
 
-       if(verbose) write(*,'(a,i4.4,a)') '[w',rank,'] : just receive a photpacket and start processing it...' 
+       if(verbose) write(*,'(a,i4.4,a)') ' [w',rank,'] : just receive a photpacket and start processing it...' 
 
-       ! do the RT stuff
+       call cpu_time(start_photpacket)
+
+       ! do the RT stuff. This is a single loop over photons in photpacket.
        call MCRT(nbuffer,photpacket,meshdom,compute_dom)
-       ! this is a single loop over photons
-       ! but with all the RT stuff <= plugin with McLya
-       !...
-       if(verbose) write(*,'(a,i4.4,a)') '[w',rank,'] : finish packet of photons, sending back to master ' 
+
+       call cpu_time(end_photpacket)
+
+       if(verbose)then
+          write(*,'(a,i4.4,a,f12.3,a)') ' [w',rank,'] : time to propagate photpacket = ',end_photpacket-start_photpacket,' seconds.'
+          write(*,'(a,i4.4,a)') ' [w',rank,'] : finish packet of photons, sending back to master ' 
+       endif
 
        ! send my results
        call MPI_SEND(nbuffer, 1, MPI_INTEGER, 0, tag , MPI_COMM_WORLD, code)
 
-       !if (verbose) print*,'[worker] finish packet of photons, sending back to master...',rank,photpacket(1)%id!,code
-
        call MPI_SEND(photpacket(1)%id, nbuffer, MPI_TYPE_PHOTON, 0, tag , MPI_COMM_WORLD, code)
-
-       !print *,'[worker] ',status(MPI_TAG),EXI_TAG
 
     enddo
 
-    if(verbose) write(*,'(a,i4.4,a)') '[w',rank,'] : exit of loop...'
+    if(verbose) write(*,'(a,i4.4,a)') ' [w',rank,'] : exit of loop...'
+
+    ! synchronization, for profiling purposes
+    call MPI_BARRIER(MPI_COMM_WORLD,code)
+
 
   end subroutine worker
 
@@ -109,9 +101,9 @@ contains
     ! ---------------------------------------------------------------------------------
 
     character(*),intent(in) :: pfile
-    character(1000) :: line,name,value
-    integer(kind=4) :: err,i
-    logical         :: section_present
+    character(1000)         :: line,name,value
+    integer(kind=4)         :: err,i
+    logical                 :: section_present
     
     section_present = .false.
     open(unit=10,file=trim(pfile),status='old',form='formatted')

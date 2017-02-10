@@ -97,7 +97,7 @@ contains
     call init_loadb(nbuffer,ndomain)
 
     call cpu_time(end_initphot)
-    if (verbose) print '("[master] --> time to initialize photons in master = ",f12.3," seconds.")',end_initphot-start_initphot
+    if (verbose) print '(" [master] --> time to initialize photons in master = ",f12.3," seconds.")',end_initphot-start_initphot
     if (verbose) print*,'[master] send a first chunk of photons to each worker'
 
     ! send a first chunk of photons to each worker
@@ -105,7 +105,8 @@ contains
 
        j=cpu(icpu)
 
-       if(verbose) print*,'icpu / idom =',icpu,j
+       !!if(verbose) print*,'icpu / idom =',icpu,j
+       if(verbose) print '(" [master] allocates domain ",i5," to cpu ",i5)',j,icpu
        
        ! build an array/list/buffer of photons to send
        call fill_buffer(j,photpacket,nbuffer)
@@ -136,9 +137,9 @@ contains
 
        ! First, receive information from a given CPU and identify the CPU
        if(verbose) then
+          print*,'[master] NQueue     =',nqueue(:)
+          print*,'[master] NCpuPerDom =',ncpuperdom(:)
           print*,'[master] waiting for worker...'
-          print*,'[master] Nqueue =',nqueue(:)
-          print*,'[master] NCpuPerDom = ',ncpuperdom(:)
           print*,' '
        endif
 
@@ -146,14 +147,14 @@ contains
 
        idcpu = status(MPI_SOURCE)
 
-       if (verbose) print *,'[master] received from worker...',nbuffer
+       !if (verbose) print *,'[master] received from worker...',ntest
        !print *,MPI_ANY_SOURCE,status
        !print *,idcpu
 
        call MPI_RECV(photpacket(1)%id, nbuffer, MPI_TYPE_PHOTON, idcpu, DONE_TAG, MPI_COMM_WORLD, status, IERROR)
 
        if (verbose) print*,'[master] receive a packet of',nbuffer,' photons from worker',idcpu
-       if (verbose) print*,'[master] ', photpacket(1)%id
+       !if (verbose) print*,'[master] ', photpacket(1)%id
        count = count+1
        !if(verbose)print*,'count =',count
 
@@ -203,55 +204,56 @@ contains
        ! check end of work
        nphottodo=sum(nqueue)
        if(nphottodo <= 0)then
+
           !!call MPI_SEND(idcpu, 1, MPI_INTEGER, idcpu, exi_tag , MPI_COMM_WORLD, code)
           ! first count ended cpu, to not skip last working cpu...
           ncpuended=ncpuended+1
           if(ncpuended==nslave)then
              everything_not_done=.false.
           endif
+          if (verbose) print*,'[master] no more photon to send to worker ',idcpu
+
+          if (verbose) print*,'[master] sending exit code to',idcpu
+          call MPI_SEND(idcpu, 1, MPI_INTEGER, idcpu, exi_tag , MPI_COMM_WORLD, code)
+
        else
           ! keep sending photons
 
-          ! top instead of bottom (last -> first)
-
-          ! here, it should be checked wether the load-balancing is good...
-          ! if not re-affect CPU to another domain..
-          ! how to do that ?
+          ! check load-balancing and re-allocate CPU to a new domain if needed
           call update_domain(idcpu,nbuffer,ndomain)
-          !...
 
           j=cpu(idcpu)
+
           call MPI_SEND(j, 1, MPI_INTEGER, idcpu, tag, MPI_COMM_WORLD, code)
 
           ! Construct a new list of photons
           call fill_buffer(j,photpacket,nbuffer)
 
+          if (verbose) print*,'[master] sending a new photpacket to worker ',j
+
           ! send it
           call MPI_SEND(photpacket(1)%id, nbuffer, MPI_TYPE_PHOTON, idcpu, tag , MPI_COMM_WORLD, code)
-          !...
 
        endif
 
     enddo
 
-    ! need to cleanly finish...???
-    do icpu=1,nslave
-       if(verbose) print*,'[master] sending exit code to',icpu
-       call MPI_SEND(icpu, 1, MPI_INTEGER, icpu, exi_tag , MPI_COMM_WORLD, code)
-       !call MPI_SEND(photpacket(1)%id, nbuffer, MPI_TYPE_PHOTON, icpu, exi_tag , MPI_COMM_WORLD, code)
-    end do
+    ! synchronization, for profiling purposes
+    call MPI_BARRIER(MPI_COMM_WORLD,code)    
 
-    ! TODO: 
-    ! - need to send end to workers => OK
-    ! - check results...
+
+    ! need to cleanly finish...???
+    !do icpu=1,nslave
+    !   if(verbose) print*,'[master] sending exit code to',icpu
+    !   call MPI_SEND(icpu, 1, MPI_INTEGER, icpu, exi_tag , MPI_COMM_WORLD, code)
+    !   !call MPI_SEND(photpacket(1)%id, nbuffer, MPI_TYPE_PHOTON, icpu, exi_tag , MPI_COMM_WORLD, code)
+    !end do
 
     call check_results
-
 
     print *,' '
     print*,'[master] --> writing results in file: ',trim(fileout)
     call dump_photons(fileout,photgrid)
-
 
     deallocate(photgrid)
     deallocate(photpacket)
