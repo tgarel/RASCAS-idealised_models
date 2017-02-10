@@ -18,7 +18,7 @@ module module_parallel_mpi
   !Nombre de processus
   INTEGER                                   :: nb_cpus
   !Constantes MPI
-  INTEGER                                   :: code  
+  INTEGER                                   :: code, error
 
   integer :: tag, done_tag, ierror, exi_tag=2
   integer :: nslave
@@ -63,12 +63,11 @@ contains
   end subroutine finalisation_mpi
 
 
-  subroutine clean_stop
+  subroutine mpi_stop
 
-    call MPI_FINALIZE(code)
-    stop
+    call MPI_ABORT(MPI_COMM_WORLD,error,code)
 
-  end subroutine clean_stop
+  end subroutine mpi_stop
 
 
   subroutine type_derive

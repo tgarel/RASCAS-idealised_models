@@ -55,13 +55,13 @@ contains
     ! some sanity checks
     if(nbuffer*nslave>nphot)then
        print *,'decrease nbuffer and/or ncpu'
-       call clean_stop
+       call mpi_stop
     endif
     ! guidance for a good load-balancing
     if(4*nbuffer*nslave>nphot)then
        print *,'decrease nbuffer for a good load-balancing of the code'
        print *,'--> suggested nbuffer =', nphot/nslave/10
-       call clean_stop
+       call mpi_stop
     endif
 
     allocate(photpacket(nbuffer))
