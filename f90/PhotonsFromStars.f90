@@ -26,8 +26,8 @@ program PhotonsFromStars
   ! SED-related variables
   integer(kind=4) :: sed_nage,sed_nmet,imet,iage
   integer(kind=8) :: nflux,n
-  real(kind=8),allocatable :: sed_age(:),sed_met(:),sed_flux(:,:),sweight(:),cum_flux_prob(:)
-  real(kind=8) :: total_flux,photon_flux,minflux,check_flux
+  real(kind=8),allocatable :: sed_age(:),sed_met(:),sed_flux(:,:),sweight(:),cum_flux_prob(:),sed_slope(:)
+  real(kind=8) :: total_flux,photon_flux,minflux,check_flux,f0,beta
   character(2000) :: file
   
   ! --------------------------------------------------------------------------
@@ -65,6 +65,11 @@ program PhotonsFromStars
   real(kind=8)              :: sed_gauss_nu       = clight/1215.6701d-8  ! frequency [Hz]
   character(2000)           :: sed_gauss_file     = 'FLya.txt'           ! weights from BC03, in erg / s / Msun
   real(kind=8)              :: sed_gauss_velwidth = 10.0                 ! line width in velocity [km/s]
+  ! ------ spec_type == 'SED-PowLaw' : a power-law fit to continuum of each star particle, vs. its age and met.
+  character(2000)           :: sed_powlaw_file = 'PowerLawCont1216.txt'  ! name of file to read
+  real(kind=8)              :: sed_powlaw_lmin = 1120.    ! min wavelength to sample (should be in the range where fit was made ...)
+  real(kind=8)              :: sed_powlaw_lmax = 1320.    ! max ...
+  real(kind=8)              :: sed_powlaw_l0   = 1216.    ! F_l = F_0 * (lambda/sed_powlaw_l0)**beta), with F_0 and beta given in tables... 
   ! --- miscelaneous
   integer(kind=4)           :: ranseed = -100         ! seed for random generator
   logical                   :: verbose = .true.
@@ -114,7 +119,7 @@ program PhotonsFromStars
   ! --------------------------------------------------------------------------------------
 
 
-  if (trim(spec_type) == 'SED' .or. trim(spec_type)=='SED-Gauss') then
+  if (trim(spec_type) == 'SED' .or. trim(spec_type)=='SED-Gauss' .or. trim(spec_typ) == 'SED-PowLaw') then
 
      ! --------------------------------------------------------------------------------------
      ! SED weighting ... 
@@ -126,19 +131,23 @@ program PhotonsFromStars
         open(unit=15,file=sed_gauss_file,status='old',form='formatted')
      case('SED')
         open(unit=15,file=SED_file,status='old',form='formatted')
+     case('SED-PowLaw')
+        open(unit=15,file=SED_powlaw_file,status='old',form='formatted')
      end select
      read(15,*) ! skip header
      read(15,*) ! skip header
      read(15,*) ! skip header
      read(15,*) sed_nage,sed_nmet
      allocate(sed_age(sed_nage),sed_met(sed_nmet),sed_flux(sed_nage,sed_nmet))
+     if (trim(spec_type) == 'SED-PowLaw') allocate(sed_slope(sed_nage,sed_nmet))
      read(15,*) sed_age ! in Myr
      read(15,*) sed_met 
      do imet = 1,sed_nmet
         read(15,*) sed_flux(:,imet)  ! in erg/s/A/Msun (or erg/s/Msun for Lya)
+        if (trim(spec_type) == 'SED-PowLaw') read(15,*) sed_slope(:,imet)
      end do
      close(15)
-     ! compute weight of each star particle
+     ! compute weight (luminosity) of each star particle
      nstars = size(star_age)
      allocate(sweight(nstars))
      do i = 1,nstars
@@ -146,7 +155,22 @@ program PhotonsFromStars
         if (imet < 1) imet = 1
         call locatedb(sed_age,sed_nage,star_age(i),iage)
         if (iage < 1) iage = 1
-        sweight(i) = star_mass(i) / 1.989d33 * sed_flux(iage,imet)  ! erg/s/A (or erg/s for Lya)
+        select case(trim(spec_type))
+        case('SED-Gauss')
+           sweight(i) = star_mass(i) / 1.989d33 * sed_flux(iage,imet)  ! erg/s/A (or erg/s for Lya)
+        case('SED')
+           sweight(i) = star_mass(i) / 1.989d33 * sed_flux(iage,imet)  ! erg/s/A (or erg/s for Lya)
+        case('SED-PowLaw')
+           ! integrate powerlaw from min to max wavelengths.
+           ! We actually want to sample the number of photons per lambda bin. Given that F_lbda = F_0 (lbda / lbda_0)**beta (in erg/s/A)
+           ! the number of photons (in /s/A) is N_lbda = F_0*lbda_0/hc * (lbda/lbda_0)**(1+beta).
+           ! This integrates to : (F_0 lbda_0 / hc) * lbda_0/(beta+2)  * [ (lbda_max/lbda_0)**(2+beta) - (lbda_min/lbda_0)**(2+beta)]
+           f0 = sed_flux(iage,imet)
+           beta = sed_slope(iage,imet)
+           sweight(i) = star_mass(i) / 1.989d33 * (f0*sed_powlaw_l0*sed_powlaw_l0/planck/clight/(2.+beta))
+           sweight(i) = sweight(i) * ( (sed_powlaw_lmax/sed_powlaw_l0)**(2.+beta) - (sed_powlaw_lmin/sed_powlaw_l0)**(2.+beta) )
+           ! -> this is a number of photons per dlambda ... 
+        end select
         if (sed_age(iage) < 10.) then ! SNs go off at 10Myr ... 
            sweight(i) = sweight(i)/0.8  !! correct for recycling ... we want the mass of stars formed ...
         end if
