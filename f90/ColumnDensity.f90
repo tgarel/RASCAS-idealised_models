@@ -2,7 +2,7 @@ program main
 
   ! Use RASCAS to compute column densities along sight-lines. 
 
-  use module_photon
+  use module_ray 
   use module_mesh
   use module_domain
   use module_uparallel
@@ -10,11 +10,11 @@ program main
 
   implicit none
 
-  type(photon_current),dimension(:),allocatable :: photgrid
-  type(mesh)                                    :: meshdom
-  type(domain)                                  :: compute_dom
-  integer                                       :: nphot
-  real(kind=8)                                  :: start, tmptime, finish
+  type(ray_type),dimension(:),allocatable :: rays
+  type(mesh)                              :: meshdom
+  type(domain)                            :: compute_dom
+  integer                                 :: nrays
+  real(kind=8)                            :: start, tmptime, finish
 
   character(2000) :: parameter_file, line, file_compute_dom
   character(2000),dimension(:),allocatable :: mesh_file_list 
@@ -25,17 +25,19 @@ program main
   ! --------------------------------------------------------------------------
   ! --- inputs 
   character(2000)           :: DataDir      = './'                      ! where input files below are 
-  character(2000)           :: PhotonICFile = 'Photon_IC_file.dat'      ! the file containing photons to cast.
+  character(2000)           :: RaysICFile = 'Rays_IC_file.dat'      ! the file containing photons to cast.
   character(2000)           :: DomDumpFile  = 'MCLya_domain_params.dat' ! the file describing the outputs of CreateDomDump.
   ! --- outputs
-  character(2000)           :: fileout = 'photons_done.dat'   ! output file ... 
+  character(2000)           :: fileout = 'rays_done.dat'   ! output file ... 
+  ! --- parameters
+  real(kind=8)              :: maxdist = -1 ! stop rays after this distance [box units] (negative => ignored)
+  real(kind=8)              :: maxtau  = -1  ! stop rays after this tau (overrides maxdist) (negative => ignored)
   ! --- miscelaneous
   logical                   :: verbose = .false.
   ! --------------------------------------------------------------------------
 
   call cpu_time(start)
 
-  
   ! -------------------- read parameters --------------------
   narg = command_argument_count()
   if(narg .lt. 1)then
@@ -44,17 +46,17 @@ program main
      stop
   end if
   call get_command_argument(1, parameter_file)
-  call read_serial_params(parameter_file)
-  if(verbose) call print_serial_params
+  call read_columndensity_params(parameter_file)
+  if(verbose) call print_columndensity_params
   ! ------------------------------------------------------------
 
   
 
   ! -------------------- read ICs photons --------------------
-  if (verbose) print *,'--> reading ICs photons in file: ',trim(PhotonICFile)
-  call init_photons_from_file(PhotonICFile,photgrid)
-  nphot = size(photgrid)
-  if (verbose) print *,'--> Nphoton =',nphot
+  if (verbose) print *,'--> reading ICs photons in file: ',trim(RaysICFile)
+  call init_rays_from_file(RaysICFile,rays)
+  nrays = size(rays)
+  if (verbose) print *,'--> Nb of rays =',nrays
   ! ------------------------------------------------------------
 
 
@@ -94,13 +96,13 @@ program main
 
   if (verbose) print *,'--> starting RT...'
   ! do the RT stuff
-  call MCRT(nphot,photgrid,meshdom,compute_dom)
+  call RayTracing(nrays,rays,meshdom,compute_dom,maxdist,maxtau)
 
   if (verbose) print *,'--> RT done'
 
   if (verbose) print *,' '
   if (verbose) print*,'--> writing results in file: ',trim(fileout)
-  call dump_photons(fileout,photgrid)
+  call dump_rays(fileout,rays)
 
   call cpu_time(finish)
   if (verbose) print '(" --> Time = ",f12.3," seconds.")',finish-start
@@ -109,7 +111,7 @@ program main
 
 contains
 
-  subroutine read_serial_params(pfile)
+  subroutine read_columndensity_params(pfile)
 
     ! ---------------------------------------------------------------------------------
     ! subroutine which reads parameters of current module in the parameter file pfile
@@ -151,29 +153,38 @@ contains
              read(value,*) verbose
           case ('DataDir')
              write(DataDir,'(a)') trim(value)
-          case ('PhotonICFile')
-             write(PhotonICFile,'(a)') trim(value)
+          case ('RaysICFile')
+             write(RaysICFile,'(a)') trim(value)
           case ('DomDumpFile')
              write(DomDumpFile,'(a)') trim(value)
           case ('fileout')
              write(fileout,'(a)') trim(value)
+          case ('maxdist')
+             read(value,*) maxdist
+          case ('maxtau')
+             read(value,*) maxtau
           end select
        end do
     end if
     close(10)
 
+    if (maxtau > 0) then
+       print*,'Will stop ray propagation at tau = ',maxtau
+       maxdist = -1 
+    end if
+    
     ! add path (datadir) to input files 
-    PhotonICFile = trim(DataDir)//trim(PhotonICFile)
+    RaysICFile = trim(DataDir)//trim(RaysICFile)
     DomDumpFile  = trim(DataDir)//trim(DomDumpFile)
     
     call read_mesh_params(pfile)
     
     return
 
-  end subroutine read_serial_params
+  end subroutine read_columndensity_params
 
   
-  subroutine print_serial_params(unit)
+  subroutine print_columndensity_params(unit)
 
     ! ---------------------------------------------------------------------------------
     ! write parameter values to std output or to an open file if argument unit is
@@ -184,22 +195,26 @@ contains
 
     if (present(unit)) then 
        write(unit,'(a)')             '[ColumnDensity]'
-       write(unit,'(a,a)')           '  DataDir        = ',trim(DataDir)
-       write(unit,'(a,a)')           '  PhotonICFile   = ',trim(PhotonICFile)
-       write(unit,'(a,a)')           '  DomDumpFile    = ',trim(DomDumpFile)
-       write(unit,'(a,a)')           '  fileout        = ',trim(fileout)
-       write(unit,'(a,L1)')          '  verbose        = ',verbose
+       write(unit,'(a,a)')           '  DataDir     = ',trim(DataDir)
+       write(unit,'(a,a)')           '  RaysICFile  = ',trim(RaysICFile)
+       write(unit,'(a,a)')           '  DomDumpFile = ',trim(DomDumpFile)
+       write(unit,'(a,a)')           '  fileout     = ',trim(fileout)
+       write(unit,'(a,ES10.3)')      '  maxdist     = ',maxdist
+       write(unit,'(a,ES10.3)')      '  maxtau      = ',maxtau
+       write(unit,'(a,L1)')          '  verbose     = ',verbose
        write(unit,'(a)')             ' '
        call print_mesh_params(unit)
     else
        write(*,'(a)')             '--------------------------------------------------------------------------------'
        write(*,'(a)')             ''
        write(*,'(a)')             '[ColumnDensity]'
-       write(*,'(a,a)')           '  DataDir        = ',trim(DataDir)
-       write(*,'(a,a)')           '  PhotonICFile   = ',trim(PhotonICFile)
-       write(*,'(a,a)')           '  DomDumpFile    = ',trim(DomDumpFile)
-       write(*,'(a,a)')           '  fileout        = ',trim(fileout)
-       write(*,'(a,L1)')          '  verbose        = ',verbose
+       write(*,'(a,a)')           '  DataDir     = ',trim(DataDir)
+       write(*,'(a,a)')           '  RaysICFile  = ',trim(RaysICFile)
+       write(*,'(a,a)')           '  DomDumpFile = ',trim(DomDumpFile)
+       write(*,'(a,a)')           '  fileout     = ',trim(fileout)
+       write(*,'(a,ES10.3)')      '  maxdist     = ',maxdist
+       write(*,'(a,ES10.3)')      '  maxtau      = ',maxtau
+       write(*,'(a,L1)')          '  verbose     = ',verbose
        write(*,'(a)')             ' '       
        call print_mesh_params
        write(*,'(a)')             ' '
@@ -208,6 +223,6 @@ contains
 
     return
 
-  end subroutine print_serial_params
+  end subroutine print_columndensity_params
   
 end program main

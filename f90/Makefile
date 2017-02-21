@@ -100,6 +100,9 @@ OBJSPHO = $(GASOBJS) module_mesh.o module_photon.o
 
 OBJSMPI = $(OBJSPHO) module_parallel_mpi.o module_worker.o module_master.o
 
+COLDENS = $(GASOBJS) module_mesh.o module_ray.o
+
+
 #############################################################################
 #.SUFFIXES: .o .f90
 #.f90.o:
@@ -128,6 +131,9 @@ rascas-serial: $(OBJSPHO) rascas-serial.o
 
 rascas: $(OBJSMPI) rascas.o
 	$(F90) $(FFLAGS) $(LDFLAGS) -o $@ $(OBJSMPI) rascas.o
+
+ColumnDensity: $(COLDENS) ColumnDensity.o
+	$(F90) $(FFLAGS) $(LDFLAGS) -o $@ $(COLDENS) ColumnDensity.o
 
 clean:
 	rm -f $(OBJSDOM) $(OBJSPHO) $(OBJSMPI) *.o *.mod

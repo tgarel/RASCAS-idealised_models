@@ -35,7 +35,7 @@ module module_gas_composition
   ! --------------------------------------------------------------------------
 
   ! public functions:
-  public :: gas_from_ramses_leaves,get_gas_velocity,gas_get_scatter_flag,gas_scatter,dump_gas
+  public :: gas_from_ramses_leaves,get_gas_velocity,gas_get_scatter_flag,gas_scatter,dump_gas,gas_get_tau
   public :: read_gas,gas_destructor,read_gas_composition_params,print_gas_composition_params
 
 contains
@@ -110,7 +110,6 @@ contains
   end subroutine overwrite_gas
 
 
-
   function get_gas_velocity(cell_gas)
     type(gas),intent(in)      :: cell_gas
     real(kind=8),dimension(3) :: get_gas_velocity
@@ -119,7 +118,34 @@ contains
   end function get_gas_velocity
 
 
-  
+  function  gas_get_tau(cell_gas, distance_cm, nu_cell)
+
+    ! --------------------------------------------------------------------------
+    ! compute total opacity of gas accross distance_cm at freq. nu_cell
+    ! --------------------------------------------------------------------------
+    ! INPUTS:
+    ! - cell_gas : just HI
+    ! - distance_cm : the distance along which to compute tau [cm]
+    ! - nu_cell : photon frequency in cell's frame [ Hz ]
+    ! OUTPUTS:
+    ! - gas_get_tau : the total optical depth
+    ! --------------------------------------------------------------------------
+
+    type(gas),intent(in)    :: cell_gas
+    real(kind=8),intent(in) :: distance_cm
+    real(kind=8),intent(in) :: nu_cell
+    integer(kind=4)         :: gas_get_tau
+    real(kind=8)            :: tau_HI
+
+    ! compute optical depths for different components of the gas.
+    tau_HI   = get_tau_HI(cell_gas%nHI, cell_gas%dopwidth, distance_cm, nu_cell)
+    gas_get_tau = tau_HI
+
+    return
+    
+  end function gas_get_tau
+  ! --------------------------------------------------------------------------
+
   function  gas_get_scatter_flag(cell_gas, distance_to_border_cm, nu_cell, tau_abs,iran)
 
     ! --------------------------------------------------------------------------

@@ -270,50 +270,79 @@ class photonlist(object):
         x = self.x[ii] * u1_x + self.y[ii] * u1_y + self.z[ii] * u1_z
         y = self.x[ii] * u2_x + self.y[ii] * u2_y + self.z[ii] * u2_z
         return x,y
-
     
-def projected_positions(k,x,y,z,xc,yc,zc):
-    # compute projected positions (xp,yp) in a plane perp. to k.
-    # inputs :
-    #    - k: a 3D array [kx,ky,kz]
-    #    - x,y,z : original coords of points
-    #    - xc,yc,zc : center around which to rotate.
-    xp  = np.empty_like(x)
-    yp  = np.empty_like(x)
-    # define projection basis
-    knorm = k / np.sqrt(k[0]*k[0]+k[1]*k[1]+k[2]*k[2])
-    if (knorm[0] < 1.):  # then we k not colinear with x
-        #-> compute u1 as cross prod of k and x. 
-        u1_x = 0.
-        u1_y = knorm[2]
-        u1_z = -knorm[1]
-        # compute u2 as cross product of k and u1.
-        u2_x = knorm[1]*u1_z - knorm[2]*u1_y
-        u2_y = -knorm[0]*u1_z
-        u2_z = knorm[0]*u1_y
-        # normalize u1 and u2
-        mod_u1 = np.sqrt(u1_y*u1_y+u1_z*u1_z)
-        u1_y = u1_y / mod_u1
-        u1_z = u1_z / mod_u1
-        mod_u2 = np.sqrt(u2_x*u2_x+u2_y*u2_y+u2_z*u2_z)
-        u2_x = u2_x / mod_u2
-        u2_y = u2_y / mod_u2
-        u2_z = u2_z / mod_u2
-    else:   # k is along x -> use u1 = y, u2 = z
-        u1_x = 0.
-        u1_y = 1.
-        u1_z = 0.
-        u2_x = 0.
-        u2_y = 0.
-        u2_z = 1.
-    # compute projected coordinates
-    xx = x - xc
-    yy = y - yc
-    zz = z - zc
-    xp = xx * u1_x + yy * u1_y + zz * u1_z
-    yp = xx * u2_x + yy * u2_y + zz * u2_z
+    def projected_positions(k,x,y,z,xc,yc,zc):
+        # compute projected positions (xp,yp) in a plane perp. to k.
+        # inputs :
+        #    - k: a 3D array [kx,ky,kz]
+        #    - x,y,z : original coords of points
+        #    - xc,yc,zc : center around which to rotate.
+        xp  = np.empty_like(x)
+        yp  = np.empty_like(x)
+        # define projection basis
+        knorm = k / np.sqrt(k[0]*k[0]+k[1]*k[1]+k[2]*k[2])
+        if (knorm[0] < 1.):  # then we k not colinear with x
+            #-> compute u1 as cross prod of k and x. 
+            u1_x = 0.
+            u1_y = knorm[2]
+            u1_z = -knorm[1]
+            # compute u2 as cross product of k and u1.
+            u2_x = knorm[1]*u1_z - knorm[2]*u1_y
+            u2_y = -knorm[0]*u1_z
+            u2_z = knorm[0]*u1_y
+            # normalize u1 and u2
+            mod_u1 = np.sqrt(u1_y*u1_y+u1_z*u1_z)
+            u1_y = u1_y / mod_u1
+            u1_z = u1_z / mod_u1
+            mod_u2 = np.sqrt(u2_x*u2_x+u2_y*u2_y+u2_z*u2_z)
+            u2_x = u2_x / mod_u2
+            u2_y = u2_y / mod_u2
+            u2_z = u2_z / mod_u2
+        else:   # k is along x -> use u1 = y, u2 = z
+            u1_x = 0.
+            u1_y = 1.
+            u1_z = 0.
+            u2_x = 0.
+            u2_y = 0.
+            u2_z = 1.
+            # compute projected coordinates
+            xx = x - xc
+            yy = y - yc
+            zz = z - zc
+            xp = xx * u1_x + yy * u1_y + zz * u1_z
+            yp = xx * u2_x + yy * u2_y + zz * u2_z
 
-    return xp,yp
+            return xp,yp
 
-    
-    
+    def project_pos_2(self,k):
+        # compute projected positions (x,y) of photons in a plane perp. to k.
+        # inputs :
+        #    - k: a 3D array [kx,ky,kz]
+        if (k[0] < 1.):  # then we k not colinear with x
+            #-> compute u1 as cross prod of k and x. 
+            u1_x = 0.
+            u1_y = k[2]
+            u1_z = -k[1]
+            # compute u2 as cross product of k and u1.
+            u2_x = k[1]*u1_z - k[2]*u1_y
+            u2_y = -k[0]*u1_z
+            u2_z = k[0]*u1_y
+            # normalize u1 and u2
+            mod_u1 = np.sqrt(u1_y*u1_y+u1_z*u1_z)
+            u1_y = u1_y / mod_u1
+            u1_z = u1_z / mod_u1
+            mod_u2 = np.sqrt(u2_x*u2_x+u2_y*u2_y+u2_z*u2_z)
+            u2_x = u2_x / mod_u2
+            u2_y = u2_y / mod_u2
+            u2_z = u2_z / mod_u2
+        else:   # k is along x -> use u1 = y, u2 = z
+            u1_x = 0.
+            u1_y = 1.
+            u1_z = 0.
+            u2_x = 0.
+            u2_y = 0.
+            u2_z = 1.
+        # compute projected coordinates
+        x = self.x * u1_x + self.y * u1_y + self.z * u1_z
+        y = self.x * u2_x + self.y * u2_y + self.z * u2_z
+        return x,y
