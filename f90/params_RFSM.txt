@@ -1,0 +1,13 @@
+[RaysFromSourceModel]
+# input / output parameters
+  outputfile    = RaysIC.dat
+# emission properties
+  source_pos      = 5.000E-01 5.000E-01 5.000E-01  ! [box units]
+  source_vel      = 0.000E+00 0.000E+00 0.000E+00  ! [km/s] 
+  nu_min          = 2.455E+15 ! [Hz]
+  nu_max          = 2.478E+15 ! [Hz]
+# miscelaneous parameters
+  nrays           = 100000
+  ranseed         = 1234
+  verbose         = T
+

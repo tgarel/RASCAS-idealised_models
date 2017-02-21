@@ -135,6 +135,9 @@ rascas: $(OBJSMPI) rascas.o
 ColumnDensity: $(COLDENS) ColumnDensity.o
 	$(F90) $(FFLAGS) $(LDFLAGS) -o $@ $(COLDENS) ColumnDensity.o
 
+RaysFromSourceModel: $(COLDENS) RaysFromSourceModel.o
+	$(F90) $(FFLAGS) $(LDFLAGS) -o $@ $(COLDENS) RaysFromSourceModel.o
+
 clean:
 	rm -f $(OBJSDOM) $(OBJSPHO) $(OBJSMPI) *.o *.mod
 #############################################################################
