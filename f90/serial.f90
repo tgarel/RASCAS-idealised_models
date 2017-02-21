@@ -1,6 +1,6 @@
 program main
 
-  ! serial version of MCLya 
+  ! serial version of rascas 
 
   use module_photon
   use module_mesh
@@ -13,12 +13,11 @@ program main
   type(photon_current),dimension(:),allocatable :: photgrid
   type(mesh)                                    :: meshdom
   type(domain)                                  :: compute_dom
-  integer                                       :: nphot
+  integer(kind=4)                               :: nphot
   real(kind=8)                                  :: start, tmptime, finish
-
-  character(2000) :: parameter_file, line, file_compute_dom
-  character(2000),dimension(:),allocatable :: mesh_file_list 
-  integer(kind=4) :: narg, i, j, ndomain
+  character(2000)                               :: parameter_file, line, file_compute_dom
+  character(2000),dimension(:),allocatable      :: mesh_file_list 
+  integer(kind=4)                               :: narg, i, j, ndomain
   
   ! --------------------------------------------------------------------------
   ! user-defined parameters - read from section [serial] of the parameter file
@@ -106,15 +105,25 @@ program main
   if (verbose) print '(" --> Time = ",f12.3," seconds.")',tmptime-start
 
 
+  ! do the Monte Carlo Radiative Transfer
   if (verbose) print *,'--> starting RT...'
-  ! do the RT stuff
   call MCRT(nphot,photgrid,meshdom,compute_dom)
 
   if (verbose) print *,'--> RT done'
 
-  ! write results
-  ! some checks
+  ! some checks & logs
   if(verbose)then
+     ! test status of photons
+     do i=1,nphot
+        if(photgrid(i)%status == 0)print*,'ohoho problem with photon status...',i,photgrid(i)%status
+     enddo
+     ! Some stats on photon status
+     print *,' '
+     print *,'--> photon status...'
+     print *,'# of photons             =',size(photgrid(:)%status)
+     print *,'# of status=1 (escaped)  =',count(mask=(photgrid(:)%status==1))
+     print *,'# of status=2 (absorbed) =',count(mask=(photgrid(:)%status==2))
+     print *,'# of status=3 (crap, pb with precision/in_cell_finder) =',count(mask=(photgrid(:)%status==3))
      print *,' '
      print *,'--> Some diagnostics...'
      print *,'min max status      =',minval(photgrid%status),maxval(photgrid%status)
@@ -123,7 +132,7 @@ program main
      print *,'min max pos z       =',minval(photgrid%xcurr(3)),maxval(photgrid%xcurr(3))
      print *,'min max nb scatt    =',minval(photgrid%nb_abs),maxval(photgrid%nb_abs)
      print *,'min max nu          =',minval(photgrid%nu_ext),maxval(photgrid%nu_ext)
-     print *,'min max lambda      =',clight/minval(photgrid%nu_ext)*cmtoA,clight/maxval(photgrid%nu_ext)*cmtoA
+     print *,'min max lambda      =',clight/maxval(photgrid%nu_ext)*cmtoA,clight/minval(photgrid%nu_ext)*cmtoA
      print *,'min max travel time =',minval(photgrid%time),maxval(photgrid%time)
      print *,'Last scattering'
      print *,'min max pos x       =',minval(photgrid%xlast(1)),maxval(photgrid%xlast(1))
@@ -131,15 +140,8 @@ program main
      print *,'min max pos z       =',minval(photgrid%xlast(3)),maxval(photgrid%xlast(3))
   endif
 
-  ! check order for python reading
-  !print *,'=============================='
-  !i = 1
-  !print *,i,photgrid(i)%xlast(1),photgrid(i)%xlast(2),photgrid(i)%xlast(3)
-  !i = 2
-  !print *,i,photgrid(i)%xlast(1),photgrid(i)%xlast(2),photgrid(i)%xlast(3)
-  !i = 999
-  !print *,i,photgrid(i)%xlast(1),photgrid(i)%xlast(2),photgrid(i)%xlast(3)
 
+  ! write results
   if (verbose) print *,' '
   if (verbose) print*,'--> writing results in file: ',trim(fileout)
   call dump_photons(fileout,photgrid)
