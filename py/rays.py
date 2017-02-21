@@ -20,12 +20,12 @@ class raylist(object):
         self.ID_ic = f.read_ints()
         self.nu_ic = f.read_reals()
         xx = f.read_reals()
-        xx = xx.reshape((self.nphoton,3))
+        xx = xx.reshape((self.nrays,3))
         self.x_ic = xx[:,0]
         self.y_ic = xx[:,1]
         self.z_ic = xx[:,2]
         xx = f.read_reals()
-        xx = xx.reshape((self.nphoton,3))
+        xx = xx.reshape((self.nrays,3))
         self.kx_ic = xx[:,0]
         self.ky_ic = xx[:,1]
         self.kz_ic = xx[:,2]
