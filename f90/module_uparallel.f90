@@ -250,6 +250,7 @@ contains
     integer(kind=4)         :: ia,ix,cbin,ic
     real(kind=8)            :: la,ccc,lc
     real(kind=8)            :: dc1,dc2
+    real(kind=8)            :: start_init_upar, end_init_upar
 
 #ifdef SWITCH_OFF_UPARALLEL
     get_uparallel = 0.0d0
@@ -259,9 +260,12 @@ contains
     ! initialise on first call
     if (.not. tables_initialized) then
        print*,'initialising u_parallel tables'
+       call cpu_time(start_init_upar)
        call init_uparallel_tables
        tables_initialized = .true.
-       print*,'--done initialising u_parallel tables'
+       call cpu_time(end_init_upar)
+       !print*,'--done initialising u_parallel tables'
+       write(*,'(a,f12.3,a)') '--done initialising u_parallel tables in ',end_init_upar - start_init_upar,' seconds.'
     end if
     
     xin   = sign(xxin,-1.0d0) ! -> force x_int to be negative
