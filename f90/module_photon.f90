@@ -188,6 +188,8 @@ contains
     ind   = (icell - domesh%nCoarse - 1) / domesh%nOct + 1   ! JB: should we make a few simple functions to do all this ? 
     ioct  = icell - domesh%nCoarse - (ind - 1) * domesh%nOct
 
+    flagoutvol = .false.
+
 !JB--
 !!$    if((domesh%son(icell)<0).and.(domesh%octlevel(ioct)/=8))then
 !!$       print*,'>>>>> leaf cell at level lower than 8!!!!!!'
