@@ -41,7 +41,7 @@ class raylist(object):
         # dist
         self.dist = f.read_reals()
         # tau
-        self.dist = f.read_reals()
+        self.tau = f.read_reals()
         f.close()
 
 
