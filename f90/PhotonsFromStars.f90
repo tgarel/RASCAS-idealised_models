@@ -26,8 +26,10 @@ program PhotonsFromStars
   ! SED-related variables
   integer(kind=4) :: sed_nage,sed_nmet,imet,iage
   integer(kind=8) :: nflux,n
-  real(kind=8),allocatable :: sed_age(:),sed_met(:),sed_flux(:,:),sweight(:),cum_flux_prob(:),sed_slope(:)
-  real(kind=8) :: total_flux,photon_flux,minflux,check_flux,f0,beta
+  real(kind=8),allocatable :: sed_age(:),sed_met(:),sed_flux(:,:),sweight(:),sed_slope(:,:)
+  integer(kind=8), allocatable :: cum_flux_prob(:)
+  real(kind=8),allocatable :: star_beta(:) 
+  real(kind=8) :: total_flux,photon_flux,minflux,check_flux,f0,beta,betaplus2
   character(2000) :: file
   
   ! --------------------------------------------------------------------------
@@ -119,7 +121,7 @@ program PhotonsFromStars
   ! --------------------------------------------------------------------------------------
 
 
-  if (trim(spec_type) == 'SED' .or. trim(spec_type)=='SED-Gauss' .or. trim(spec_typ) == 'SED-PowLaw') then
+  if (trim(spec_type) == 'SED' .or. trim(spec_type)=='SED-Gauss' .or. trim(spec_type) == 'SED-PowLaw') then
 
      ! --------------------------------------------------------------------------------------
      ! SED weighting ... 
@@ -150,6 +152,7 @@ program PhotonsFromStars
      ! compute weight (luminosity) of each star particle
      nstars = size(star_age)
      allocate(sweight(nstars))
+     if (trim(spec_type) == 'SED-PowLaw') allocate(star_beta(nstars))
      do i = 1,nstars
         call locatedb(sed_met,sed_nmet,star_met(i),imet)
         if (imet < 1) imet = 1
@@ -169,23 +172,26 @@ program PhotonsFromStars
            beta = sed_slope(iage,imet)
            sweight(i) = star_mass(i) / 1.989d33 * (f0*sed_powlaw_l0*sed_powlaw_l0/planck/clight/(2.+beta))
            sweight(i) = sweight(i) * ( (sed_powlaw_lmax/sed_powlaw_l0)**(2.+beta) - (sed_powlaw_lmin/sed_powlaw_l0)**(2.+beta) )
-           ! -> this is a number of photons per dlambda ... 
+           ! -> this is the number of photons in [lbda_min;lbda_max]
+           star_beta(i) = beta ! keep for later. 
         end select
         if (sed_age(iage) < 10.) then ! SNs go off at 10Myr ... 
            sweight(i) = sweight(i)/0.8  !! correct for recycling ... we want the mass of stars formed ...
         end if
      end do
+
+     ! Check that linear sampling with particle luminosity allows to represent most of the total flux 
      ! the total flux and flux per photon are 
      total_flux = 0.0d0
      do i=1,nstars
         total_flux = total_flux + sweight(i)
      end do
      photon_flux = total_flux / nphot 
-     if (verbose) write(*,*) '> Total luminosity (erg/s/A or erg/s): ',total_flux
+     if (verbose) write(*,*) '> Total luminosity (erg/s/A or erg/s or nb of photons): ',total_flux
      ! construct the cumulative flux distribution, with enough bins to have the smallest star-particle flux in a bin. 
      minflux = minval(sweight)
      ! it may happen that the range of luminosities is too large (esp. for Lya). In that case we need to ignore faint particles.
-     if (total_flux / minflux > 2d8) minflux = total_flux / 2d8
+     if (total_flux / minflux > 2d8) minflux = total_flux / 2d8  ! NB: dont go much higher than 1d8 (to stay below a few GB RAM). 
      ! check that we dont loose significant flux
      check_flux = 0.0d0
      do i=1,nstars
@@ -196,6 +202,7 @@ program PhotonsFromStars
         print*,'Flux losses > 0.1 percent... change algorithm ...'
         stop
      end if
+     
      allocate(cum_flux_prob(int(3*total_flux / minflux,kind=8)))
      ilast = 1
      do i=1,nstars
@@ -207,6 +214,7 @@ program PhotonsFromStars
      end do
      nflux = ilast
      print*,'nflux, size(cum_fllux_prob):', nflux, size(cum_flux_prob)
+     
      ! now we can draw integers from 1 to nflux and assign photons to stars ...
      allocate(photgrid(nphot),nu_star(nphot))
      iran = ranseed
@@ -219,6 +227,17 @@ program PhotonsFromStars
         photgrid(i)%iran  = -i 
         call isotropic_direction(photgrid(i)%k_em,iran)
         select case(trim(spec_type))
+        case('SED-PowLaw')
+           ! sample F_lbda = F_0 (lbda / lbda_0)**beta (in erg/s/A) ...
+           ! -> we actually want to sample the nb of photons : N_lbda = F_lbda * lbda / (hc) = F_0*lbda_0/(h*c) * (lbda/lbda_0)**(beta+1)
+           ! -> the probability of drawing a photon with l in [lbda_min;lbda] is:
+           !      P(<lbda) = (lbda**(2+beta) - lbda_min**(2+beta))/(lbda_max**(2+beta)-lbda_min**(2+beta))
+           ! -> and thus for a random number x in [0,1], we get
+           !      lbda = [ lbda_min**(2+beta) + x * ( lbda_max**(2+beta) - lbda_min**(2+beta) ) ]**(1/(2+beta))
+           r1   = ran3(iran)
+           betaplus2 = star_beta(j) + 2.0d0
+           nu   = (sed_powlaw_lmin**betaplus2 + r1 * (sed_powlaw_lmax**betaplus2 - sed_powlaw_lmin**betaplus2))**(1./betaplus2) ! this is lbda [A]
+           nu   = clight / (nu*1e-8) ! this is freq. [Hz]
         case('SED-Gauss')
            r1 = ran3(iran)
            r2 = ran3(iran)
@@ -227,7 +246,8 @@ program PhotonsFromStars
         case('SED')
            nu = nu_sed
         end select
-        nu_star(i) = nu
+        nu_star(i) = nu  ! star-particle-frame frequency
+        ! now put in external frame using particle's velocity. 
         scalar = photgrid(i)%k_em(1)*star_vel(1,j) + photgrid(i)%k_em(2)*star_vel(2,j) + photgrid(i)%k_em(3)*star_vel(3,j)
         photgrid(i)%nu_em = nu / (1d0 - scalar/clight)
      end do
@@ -319,7 +339,7 @@ program PhotonsFromStars
   write(14) (photgrid(i)%iran,i=1,nphot)
   write(14) (nu_star(i),i=1,nphot)
   close(14)
-  if (trim(spec_type) == 'SED' .or. trim(spec_type)=='SED-Gauss') then ! write the total luminosity in a text file 
+  if (trim(spec_type) == 'SED' .or. trim(spec_type)=='SED-Gauss' .or. trim(spec_type)=='SED-PowLaw') then ! write the total luminosity in a text file 
      write(file,'(a,a)') trim(outputfile),'.tot_lum'
      open(unit=14, file=trim(file), status='unknown',form='formatted',action='write')
      write(14,'(e14.6)') total_flux
