@@ -118,6 +118,13 @@ program PhotonsFromStars
   ! --------------------------------------------------------------------------------------
   if (verbose) write(*,*) '> reading star particles'
   call ramses_read_stars_in_domain(repository,snapnum,emission_domain,star_pos,star_age,star_mass,star_vel,star_met,cosmo)
+
+  ! debug -
+  !star_vel = 0.0
+  !f0 = sum(star_mass) ! total mass
+  !star_mass = star_mass / f0  * 1.989d33 ! now total mass is 1 Msun (in g)
+  !star_age = star_age + 11.
+  ! - debug
   ! --------------------------------------------------------------------------------------
 
 
@@ -165,13 +172,24 @@ program PhotonsFromStars
            sweight(i) = star_mass(i) / 1.989d33 * sed_flux(iage,imet)  ! erg/s/A (or erg/s for Lya)
         case('SED-PowLaw')
            ! integrate powerlaw from min to max wavelengths.
-           ! We actually want to sample the number of photons per lambda bin. Given that F_lbda = F_0 (lbda / lbda_0)**beta (in erg/s/A)
+           ! We actually want to sample the number of photons per lambda bin.
+           ! Given that F_lbda = F_0 (lbda / lbda_0)**beta (in erg/s/A),
            ! the number of photons (in /s/A) is N_lbda = F_0*lbda_0/hc * (lbda/lbda_0)**(1+beta).
-           ! This integrates to : (F_0 lbda_0 / hc) * lbda_0/(beta+2)  * [ (lbda_max/lbda_0)**(2+beta) - (lbda_min/lbda_0)**(2+beta)]
+           ! (NB: the first lbda_0 here has to be in cm)
+           ! This integrates to (in #/s) :
+           ! (F_0 lbda_0 / hc) * lbda_0/(beta+2)  * [ (lbda_max/lbda_0)**(2+beta) - (lbda_min/lbda_0)**(2+beta)]
+           ! (NB: the first lbda_0 here is in cm, the second in A). 
+           ! OR, if beta == -2, the integral is
+           ! (F_0*lbda_0/hc) * lbda_0 * ln(lbda_max/lbda_min)     [again, first lbda_0 in cm, second in A]
            f0 = sed_flux(iage,imet)
            beta = sed_slope(iage,imet)
-           sweight(i) = star_mass(i) / 1.989d33 * (f0*sed_powlaw_l0*sed_powlaw_l0/planck/clight/(2.+beta))
-           sweight(i) = sweight(i) * ( (sed_powlaw_lmax/sed_powlaw_l0)**(2.+beta) - (sed_powlaw_lmin/sed_powlaw_l0)**(2.+beta) )
+           if (beta == -2.0d0) then
+              sweight(i) = star_mass(i) / 1.989d33 * (f0*sed_powlaw_l0*1e-8/planck/clight)
+              sweight(i) = sweight(i) * sed_powlaw_l0 * log(sed_powlaw_lmax/sed_powlaw_lmin)
+           else
+              sweight(i) = star_mass(i) / 1.989d33 * (f0*sed_powlaw_l0*1e-8*sed_powlaw_l0/planck/clight/(2.+beta))
+              sweight(i) = sweight(i) * ( (sed_powlaw_lmax/sed_powlaw_l0)**(2.+beta) - (sed_powlaw_lmin/sed_powlaw_l0)**(2.+beta) )
+           end if
            ! -> this is the number of photons in [lbda_min;lbda_max]
            star_beta(i) = beta ! keep for later. 
         end select
@@ -200,7 +218,7 @@ program PhotonsFromStars
      print*,'sampling only this fraction of total flux: ',check_flux / total_flux
      if ((total_flux - check_flux) / total_flux > 0.001) then
         print*,'Flux losses > 0.1 percent... change algorithm ...'
-        stop
+        ! debug - stop
      end if
      
      allocate(cum_flux_prob(int(3*total_flux / minflux,kind=8)))
@@ -230,14 +248,25 @@ program PhotonsFromStars
         case('SED-PowLaw')
            ! sample F_lbda = F_0 (lbda / lbda_0)**beta (in erg/s/A) ...
            ! -> we actually want to sample the nb of photons : N_lbda = F_lbda * lbda / (hc) = F_0*lbda_0/(h*c) * (lbda/lbda_0)**(beta+1)
+           ! FOR BETA /= 2 : 
            ! -> the probability of drawing a photon with l in [lbda_min;lbda] is:
            !      P(<lbda) = (lbda**(2+beta) - lbda_min**(2+beta))/(lbda_max**(2+beta)-lbda_min**(2+beta))
            ! -> and thus for a random number x in [0,1], we get
            !      lbda = [ lbda_min**(2+beta) + x * ( lbda_max**(2+beta) - lbda_min**(2+beta) ) ]**(1/(2+beta))
+           ! FOR BETA == 2:
+           ! -> the probability of drawing a photon with l in [lbda_min;lbda] is:
+           !      P(<lbda) = log(lbda/lbda_min) / log(lbda_max/lbda_min)
+           ! -> and thus for a random number x in [0,1], we get
+           !      lbda = lbda_min * exp[ x * log(lbda_max/lbda_min)] 
            r1   = ran3(iran)
-           betaplus2 = star_beta(j) + 2.0d0
-           nu   = (sed_powlaw_lmin**betaplus2 + r1 * (sed_powlaw_lmax**betaplus2 - sed_powlaw_lmin**betaplus2))**(1./betaplus2) ! this is lbda [A]
-           nu   = clight / (nu*1e-8) ! this is freq. [Hz]
+           if (star_beta(j) == -2.0d0) then
+              nu = sed_powlaw_lmin * exp(r1 * log(sed_powlaw_lmax / sed_powlaw_lmin) ) ! this is lbda [A]
+              nu   = clight / (nu*1e-8) ! this is freq. [Hz]
+           else
+              betaplus2 = star_beta(j) + 2.0d0
+              nu   = (sed_powlaw_lmin**betaplus2 + r1 * (sed_powlaw_lmax**betaplus2 - sed_powlaw_lmin**betaplus2))**(1./betaplus2) ! this is lbda [A]
+              nu   = clight / (nu*1e-8) ! this is freq. [Hz]
+           end if
         case('SED-Gauss')
            r1 = ran3(iran)
            r2 = ran3(iran)
