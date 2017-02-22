@@ -439,6 +439,15 @@ contains
              write(sed_gauss_file,'(a)') trim(sed_gauss_file)
           case('sed_gauss_velwidth')
              read(value,*) sed_gauss_velwidth
+          ! SED-PowLaw params :
+          case('sed_powlaw_file')
+             write(sed_powlaw_file,'(a)') trim(value)
+          case('sed_powlaw_lmin')
+             read(value,*) sed_powlaw_lmin
+          case('sed_powlaw_lmax')
+             read(value,*) sed_powlaw_lmax
+          case('sed_powlaw_l0')
+             read(value,*) sed_powlaw_l0
           end select
        end do
     end if
@@ -492,6 +501,11 @@ contains
           write(unit,'(a,es9.3,a)')     '  sed_gauss_nu       = ',sed_gauss_nu, ' ! [Hz]'
           write(unit,'(a,a)')           '  sed_gauss_file     = ',trim(sed_gauss_file)
           write(unit,'(a,es9.3,a)')     '  sed_gauss_velwidth = ',sed_gauss_velwidth, ' ! [km/s]'
+       case('SED-PowLaw')
+          write(unit,'(a,a)')           '  sed_powlaw_file = ',trim(sed_powlaw_file)
+          write(unit,'(a,es9.3,a)')     '  sed_powlaw_lmin = ',sed_powlaw_lmin, ' ! [A]'
+          write(unit,'(a,es9.3,a)')     '  sed_powlaw_lmax = ',sed_powlaw_lmax, ' ! [A]'
+          write(unit,'(a,es9.3,a)')     '  sed_powlaw_l0   = ',sed_powlaw_l0, ' ! [A]'
        case default
           print*,'ERROR: unknown spec_type :',trim(spec_type)
        end select
@@ -535,6 +549,11 @@ contains
           write(*,'(a,es9.3,a)')     '  sed_gauss_nu       = ',sed_gauss_nu, ' ! [Hz]'
           write(*,'(a,a)')           '  sed_gauss_file     = ',trim(sed_gauss_file)
           write(*,'(a,es9.3,a)')     '  sed_gauss_velwidth = ',sed_gauss_velwidth, ' ! [km/s]'
+       case('SED-PowLaw')
+          write(*,'(a,a)')           '  sed_powlaw_file = ',trim(sed_powlaw_file)
+          write(*,'(a,es9.3,a)')     '  sed_powlaw_lmin = ',sed_powlaw_lmin, ' ! [A]'
+          write(*,'(a,es9.3,a)')     '  sed_powlaw_lmax = ',sed_powlaw_lmax, ' ! [A]'
+          write(*,'(a,es9.3,a)')     '  sed_powlaw_l0   = ',sed_powlaw_l0, ' ! [A]'
        case default
           print*,'ERROR: unknown spec_type :',trim(spec_type)
        end select
