@@ -90,7 +90,7 @@ module module_ramses
   
 
   public  :: read_leaf_cells, get_ngridtot, ramses_get_velocity_cgs, ramses_get_T_nhi_cgs, ramses_get_metallicity, ramses_get_box_size_cm
-  public  :: ramses_read_stars_in_domain,read_ramses_params,print_ramses_params
+  public  :: ramses_read_stars_in_domain,read_ramses_params,print_ramses_params, ramses_get_nh
   ! default is private now ... !! private :: read_hydro, read_amr, get_nleaf, get_nvar, clear_amr, get_ncpu, get_param_real
 
   !==================================================================================
@@ -331,6 +331,28 @@ contains
     return
 
   end subroutine ramses_get_velocity_cgs
+
+  subroutine ramses_get_nh(repository,snapnum,nleaf,nvar,ramses_var,nh)
+
+    implicit none
+
+    character(1000),intent(in)  :: repository
+    integer(kind=4),intent(in)  :: snapnum
+    integer(kind=4),intent(in)  :: nleaf, nvar
+    real(kind=8),intent(in)     :: ramses_var(nvar,nleaf) ! one cell only
+    real(kind=8),intent(inout)  :: nh(nleaf)
+
+    ! get conversion factors if necessary
+    if (.not. conversion_scales_are_known) then 
+       call read_conversion_scales(repository,snapnum)
+       conversion_scales_are_known = .True.
+    end if
+
+    nh = ramses_var(1,:) * dp_scale_nh ! [ H / cm^3 ]
+
+    return
+
+  end subroutine ramses_get_nh
 
 
   subroutine ramses_get_metallicity(nleaf,nvar,ramses_var,metallicity)
@@ -871,7 +893,7 @@ contains
     dp_scale_nH   = XH/mp * dp_scale_d      ! convert mass density (code units) to numerical density of H atoms [/cm3]
     dp_scale_v    = dp_scale_l/dp_scale_t   ! -> converts velocities into cm/s
     dp_scale_T2   = mp/kB * dp_scale_v**2   ! -> converts P/rho to T/mu, in K
-    dp_scale_zsun = 1.d0/0.0127
+    dp_scale_zsun = 1.d0/0.0127     
     dp_scale_m    = dp_scale_d * dp_scale_l**3 ! convert mass in code units to cgs. 
 
     return

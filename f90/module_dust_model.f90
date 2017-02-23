@@ -1,5 +1,7 @@
 module module_dust_model
 
+  ! this module implements the model for dust extinction described by Laursen, Sommer-Larsen, and Andersen (2009).
+  
   use module_random
   use module_constants, only : pi, clight
   use module_utils, only : anisotropic_direction_Dust
@@ -8,32 +10,35 @@ module module_dust_model
 
   private
 
-  real(kind=8)             :: sigmad    ! dust cross section, computed at initialisation (in read_dust_params) as a function of parameter values 
-
   ! user-defined parameters - read from section [dust] of the parameter file 
-  real(kind=8)             :: albedo       = 0.46    ! dust albedo [default is 0.46 : empirical value from Witt & Gordon 2000 (ApJ, 528, 799) for SMC dust]
-  real(kind=8)             :: g_dust       = 0.73    ! g parameter of the Henyey-Greenstein phase function for dust scattering [default 0.73 from Laursen09]
-  real(kind=8)             :: grain_radius = 2.0d-6  ! radius of a dust grain [cm] used to define cross section. [default 2d-6 from Verhamme+12]
-
-  ! ---------------------------------------------------------------------------------
-  ! notes on the values of the parameters : 
-  ! ---------------------------------------------------------------------------------
-  ! Determine dust albedo at Lya wavelength (albedo) and
-  ! g parameter (g_dust) of the Henyey-Greenstein phase function for dust scattering:
-  ! g_dust=0.68 &  albedo=0.33 from Draine 2003 for MW dust, R_V=3.1
-  ! albedo=0.40 from Gordon et al. 1997 (ApJ, 487, 625) for SMC dust
-  ! ---------------------------------------------------------------------------------
-
+  real(kind=8)  :: albedo     = 0.32    ! dust albedo [default 0.32 for Lya, from Li & Draine 2001]. 
+  real(kind=8)  :: g_dust     = 0.73    ! g parameter of the Henyey-Greenstein phase function for dust scattering [default 0.73 from Li & Draine 2001]
+  character(20) :: dust_model = 'SMC' 
+  
   public get_tau_dust, scatter_dust, read_dust_params, print_dust_params
-
+  private sigma_d
+  
 contains
 
 
-  function get_tau_dust(ndust_cell, distance_to_border_cm)
+  function get_tau_dust(ndust, distance, nu)
 
-    real(kind=8),intent(in) :: ndust_cell,distance_to_border_cm
-    real(kind=8)            :: get_tau_dust
-    get_tau_dust = sigmad * ndust_cell * distance_to_border_cm
+    ! ---------------------------------------------------------------------------------
+    ! compute wavelength-dependent optical depth of dust 
+    ! ---------------------------------------------------------------------------------
+    ! INPUTS :
+    ! - ndust    : dust pseudo-density [/cm3]
+    ! - distance : distance over which to compute tau [cm]
+    ! - nu       : frequency of photon in cell's frame [Hz]
+    ! OUTPUTS :
+    ! - tau : optical depth of dust. 
+    ! ---------------------------------------------------------------------------------
+    
+    real(kind=8),intent(in) :: ndust,distance,nu
+    real(kind=8)            :: get_tau_dust,lbda_A
+    
+    lbda_A = nu/clight*1d8
+    get_tau_dust = sigma_d(lbda_A,dust_model) * ndust * distance
 
     return
 
@@ -46,7 +51,7 @@ contains
     implicit none 
     
     ! ---------------------------------------------------------------------------------
-    ! perform scattering event on a Hydrogen atom with isotrope angular redistribution
+    ! perform scattering event on a dust grain 
     ! ---------------------------------------------------------------------------------
     ! INPUTS :
     ! - v        : bulk velocity of the gas (i.e. cell velocity)       [ cm / s ] 
@@ -134,15 +139,12 @@ contains
              read(value,*) albedo
           case ('g_dust')
              read(value,*) g_dust
-          case ('grain_radius')
-             read(value,*) grain_radius
+          case ('dust_model')
+              write(dust_model,'(a)') trim(value) 
           end select
        end do
     end if
     close(10)
-
-    ! compute things derived from parameters 
-    sigmad = (pi * grain_radius**2)/(1.-albedo)  ! cross section [cm]
 
     return
 
@@ -163,17 +165,69 @@ contains
        write(unit,'(a,a,a)') '[dust]'
        write(unit,'(a,ES10.3)') '  albedo       = ',albedo
        write(unit,'(a,ES10.3)') '  g_dust       = ',g_dust
-       write(unit,'(a,ES10.3)') '  grain_radius = ',grain_radius
+       write(unit,'(a,a)')      '  dust_model   = ',trim(dust_model)
     else
        write(*,'(a,a,a)') '[dust]'
        write(*,'(a,ES10.3)') '  albedo       = ',albedo
        write(*,'(a,ES10.3)') '  g_dust       = ',g_dust
-       write(*,'(a,ES10.3)') '  grain_radius = ',grain_radius
+       write(*,'(a,a)')      '  dust_model   = ',trim(dust_model)
     end if
 
     return
 
   end subroutine print_dust_params
 
+  
+  function sigma_d(lbda,model)
 
+    ! returns the effective cross section of dust (per H atom), in cgs, at wavelength lbda (in A),
+    ! for a given model. NB: this is the total cross section (including abs. and scat. probs). 
+    ! Models can be 'SMC' or 'LMC', which are taken from fits given by Gnedin, Kravtsov, and Chen (2008). 
+    
+    implicit none 
+
+    real(kind=8),intent(in)  :: lbda
+    character(20),intent(in) :: model
+    real(kind=8)             :: sigma_d,x
+    integer(kind=4)          :: i
+    ! SMC parameters
+    real(kind=8),parameter,dimension(7) :: smc_lbda = (/0.042d0,0.08d0,0.22d0,9.7d0,18.d0,25.d0,0.067d0/)*1d4   ! [A]  
+    real(kind=8),parameter,dimension(7) :: smc_a    = (/185d0,27d0,0.005d0,0.010d0,0.012d0,0.03d0,10d0/)
+    real(kind=8),parameter,dimension(7) :: smc_b    = (/90d0,15.5d0,-1.95d0,-1.95d0,-1.8d0,0d0,1.9d0/)
+    real(kind=8),parameter,dimension(7) :: smc_p    = (/2d0,4d0,2d0,2d0,2d0,2d0,4d0/)
+    real(kind=8),parameter,dimension(7) :: smc_q    = (/2d0,4d0,2d0,2d0,2d0,2d0,15d0/)
+    real(kind=8),parameter              :: smc_sig0 = 1.0d-22  ! [cm^-2]
+    ! LMC parameters
+    real(kind=8),parameter,dimension(7) :: lmc_lbda = (/0.046d0,0.08d0,0.22d0,9.7d0,18d0,25d0,0.067d0/)*1d4    ! [A]
+    real(kind=8),parameter,dimension(7) :: lmc_a    = (/90d0,19d0,0.023d0,0.005d0,0.006d0,0.02d0,10d0/)
+    real(kind=8),parameter,dimension(7) :: lmc_b    = (/90d0,21d0,-1.95d0,-1.95d0,-1.8d0,0d0,1.9d0/)
+    real(kind=8),parameter,dimension(7) :: lmc_p    = (/2d0,4.5d0,2d0,2d0,2d0,2d0,4d0/)
+    real(kind=8),parameter,dimension(7) :: lmc_q    = (/2d0,4.5d0,2d0,2d0,2d0,2d0,15d0/)
+    real(kind=8),parameter              :: lmc_sig0 = 3.d-22  ! [cm^-2]
+
+    sigma_d = 0.0d0
+    select case(trim(model))
+    case('SMC')
+       do i = 1,7
+          x = lbda / smc_lbda(i)
+          sigma_d = sigma_d + smc_a(i) / (x**smc_p(i) + x**(-smc_q(i)) + smc_b(i))
+       end do
+       sigma_d = sigma_d * smc_sig0
+    case('LMC')
+       do i = 1,7
+          x = lbda / lmc_lbda(i)
+          sigma_d = sigma_d + lmc_a(i) / (x**lmc_p(i) + x**(-lmc_q(i)) + lmc_b(i))
+       end do
+       sigma_d = sigma_d * lmc_sig0
+    case default
+       print*,'dust model unknown',trim(model)
+       stop
+    end select
+
+    return
+    
+  end function sigma_d
+
+  
 end module module_dust_model
+
