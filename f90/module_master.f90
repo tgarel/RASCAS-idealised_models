@@ -8,15 +8,14 @@ module module_master
 
   private
   
-  integer,dimension(:),allocatable              :: first,last,nqueue,ncpuperdom
-  integer,dimension(:,:),allocatable            :: next
-  integer,dimension(:), allocatable             :: cpu
-  real(kind=8), dimension(:), allocatable       :: delta
-  type(photon_current),dimension(:),allocatable :: photgrid, photpacket
-  integer                                       :: nphot
-  type(domain)                                  :: compute_dom
-  type(mesh)                                    :: meshdom
-  type(domain),dimension(:),allocatable         :: domain_list
+  integer(kind=4),dimension(:),allocatable         :: first,last,nqueue,ncpuperdom
+  integer(kind=4),dimension(:,:),allocatable       :: next
+  integer(kind=4),dimension(:), allocatable        :: cpu
+  real(kind=8), dimension(:), allocatable          :: delta
+  type(photon_current),dimension(:),allocatable    :: photgrid, photpacket
+  integer(kind=4)                                  :: nphot
+  type(domain)                                     :: compute_dom
+  type(domain),dimension(:),allocatable            :: domain_list
   
   ! --------------------------------------------------------------------------
   ! user-defined parameters - read from section [worker] of the parameter file
@@ -38,11 +37,9 @@ contains
     character(2000),intent(in)                    :: file_ICs
     integer(kind=4),intent(in)                    :: nbuffer
     character(2000),intent(in)                    :: fileout
-    
-    integer :: i,j,icpu,idcpu,jnewdom,nphottodo,count,ncpuended,ntest
-    logical :: survivor
-    logical :: init,everything_not_done
-    real(kind=8) :: start_initphot, end_initphot
+    integer(kind=4)                               :: i,j,icpu,idcpu,jnewdom,nphottodo,ncpuended,ntest
+    logical                                       :: everything_not_done
+    real(kind=8)                                  :: start_initphot, end_initphot
 
     call cpu_time(start_initphot)
 
@@ -54,12 +51,12 @@ contains
 
     ! some sanity checks
     if(nbuffer*nslave>nphot)then
-       print *,'decrease nbuffer and/or ncpu'
+       print *,'ERROR: decrease nbuffer and/or ncpu'
        call mpi_stop
     endif
     ! guidance for a good load-balancing
     if(4*nbuffer*nslave>nphot)then
-       print *,'decrease nbuffer for a good load-balancing of the code'
+       print *,'ERROR: decrease nbuffer for a good load-balancing of the code'
        print *,'--> suggested nbuffer =', nphot/nslave/10
        call mpi_stop
     endif
@@ -103,31 +100,23 @@ contains
     ! send a first chunk of photons to each worker
     do icpu=1,nslave
 
+       ! identify the mesh domain of the targeted worker
        j=cpu(icpu)
-
-       !!if(verbose) print*,'icpu / idom =',icpu,j
        if(verbose) print '(" [master] allocates domain ",i5," to cpu ",i5)',j,icpu
        
-       ! build an array/list/buffer of photons to send
+       ! construct a list of photons to send
        call fill_buffer(j,photpacket,nbuffer)
 
-       ! Send the photon buffer to the workers
-       ! TODO : definir le MPI_TYPE correspondant
-       ! and identify the target cpu
-
-       !if(verbose)print*,'send domain number',j
+       ! Send the mesh domain number to the worker
        call MPI_SEND(j, 1, MPI_INTEGER, icpu, tag , MPI_COMM_WORLD, code)
 
-       !if(verbose)print*,'send photpacket to cpu',icpu
+       ! Send the photon buffer to the worker
        call MPI_SEND(photpacket(1)%id, nbuffer, MPI_TYPE_PHOTON, icpu, tag , MPI_COMM_WORLD, code)
-       !!call MPI_SEND (nbuff_local, 1, MPI_INTEGER, proc, WORK_TAG , MPI_COMM_WORLD, IERROR)
-       !!call MPI_SEND (photarray, nbuff_local, MPI_PHOTON, icpu, WORK_TAG, MPI_COMM_WORLD, IERROR)
        
     end do
 
     everything_not_done=.true.
 
-    count=0
     ncpuended=0
     
     if(verbose) print*,'[master] starting loop...'
@@ -135,7 +124,6 @@ contains
     ! Receive and append to pertinent domain list
     do while(everything_not_done)
 
-       ! First, receive information from a given CPU and identify the CPU
        if(verbose) then
           print*,'[master] NQueue     =',nqueue(:)
           print*,'[master] NCpuPerDom =',ncpuperdom(:)
@@ -143,69 +131,46 @@ contains
           print*,' '
        endif
 
+       ! First, receive information from a given CPU and identify the CPU
        call MPI_RECV(ntest, 1, MPI_INTEGER, MPI_ANY_SOURCE, MPI_ANY_TAG, MPI_COMM_WORLD, status, IERROR)
 
        idcpu = status(MPI_SOURCE)
 
-       !if (verbose) print *,'[master] received from worker...',ntest
-       !print *,MPI_ANY_SOURCE,status
-       !print *,idcpu
-
        call MPI_RECV(photpacket(1)%id, nbuffer, MPI_TYPE_PHOTON, idcpu, DONE_TAG, MPI_COMM_WORLD, status, IERROR)
 
        if (verbose) print*,'[master] receive a packet of',nbuffer,' photons from worker',idcpu
-       !if (verbose) print*,'[master] ', photpacket(1)%id
-       count = count+1
-       !if(verbose)print*,'count =',count
 
        ! By construction, photons that arrive here are not going to go back to the same domain, 
        !   i.e they are either dead (status=1or2) either in transit (status=0)
        do i=1,nbuffer
 
           if((photpacket(i)%status==0).and.(ndomain==1))then
-             print*,'pb with photon buffer in master...'
-             stop
+             print*,'ERROR: pb with photon buffer in master...'
+             call mpi_stop
           endif
+          ! empty packet, nothing to do
           if(photpacket(i)%status==-1)exit
 
-          !!!!write(*,*)'photon update',i,photpacket(i)%ID,photpacket(i)%status   !!!,photpacket(i)%pos(1)
-
-          survivor=.false.
-
-          ! define code or change status into logical...
-          if (photpacket(i)%status == 0) then
-             survivor=.true.
-          endif
-
-          if(survivor)then
-             ! find my new domain, photon by photon
+          if (photpacket(i)%status==0) then             ! photon in transit
+             ! find my new domain
              jnewdom = get_my_new_domain(photpacket(i)%xcurr,domain_list)
-             !print*,'jnewdom=',jnewdom
-
              ! append the jnewdom queue
              call add_photon_to_domain(photpacket(i)%ID,jnewdom)
-             ! j'ai l'impression que la meme routine peut servir ici, check with JB
-
-          else
-             ! it means that photon escaped (status=1) or has been absorbed by dust (status=2)
-             !call write_result(photpacket(i)%ID)
-             !...
           endif
 
           ! whatever the status, update grid values for the photon
           call update_grid(i)
-          !...
 
        enddo
 
-       ! empty photpacket...
+       ! clear photpacket
        photpacket(:)%status=-1
 
        ! check end of work
        nphottodo=sum(nqueue)
        if(nphottodo <= 0)then
+          ! no more photon to send
 
-          !!call MPI_SEND(idcpu, 1, MPI_INTEGER, idcpu, exi_tag , MPI_COMM_WORLD, code)
           ! first count ended cpu, to not skip last working cpu...
           ncpuended=ncpuended+1
           if(ncpuended==nslave)then
@@ -241,18 +206,11 @@ contains
     ! synchronization, for profiling purposes
     call MPI_BARRIER(MPI_COMM_WORLD,code)    
 
-
-    ! need to cleanly finish...???
-    !do icpu=1,nslave
-    !   if(verbose) print*,'[master] sending exit code to',icpu
-    !   call MPI_SEND(icpu, 1, MPI_INTEGER, icpu, exi_tag , MPI_COMM_WORLD, code)
-    !   !call MPI_SEND(photpacket(1)%id, nbuffer, MPI_TYPE_PHOTON, icpu, exi_tag , MPI_COMM_WORLD, code)
-    !end do
-
-    call check_results
-
-    print *,' '
-    print*,'[master] --> writing results in file: ',trim(fileout)
+    if(verbose)then
+       call print_diagnostics
+       print *,' '
+       print *,'[master] --> writing results in file: ',trim(fileout)
+    endif
     call dump_photons(fileout,photgrid)
 
     deallocate(photgrid)
@@ -268,18 +226,16 @@ contains
   !===================================================================================================
 
 
-
-
-  subroutine check_results
+  subroutine print_diagnostics
 
     implicit none
-    integer :: i
+    integer(kind=4) :: i
 
     write(*,*)'--> check results routine...'
 
     ! test status of photons
     do i=1,nphot
-       if(photgrid(i)%status == 0)print*,'ohoho problem with photon status...',i,photgrid(i)%status
+       if(photgrid(i)%status == 0)print*,'ERROR: problem with photon status...',i,photgrid(i)%status
     enddo
     ! Some stats on photon status
     print *,' '
@@ -299,7 +255,7 @@ contains
        print *,'min max pos z       =',minval(photgrid%xcurr(3)),maxval(photgrid%xcurr(3))
        print *,'min max nb scatt    =',minval(photgrid%nb_abs),maxval(photgrid%nb_abs)
        print *,'min max nu          =',minval(photgrid%nu_ext),maxval(photgrid%nu_ext)
-       print *,'min max lambda      =',clight/minval(photgrid%nu_ext)*cmtoA,clight/maxval(photgrid%nu_ext)*cmtoA
+       print *,'min max lambda      =',clight/maxval(photgrid%nu_ext)*cmtoA,clight/minval(photgrid%nu_ext)*cmtoA
        print *,'min max travel time =',minval(photgrid%time),maxval(photgrid%time)
        print *,'Last scattering'
        print *,'min max pos x       =',minval(photgrid%xlast(1)),maxval(photgrid%xlast(1))
@@ -308,7 +264,7 @@ contains
        print *,' '
     endif
 
-  end subroutine check_results
+  end subroutine print_diagnostics
 
 
 
@@ -317,10 +273,10 @@ contains
     ! give cpus to domains, according to the number of photons to deal with in each domain (=nqueue)
 
     implicit none
-    integer, intent(in) :: nbuffer
-    integer, intent(in) :: ndomain
-    integer::nphottot,icpu,ndom,j
-    integer,dimension(1)::jtoo
+    integer(kind=4), intent(in)  :: nbuffer
+    integer(kind=4), intent(in)  :: ndomain
+    integer(kind=4)              :: nphottot,icpu,ndom,j
+    integer(kind=4),dimension(1) :: jtoo
     
     nphottot=sum(nqueue)
     ! due to limitation in integer precision (default is kind=4), nslave*nqueue could easily give an overflow...
@@ -333,7 +289,7 @@ contains
        ncpuperdom(jtoo) = ncpuperdom(jtoo) + nslave - sum(ncpuperdom)
     else if (sum(ncpuperdom) > nslave) then 
        write(*,*) '[master] ERROR in init_loadb ... aborting'
-       stop
+       call mpi_stop
     end if
 
     if(verbose) write(*,*)'[master] init load-balancing',nslave,sum(ncpuperdom),ncpuperdom(:)
@@ -343,7 +299,6 @@ contains
        ndom = ncpuperdom(j)
        cpu(icpu:icpu+ndom-1)=j
        icpu=icpu+ndom
-       !print*,j,ndom,icpu
 
        ! we also have to initialize delta(j)
        delta(j) = real(nqueue(j))/nbuffer/(ncpuperdom(j)+1.)
@@ -364,14 +319,13 @@ contains
   subroutine update_domain(icpu,nbuffer,ndomain)
 
     implicit none
-    integer, intent(in)::icpu
-    integer, intent(in) :: nbuffer
-    integer, intent(in) :: ndomain
-    integer :: j,jold,nphot
-    integer, dimension(1) :: jtarget, jnew
+    integer(kind=4), intent(in)   :: icpu
+    integer(kind=4), intent(in)   :: nbuffer
+    integer(kind=4), intent(in)   :: ndomain
+    integer(kind=4)               :: j,jold,nphot
+    integer(kind=4), dimension(1) :: jtarget, jnew
 
-    ! methode 1: on garde les cpus associes aux domaines jusqu'a ce qu'il n'y ait plus assez de photons 
-    ! notion de Nrun == nombre de photons pour un domaine / taille du buffer 
+    ! Note: the method used is that we keep workers allocated to their domains until there is no more photon in the domain queue.
 
     ! need to update delta for all domains
     do j=1,ndomain
@@ -381,8 +335,6 @@ contains
     j=cpu(icpu)
 
     nphot=sum(nqueue)
-
-    !write(*,*)'updating domain',j,delta(j),real(nqueue(j)),ncpuperdom(j)
 
     if(delta(j)<0.5)then
 
@@ -406,7 +358,6 @@ contains
 
     endif
 
-
   end subroutine update_domain
 
 
@@ -416,7 +367,7 @@ contains
     ! add one photon to the domain queue
 
     implicit none
-    integer, intent(in) :: i,j
+    integer(kind=4), intent(in) :: i,j
     
     if(first(j)==-1)then
        first(j)=i
@@ -436,15 +387,15 @@ contains
     ! fill photpacket(nbuffer)
 
     implicit none
-    integer, intent(in) :: j
-    integer, intent(in) :: nbuffer
+    integer(kind=4), intent(in)                           :: j
+    integer(kind=4), intent(in)                           :: nbuffer
     type(photon_current), dimension(nbuffer), intent(out) :: photpacket
-    integer :: i,fsave
+    integer(kind=4)                                       :: i,fsave
 
     i=1
     if(first(j)==-1)then
-       print*,'no no no, cannot fill buffer...'
-       stop
+       print*,'ERROR: cannot fill buffer...'
+       call mpi_stop
     endif
     photpacket(:)%ID=0
     do
@@ -462,14 +413,17 @@ contains
 
 
   subroutine update_grid(i)
+    ! update photon grid with photpacket
+    ! NB: it would be clearer to pass photpakcet in argument
 
-    integer :: myID
-    integer, intent(in) :: i
+    implicit none
+    integer(kind=4)             :: myID
+    integer(kind=4), intent(in) :: i
 
     myID = photpacket(i)%ID
     if (photgrid(myID)%ID /= myID) then
-       print*,'oh oh id mismatch'
-       stop
+       print*,'ERROR: id mismatch updating the grid'
+       call mpi_stop
        return
     endif
     photgrid(myID) = photpacket(i)
@@ -487,9 +441,9 @@ contains
     ! ---------------------------------------------------------------------------------
 
     character(*),intent(in) :: pfile
-    character(1000) :: line,name,value
-    integer(kind=4) :: err,i
-    logical         :: section_present
+    character(1000)         :: line,name,value
+    integer(kind=4)         :: err,i
+    logical                 :: section_present
     
     section_present = .false.
     open(unit=10,file=trim(pfile),status='old',form='formatted')
