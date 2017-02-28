@@ -173,7 +173,7 @@ contains
     do
        read (10,'(a)',iostat=err) line
        if(err/=0) exit
-       if (line(1:8) == '[RASCAS-serial]') then
+       if (line(1:15) == '[RASCAS-serial]') then
           section_present = .true.
           exit
        end if
