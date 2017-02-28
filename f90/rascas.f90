@@ -12,12 +12,12 @@ program main
   integer(kind=4)                          :: narg, i, j, ndomain
 
   ! --------------------------------------------------------------------------
-  ! user-defined parameters - read from section [MCLya] of the parameter file
+  ! user-defined parameters - read from section [RASCAS] of the parameter file
   ! --------------------------------------------------------------------------
   ! --- inputs 
   character(2000)           :: DataDir      = 'test/'                   ! where input files below are 
   character(2000)           :: PhotonICFile = 'Photon_IC_file.dat'      ! the file containing photons to cast.
-  character(2000)           :: DomDumpFile  = 'MCLya_domain_params.dat' ! the file describing the outputs of CreateDomDump.
+  character(2000)           :: DomDumpFile  = 'domain_decomposition_params.dat' ! the file describing the outputs of CreateDomDump.
   ! --- outputs
   character(2000)           :: fileout = 'photons_done.dat'   ! output file ... 
   ! --- miscelaneous
@@ -41,13 +41,13 @@ program main
   ! -------------------- read parameters -----------------------------------------------------
   narg = command_argument_count()
   if(narg .lt. 1)then
-     write(*,*)'You should type: MCLya params.dat'
+     write(*,*)'You should type: rascas params.dat'
      write(*,*)'File params.dat should contain a parameter namelist'
      stop
   end if
   call get_command_argument(1, parameter_file)
-  call read_mclya_params(parameter_file)
-  if(rank==0) call print_mclya_params
+  call read_rascas_params(parameter_file)
+  if(rank==0) call print_rascas_params
   ! ------------------------------------------------------------------------------------------  
 
   
@@ -72,7 +72,7 @@ program main
      ! Master section, will dispatch the jobs.
      call master(file_compute_dom, ndomain, domain_file_list, PhotonICFile, nbuffer, fileout)
   else
-     ! Worker section, will mostly do radiative transfer (MCLya)
+     ! Worker section, will mostly do radiative transfer (MCRT)
      call worker(file_compute_dom, ndomain, mesh_file_list, nbuffer)
   end if
 
@@ -90,7 +90,7 @@ program main
 
 contains
 
-    subroutine read_mclya_params(pfile)
+    subroutine read_rascas_params(pfile)
 
     ! ---------------------------------------------------------------------------------
     ! subroutine which reads parameters of current module in the parameter file pfile
@@ -110,7 +110,7 @@ contains
     do
        read (10,'(a)',iostat=err) line
        if(err/=0) exit
-       if (line(1:7) == '[MCLya]') then
+       if (line(1:7) == '[RASCAS]') then
           section_present = .true.
           exit
        end if
@@ -154,10 +154,10 @@ contains
     
     return
 
-  end subroutine read_mclya_params
+  end subroutine read_rascas_params
 
   
-  subroutine print_mclya_params(unit)
+  subroutine print_rascas_params(unit)
 
     ! ---------------------------------------------------------------------------------
     ! write parameter values to std output or to an open file if argument unit is
@@ -167,7 +167,7 @@ contains
     integer(kind=4),optional,intent(in) :: unit
 
     if (present(unit)) then 
-       write(unit,'(a)')             '[MCLya]'
+       write(unit,'(a)')             '[RASCAS]'
        write(unit,'(a,a)')           '  DataDir        = ',trim(DataDir)
        write(unit,'(a,a)')           '  PhotonICFile   = ',trim(PhotonICFile)
        write(unit,'(a,a)')           '  DomDumpFile    = ',trim(DomDumpFile)
@@ -181,7 +181,7 @@ contains
     else
        write(*,'(a)')             '--------------------------------------------------------------------------------'
        write(*,'(a)')             ''
-       write(*,'(a)')             '[MCLya]'
+       write(*,'(a)')             '[RASCAS]'
        write(*,'(a,a)')           '  DataDir        = ',trim(DataDir)
        write(*,'(a,a)')           '  PhotonICFile   = ',trim(PhotonICFile)
        write(*,'(a,a)')           '  DomDumpFile    = ',trim(DomDumpFile)
@@ -198,7 +198,7 @@ contains
 
     return
 
-  end subroutine print_mclya_params
+  end subroutine print_rascas_params
 
   
 end program main

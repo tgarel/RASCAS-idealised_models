@@ -20,12 +20,12 @@ program main
   integer(kind=4)                               :: narg, i, j, ndomain
   
   ! --------------------------------------------------------------------------
-  ! user-defined parameters - read from section [serial] of the parameter file
+  ! user-defined parameters - read from section [RASCAS-serial] of the parameter file
   ! --------------------------------------------------------------------------
   ! --- inputs 
   character(2000)           :: DataDir      = 'test/'                   ! where input files below are 
   character(2000)           :: PhotonICFile = 'Photon_IC_file.dat'      ! the file containing photons to cast.
-  character(2000)           :: DomDumpFile  = 'MCLya_domain_params.dat' ! the file describing the outputs of CreateDomDump.
+  character(2000)           :: DomDumpFile  = 'domain_decomposition_params.dat' ! the file describing the outputs of CreateDomDump.
   ! --- outputs
   character(2000)           :: fileout = 'photons_done.dat'   ! output file ... 
   ! --- miscelaneous
@@ -38,7 +38,7 @@ program main
   ! -------------------- read parameters --------------------
   narg = command_argument_count()
   if(narg .lt. 1)then
-     write(*,*)'You should type: serial params.dat'
+     write(*,*)'You should type: rascas-serial params.dat'
      write(*,*)'File params.dat should contain a parameter namelist'
      stop
   end if
@@ -115,7 +115,7 @@ program main
   if(verbose)then
      ! test status of photons
      do i=1,nphot
-        if(photgrid(i)%status == 0)print*,'ohoho problem with photon status...',i,photgrid(i)%status
+        if(photgrid(i)%status == 0)print*,'ERROR: ohoho problem with photon status...',i,photgrid(i)%status
      enddo
      ! Some stats on photon status
      print *,' '
@@ -173,7 +173,7 @@ contains
     do
        read (10,'(a)',iostat=err) line
        if(err/=0) exit
-       if (line(1:8) == '[serial]') then
+       if (line(1:8) == '[RASCAS-serial]') then
           section_present = .true.
           exit
        end if
@@ -227,7 +227,7 @@ contains
     integer(kind=4),optional,intent(in) :: unit
 
     if (present(unit)) then 
-       write(unit,'(a)')             '[serial]'
+       write(unit,'(a)')             '[RASCAS-serial]'
        write(unit,'(a,a)')           '  DataDir        = ',trim(DataDir)
        write(unit,'(a,a)')           '  PhotonICFile   = ',trim(PhotonICFile)
        write(unit,'(a,a)')           '  DomDumpFile    = ',trim(DomDumpFile)
@@ -238,7 +238,7 @@ contains
     else
        write(*,'(a)')             '--------------------------------------------------------------------------------'
        write(*,'(a)')             ''
-       write(*,'(a)')             '[serial]'
+       write(*,'(a)')             '[RASCAS-serial]'
        write(*,'(a,a)')           '  DataDir        = ',trim(DataDir)
        write(*,'(a,a)')           '  PhotonICFile   = ',trim(PhotonICFile)
        write(*,'(a,a)')           '  DomDumpFile    = ',trim(DomDumpFile)

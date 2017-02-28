@@ -56,7 +56,7 @@ program CreateDomDump
   ! -------------------- read parameters --------------------
   narg = command_argument_count()
   if(narg .lt. 1)then
-     write(*,*)'You should type: serial params.dat'
+     write(*,*)'You should type: CreateDomDump params.dat'
      write(*,*)'File params.dat should contain a parameter namelist'
      stop
   end if
@@ -126,7 +126,7 @@ program CreateDomDump
   ! write master info
   fichier = "compute_domain.dom"
   call domain_write_file(trim(datadir)//trim(fichier),domaine_de_calcul)
-  fichier2 = "MCLya_domain_params.dat"
+  fichier2 = "domain_decomposition_params.dat"
   open(unit=10, file=trim(datadir)//trim(fichier2))
   write(10,*) 'computational_domain_file = ',trim(fichier)
   write(10,*) 'Ndomain = ',decomp_dom_ndomain

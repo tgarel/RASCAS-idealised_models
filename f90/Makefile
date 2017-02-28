@@ -3,9 +3,9 @@
 
 #SYSTYPE="CCF"
 #SYSTYPE="lyocral"
-SYSTYPE="lyocralP"
-#SYSTYPE="mac"
-#SYSTYPE="Pmac"
+#SYSTYPE="lyocralP"
+SYSTYPE="mac"
+#SYSTYPE="macP"
 #SYSTYPE="ccage"
 
 OPTIONS = -cpp
@@ -44,7 +44,7 @@ endif
 
 ifeq ($(SYSTYPE),"mac")
 F90         = gfortran-mp-4.7 -ffree-line-length-none -ffree-form  ###-fopenmp
-FFLAGS      = -g -fcheck=all -ftrapv -fbacktrace -Wall
+FFLAGS      = -g -fcheck=all -ftrapv -fbacktrace -Wall -fbounds-check
 ##FFLAGS      = -O2
 FFLAGS += $(OPTIONS)
 ###FFLAGS      = -O3
@@ -52,9 +52,9 @@ LDFLAGS     =
 endif
 
 
-ifeq ($(SYSTYPE),"Pmac")
+ifeq ($(SYSTYPE),"macP")
 F90         = mpif90-openmpi-mp
-FFLAGS      = -g -fcheck=all -ffree-line-length-none -ffree-form -ftrapv -fbounds-check -fbacktrace
+FFLAGS      = -g -fcheck=all -ffree-line-length-none -ffree-form -ftrapv -fbounds-check -fbacktrace -Wall
 #FFLAGS      = -O3
 FFLAGS += $(OPTIONS)
 LDFLAGS     = #-lmpi
@@ -73,24 +73,24 @@ endif
 #############################################################################
 # All objects
 
+# choose the gas mix you want to use
+# 1/ HI, D, and dust
 COMPOBJS = module_dust_model.o module_D_model.o module_HI_model.o module_gas_composition_HI_D_dust.o
+# 2/ HI and dust
+#COMPOBJS = module_dust_model.o module_HI_model.o module_gas_composition_HI_dust.o
+# 3/ pure HI
 #COMPOBJS = module_HI_model.o module_gas_composition_HI.o
-#COMPOBJS = module_gas_ramses.o
+# 4/ pure RAMSES hydro variables
+#COMPOBJS = module_gas_composition_ramses.o
 
-#GASOBJS = module_constants.o module_ramses.o module_random.o module_utils.o module_uparallel.o $(COMPOBJS)
+
 GASOBJS = module_domain.o module_constants.o module_ramses.o module_random.o module_utils.o module_uparallel.o $(COMPOBJS)
 
-#OBJSCOM = $(GASOBJS) module_select.o module_domain.o module_mesh.o
-OBJSCOM = $(GASOBJS) module_select.o module_mesh.o
+OBJSDOM = $(GASOBJS) module_select.o module_mesh.o
 
-OBJS1 = $(OBJSCOM) output2subvol.o
+OBJSPHO = $(GASOBJS) module_mesh.o module_photon.o 
 
-OBJS2 = $(OBJSCOM) CreateDomDump.o
-
-#OBJSMC = $(GASOBJS) module_domain.o module_mesh.o module_photon.o
-OBJSMC = $(GASOBJS) module_mesh.o module_photon.o 
-
-OBJSMPI = $(OBJSMC) module_parallel_mpi.o module_worker.o module_master.o MCLya.o
+OBJSMPI = $(OBJSPHO) module_parallel_mpi.o module_worker.o module_master.o
 
 #############################################################################
 #.SUFFIXES: .o .f90
@@ -101,26 +101,26 @@ OBJSMPI = $(OBJSMC) module_parallel_mpi.o module_worker.o module_master.o MCLya.
 	$(F90) $(FFLAGS) -c $^ -o $@
 
 #############################################################################
-all: clean CreateDomDump PhotonsFromSourceModel serial PhotonsFromStars ## MCLya
+all: clean CreateDomDump PhotonsFromSourceModel PhotonsFromStars rascas-serial
 
-PhotonsFromSourceModel: $(OBJSMC) PhotonsFromSourceModel.o
-	$(F90) $(FFLAGS) $(LDFLAGS) -o $@ $(OBJSMC) PhotonsFromSourceModel.o
+PhotonsFromSourceModel: $(OBJSPHO) PhotonsFromSourceModel.o
+	$(F90) $(FFLAGS) $(LDFLAGS) -o $@ $(OBJSPHO) PhotonsFromSourceModel.o
 
-PhotonsFromStars: $(OBJSMC) PhotonsFromStars.o
-	$(F90) $(FFLAGS) $(LDFLAGS) -o $@ $(OBJSMC) PhotonsFromStars.o
+PhotonsFromStars: $(OBJSPHO) PhotonsFromStars.o
+	$(F90) $(FFLAGS) $(LDFLAGS) -o $@ $(OBJSPHO) PhotonsFromStars.o
 
-serial: $(OBJSMC) serial.o
-	$(F90) $(FFLAGS) $(LDFLAGS) -o $@ $(OBJSMC) serial.o
+CreateDomDump: $(OBJSDOM) CreateDomDump.o
+	$(F90) $(FFLAGS) $(LDFLAGS) -o $@ $(OBJSDOM) CreateDomDump.o
 
-MCLya: $(OBJSMPI) MCLya.o
-	$(F90) $(FFLAGS) $(LDFLAGS) -o $@ $(OBJSMPI)
+output2subvol: $(OBJSDOM) output2subvol.o
+	$(F90) $(FFLAGS) $(LDFLAGS) -o $@ $(OBJSDOM) output2subvol.o
 
-output2subvol: $(OBJS1) output2subvol.o
-	$(F90) $(FFLAGS) $(LDFLAGS) -o $@ $(OBJS1)
+rascas-serial: $(OBJSPHO) rascas-serial.o
+	$(F90) $(FFLAGS) $(LDFLAGS) -o $@ $(OBJSPHO) rascas-serial.o
 
-CreateDomDump: $(OBJS2) CreateDomDump.o
-	$(F90) $(FFLAGS) $(LDFLAGS) -o $@ $(OBJS2)
+rascas: $(OBJSMPI) rascas.o
+	$(F90) $(FFLAGS) $(LDFLAGS) -o $@ $(OBJSMPI) rascas.o
 
 clean:
-	rm -f $(OBJS1) $(OBJS2) $(OBJSMC) $(OBJSMPI) *.o *.mod
+	rm -f $(OBJSDOM) $(OBJSPHO) $(OBJSMPI) *.o *.mod
 #############################################################################
