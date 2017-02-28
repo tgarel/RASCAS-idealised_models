@@ -28,8 +28,8 @@ program main
   
   call cpu_time(start)
 
-  call initialisation_mpi
-  call type_derive
+  call start_mpi
+  call define_mpi_type
 
   nslave=nb_cpus-1
 
@@ -81,7 +81,7 @@ program main
   ! deallocations
   deallocate(mesh_file_list,domain_file_list)
   
-  call finalisation_mpi
+  call finish_mpi
   call cpu_time(finish)
   if(rank==0)then
      print*,'--> work done, MPI finalized'

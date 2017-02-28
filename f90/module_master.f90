@@ -52,13 +52,13 @@ contains
     ! some sanity checks
     if(nbuffer*nslave>nphot)then
        print *,'ERROR: decrease nbuffer and/or ncpu'
-       call mpi_stop
+       call stop_mpi
     endif
     ! guidance for a good load-balancing
     if(4*nbuffer*nslave>nphot)then
        print *,'ERROR: decrease nbuffer for a good load-balancing of the code'
        print *,'--> suggested nbuffer =', nphot/nslave/10
-       call mpi_stop
+       call stop_mpi
     endif
 
     allocate(photpacket(nbuffer))
@@ -146,7 +146,7 @@ contains
 
           if((photpacket(i)%status==0).and.(ndomain==1))then
              print*,'ERROR: pb with photon buffer in master...'
-             call mpi_stop
+             call stop_mpi
           endif
           ! empty packet, nothing to do
           if(photpacket(i)%status==-1)exit
@@ -289,7 +289,7 @@ contains
        ncpuperdom(jtoo) = ncpuperdom(jtoo) + nslave - sum(ncpuperdom)
     else if (sum(ncpuperdom) > nslave) then 
        write(*,*) '[master] ERROR in init_loadb ... aborting'
-       call mpi_stop
+       call stop_mpi
     end if
 
     if(verbose) write(*,*)'[master] init load-balancing',nslave,sum(ncpuperdom),ncpuperdom(:)
@@ -395,7 +395,7 @@ contains
     i=1
     if(first(j)==-1)then
        print*,'ERROR: cannot fill buffer...'
-       call mpi_stop
+       call stop_mpi
     endif
     photpacket(:)%ID=0
     do
@@ -423,7 +423,7 @@ contains
     myID = photpacket(i)%ID
     if (photgrid(myID)%ID /= myID) then
        print*,'ERROR: id mismatch updating the grid'
-       call mpi_stop
+       call stop_mpi
        return
     endif
     photgrid(myID) = photpacket(i)
