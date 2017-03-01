@@ -65,7 +65,7 @@ program main
   read(18,'(a)') line ; i = scan(line,'=') ; file_compute_dom = trim(DataDir)//trim(adjustl(line(i+1:)))
   read(18,'(a)') line ; i = scan(line,'=') ; read(line(i+1:),*) ndomain
   if(ndomain/=1)then
-     print *,'ndomain /= 1 use the MPI version'
+     print *,'ERROR: ndomain /= 1 -> use the MPI version'
      stop
   endif
   allocate(mesh_file_list(ndomain))
@@ -74,12 +74,8 @@ program main
      read(18,'(a)') line ; i = scan(line,'=') ; mesh_file_list(j) = trim(DataDir)//trim(adjustl(line(i+1:)))
   end do
   close(18)
-  
   call domain_constructor_from_file(file_compute_dom,compute_dom)
-  if (verbose) print*,'computational domain built'
   call mesh_from_file(mesh_file_list(1),meshdom)
-  if (verbose) print*,'mesh read'
-  
   if (verbose) then
      print *,'--> Ndomain =',ndomain
      print *,'    |_ ',trim(file_compute_dom)
@@ -147,8 +143,11 @@ program main
   call dump_photons(fileout,photgrid)
 
   call cpu_time(finish)
-  if (verbose) print '(" --> Time = ",f12.3," seconds.")',finish-start
-
+  if (verbose) then
+     print*,'--> work done'
+     print '(" --> Time = ",f12.3," seconds.")',finish-start
+     print*,' '
+  endif
   
 
 contains

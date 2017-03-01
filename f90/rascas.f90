@@ -33,11 +33,6 @@ program main
 
   nslave=nb_cpus-1
 
-  if (rank == 0) then
-     if(verbose) print*,'--> Nworker =',nslave
-  end if
-
-  
   ! -------------------- read parameters -----------------------------------------------------
   narg = command_argument_count()
   if(narg .lt. 1)then
@@ -47,10 +42,11 @@ program main
   end if
   call get_command_argument(1, parameter_file)
   call read_rascas_params(parameter_file)
-  if(rank==0) call print_rascas_params
+  if(verbose .and. rank==0) call print_rascas_params
   ! ------------------------------------------------------------------------------------------  
 
-  
+  if (rank == 0 .and. verbose) print*,'--> Nworker =',nslave
+
   ! -------------------- Read domain list from CreateDomDump param file --------------------
   if (verbose .and. rank==0) print *,'--> reading domain and mesh...'
   open(unit=18,file=DomDumpFile,status='old',form='formatted')
@@ -83,9 +79,10 @@ program main
   
   call finish_mpi
   call cpu_time(finish)
-  if(rank==0)then
+  if(verbose .and. rank==0)then
      print*,'--> work done, MPI finalized'
      print '(" --> Time = ",f12.3," seconds.")',finish-start
+     print*,' '
   endif
 
 contains

@@ -265,7 +265,7 @@ contains
        tables_initialized = .true.
        call cpu_time(end_init_upar)
        !print*,'--done initialising u_parallel tables'
-       write(*,'(a,f12.3,a)') '--done initialising u_parallel tables in ',end_init_upar - start_init_upar,' seconds.'
+       write(*,'(a,f12.3,a)') ' --done initialising u_parallel tables in ',end_init_upar - start_init_upar,' seconds.'
     end if
     
     xin   = sign(xxin,-1.0d0) ! -> force x_int to be negative
