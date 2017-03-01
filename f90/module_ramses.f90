@@ -26,7 +26,7 @@ module module_ramses
   ! stuff read from the HYDRO files
   real(kind=8),allocatable         :: var(:,:)
   real(kind=8),allocatable         :: cell_x(:),cell_y(:),cell_z(:)
-  integer,allocatable              :: cell_level(:)
+  integer(kind=4),allocatable      :: cell_level(:)
 
   integer(kind=4)                  :: ncpu,nvar
 
@@ -80,11 +80,11 @@ module module_ramses
   logical                  :: ramses_rt      = .false. ! if true, read ramses-RT output and compute nHI and T accordingly.
   ! miscelaneous
   logical                  :: verbose        = .false. ! display some run-time info on this module
-  ! variable indices, should become user params
-  integer,parameter :: imetal = 6
-  integer,parameter :: ihii   = 7
-  integer,parameter :: iheii  = 8
-  integer,parameter :: iheiii = 9
+  ! RT variable indices, should become user params
+  integer(kind=4),parameter :: imetal = 6
+  integer(kind=4),parameter :: ihii   = 7
+  integer(kind=4),parameter :: iheii  = 8
+  integer(kind=4),parameter :: iheiii = 9
   ! --------------------------------------------------------------------------
 
   
@@ -119,14 +119,17 @@ contains
     logical                                   :: do_allocs
     integer(kind=4)                           :: icpu, ileaf, icell, ivar
 
+    if(verbose)then
+       print *,' '
+       print *,'...reading RAMSES cells...'
+    endif
+
     nleaftot = get_nleaf(repository,snapnum)  ! sets ncpu too 
     nvar     = get_nvar(repository,snapnum)
     allocate(ramses_var(nvar,nleaftot), xleaf(nleaftot,3), leaf_level(nleaftot))
     ncpu = get_ncpu(repository,snapnum)
 
-    print *,' '
-    print *,'...reading cells...'
-    print *,'nleaftot, nvar, ncpu =',nleaftot,nvar,ncpu
+    if(verbose)print *,'--> nleaftot, nvar, ncpu =',nleaftot,nvar,ncpu
 
     do_allocs = .true.
     ileaf = 0

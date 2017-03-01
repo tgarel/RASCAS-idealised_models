@@ -149,7 +149,6 @@ module module_mesh
       nCell = nCoarse + 8*nOct
 
       if (verbose) then 
-         write(*,*)
          write(*,*) 'nCoarse = ',nCoarse
          write(*,*) 'nOct    = ',nOct
          write(*,*) 'nLeaf   = ',nLeaf
@@ -168,13 +167,13 @@ module module_mesh
       ! work should be done
       ! == son, father, xoct, octlevel should be filled
       if (verbose) then 
-         write(*,*)'work done!'
-         write(*,*)'ilastoct = ',ilastoct
-         write(*,*)'cellules feuilles comptees =',countleaf
-         write(*,*)'cellules ~vides~ =',countempty
+         write(*,*)
+         write(*,*)'--> work done!'
+         write(*,*)'number of leaves counted vs. init =',countleaf,nleaves
+         write(*,*)'cells not leaf, not oct =',countempty
       end if
       ! do some checks if you want
-      call check_octtree(noctmax)
+      call check_octtree
 
 
       ! fill the mesh type structure
@@ -464,7 +463,7 @@ module module_mesh
       ! dump data in binary format
       if (verbose) then 
          write(*,*)
-         write(*,*) '...dump file...'
+         write(*,*) '...writing mesh in file: ',trim(file)
          write(*,*)
       end if
 
@@ -537,7 +536,7 @@ module module_mesh
       do ind=1,8
 
          if(level==1 .and. verbose)then
-            write(*,'(a,i1,a)')' level=1 cell # ',ind,' done'
+            write(*,'(a,i1,a)')' level=1 cell # ',ind,'/8 done'
          endif
 
          ! define cell centre and dx 
@@ -737,21 +736,13 @@ module module_mesh
       integer(kind=4) :: inbor,level,ix,iy,iz,icell,l,ison
       integer(kind=4) :: i,ind,ioct
       real(kind=8)    :: xc(3),xnbor(3),x(3),dx
-      integer(kind=4) :: noops1,noops2
+      integer(kind=4) :: noops1
 
-      if (verbose) then 
-         write(*,*)'into make nbor array...'
-         write(*,*)ncoarse,noct
-         write(*,*)minval(son),maxval(son)
-         write(*,*)minval(octlevel),maxval(octlevel)
-      end if
-      
       if (ncoarse /= 1) then 
          Print*,'ERROR: Oh no, ncoarse /= 1... '
          stop
       end if
       noops1=0
-      noops2=0
       do ioct=1,nOct  ! loop over all octs. 
          level = octlevel(ioct)   ! level of oct -> 6 neighbors are cells at level-1
          dx    = 0.5d0**(level-1) ! size of neighbor cells (or cell containing the oct)
@@ -762,7 +753,6 @@ module module_mesh
          end if
          if (level <= 0) then     ! this should not happen, but it does : what are these octs ? 
             if (level == 0) noops1 = noops1 + 1
-            !if (level == -1) noops2 = noops2 + 1
             if (level < -1) print*,'oops'
             cycle
          end if
@@ -817,11 +807,10 @@ module module_mesh
             if((ison/=0).and.(l/=level-1))then
                print*,'ERROR: Ouh la la',ioct,ison,l,level,inbor
                stop
-               !noops2=noops2+1
             end if
          end do
       end do
-      if (verbose) print*,noops1,noops2
+      if (verbose) print*,'--> error flag = ',noops1
       !-JB
 
     end subroutine make_nbor_array
@@ -888,28 +877,26 @@ module module_mesh
     
 
 
-    subroutine check_octtree(noctmax)
+    subroutine check_octtree
 
-      integer(kind=4),intent(in) :: noctmax
       integer(kind=4)            :: oct_status,i,ind,ioct,icount,icount2
 
       ! check results
       if (verbose) then 
          write(*,*)
          write(*,*)'...checking arrays...'
-         write(*,*)'min max son      ',minval(son(:)),maxval(son(:))
-         write(*,*)'min max father   ',minval(father(:)),maxval(father(:))
-         write(*,*)'min max octlevel ',minval(octlevel(:)),maxval(octlevel(:))
-         write(*,*)'min max xoct',minval(xoct(:,1)),maxval(xoct(:,1))
-         write(*,*)'min max xoct',minval(xoct(:,2)),maxval(xoct(:,3))
-         write(*,*)'min max xoct',minval(xoct(:,3)),maxval(xoct(:,2))
-         
+         write(*,*)'min max son          ',minval(son(:)),maxval(son(:))
+         write(*,*)'min max father       ',minval(father(:)),maxval(father(:))
+         write(*,*)'min max octlevel     ',minval(octlevel(:)),maxval(octlevel(:))
+         write(*,*)'min max xoct         ',minval(xoct(:,1)),maxval(xoct(:,1))
+         write(*,*)'min max yoct         ',minval(xoct(:,2)),maxval(xoct(:,3))
+         write(*,*)'min max zoct         ',minval(xoct(:,3)),maxval(xoct(:,2))
          write(*,*)'min max octlevel (>0)',minval(octlevel, mask=(octlevel >= 0)), maxval(octlevel, mask=(octlevel >= 0))
-         write(*,*)'min max xoct (>0)',minval(xoct(:,1), mask=(xoct(:,1)>=0)),maxval(xoct(:,1), mask=(xoct(:,1)>=0))
-         write(*,*)'min max xoct (>0)',minval(xoct(:,2), mask=(xoct(:,2)>=0)),maxval(xoct(:,2), mask=(xoct(:,2)>=0))
-         write(*,*)'min max xoct (>0)',minval(xoct(:,3), mask=(xoct(:,3)>=0)),maxval(xoct(:,3), mask=(xoct(:,3)>=0))
+         write(*,*)'min max xoct (>0)    ',minval(xoct(:,1), mask=(xoct(:,1)>=0)),maxval(xoct(:,1), mask=(xoct(:,1)>=0))
+         write(*,*)'min max yoct (>0)    ',minval(xoct(:,2), mask=(xoct(:,2)>=0)),maxval(xoct(:,2), mask=(xoct(:,2)>=0))
+         write(*,*)'min max zoct (>0)    ',minval(xoct(:,3), mask=(xoct(:,3)>=0)),maxval(xoct(:,3), mask=(xoct(:,3)>=0))
+         write(*,*)
       end if
-      !write(*,*)'min max ileaf      ',minval(ileaf(:)),maxval(ileaf(:))
 
       countleaf=0
       icount=0
@@ -930,11 +917,10 @@ module module_mesh
             endif
          enddo
       enddo
-      if (verbose) then 
-         write(*,*)'scan son array # of elements = ',icount
-         write(*,*)'nleaf in son                 = ',countleaf
-         write(*,*)'diff                         = ',icount-countleaf
-         write(*,*)
+      if (verbose) then
+         write(*,*)'scan son array -> # of elements = ',icount
+         write(*,*)'               -> # of leaf     = ',countleaf
+         write(*,*)'               -> diff          = ',icount-countleaf
       end if
 
       ! count incomplete octs...
@@ -954,33 +940,15 @@ module module_mesh
          if (oct_status==0)then
             icount2=icount2+1
          endif
-         !!if(oct_status>0 .and. oct_status<8)then
-         !!   print*,octlevel(i)
-         !!endif
       enddo
       
       if (verbose) then 
-         write(*,*)'incomplete & empty octs =',icount
-         write(*,*)'empty octs              =',icount2
-         write(*,*)'nOctTot - Noct          =',nOctmax-noct
-         write(*,*)
-         write(*,*)'Ncoarse + Nleaf + (Noct-1) + 8*NemptyOct =',nCoarse + nLeaf + (noct-1) + icount2*8
-         ! Leo: Noct-1 car la cellule coarse principale est aussi un oct maintenant !
-         !JB-
-         !ouh la la, vraiment ?
-         !-JB
-         write(*,*)'Ncell                   =',nCell
-         write(*,*)'nCell - (nOct + Nleaf)  =',nCell - nLeaf - nOct
-         
-         write(*,*)
-         write(*,*)'...check father array...'
-         !icount=0
-         !do i=1,nOcttot
-         !   if(father(i)==-1)then
-         !      icount=icount+1
-         !   endif
-         !enddo
-         !write(*,*)'# of -1 in father array =',icount
+         write(*,*)'scan octs'
+         write(*,*)'empty octs           =',icount2
+         write(*,*)'incomplete octs      =',icount-icount2
+         write(*,*)'Ncell                =',nCell
+         write(*,*)'nCell - nOct - Nleaf =',nCell - nLeaf - nOct
+         write(*,*)'father array'
          write(*,*) '# of -1 in father array =', count(mask=(father==-1))
          write(*,*) '# of  0 in father array =', count(mask=(father==0))
          write(*,*) '# of >0 in father array =', count(mask=(father>0))
@@ -991,8 +959,8 @@ module module_mesh
 
 
     subroutine check_struct(n,ileaf,m)
-      ! pour chaque cellule, parcourir l'arbre, retrouver la cellule feuille correspondante et checker valeur de rho
-      ! use do while loop as in make_nbor...
+      ! simple test to check the structure
+      ! for each leaf cell, take its central position, find in which cell it belongs, and check that son(cell_found)=-indice_cell
 
       integer(kind=4), intent(in)               :: n
       integer(kind=4),dimension(1:n),intent(in) :: ileaf
@@ -1009,7 +977,10 @@ module module_mesh
             stop
          endif
       end do
-      if (verbose) write(*,*) 'end of check: result = ok'
+      if (verbose)then
+         write(*,*)
+         write(*,*) '--> check result = ok'
+      endif
 
     end subroutine check_struct
 

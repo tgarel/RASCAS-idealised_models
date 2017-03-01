@@ -100,8 +100,6 @@ program CreateDomDump
   allocate(domain_list(decomp_dom_ndomain))
   allocate(domain_file_list(decomp_dom_ndomain),mesh_file_list(decomp_dom_ndomain))
   do i = 1, decomp_dom_ndomain
-     !call domain_constructor_from_scratch(domain_list(i),decomp_dom_type,xc=pos(1),yc=pos(2),zc=pos(3),r_inbound=rin(i),r_outbound=rout(i))
-     !call domain_constructor_from_scratch(domain_list(i),decomp_dom_type,xc=pos(1),yc=pos(2),zc=pos(3),size=rin(i))
      select case(decomp_dom_type)
      case('sphere')
         call domain_constructor_from_scratch(domain_list(i),decomp_dom_type, &
@@ -120,7 +118,7 @@ program CreateDomDump
      write(toto,'(a)') adjustl(toto)  ! remove leading spaces
      write(domain_file_list(i),'(a,a,a)') trim(meshroot),trim(toto),'.dom'
      write(mesh_file_list(i),'(a,a,a)') trim(meshroot),trim(toto),'.mesh'
-     if (verbose) print *,i,trim(domain_file_list(i)),' ',trim(mesh_file_list(i))
+     if (verbose) write(*,'(a,i3,a,a,a,a)') '    |_',i,'  ',trim(domain_file_list(i)),' ',trim(mesh_file_list(i))
   end do
 
   ! write master info
@@ -319,6 +317,8 @@ contains
        write(unit,'(a)')             ' '
        call print_mesh_params(unit)
     else
+       write(*,'(a)')             '--------------------------------------------------------------------------------'
+       write(*,'(a)')             ' '
        write(*,'(a,a,a)')         '[CreateDomDump]'
        write(*,'(a)')             '# input / output parameters'
        write(*,'(a,a)')           '  DataDir    = ',trim(DataDir)
@@ -360,6 +360,8 @@ contains
        write(*,'(a,L1)')          '  verbose         = ',verbose
        write(*,'(a)')             ' '
        call print_mesh_params
+       write(*,'(a)')             ' '
+       write(*,'(a)')             '--------------------------------------------------------------------------------'
     end if
 
     return
