@@ -20,6 +20,7 @@ program CreateDomDump
   integer :: noctsnap,nleaftot,nvar,nleaf_sel,i, narg
   character(2000) :: toto,meshroot,parameter_file,fichier, fichier2
   character(2000),dimension(:),allocatable :: domain_file_list, mesh_file_list
+  real(kind=8) :: computdom_max,decompdom_max
 
   ! --------------------------------------------------------------------------
   ! user-defined parameters - read from section [CreateDomDump] of the parameter file
@@ -65,30 +66,33 @@ program CreateDomDump
   if (verbose) call print_CreateDomDump_params
   ! ------------------------------------------------------------
 
-  ! read user-defined parameters 
   
-  ! Define a spherical computational domain. This domain describes the volume in which photons fly.
+  ! Define the computational domain. This domain describes the volume in which photons fly.
   select case(comput_dom_type)
   case('sphere')
      call domain_constructor_from_scratch(domaine_de_calcul,comput_dom_type, &
           xc=comput_dom_pos(1),yc=comput_dom_pos(2),zc=comput_dom_pos(3),r=comput_dom_rsp)
+     computdom_max = comput_dom_rsp
   case('shell')
      call domain_constructor_from_scratch(domaine_de_calcul,comput_dom_type, &
           xc=comput_dom_pos(1),yc=comput_dom_pos(2),zc=comput_dom_pos(3),r_inbound=comput_dom_rin,r_outbound=comput_dom_rout)
+     computdom_max = comput_dom_rout
   case('cube')
      call domain_constructor_from_scratch(domaine_de_calcul,comput_dom_type, & 
           xc=comput_dom_pos(1),yc=comput_dom_pos(2),zc=comput_dom_pos(3),size=comput_dom_size)
+     computdom_max = comput_dom_size
   case('slab')
      call domain_constructor_from_scratch(domaine_de_calcul,comput_dom_type, &
           xc=comput_dom_pos(1),yc=comput_dom_pos(2),zc=comput_dom_pos(3),thickness=comput_dom_thickness)
+     computdom_max = comput_dom_thickness
   end select
 
   
-  ! lecture de toutes les feuilles de la simu
+  ! Read all the leaf cells
   call read_leaf_cells(repository, snapnum, nleaftot, nvar, x_leaf, ramses_var, leaf_level)
   nOctSnap = get_nGridTot(repository,snapnum)
 
-  ! conversion des feuilles en proprietes voulues... -> construction du type gas
+  ! Extract and convert properties of cells into gas mix properties
   call gas_from_ramses_leaves(repository,snapnum,nleaftot,nvar,ramses_var, gas_leaves)
 
   ! domain decomposition 
@@ -99,20 +103,25 @@ program CreateDomDump
   meshroot = 'domain_'
   allocate(domain_list(decomp_dom_ndomain))
   allocate(domain_file_list(decomp_dom_ndomain),mesh_file_list(decomp_dom_ndomain))
+  decompdom_max = 0.0d0
   do i = 1, decomp_dom_ndomain
      select case(decomp_dom_type)
      case('sphere')
         call domain_constructor_from_scratch(domain_list(i),decomp_dom_type, &
              xc=decomp_dom_xc(i),yc=decomp_dom_yc(i),zc=decomp_dom_zc(i),r=decomp_dom_rsp(i))
+        decompdom_max = max(decompdom_max,decomp_dom_rsp(i))
      case('shell')
         call domain_constructor_from_scratch(domain_list(i),decomp_dom_type, &
              xc=decomp_dom_xc(i),yc=decomp_dom_yc(i),zc=decomp_dom_zc(i),r_inbound=decomp_dom_rin(i),r_outbound=decomp_dom_rout(i))
+        decompdom_max = max(decompdom_max,decomp_dom_rout(i))
      case('cube')
         call domain_constructor_from_scratch(domain_list(i),decomp_dom_type, & 
              xc=decomp_dom_xc(i),yc=decomp_dom_yc(i),zc=decomp_dom_zc(i),size=decomp_dom_size(i))
+        decompdom_max = max(decompdom_max,decomp_dom_size(i))
      case('slab')
         call domain_constructor_from_scratch(domain_list(i),decomp_dom_type, &
              xc=decomp_dom_xc(i),yc=decomp_dom_yc(i),zc=decomp_dom_zc(i),thickness=decomp_dom_thickness(i))
+        decompdom_max = max(decompdom_max,decomp_dom_thickness(i))
      end select
      write(toto,'(i8)') i
      write(toto,'(a)') adjustl(toto)  ! remove leading spaces
@@ -120,6 +129,12 @@ program CreateDomDump
      write(mesh_file_list(i),'(a,a,a)') trim(meshroot),trim(toto),'.mesh'
      if (verbose) write(*,'(a,i3,a,a,a,a)') '    |_',i,'  ',trim(domain_file_list(i)),' ',trim(mesh_file_list(i))
   end do
+
+  ! The computational domain should be fully enclosed in the domain mesh.
+  if (computdom_max >= decompdom_max) then
+     print*,'ERROR: computational domain should be fully enclosed in the data domains.'
+     stop
+  endif
 
   ! write master info
   fichier = "compute_domain.dom"
@@ -136,7 +151,7 @@ program CreateDomDump
   end do
   close(10)
 
-  ! creation des mesh
+  ! building of the meshes
   do i = 1,decomp_dom_ndomain
      call select_in_domain(domain_list(i), nleaftot, x_leaf, ind_sel)
      call select_from_domain(arr_in=x_leaf,     ind_sel=ind_sel, arr_out=xleaf_sel)
