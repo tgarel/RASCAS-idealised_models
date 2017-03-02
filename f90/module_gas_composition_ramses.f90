@@ -145,6 +145,7 @@ contains
        print *,"ERROR: this gas composition do not admit parameter, better stop..."
        stop
     endif
+    close(10)
 
     call read_ramses_params(pfile)
 
