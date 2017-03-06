@@ -112,8 +112,8 @@ PhotonsFromStars: $(OBJSPHO) PhotonsFromStars.o
 CreateDomDump: $(OBJSDOM) CreateDomDump.o
 	$(F90) $(FFLAGS) $(LDFLAGS) -o $@ $(OBJSDOM) CreateDomDump.o
 
-output2subvol: $(OBJSDOM) output2subvol.o
-	$(F90) $(FFLAGS) $(LDFLAGS) -o $@ $(OBJSDOM) output2subvol.o
+ExtractSubvol: $(OBJSDOM) ExtractSubvol.o
+	$(F90) $(FFLAGS) $(LDFLAGS) -o $@ $(OBJSDOM) ExtractSubvol.o
 
 rascas-serial: $(OBJSPHO) rascas-serial.o
 	$(F90) $(FFLAGS) $(LDFLAGS) -o $@ $(OBJSPHO) rascas-serial.o
