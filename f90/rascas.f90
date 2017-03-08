@@ -6,18 +6,18 @@ program main
 
   implicit none
 
-  real(kind=8) :: start,finish
-  character(2000) :: parameter_file, line, file_compute_dom
+  real(kind=8)                             :: start,finish
+  character(2000)                          :: parameter_file, line, file_compute_dom
   character(2000),allocatable,dimension(:) :: mesh_file_list, domain_file_list
-  integer(kind=4) :: narg, i, j, ndomain
+  integer(kind=4)                          :: narg, i, j, ndomain
 
   ! --------------------------------------------------------------------------
-  ! user-defined parameters - read from section [MCLya] of the parameter file
+  ! user-defined parameters - read from section [RASCAS] of the parameter file
   ! --------------------------------------------------------------------------
   ! --- inputs 
   character(2000)           :: DataDir      = 'test/'                   ! where input files below are 
   character(2000)           :: PhotonICFile = 'Photon_IC_file.dat'      ! the file containing photons to cast.
-  character(2000)           :: DomDumpFile  = 'MCLya_domain_params.dat' ! the file describing the outputs of CreateDomDump.
+  character(2000)           :: DomDumpFile  = 'domain_decomposition_params.dat' ! the file describing the outputs of CreateDomDump.
   ! --- outputs
   character(2000)           :: fileout = 'photons_done.dat'   ! output file ... 
   ! --- miscelaneous
@@ -28,29 +28,25 @@ program main
   
   call cpu_time(start)
 
-  call initialisation_mpi
-  call type_derive
+  call start_mpi
+  call define_mpi_type
 
   nslave=nb_cpus-1
 
-  if (rank == 0) then
-     if(verbose) print*,'--> Nworker =',nslave
-  end if
-
-  
   ! -------------------- read parameters -----------------------------------------------------
   narg = command_argument_count()
   if(narg .lt. 1)then
-     write(*,*)'You should type: serial params.dat'
+     write(*,*)'You should type: rascas params.dat'
      write(*,*)'File params.dat should contain a parameter namelist'
      stop
   end if
   call get_command_argument(1, parameter_file)
-  call read_mclya_params(parameter_file)
-  if(rank==0) call print_mclya_params
+  call read_rascas_params(parameter_file)
+  if(verbose .and. rank==0) call print_rascas_params
   ! ------------------------------------------------------------------------------------------  
 
-  
+  if (rank == 0 .and. verbose) print*,'--> Nworker =',nslave
+
   ! -------------------- Read domain list from CreateDomDump param file --------------------
   if (verbose .and. rank==0) print *,'--> reading domain and mesh...'
   open(unit=18,file=DomDumpFile,status='old',form='formatted')
@@ -72,26 +68,26 @@ program main
      ! Master section, will dispatch the jobs.
      call master(file_compute_dom, ndomain, domain_file_list, PhotonICFile, nbuffer, fileout)
   else
-     ! Worker section, will mostly do radiative transfer (MCLya)
+     ! Worker section, will mostly do radiative transfer (MCRT)
      call worker(file_compute_dom, ndomain, mesh_file_list, nbuffer)
   end if
 
-  ! write results
-
+  ! write results: this is done by master
 
   ! deallocations
   deallocate(mesh_file_list,domain_file_list)
   
-  call finalisation_mpi
+  call finish_mpi
   call cpu_time(finish)
-  if(rank==0)then
+  if(verbose .and. rank==0)then
      print*,'--> work done, MPI finalized'
      print '(" --> Time = ",f12.3," seconds.")',finish-start
+     print*,' '
   endif
 
 contains
 
-    subroutine read_mclya_params(pfile)
+    subroutine read_rascas_params(pfile)
 
     ! ---------------------------------------------------------------------------------
     ! subroutine which reads parameters of current module in the parameter file pfile
@@ -111,7 +107,7 @@ contains
     do
        read (10,'(a)',iostat=err) line
        if(err/=0) exit
-       if (line(1:7) == '[MCLya]') then
+       if (line(1:8) == '[RASCAS]') then
           section_present = .true.
           exit
        end if
@@ -132,7 +128,7 @@ contains
           case ('verbose')
              read(value,*) verbose
           case ('DataDir')
-             write(DataDir,'(a)') trim(value)
+             write(DataDir,'(a,"/")') trim(value)
           case ('PhotonICFile')
              write(PhotonICFile,'(a)') trim(value)
           case ('DomDumpFile')
@@ -155,10 +151,10 @@ contains
     
     return
 
-  end subroutine read_mclya_params
+  end subroutine read_rascas_params
 
   
-  subroutine print_mclya_params(unit)
+  subroutine print_rascas_params(unit)
 
     ! ---------------------------------------------------------------------------------
     ! write parameter values to std output or to an open file if argument unit is
@@ -168,7 +164,7 @@ contains
     integer(kind=4),optional,intent(in) :: unit
 
     if (present(unit)) then 
-       write(unit,'(a)')             '[MCLya]'
+       write(unit,'(a)')             '[RASCAS]'
        write(unit,'(a,a)')           '  DataDir        = ',trim(DataDir)
        write(unit,'(a,a)')           '  PhotonICFile   = ',trim(PhotonICFile)
        write(unit,'(a,a)')           '  DomDumpFile    = ',trim(DomDumpFile)
@@ -182,7 +178,7 @@ contains
     else
        write(*,'(a)')             '--------------------------------------------------------------------------------'
        write(*,'(a)')             ''
-       write(*,'(a)')             '[MCLya]'
+       write(*,'(a)')             '[RASCAS]'
        write(*,'(a,a)')           '  DataDir        = ',trim(DataDir)
        write(*,'(a,a)')           '  PhotonICFile   = ',trim(PhotonICFile)
        write(*,'(a,a)')           '  DomDumpFile    = ',trim(DomDumpFile)
@@ -199,7 +195,7 @@ contains
 
     return
 
-  end subroutine print_mclya_params
+  end subroutine print_rascas_params
 
   
 end program main

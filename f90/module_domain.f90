@@ -4,7 +4,6 @@ module module_domain
 
   public
   
-  !JB: les types ci-dessous pourraient etre prives (et meme dans des modules) ?
   type shell
      real(kind=8),dimension(3) :: center
      real(kind=8)              :: r_inbound,r_outbound
@@ -36,13 +35,13 @@ module module_domain
 
 contains
   
-  ! ================
-  ! public (tout...) 
-  ! ================
+  !--------------------------------------------------------------------------------------------------
+  ! domain constructors
+  !--------------------------------------------------------------------------------------------------
 
-  ! constructeurs
-  ! -------------
   subroutine domain_constructor_from_scratch(dom,type,xc,yc,zc,r,r_inbound,r_outbound,size,thickness)
+
+    implicit none
     character(10),intent(in)         :: type
     real(kind=8),intent(in),optional :: xc,yc,zc
     real(kind=8),intent(in),optional :: r                     ! parameters for sphere
@@ -50,7 +49,7 @@ contains
     real(kind=8),intent(in),optional :: size                  ! parameters for cube
     real(kind=8),intent(in),optional :: thickness             ! parameters for slab
     type(domain),intent(out)         :: dom
-    logical :: ok
+    logical                          :: ok
 
     select case(type)
 
@@ -58,7 +57,7 @@ contains
        ! check if optional argument required for sphere are present
        ok = present(xc).and.present(yc).and.present(zc).and.present(r)
        if (.not.ok) then
-          print *,'arguments to construct a sphere domain are missing...'
+          print *,'ERROR: arguments to construct a sphere domain are missing...'
           stop
        endif
        dom%type=type
@@ -71,7 +70,7 @@ contains
        ! check if optional argument required for sphere are present
        ok = present(xc).and.present(yc).and.present(zc).and.present(r_inbound).and.present(r_outbound)
        if (.not.ok) then
-          print *,'arguments to construct a shell domain are missing...'
+          print *,'ERROR: arguments to construct a shell domain are missing...'
           stop
        endif
        dom%type=type
@@ -85,7 +84,7 @@ contains
        ! check if optional argument required for sphere are present
        ok = present(xc).and.present(yc).and.present(zc).and.present(size)
        if (.not.ok) then
-          print *,'arguments to construct a cube domain are missing...'
+          print *,'ERROR: arguments to construct a cube domain are missing...'
           stop
        endif
        dom%type=type
@@ -99,7 +98,7 @@ contains
        ! check if optional argument required for sphere are present
        ok = present(zc).and.present(thickness)
        if (.not.ok) then
-          print *,'arguments to construct a slab domain are missing...'
+          print *,'ERROR: arguments to construct a slab domain are missing...'
           stop
        endif
        dom%type=type
@@ -107,17 +106,20 @@ contains
        dom%sl%thickness=thickness
 
     case default
-       print *,'type not defined',type
+       print *,'ERROR: type not defined',type
        stop
     end select
 
     return
+
   end subroutine domain_constructor_from_scratch
 
 
   
   subroutine domain_constructor_from_file(filename,dom)
     ! read a domain file (filename) and initialise domain dom from it
+
+    implicit none
     character(2000),intent(in) :: filename
     type(domain),intent(inout) :: dom
 
@@ -130,21 +132,20 @@ contains
   end subroutine domain_constructor_from_file
 
 
-
-
-  
-  ! fonctions utilitaires
-  ! ---------------------
-
+  !--------------------------------------------------------------------------------------------------
+  ! public use
+  !--------------------------------------------------------------------------------------------------
 
   subroutine select_in_domain(dom,n,xp,indsel)
-    integer,intent(in)                           :: n
-    type(domain),intent(in)                      :: dom 
-    real(kind=8),dimension(1:n,1:3),intent(in)   :: xp
-    integer,dimension(:),allocatable,intent(out) :: indsel
-    integer                                      :: i,ii,nsel
-    integer,dimension(:),allocatable             :: tmpi
-    real(kind=8)                                 :: dd
+
+    implicit none
+    integer(kind=4),intent(in)                           :: n
+    type(domain),intent(in)                              :: dom 
+    real(kind=8),dimension(1:n,1:3),intent(in)           :: xp
+    integer(kind=4),dimension(:),allocatable,intent(out) :: indsel
+    integer(kind=4)                                      :: i,ii,nsel
+    integer(kind=4),dimension(:),allocatable             :: tmpi
+    real(kind=8)                                         :: dd
     
     select case(dom%type)
     
@@ -228,7 +229,7 @@ contains
 
 
     case default
-       print *,'type not defined',dom%type
+       print *,'ERROR: type not defined',dom%type
        stop
     end select
 
@@ -237,8 +238,9 @@ contains
 
 
   subroutine read_domain(unit,dom)
-    integer,intent(in)       :: unit
-    type(domain),intent(out) :: dom 
+
+    integer(kind=4),intent(in)  :: unit
+    type(domain),intent(out)    :: dom 
 
     read(unit,*) dom%type
     select case(dom%type)
@@ -263,9 +265,11 @@ contains
   end subroutine read_domain
 
 
+
   subroutine read_domain_bin(unit,dom)
-    integer,intent(in)       :: unit
-    type(domain),intent(out) :: dom 
+
+    integer(kind=4),intent(in)  :: unit
+    type(domain),intent(out)    :: dom 
 
     read(unit) dom%type
     select case(dom%type)
@@ -290,9 +294,11 @@ contains
   end subroutine read_domain_bin
 
 
+
   subroutine dump_domain_bin(unit,dom)
-    integer,intent(in)      :: unit
-    type(domain),intent(in) :: dom 
+
+    integer(kind=4),intent(in) :: unit
+    type(domain),intent(in)    :: dom 
 
     write(unit) dom%type
     select case(dom%type)
@@ -319,8 +325,9 @@ contains
   
   
   subroutine dump_domain_form(unit,dom)
-    integer,intent(in)      :: unit
-    type(domain),intent(in) :: dom 
+
+    integer(kind=4),intent(in) :: unit
+    type(domain),intent(in)    :: dom 
 
     write(unit,'(a)') trim(dom%type)
     select case(dom%type)
@@ -347,8 +354,9 @@ contains
 
 
   subroutine domain_write_file(file,dom)
+
     character(*),intent(in) :: file
-    type(domain),intent(in)    :: dom 
+    type(domain),intent(in) :: dom 
 
     !!!write(file ,'(a,a)') trim(fichier),'.dom'
     open(unit=14, file=trim(file), status='unknown', form='formatted', action='write')
@@ -356,7 +364,6 @@ contains
     close(14)
 
   end subroutine domain_write_file
-
 
 
 
@@ -387,8 +394,7 @@ contains
   
 
   function domain_contains_cell(x,dx,dom)
-    ! -> as above with dx tolerance ?
-    ! convention: dx is the cell size
+    ! -> returns T/F if the full cell at xyz, of size dx, is in domain dom.
     type(domain),intent(in)              :: dom
     real(kind=8),dimension(3),intent(in) :: x
     real(kind=8),intent(in)              :: dx
@@ -433,9 +439,9 @@ contains
     ! scan each domain and test using domain_contains_point ?
     type(domain),intent(in),dimension(:) :: liste_domaines
     real(kind=8),dimension(3),intent(in) :: x
-    integer :: get_my_new_domain, ndom, count_dom, first_dom, i
-    logical :: x_in_i
-    real(kind=8) :: d1,d2
+    integer(kind=4)                      :: get_my_new_domain, ndom, count_dom, first_dom, i
+    logical                              :: x_in_i
+    real(kind=8)                         :: d1,d2
 
     ndom = size(liste_domaines)
     count_dom = 0
@@ -449,7 +455,7 @@ contains
        endif
     enddo
     if((count_dom > 2).or.(count_dom==0))then
-       print *,'--> Problem with get_my_new_domain'
+       print *,'ERROR: problem with get_my_new_domain'
        stop
     endif
     if(count_dom>1)then
@@ -461,7 +467,8 @@ contains
        endif
        ! else (d2>=d1) then get_my_new_domain is ok
     endif
-
+    
+    return
   end function get_my_new_domain
 
 
@@ -493,8 +500,7 @@ contains
 
     end select
 
+    return
   end function domain_distance_to_border
 
-  
-  
 end module module_domain

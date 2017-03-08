@@ -5,10 +5,6 @@ module module_HI_model
   use module_uparallel
   use module_random
 
-!#ifdef POLARIZATION
-!  use polar
-!#endif
-
   implicit none
 
   private
@@ -94,15 +90,15 @@ contains
     ! where mu = cos(theta), (and theta in [0,pi]).
     ! ---------------------------------------------------------------------------------
 
-    real(kind=8), intent(inout)               :: nu_cell, nu_ext
-    real(kind=8), dimension(3), intent(inout) :: k
-    real(kind=8), dimension(3), intent(in)    :: vcell
-    real(kind=8), intent(in)                  :: vth
-    integer, intent(inout)                    :: iran
-    real(kind=8)               :: delta_nu_doppler, a, x_cell, blah, upar, ruper
-    real(kind=8)               :: r2, uper, nu_atom, mu, bu, scalar
-    real(kind=8)               :: x_atom
-    real(kind=8), dimension(3) :: knew
+    real(kind=8),intent(inout)              :: nu_cell, nu_ext
+    real(kind=8),dimension(3),intent(inout) :: k
+    real(kind=8),dimension(3),intent(in)    :: vcell
+    real(kind=8),intent(in)                 :: vth
+    integer(kind=4),intent(inout)           :: iran
+    real(kind=8)                            :: delta_nu_doppler, a, x_cell, blah, upar, ruper
+    real(kind=8)                            :: r2, uper, nu_atom, mu, bu, scalar
+    real(kind=8)                            :: x_atom
+    real(kind=8),dimension(3)               :: knew
 
     ! define x_cell & a
     delta_nu_doppler = vth / lambda_0_cm 
@@ -113,7 +109,7 @@ contains
     ! -> get velocity of interacting atom parallel to propagation
     blah = ran3(iran)
 #ifdef SWITCH_OFF_UPARALLEL
-    upar = 0.5  !!!!!todo get_uparallel(a,x_cell,blah)
+    upar = 0.5
 #else
     upar = get_uparallel(a,x_cell,blah)
 #endif
@@ -166,9 +162,9 @@ contains
     ! ---------------------------------------------------------------------------------
 
     character(*),intent(in) :: pfile
-    character(1000) :: line,name,value
-    integer(kind=4) :: err,i
-    logical         :: section_present
+    character(1000)         :: line,name,value
+    integer(kind=4)         :: err,i
+    logical                 :: section_present
 
     section_present = .false.
     open(unit=10,file=trim(pfile),status='old',form='formatted')

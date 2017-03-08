@@ -26,7 +26,7 @@ module module_ramses
   ! stuff read from the HYDRO files
   real(kind=8),allocatable         :: var(:,:)
   real(kind=8),allocatable         :: cell_x(:),cell_y(:),cell_z(:)
-  integer,allocatable              :: cell_level(:)
+  integer(kind=4),allocatable      :: cell_level(:)
 
   integer(kind=4)                  :: ncpu,nvar
 
@@ -77,14 +77,20 @@ module module_ramses
   ! --------------------------------------------------------------------------
   ! ramses options (not guessable from outputs)
   logical                  :: self_shielding = .true.  ! if true, reproduce self-shielding approx made in ramses to compute nHI. 
+  logical                  :: ramses_rt      = .false. ! if true, read ramses-RT output and compute nHI and T accordingly.
   ! miscelaneous
   logical                  :: verbose        = .false. ! display some run-time info on this module
+  ! RT variable indices, should become user params
+  integer(kind=4),parameter :: imetal = 6
+  integer(kind=4),parameter :: ihii   = 7
+  integer(kind=4),parameter :: iheii  = 8
+  integer(kind=4),parameter :: iheiii = 9
   ! --------------------------------------------------------------------------
 
   
 
   public  :: read_leaf_cells, get_ngridtot, ramses_get_velocity_cgs, ramses_get_T_nhi_cgs, ramses_get_metallicity, ramses_get_box_size_cm
-  public  :: ramses_read_stars_in_domain,read_ramses_params,print_ramses_params
+  public  :: ramses_read_stars_in_domain, read_ramses_params, print_ramses_params, dump_ramses_info
   ! default is private now ... !! private :: read_hydro, read_amr, get_nleaf, get_nvar, clear_amr, get_ncpu, get_param_real
 
   !==================================================================================
@@ -113,14 +119,17 @@ contains
     logical                                   :: do_allocs
     integer(kind=4)                           :: icpu, ileaf, icell, ivar
 
+    if(verbose)then
+       print *,' '
+       print *,'...reading RAMSES cells...'
+    endif
+
     nleaftot = get_nleaf(repository,snapnum)  ! sets ncpu too 
     nvar     = get_nvar(repository,snapnum)
     allocate(ramses_var(nvar,nleaftot), xleaf(nleaftot,3), leaf_level(nleaftot))
     ncpu = get_ncpu(repository,snapnum)
 
-    print *,' '
-    print *,'...reading cells...'
-    print *,'nleaftot, nvar, ncpu =',nleaftot,nvar,ncpu
+    if(verbose)print *,'--> nleaftot, nvar, ncpu =',nleaftot,nvar,ncpu
 
     do_allocs = .true.
     ileaf = 0
@@ -204,86 +213,101 @@ contains
     real(kind=8)    :: xx,yy,dxx1,dxx2,dyy1,dyy2,f
     integer(kind=4) :: if1,if2,jf1,jf2
 
+    real(kind=8),allocatable,dimension(:)    :: mu
+
     ! get conversion factors if necessary
     if (.not. conversion_scales_are_known) then 
        call read_conversion_scales(repository,snapnum)
        conversion_scales_are_known = .True.
     end if
 
-    if (.not. cooling_is_read) then
-       call read_cooling(repository,snapnum)
-       cooling_is_read = .True.
-    end if
-
-    nhi  = ramses_var(1,:) * dp_scale_nh  ! nb of H atoms per cm^3
-    temp = ramses_var(5,:) / ramses_var(1,:) * dp_scale_T2  ! T/mu [ K ]
-
-    allocate(boost(nleaf))
-    if (self_shielding) then
-       do i=1,nleaf
-          boost(i)=MAX(exp(-nhi(i)/0.01),1.0D-20) ! same as hard-coded in RAMSES. 
-       end do
+    if(ramses_rt)then
+       ! ramses RT
+       allocate(mu(1:nleaf))
+       nhi  = ramses_var(1,:) * dp_scale_nh  * (1.d0 - ramses_var(ihii,:))   ! nb of H atoms per cm^3
+       mu   = 1.d0 / (XH * (1.d0*ramses_var(ihii,:) + 0.25d0*(1.d0-XH)*(1.d0 + ramses_var(iheii,:) + 2.d0*ramses_var(iheiii,:)))) ! assumes no metals
+       temp = ramses_var(5,:) / ramses_var(1,:) * dp_scale_T2                ! T/mu [ K ]
+       temp = temp * mu                                                      ! This is now T (in K) with no bloody mu ... 
+       deallocate(mu)
     else
-       boost = 1.0d0
-    end if
+       ! ramses standard
+
+       if (.not. cooling_is_read) then
+          call read_cooling(repository,snapnum)
+          cooling_is_read = .True.
+       end if
+
+       nhi  = ramses_var(1,:) * dp_scale_nh  ! nb of H atoms per cm^3
+       temp = ramses_var(5,:) / ramses_var(1,:) * dp_scale_T2  ! T/mu [ K ]
+
+       allocate(boost(nleaf))
+       if (self_shielding) then
+          do i=1,nleaf
+             boost(i)=MAX(exp(-nhi(i)/0.01),1.0D-20) ! same as hard-coded in RAMSES. 
+          end do
+       else
+          boost = 1.0d0
+       end if
 
     
-    ! compute the ionization state and temperature using the 'cooling' tables
-    do i = 1, nleaf
-       xx  = min(max(log10(nhi(i)/boost(i)),cooling%nh(1)),cooling%nh(cooling%n11))
-       ihx = int((xx - cool_int%nh_start)/cool_int%nh_step) + 1
-       if (ihx < 1) then 
-          ihx = 1 
-       else if (ihx > cool_int%n_nh) then
-          ihx = cool_int%n_nh
-       end if
-       yy  = log10(temp(i))
-       ihy = int((yy - cool_int%t2_start)/cool_int%t2_step) + 1
-       if (ihy < 1) then 
-          ihy = 1 
-       else if (ihy > cool_int%n_t2) then
-          ihy = cool_int%n_t2
-       end if
-       ! 2D linear interpolation:
-       if (ihx < cool_int%n_nh) then 
-          dxx1  = max(xx - cooling%nh(ihx),0.0d0) / cool_int%nh_step 
-          dxx2  = min(cooling%nh(ihx+1) - xx,cool_int%nh_step) / cool_int%nh_step
-          if1  = ihx
-          if2  = ihx+1
-       else
-          dxx1  = 0.0d0
-          dxx2  = 1.0d0
-          if1  = ihx
-          if2  = ihx
-       end if
-       if (ihy < cool_int%n_t2) then 
-          dyy1  = max(yy - cooling%t2(ihy),0.0d0) / cool_int%t2_step
-          dyy2  = min(cooling%t2(ihy+1) - yy,cool_int%t2_step) / cool_int%t2_step
-          jf1  = ihy
-          jf2  = ihy + 1
-       else
-          dyy1  = 0.0d0
-          dyy2  = 1.0d0
-          jf1  = ihy
-          jf2  = ihy
-       end if
-       if (abs(dxx1+dxx2-1.0d0) > 1.0d-6 .or. abs(dyy1+dyy2-1.0d0) > 1.0d-6) then 
-          write(*,*) 'Fucked up the interpolation ... '
-          print*,dxx1+dxx2,dyy1+dyy2
-          stop
-       end if
-       ! neutral H density 
-       f = dxx1 * dyy1 * cooling%spec(if2,jf2,2) + dxx2 * dyy1 * cooling%spec(if1,jf2,2) &
-            & + dxx1 * dyy2 * cooling%spec(if2,jf1,2) + dxx2 * dyy2 * cooling%spec(if1,jf1,2)
-       xhi = 10.0d0**(f-xx)  ! this is xHI = nHI/nH where the n's include the boost. 
-       nhi(i) = xhi * nhi(i) ! nHI (cm^-3) (boost-free)
-       ! GET MU to convert T/MU into T ... 
-       f = dxx1 * dyy1 * cooling%mu(if2,jf2) + dxx2 * dyy1 * cooling%mu(if1,jf2) &
-            & + dxx1 * dyy2 * cooling%mu(if2,jf1) + dxx2 * dyy2 * cooling%mu(if1,jf1)
-       temp(i) = temp(i) * f   ! This is now T (in K) with no bloody mu ... 
-    end do
+       ! compute the ionization state and temperature using the 'cooling' tables
+       do i = 1, nleaf
+          xx  = min(max(log10(nhi(i)/boost(i)),cooling%nh(1)),cooling%nh(cooling%n11))
+          ihx = int((xx - cool_int%nh_start)/cool_int%nh_step) + 1
+          if (ihx < 1) then 
+             ihx = 1 
+          else if (ihx > cool_int%n_nh) then
+             ihx = cool_int%n_nh
+          end if
+          yy  = log10(temp(i))
+          ihy = int((yy - cool_int%t2_start)/cool_int%t2_step) + 1
+          if (ihy < 1) then 
+             ihy = 1 
+          else if (ihy > cool_int%n_t2) then
+             ihy = cool_int%n_t2
+          end if
+          ! 2D linear interpolation:
+          if (ihx < cool_int%n_nh) then 
+             dxx1  = max(xx - cooling%nh(ihx),0.0d0) / cool_int%nh_step 
+             dxx2  = min(cooling%nh(ihx+1) - xx,cool_int%nh_step) / cool_int%nh_step
+             if1  = ihx
+             if2  = ihx+1
+          else
+             dxx1  = 0.0d0
+             dxx2  = 1.0d0
+             if1  = ihx
+             if2  = ihx
+          end if
+          if (ihy < cool_int%n_t2) then 
+             dyy1  = max(yy - cooling%t2(ihy),0.0d0) / cool_int%t2_step
+             dyy2  = min(cooling%t2(ihy+1) - yy,cool_int%t2_step) / cool_int%t2_step
+             jf1  = ihy
+             jf2  = ihy + 1
+          else
+             dyy1  = 0.0d0
+             dyy2  = 1.0d0
+             jf1  = ihy
+             jf2  = ihy
+          end if
+          if (abs(dxx1+dxx2-1.0d0) > 1.0d-6 .or. abs(dyy1+dyy2-1.0d0) > 1.0d-6) then 
+             write(*,*) 'Fucked up the interpolation ... '
+             print*,dxx1+dxx2,dyy1+dyy2
+             stop
+          end if
+          ! neutral H density 
+          f = dxx1 * dyy1 * cooling%spec(if2,jf2,2) + dxx2 * dyy1 * cooling%spec(if1,jf2,2) &
+               & + dxx1 * dyy2 * cooling%spec(if2,jf1,2) + dxx2 * dyy2 * cooling%spec(if1,jf1,2)
+          xhi = 10.0d0**(f-xx)  ! this is xHI = nHI/nH where the n's include the boost. 
+          nhi(i) = xhi * nhi(i) ! nHI (cm^-3) (boost-free)
+          ! GET MU to convert T/MU into T ... 
+          f = dxx1 * dyy1 * cooling%mu(if2,jf2) + dxx2 * dyy1 * cooling%mu(if1,jf2) &
+               & + dxx1 * dyy2 * cooling%mu(if2,jf1) + dxx2 * dyy2 * cooling%mu(if1,jf1)
+          temp(i) = temp(i) * f   ! This is now T (in K) with no bloody mu ... 
+       end do
 
-    deallocate(boost)
+       deallocate(boost)
+
+    endif
     
     return
 
@@ -324,7 +348,7 @@ contains
        print*,'No metals !!! '
        stop
     end if
-    metallicity = ramses_var(6,:) 
+    metallicity = ramses_var(imetal,:) 
 
     return
 
@@ -350,6 +374,46 @@ contains
     return
 
   end function ramses_get_box_size_cm
+
+
+
+
+  subroutine dump_ramses_info(repository,snapnum,ilun)
+
+    integer(kind=4),intent(in) :: ilun
+    integer(kind=4),intent(in) :: snapnum
+    character(1000),intent(in) :: repository
+    real(kind=8) :: unit_t, unit_l, unit_d, boxlen, time, aexp, H0, omega_m, omega_l, omega_k, omega_b
+    
+    ! get data
+    unit_l  = get_param_real(repository,snapnum,'unit_l')
+    unit_d  = get_param_real(repository,snapnum,'unit_d')
+    unit_t  = get_param_real(repository,snapnum,'unit_t')
+    boxlen  = get_param_real(repository,snapnum,'boxlen')
+    time    = get_param_real(repository,snapnum,'time')
+    aexp    = get_param_real(repository,snapnum,'aexp')
+    H0      = get_param_real(repository,snapnum,'H0')
+    omega_m = get_param_real(repository,snapnum,'omega_m')
+    omega_l = get_param_real(repository,snapnum,'omega_l')
+    omega_k = get_param_real(repository,snapnum,'omega_k')
+    omega_b = get_param_real(repository,snapnum,'omega_b')
+
+    ! dump data in open file using unit
+    ! Write physical parameters as in RAMSES
+    write(ilun,'(" boxlen      =",E23.15)')boxlen
+    write(ilun,'(" time        =",E23.15)')time
+    write(ilun,'(" aexp        =",E23.15)')aexp
+    write(ilun,'(" H0          =",E23.15)')H0
+    write(ilun,'(" omega_m     =",E23.15)')omega_m
+    write(ilun,'(" omega_l     =",E23.15)')omega_l
+    write(ilun,'(" omega_k     =",E23.15)')omega_k
+    write(ilun,'(" omega_b     =",E23.15)')omega_b
+    write(ilun,'(" unit_l      =",E23.15)')unit_l
+    write(ilun,'(" unit_d      =",E23.15)')unit_d
+    write(ilun,'(" unit_t      =",E23.15)')unit_t
+    write(ilun,*)
+  
+  end subroutine dump_ramses_info
 
 
   !subroutine ramses_read_star_particles(repository, snapnum, nstars, stars)
@@ -608,9 +672,7 @@ contains
     close(10)
     return
 
-
   end subroutine read_amr
-
 
 
   subroutine clear_amr
@@ -997,7 +1059,7 @@ contains
   !==================================================================================
   ! STARS utilities 
 
-  subroutine ramses_read_stars_in_domain(repository,snapnum,selection_domain,star_pos,star_age,star_mass,star_vel,cosmo)
+  subroutine ramses_read_stars_in_domain(repository,snapnum,selection_domain,star_pos,star_age,star_mass,star_vel,star_met,cosmo)
 
     ! ONLY WORKS FOR COSMO RUNS (WITHOUT PROPER TIME OPTION)
     ! -> this should be parameterised (and coded). 
@@ -1007,7 +1069,7 @@ contains
     character(1000),intent(in) :: repository
     integer(kind=4),intent(in) :: snapnum
     type(domain),intent(in)    :: selection_domain
-    real(kind=8),allocatable,intent(inout) :: star_pos(:,:),star_age(:),star_mass(:),star_vel(:,:)
+    real(kind=8),allocatable,intent(inout) :: star_pos(:,:),star_age(:),star_mass(:),star_vel(:,:),star_met(:)
     integer(kind=4)            :: nstars
     real(kind=8)               :: omega_0,lambda_0,little_h,omega_k,H0
     real(kind=8)               :: aexp,stime,time_cu,boxsize
@@ -1016,6 +1078,7 @@ contains
     integer(kind=4),allocatable :: id(:)
     real(kind=8),allocatable    :: age(:),m(:),x(:,:),v(:,:),mets(:)
     logical, intent(in)         :: cosmo
+    real(kind=8)                :: temp(3)
     
     
     ! get cosmological parameters to convert conformal time into ages
@@ -1026,8 +1089,11 @@ contains
     ! compute cosmic time of simulation output (Myr)
     aexp  = get_param_real(repository,snapnum,'aexp') ! exp. factor of output
     stime = ct_aexp2time(aexp) ! cosmic time
-    ! read units 
-    call read_conversion_scales(repository,snapnum)
+    ! read units
+    if (.not. conversion_scales_are_known) then 
+       call read_conversion_scales(repository,snapnum)
+       conversion_scales_are_known = .True.
+    end if
 
     if(.not.cosmo)then
        ! read time
@@ -1043,7 +1109,7 @@ contains
        write(*,*) 'ERROR : no star particles in output '
        stop
     end if
-    allocate(star_pos(3,nstars),star_age(nstars),star_mass(nstars),star_vel(3,nstars))
+    allocate(star_pos(3,nstars),star_age(nstars),star_mass(nstars),star_vel(3,nstars),star_met(nstars))
     ! get list of particle fields in outputs 
     call get_fields_from_header(repository,snapnum,nfields)
     ncpu  = get_ncpu(repository,snapnum)
@@ -1097,7 +1163,8 @@ contains
        ! save star particles within selection region
        do i = 1,npart
           if (age(i).ne.0.0d0) then ! This is a star
-             if (domain_contains_point(x(i,:),selection_domain)) then ! it is inside the domain
+             temp(:) = x(i,:)
+             if (domain_contains_point(temp,selection_domain)) then ! it is inside the domain
                 if(cosmo)then
                    ! Convert from conformal time to age in Myr
                    star_age(ilast)   = (stime - ct_conftime2time(age(i)))*1.d-6 ! Myr
@@ -1110,6 +1177,7 @@ contains
                 !star_pos(:,ilast) = x(i,:) * dp_scale_l ! [cm]
                 star_pos(:,ilast) = x(i,:)
                 star_vel(:,ilast) = v(i,:) * dp_scale_v ! [cm/s]
+                star_met(ilast) = mets(i) 
                 ilast = ilast + 1
              end if
           end if
@@ -1153,6 +1221,14 @@ contains
     allocate(star_vel(3,nstars))
     star_vel = v
     deallocate(v)
+    ! metals
+    allocate(mets(nstars))
+    mets = star_met(1:nstars)
+    deallocate(star_met)
+    allocate(star_met(nstars))
+    star_met = mets
+    deallocate(mets)
+
 
     
     return
@@ -1425,6 +1501,8 @@ contains
           select case (trim(name))
           case ('self_shielding')
              read(value,*) self_shielding
+          case ('ramses_rt')
+             read(value,*) ramses_rt
           case ('verbose')
              read(value,*) verbose
           end select
@@ -1449,10 +1527,12 @@ contains
     if (present(unit)) then 
        write(unit,'(a,a,a)') '[ramses]'
        write(unit,'(a,L1)') '  self_shielding = ',self_shielding
+       write(unit,'(a,L1)') '  ramses_rt      = ',ramses_rt
        write(unit,'(a,L1)') '  verbose        = ',verbose
     else
        write(*,'(a,a,a)') '[ramses]'
        write(*,'(a,L1)') '  self_shielding = ',self_shielding
+       write(*,'(a,L1)') '  ramses_rt      = ',ramses_rt
        write(*,'(a,L1)') '  verbose        = ',verbose
     end if
 
