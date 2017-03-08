@@ -26,7 +26,7 @@ module module_ramses
   ! stuff read from the HYDRO files
   real(kind=8),allocatable         :: var(:,:)
   real(kind=8),allocatable         :: cell_x(:),cell_y(:),cell_z(:)
-  integer,allocatable              :: cell_level(:)
+  integer(kind=4),allocatable      :: cell_level(:)
 
   integer(kind=4)                  :: ncpu,nvar
 
@@ -80,17 +80,17 @@ module module_ramses
   logical                  :: ramses_rt      = .false. ! if true, read ramses-RT output and compute nHI and T accordingly.
   ! miscelaneous
   logical                  :: verbose        = .false. ! display some run-time info on this module
-  ! variable indices, should become user params
-  integer,parameter :: imetal = 6
-  integer,parameter :: ihii   = 7
-  integer,parameter :: iheii  = 8
-  integer,parameter :: iheiii = 9
+  ! RT variable indices, should become user params
+  integer(kind=4),parameter :: imetal = 6
+  integer(kind=4),parameter :: ihii   = 7
+  integer(kind=4),parameter :: iheii  = 8
+  integer(kind=4),parameter :: iheiii = 9
   ! --------------------------------------------------------------------------
 
   
 
   public  :: read_leaf_cells, get_ngridtot, ramses_get_velocity_cgs, ramses_get_T_nhi_cgs, ramses_get_metallicity, ramses_get_box_size_cm
-  public  :: ramses_read_stars_in_domain,read_ramses_params,print_ramses_params
+  public  :: ramses_read_stars_in_domain, read_ramses_params, print_ramses_params, dump_ramses_info
   ! default is private now ... !! private :: read_hydro, read_amr, get_nleaf, get_nvar, clear_amr, get_ncpu, get_param_real
 
   !==================================================================================
@@ -119,14 +119,17 @@ contains
     logical                                   :: do_allocs
     integer(kind=4)                           :: icpu, ileaf, icell, ivar
 
+    if(verbose)then
+       print *,' '
+       print *,'...reading RAMSES cells...'
+    endif
+
     nleaftot = get_nleaf(repository,snapnum)  ! sets ncpu too 
     nvar     = get_nvar(repository,snapnum)
     allocate(ramses_var(nvar,nleaftot), xleaf(nleaftot,3), leaf_level(nleaftot))
     ncpu = get_ncpu(repository,snapnum)
 
-    print *,' '
-    print *,'...reading cells...'
-    print *,'nleaftot, nvar, ncpu =',nleaftot,nvar,ncpu
+    if(verbose)print *,'--> nleaftot, nvar, ncpu =',nleaftot,nvar,ncpu
 
     do_allocs = .true.
     ileaf = 0
@@ -371,6 +374,46 @@ contains
     return
 
   end function ramses_get_box_size_cm
+
+
+
+
+  subroutine dump_ramses_info(repository,snapnum,ilun)
+
+    integer(kind=4),intent(in) :: ilun
+    integer(kind=4),intent(in) :: snapnum
+    character(1000),intent(in) :: repository
+    real(kind=8) :: unit_t, unit_l, unit_d, boxlen, time, aexp, H0, omega_m, omega_l, omega_k, omega_b
+    
+    ! get data
+    unit_l  = get_param_real(repository,snapnum,'unit_l')
+    unit_d  = get_param_real(repository,snapnum,'unit_d')
+    unit_t  = get_param_real(repository,snapnum,'unit_t')
+    boxlen  = get_param_real(repository,snapnum,'boxlen')
+    time    = get_param_real(repository,snapnum,'time')
+    aexp    = get_param_real(repository,snapnum,'aexp')
+    H0      = get_param_real(repository,snapnum,'H0')
+    omega_m = get_param_real(repository,snapnum,'omega_m')
+    omega_l = get_param_real(repository,snapnum,'omega_l')
+    omega_k = get_param_real(repository,snapnum,'omega_k')
+    omega_b = get_param_real(repository,snapnum,'omega_b')
+
+    ! dump data in open file using unit
+    ! Write physical parameters as in RAMSES
+    write(ilun,'(" boxlen      =",E23.15)')boxlen
+    write(ilun,'(" time        =",E23.15)')time
+    write(ilun,'(" aexp        =",E23.15)')aexp
+    write(ilun,'(" H0          =",E23.15)')H0
+    write(ilun,'(" omega_m     =",E23.15)')omega_m
+    write(ilun,'(" omega_l     =",E23.15)')omega_l
+    write(ilun,'(" omega_k     =",E23.15)')omega_k
+    write(ilun,'(" omega_b     =",E23.15)')omega_b
+    write(ilun,'(" unit_l      =",E23.15)')unit_l
+    write(ilun,'(" unit_d      =",E23.15)')unit_d
+    write(ilun,'(" unit_t      =",E23.15)')unit_t
+    write(ilun,*)
+  
+  end subroutine dump_ramses_info
 
 
   !subroutine ramses_read_star_particles(repository, snapnum, nstars, stars)

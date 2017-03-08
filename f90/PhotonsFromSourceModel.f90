@@ -8,7 +8,7 @@ program PhotonsFromSourceModel
   implicit none
 
   type(photon_init),dimension(:),allocatable :: photgrid
-  integer                                    :: iran, i, narg
+  integer(kind=4)                            :: iran, i, narg
   real(kind=8)                               :: nu, r1, r2
   character(2000)                            :: parameter_file
 
@@ -21,7 +21,7 @@ program PhotonsFromSourceModel
   ! --- source type 
   character(10)             :: source_type = 'pointlike'             ! type of source model
   real(kind=8),dimension(3) :: source_pos  = (/0.5d0,0.5d0,0.5d0/)   ! position of the source [code units]
-  integer                   :: nphot       = 5000000                 ! number of photons to generate
+  integer(kind=4)           :: nphot       = 5000000                 ! number of photons to generate
 
   ! --- how source shines
   character(30)             :: spec_type = 'monochromatic'           ! how to draw frequencies
@@ -34,7 +34,7 @@ program PhotonsFromSourceModel
   real(kind=8)              :: nu_cen   = clight / 1215.6701d-8      ! central frequency [Hz]
   real(kind=8)              :: velwidth = 10.0                       ! line width in velocity [km/s]  
   ! --- miscelaneous
-  integer                   :: ranseed = 1234                        ! seed for random generator
+  integer(kind=4)           :: ranseed = 1234                        ! seed for random generator
   logical                   :: verbose = .true.
   ! --------------------------------------------------------------------------
 

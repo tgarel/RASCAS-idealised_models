@@ -1,6 +1,6 @@
 program main
 
-  ! serial version of MCLya 
+  ! serial version of rascas 
 
   use module_photon
   use module_mesh
@@ -13,20 +13,19 @@ program main
   type(photon_current),dimension(:),allocatable :: photgrid
   type(mesh)                                    :: meshdom
   type(domain)                                  :: compute_dom
-  integer                                       :: nphot
+  integer(kind=4)                               :: nphot
   real(kind=8)                                  :: start, tmptime, finish
-
-  character(2000) :: parameter_file, line, file_compute_dom
-  character(2000),dimension(:),allocatable :: mesh_file_list 
-  integer(kind=4) :: narg, i, j, ndomain
+  character(2000)                               :: parameter_file, line, file_compute_dom
+  character(2000),dimension(:),allocatable      :: mesh_file_list 
+  integer(kind=4)                               :: narg, i, j, ndomain
   
   ! --------------------------------------------------------------------------
-  ! user-defined parameters - read from section [serial] of the parameter file
+  ! user-defined parameters - read from section [RASCAS-serial] of the parameter file
   ! --------------------------------------------------------------------------
   ! --- inputs 
   character(2000)           :: DataDir      = 'test/'                   ! where input files below are 
   character(2000)           :: PhotonICFile = 'Photon_IC_file.dat'      ! the file containing photons to cast.
-  character(2000)           :: DomDumpFile  = 'MCLya_domain_params.dat' ! the file describing the outputs of CreateDomDump.
+  character(2000)           :: DomDumpFile  = 'domain_decomposition_params.dat' ! the file describing the outputs of CreateDomDump.
   ! --- outputs
   character(2000)           :: fileout = 'photons_done.dat'   ! output file ... 
   ! --- miscelaneous
@@ -39,7 +38,7 @@ program main
   ! -------------------- read parameters --------------------
   narg = command_argument_count()
   if(narg .lt. 1)then
-     write(*,*)'You should type: serial params.dat'
+     write(*,*)'You should type: rascas-serial params.dat'
      write(*,*)'File params.dat should contain a parameter namelist'
      stop
   end if
@@ -66,7 +65,7 @@ program main
   read(18,'(a)') line ; i = scan(line,'=') ; file_compute_dom = trim(DataDir)//trim(adjustl(line(i+1:)))
   read(18,'(a)') line ; i = scan(line,'=') ; read(line(i+1:),*) ndomain
   if(ndomain/=1)then
-     print *,'ndomain /= 1 use the MPI version'
+     print *,'ERROR: ndomain /= 1 -> use the MPI version'
      stop
   endif
   allocate(mesh_file_list(ndomain))
@@ -75,12 +74,8 @@ program main
      read(18,'(a)') line ; i = scan(line,'=') ; mesh_file_list(j) = trim(DataDir)//trim(adjustl(line(i+1:)))
   end do
   close(18)
-  
   call domain_constructor_from_file(file_compute_dom,compute_dom)
-  if (verbose) print*,'computational domain built'
   call mesh_from_file(mesh_file_list(1),meshdom)
-  if (verbose) print*,'mesh read'
-  
   if (verbose) then
      print *,'--> Ndomain =',ndomain
      print *,'    |_ ',trim(file_compute_dom)
@@ -106,15 +101,25 @@ program main
   if (verbose) print '(" --> Time = ",f12.3," seconds.")',tmptime-start
 
 
+  ! do the Monte Carlo Radiative Transfer
   if (verbose) print *,'--> starting RT...'
-  ! do the RT stuff
   call MCRT(nphot,photgrid,meshdom,compute_dom)
 
   if (verbose) print *,'--> RT done'
 
-  ! write results
-  ! some checks
+  ! some checks & logs
   if(verbose)then
+     ! test status of photons
+     do i=1,nphot
+        if(photgrid(i)%status == 0)print*,'ERROR: ohoho problem with photon status...',i,photgrid(i)%status
+     enddo
+     ! Some stats on photon status
+     print *,' '
+     print *,'--> photon status...'
+     print *,'# of photons             =',size(photgrid(:)%status)
+     print *,'# of status=1 (escaped)  =',count(mask=(photgrid(:)%status==1))
+     print *,'# of status=2 (absorbed) =',count(mask=(photgrid(:)%status==2))
+     print *,'# of status=3 (crap, pb with precision/in_cell_finder) =',count(mask=(photgrid(:)%status==3))
      print *,' '
      print *,'--> Some diagnostics...'
      print *,'min max status      =',minval(photgrid%status),maxval(photgrid%status)
@@ -123,7 +128,7 @@ program main
      print *,'min max pos z       =',minval(photgrid%xcurr(3)),maxval(photgrid%xcurr(3))
      print *,'min max nb scatt    =',minval(photgrid%nb_abs),maxval(photgrid%nb_abs)
      print *,'min max nu          =',minval(photgrid%nu_ext),maxval(photgrid%nu_ext)
-     print *,'min max lambda      =',clight/minval(photgrid%nu_ext)*cmtoA,clight/maxval(photgrid%nu_ext)*cmtoA
+     print *,'min max lambda      =',clight/maxval(photgrid%nu_ext)*cmtoA,clight/minval(photgrid%nu_ext)*cmtoA
      print *,'min max travel time =',minval(photgrid%time),maxval(photgrid%time)
      print *,'Last scattering'
      print *,'min max pos x       =',minval(photgrid%xlast(1)),maxval(photgrid%xlast(1))
@@ -131,22 +136,18 @@ program main
      print *,'min max pos z       =',minval(photgrid%xlast(3)),maxval(photgrid%xlast(3))
   endif
 
-  ! check order for python reading
-  !print *,'=============================='
-  !i = 1
-  !print *,i,photgrid(i)%xlast(1),photgrid(i)%xlast(2),photgrid(i)%xlast(3)
-  !i = 2
-  !print *,i,photgrid(i)%xlast(1),photgrid(i)%xlast(2),photgrid(i)%xlast(3)
-  !i = 999
-  !print *,i,photgrid(i)%xlast(1),photgrid(i)%xlast(2),photgrid(i)%xlast(3)
 
+  ! write results
   if (verbose) print *,' '
   if (verbose) print*,'--> writing results in file: ',trim(fileout)
   call dump_photons(fileout,photgrid)
 
   call cpu_time(finish)
-  if (verbose) print '(" --> Time = ",f12.3," seconds.")',finish-start
-
+  if (verbose) then
+     print*,'--> work done'
+     print '(" --> Time = ",f12.3," seconds.")',finish-start
+     print*,' '
+  endif
   
 
 contains
@@ -171,7 +172,7 @@ contains
     do
        read (10,'(a)',iostat=err) line
        if(err/=0) exit
-       if (line(1:8) == '[serial]') then
+       if (line(1:15) == '[RASCAS-serial]') then
           section_present = .true.
           exit
        end if
@@ -225,7 +226,7 @@ contains
     integer(kind=4),optional,intent(in) :: unit
 
     if (present(unit)) then 
-       write(unit,'(a)')             '[serial]'
+       write(unit,'(a)')             '[RASCAS-serial]'
        write(unit,'(a,a)')           '  DataDir        = ',trim(DataDir)
        write(unit,'(a,a)')           '  PhotonICFile   = ',trim(PhotonICFile)
        write(unit,'(a,a)')           '  DomDumpFile    = ',trim(DomDumpFile)
@@ -236,7 +237,7 @@ contains
     else
        write(*,'(a)')             '--------------------------------------------------------------------------------'
        write(*,'(a)')             ''
-       write(*,'(a)')             '[serial]'
+       write(*,'(a)')             '[RASCAS-serial]'
        write(*,'(a,a)')           '  DataDir        = ',trim(DataDir)
        write(*,'(a,a)')           '  PhotonICFile   = ',trim(PhotonICFile)
        write(*,'(a,a)')           '  DomDumpFile    = ',trim(DomDumpFile)

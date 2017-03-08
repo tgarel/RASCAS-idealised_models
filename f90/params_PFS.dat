@@ -1,0 +1,24 @@
+
+!--------------------------------------------------------------------------------
+[PhotonsFromStars]
+# input / output parameters
+  repository = directory_where_ramses_outputs_are
+  snapnum    = output_number
+  outputfile = name_of_the_photonsIC_file
+
+# computational domain parameters
+  star_dom_type      = sphere
+  star_dom_pos       = 5.000E-01 5.000E-01 5.000E-01
+  star_dom_rsp       = 3.000E-01
+
+# how stars shine
+  nphot         = 100
+  max_age       = 1.000E+01 ! [Myr]
+  spec_type     = monochromatic
+
+# miscelaneous parameters
+  ranseed    =     -123
+  verbose    = T
+  cosmo      = T
+!--------------------------------------------------------------------------------
+
