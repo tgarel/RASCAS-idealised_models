@@ -46,7 +46,7 @@ contains
     implicit none 
     
     ! ---------------------------------------------------------------------------------
-    ! perform scattering event on a Hydrogen atom with isotrope angular redistribution
+    ! perform scattering event on a dust grain with anisotropic angular redistribution
     ! ---------------------------------------------------------------------------------
     ! INPUTS :
     ! - v        : bulk velocity of the gas (i.e. cell velocity)       [ cm / s ] 
@@ -62,17 +62,13 @@ contains
     ! _ ilost    : updated status of the photon telling if photon has been absorbed
     ! ---------------------------------------------------------------------------------
 
-    real(kind=8), intent(inout)               :: nu_cell, nu_ext ! nu_cell in RASCAS = nu_int in MCLya
-    real(kind=8), dimension(3), intent(inout) :: k
-    real(kind=8), dimension(3), intent(in)    :: v
-    integer, intent(inout)                    :: iran
-    real(kind=8)                              :: mu, aors, scalar
-    real(kind=8), dimension(3)                :: knew
-    integer(kind=4),intent(out)               :: ilost
-
-#ifdef DEBUG
-    print *,'-DEBUG- scatter_dust routine, arguments =',v,nu_cell,k,nu_ext,iran
-#endif
+    real(kind=8),intent(inout)              :: nu_cell, nu_ext ! nu_cell in RASCAS = nu_int in MCLya
+    real(kind=8),dimension(3),intent(inout) :: k
+    real(kind=8),dimension(3),intent(in)    :: v
+    integer(kind=4),intent(inout)           :: iran
+    real(kind=8)                            :: mu, aors, scalar
+    real(kind=8),dimension(3)               :: knew
+    integer(kind=4),intent(out)             :: ilost
 
     ! interaction with dust
     aors = ran3(iran)  ! aka "Absorption OR Scattering" ... 
@@ -102,9 +98,9 @@ contains
     ! ---------------------------------------------------------------------------------
 
     character(*),intent(in) :: pfile
-    character(1000) :: line,name,value
-    integer(kind=4) :: err,i
-    logical         :: section_present
+    character(1000)         :: line,name,value
+    integer(kind=4)         :: err,i
+    logical                 :: section_present
 
     section_present = .false.
     open(unit=10,file=trim(pfile),status='old',form='formatted')

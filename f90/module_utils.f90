@@ -8,7 +8,7 @@ module module_utils
   ! - anisotropic_direction_Rayleigh
   
   use module_constants, only : pi, sqrtpi, twopi
-  use module_random, only : ran3
+  use module_random
   
   public
 
@@ -54,7 +54,6 @@ contains
     ! - iran : updated state of random number generator
     ! ---------------------------------------------------------------------------------
 
-    
     implicit none
 
     real(kind=8),intent(out)      :: k(3)
@@ -255,5 +254,5 @@ contains
     
   end subroutine anisotropic_direction_Dust
 
-  
+
 end module module_utils

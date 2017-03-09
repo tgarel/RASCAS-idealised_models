@@ -31,7 +31,7 @@ contains
     integer(kind=4),intent(in)                      :: nleaf,nvar
     real(kind=8),dimension(nvar,nleaf),intent(in)   :: ramsesvar
     type(gas),dimension(:),allocatable, intent(out) :: g
-    integer                                         :: i
+    integer(kind=4)                                 :: i
 
     allocate(g(1:nleaf))
 
@@ -60,8 +60,8 @@ contains
   subroutine dump_gas(unit,g)
 
     type(gas),dimension(:),intent(in) :: g
-    integer,intent(in)                :: unit
-    integer                           :: i,nleaf
+    integer(kind=4),intent(in)        :: unit
+    integer(kind=4)                   :: i,nleaf
 
     nleaf = size(g)
     write(unit) (g(i)%density, i=1,nleaf)
@@ -76,9 +76,9 @@ contains
 
   subroutine read_gas(unit,n,g)
 
-    integer,intent(in)                             :: unit,n
+    integer(kind=4),intent(in)                     :: unit,n
     type(gas),dimension(:),allocatable,intent(out) :: g
-    integer                                        :: i
+    integer(kind=4)                                :: i
 
     allocate(g(1:n))
 
@@ -124,9 +124,9 @@ contains
     ! ---------------------------------------------------------------------------------
 
     character(*),intent(in) :: pfile
-    character(1000) :: line
-    integer(kind=4) :: err
-    logical         :: section_present
+    character(1000)         :: line
+    integer(kind=4)         :: err
+    logical                 :: section_present
 
     section_present = .false.
     open(unit=10,file=trim(pfile),status='old',form='formatted')
@@ -142,9 +142,10 @@ contains
 
     ! print warning and stop if read section present
     if (section_present) then 
-       print *,"this gas composition do not admit parameter, better stop..."
+       print *,"ERROR: this gas composition do not admit parameter, better stop..."
        stop
     endif
+    close(10)
 
     call read_ramses_params(pfile)
 
