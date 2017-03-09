@@ -45,13 +45,14 @@ contains
 
     ! define gas contents from ramses raw data
 
-    character(2000),intent(in)        :: repository 
-    integer(kind=4),intent(in)        :: snapnum
-    integer(kind=4),intent(in)        :: nleaf,nvar
-    real(kind=8),intent(in)           :: ramses_var(nvar,nleaf)
+    character(2000),intent(in)                     :: repository 
+    integer(kind=4),intent(in)                     :: snapnum
+    integer(kind=4),intent(in)                     :: nleaf,nvar
+    real(kind=8),intent(in),dimension(nvar,nleaf)  :: ramses_var
     type(gas),dimension(:),allocatable,intent(out) :: g
-    integer(kind=4)                   :: ileaf
-    real(kind=8),allocatable          :: v(:,:), T(:), nhi(:)
+    integer(kind=4)                                :: ileaf
+    real(kind=8),dimension(:),allocatable          :: T, nhi
+    real(kind=8),dimension(:,:),allocatable        :: v
 
     ! allocate gas-element array
     allocate(g(nleaf))
@@ -61,7 +62,7 @@ contains
     else
        box_size_cm = ramses_get_box_size_cm(repository,snapnum)
        ! compute velocities in cm / s
-       if (verbose) write(*,*) '-- module_gas_composition_HI : extracting velocities form ramses '
+       if (verbose) write(*,*) '-- module_gas_composition_HI : extracting velocities from ramses '
        allocate(v(3,nleaf))
        call ramses_get_velocity_cgs(repository,snapnum,nleaf,nvar,ramses_var,v)
        do ileaf = 1,nleaf
@@ -69,7 +70,7 @@ contains
        end do
        deallocate(v)
        ! get nHI and temperature from ramses
-       if (verbose) write(*,*) '-- module_gas_composition_HI : extracting nHI and T form ramses '
+       if (verbose) write(*,*) '-- module_gas_composition_HI : extracting nHI and T from ramses '
        allocate(T(nleaf),nhi(nleaf))
        call ramses_get_T_nhi_cgs(repository,snapnum,nleaf,nvar,ramses_var,T,nhi)
        g(:)%nHI = nhi(:)
@@ -86,6 +87,7 @@ contains
   
 
   subroutine overwrite_gas(g)
+    ! overwrite ramses values with an ad-hoc model
 
     type(gas),dimension(:),intent(inout) :: g
 
@@ -124,7 +126,7 @@ contains
     ! Decide whether a scattering event occurs, and if so, on which element
     ! --------------------------------------------------------------------------
     ! INPUTS:
-    ! - cell_gas : a mix of H, D, and dust
+    ! - cell_gas : pure HI gas
     ! - distance_to_border_cm : the maximum distance the photon may travel (before leaving the cell)
     ! - nu_cell : photon frequency in cell's frame [ Hz ]
     ! - tau_abs : optical depth at which the next scattering event will occur
@@ -139,7 +141,7 @@ contains
     real(kind=8),intent(inout)            :: distance_to_border_cm
     real(kind=8),intent(in)               :: nu_cell
     real(kind=8),intent(inout)            :: tau_abs                ! tau at which scattering is set to occur.
-    integer,intent(inout)                 :: iran 
+    integer(kind=4),intent(inout)         :: iran 
     integer(kind=4)                       :: gas_get_scatter_flag 
     real(kind=8)                          :: tau_HI, tau_cell
 
@@ -156,7 +158,7 @@ contains
        endif
     else  ! the scattering happens inside the cell 
        gas_get_scatter_flag = 1
-       ! et transformer distance_to_border_cm en distance_to_absorption_cm ...
+       ! and transform "distance_to_border_cm" in "distance_to_absorption_cm"
        distance_to_border_cm = distance_to_border_cm * (tau_abs / tau_cell)
     end if
 
@@ -168,11 +170,11 @@ contains
 
   subroutine gas_scatter(flag,cell_gas,nu_cell,k,nu_ext,iran)
 
-    integer, intent(inout)                    :: flag
-    type(gas), intent(in)                     :: cell_gas
-    real(kind=8), intent(inout)               :: nu_cell, nu_ext
-    real(kind=8), dimension(3), intent(inout) :: k
-    integer, intent(inout)                    :: iran
+    integer(kind=4),intent(inout)            :: flag
+    type(gas),intent(in)                     :: cell_gas
+    real(kind=8),intent(inout)               :: nu_cell, nu_ext
+    real(kind=8),dimension(3), intent(inout) :: k
+    integer(kind=4),intent(inout)            :: iran
 
     select case(flag)
     case(1)
@@ -185,8 +187,8 @@ contains
 
   subroutine dump_gas(unit,g)
     type(gas),dimension(:),intent(in) :: g
-    integer,intent(in)                :: unit
-    integer                           :: i,nleaf
+    integer(kind=4),intent(in)        :: unit
+    integer(kind=4)                   :: i,nleaf
     nleaf = size(g)
     write(unit) (g(i)%v(:), i=1,nleaf)
     write(unit) (g(i)%nHI, i=1,nleaf)
@@ -197,9 +199,9 @@ contains
 
 
   subroutine read_gas(unit,n,g)
-    integer,intent(in)                             :: unit,n
+    integer(kind=4),intent(in)                     :: unit,n
     type(gas),dimension(:),allocatable,intent(out) :: g
-    integer                                        :: i
+    integer(kind=4)                                :: i
     allocate(g(1:n))
     if (gas_overwrite) then
        call overwrite_gas(g)
@@ -229,9 +231,9 @@ contains
     ! ---------------------------------------------------------------------------------
 
     character(*),intent(in) :: pfile
-    character(1000) :: line,name,value
-    integer(kind=4) :: err,i
-    logical         :: section_present
+    character(1000)         :: line,name,value
+    integer(kind=4)         :: err,i
+    logical                 :: section_present
 
     section_present = .false.
     open(unit=10,file=trim(pfile),status='old',form='formatted')

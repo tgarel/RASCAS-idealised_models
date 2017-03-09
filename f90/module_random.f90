@@ -3,10 +3,10 @@ module module_random
   implicit none
 
   ! Some variables useful for a "MPI ran3"
-  integer :: ix_ran=-1, iy_ran=-1
-  real(kind=8) :: am_ran
-  integer,parameter :: k4b=selected_int_kind(9)
-  integer,parameter :: ia_ran=16807,im_ran=2147483647,iq_ran=127773,ir_ran=2836
+  integer(kind=4)           :: ix_ran=-1, iy_ran=-1
+  real(kind=8)              :: am_ran
+  integer(kind=4),parameter :: k4b=selected_int_kind(9)
+  integer(kind=4),parameter :: ia_ran=16807,im_ran=2147483647,iq_ran=127773,ir_ran=2836
 
 contains
 
@@ -15,11 +15,11 @@ contains
 !
 !    implicit none
 !
-!    integer,intent(inout) :: idum
-!    real(kind=8)          :: ran3
-!    integer,parameter     :: ia=16807,im=2147483647,iq=127773,ir=2836
-!    real(kind=8),save     :: am
-!    integer,save          :: ix=-1, iy=-1, k
+!    integer(kind=4),intent(inout) :: idum
+!    real(kind=8)                  :: ran3
+!    integer(kind=4),parameter     :: ia=16807,im=2147483647,iq=127773,ir=2836
+!    real(kind=8),save             :: am
+!    integer(kind=4),save          :: ix=-1, iy=-1, k
 !
 !    if(idum <=0 .or. iy < 0) then
 !       am=nearest(1.0,-1.0)/im
@@ -46,9 +46,9 @@ contains
 
     implicit none
   
-    integer, intent(inout) :: idum
-    real(kind=8)           :: ran3
-    integer,save           :: k
+    integer(kind=4),intent(inout) :: idum
+    real(kind=8)                  :: ran3
+    integer(kind=4),save          :: k
     
     if(idum <=0 .or. iy_ran < 0) then
        am_ran=nearest(1.0,-1.0)/im_ran

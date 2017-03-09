@@ -62,13 +62,14 @@ contains
 
     ! define gas contents from ramses raw data
 
-    character(2000),intent(in)        :: repository 
-    integer(kind=4),intent(in)        :: snapnum
-    integer(kind=4),intent(in)        :: nleaf,nvar
-    real(kind=8),intent(in)           :: ramses_var(nvar,nleaf)
+    character(2000),intent(in)                     :: repository 
+    integer(kind=4),intent(in)                     :: snapnum
+    integer(kind=4),intent(in)                     :: nleaf,nvar
+    real(kind=8),intent(in),dimension(nvar,nleaf)  :: ramses_var
     type(gas),dimension(:),allocatable,intent(out) :: g
-    integer(kind=4)                   :: ileaf
-    real(kind=8),allocatable          :: v(:,:), T(:), nhi(:), metallicity(:), nhii(:)
+    integer(kind=4)                                :: ileaf
+    real(kind=8),dimension(:),allocatable          :: T, nhi, metallicity, nhii
+    real(kind=8),dimension(:,:),allocatable        :: v
 
     ! allocate gas-element array
     allocate(g(nleaf))
@@ -80,7 +81,7 @@ contains
        box_size_cm = ramses_get_box_size_cm(repository,snapnum)
 
        ! compute velocities in cm / s
-       if (verbose) write(*,*) '-- module_gas_composition_HI_D_dust : extracting velocities form ramses '
+       if (verbose) write(*,*) '-- module_gas_composition_HI_D_dust : extracting velocities from ramses '
        allocate(v(3,nleaf))
        call ramses_get_velocity_cgs(repository,snapnum,nleaf,nvar,ramses_var,v)
        do ileaf = 1,nleaf
@@ -89,14 +90,13 @@ contains
        deallocate(v)
 
        ! get nHI and temperature from ramses
-       if (verbose) write(*,*) '-- module_gas_composition_HI_D_dust : extracting nHI and T form ramses '
+       if (verbose) write(*,*) '-- module_gas_composition_HI_D_dust : extracting nHI and T from ramses '
        allocate(T(nleaf),nhi(nleaf))
        call ramses_get_T_nhi_cgs(repository,snapnum,nleaf,nvar,ramses_var,T,nhi)
        g(:)%nHI = nhi(:)
        ! compute thermal velocity 
        ! ++++++ TURBULENT VELOCITY >>>>> parameter to add and use here
        g(:)%dopwidth = sqrt((2.0d0*kb/mp)*T) ! [ cm/s ]
-       
 
        ! get ndust (pseudo dust density from Laursen, Sommer-Larsen, Andersen 2009)
        if (verbose) write(*,*) '-- module_gas_composition_HI_D_dust : extracting ndust form ramses '
@@ -117,6 +117,7 @@ contains
 
   
   subroutine overwrite_gas(g)
+    ! overwrite ramses values with an ad-hoc model
 
     type(gas),dimension(:),intent(inout) :: g
 
@@ -173,7 +174,7 @@ contains
     real(kind=8),intent(inout)            :: distance_to_border_cm
     real(kind=8),intent(in)               :: nu_cell
     real(kind=8),intent(inout)            :: tau_abs                ! tau at which scattering is set to occur.
-    integer,intent(inout)                 :: iran
+    integer(kind=4),intent(inout)         :: iran
     integer(kind=4)                       :: gas_get_scatter_flag 
     real(kind=8)                          :: tau_HI, tau_dust, tau_cell, tau_D, tirage, proba1, proba2
 
@@ -191,7 +192,7 @@ contains
           stop
        endif
     else  ! the scattering happens inside the cell. 
-       ! decider si HI ou dust selon rapport des tau
+       ! decide whether scattering is due to HI, D or dust
        proba1 = tau_HI / tau_cell         
        proba2 = proba1 + tau_D / tau_cell
        tirage = ran3(iran)
@@ -202,7 +203,7 @@ contains
        else 
           gas_get_scatter_flag = 3 ! interaction with dust
        endif
-       ! et transformer distance_to_border_cm en distance_to_absorption_cm ...
+       ! and transform "distance_to_border_cm" in "distance_to_absorption_cm"
        distance_to_border_cm = distance_to_border_cm * (tau_abs / tau_cell)
     end if
 
@@ -213,12 +214,12 @@ contains
 
   subroutine gas_scatter(flag,cell_gas,nu_cell,k,nu_ext,iran)
 
-    integer, intent(inout)                    :: flag
-    type(gas), intent(in)                     :: cell_gas
-    real(kind=8), intent(inout)               :: nu_cell, nu_ext
-    real(kind=8), dimension(3), intent(inout) :: k
-    integer, intent(inout)                    :: iran
-    integer                                   :: ilost
+    integer(kind=4),intent(inout)            :: flag
+    type(gas),intent(in)                     :: cell_gas
+    real(kind=8),intent(inout)               :: nu_cell, nu_ext
+    real(kind=8),dimension(3), intent(inout) :: k
+    integer(kind=4),intent(inout)            :: iran
+    integer(kind=4)                          :: ilost
 
     select case(flag)
     case(1)
@@ -235,10 +236,9 @@ contains
 
 
   subroutine dump_gas(unit,g)
-
     type(gas),dimension(:),intent(in) :: g
-    integer,intent(in)                :: unit
-    integer                           :: i,nleaf
+    integer(kind=4),intent(in)        :: unit
+    integer(kind=4)                   :: i,nleaf
     nleaf = size(g)
     write(unit) (g(i)%v(:), i=1,nleaf)
     write(unit) (g(i)%nHI, i=1,nleaf)
@@ -250,9 +250,9 @@ contains
 
 
   subroutine read_gas(unit,n,g)
-    integer,intent(in)                             :: unit,n
+    integer(kind=4),intent(in)                     :: unit,n
     type(gas),dimension(:),allocatable,intent(out) :: g
-    integer                                        :: i
+    integer(kind=4)                                :: i
     allocate(g(1:n))
     if (gas_overwrite) then
        call overwrite_gas(g)
@@ -284,9 +284,9 @@ contains
     ! ---------------------------------------------------------------------------------
 
     character(*),intent(in) :: pfile
-    character(1000) :: line,name,value
-    integer(kind=4) :: err,i
-    logical         :: section_present
+    character(1000)         :: line,name,value
+    integer(kind=4)         :: err,i
+    logical                 :: section_present
 
     section_present = .false.
     open(unit=10,file=trim(pfile),status='old',form='formatted')
