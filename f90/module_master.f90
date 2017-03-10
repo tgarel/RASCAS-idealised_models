@@ -22,7 +22,7 @@ module module_master
   ! --------------------------------------------------------------------------
   logical                   :: verbose = .false.
   ! checkpoint/restart
-  logical                   :: restart = .false.
+  logical                   :: restart = .false.    ! if true, start the run from backup file PhotonBakFile
   character(2000)           :: PhotonBakFile = 'backup_photons.dat'
   real(kind=8)              :: dt_backup = 7200.    ! time in seconds between 2 backups, default is 7200
   ! --------------------------------------------------------------------------
@@ -256,7 +256,7 @@ contains
   subroutine backup_run
 
     character(1000) :: filebak, copyfile
-    logical :: file_exists
+    logical         :: file_exists
 
     ! first, copy last backup file into filebak
     filebak = trim(PhotonBakFile)//'.bak'
