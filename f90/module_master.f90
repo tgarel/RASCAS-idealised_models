@@ -24,7 +24,7 @@ module module_master
   ! checkpoint/restart
   logical                   :: restart = .false.
   character(2000)           :: PhotonBakFile = 'backup_photons.dat'
-  real(kind=8)              :: dt_backup = 200.    ! time in seconds between 2 backups, default is 7200
+  real(kind=8)              :: dt_backup = 7200.    ! time in seconds between 2 backups, default is 7200
   ! --------------------------------------------------------------------------
 
   public :: master, read_master_params, print_master_params
@@ -256,36 +256,25 @@ contains
   subroutine backup_run
 
     character(1000) :: filebak, copyfile
-    !integer(8) :: i
-    !character(len=30) :: date
+    logical :: file_exists
 
+    ! first, copy last backup file into filebak
     filebak = trim(PhotonBakFile)//'.bak'
-
-    print*,'--> it is time to back up'
-
-    ! first time, check file exist with routine access
-    if(access(PhotonBakFile,' ') == 0) then
-       print *, '--> ',trim(PhotonBakFile),' already exists, better to copy it'
-       ! if file exists, first copy it into filebak
+    ! check if file exists
+    INQUIRE(FILE=PhotonBakFile, EXIST=file_exists)
+    !if(access(PhotonBakFile,' ') == 0) then
+    if(file_exists)then
        copyfile = 'mv '//trim(PhotonBakFile)//' '//trim(filebak) 
        !call execute_command_file(copyfile)
        call system(copyfile)
     endif
 
-    ! write a new file
-
-    ! 1st attempt save only photon_current grid
+    ! then, write a new backup file
+    ! in this 1st attempt, we save only photon_current grid
     ! => restart from the grid, need to reconstruct all the queues, but can restart with any number of CPU
     call save_photons(PhotonBakFile,photgrid)
 
-    print*,'--> backup done'
-
-    !open(unit=20,file=file, status='unknown', form='formatted', action='write')
-    !write(20,'(a)') 'blablabla'
-    !i = time8()
-    !call ctime(i,date)
-    !write(20,'(a,a)') 'File was written on ', date
-    !close(20)
+    if (verbose) print *,'[master] --> backup done'
 
   end subroutine backup_run
 
