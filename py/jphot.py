@@ -5,12 +5,16 @@ import lya_utils as lya  # all lya-specific constants and conversions.
 
 class photonlist(object):
     
-    def __init__(self,icFile,resFile,load=True):
+    def __init__(self,icFile,resFile,bakFile=None,load=True):
         self.icFile  = icFile
         self.resFile = resFile
+        self.bakFile = bakFile
         if load: 
             self.load_ic()
-            self.load_res()
+            if self.bakFile is not None:
+                self.load_bak()
+            else:
+                self.load_res()
 
             
     def load_ic(self):
@@ -36,7 +40,44 @@ class photonlist(object):
                 
     def load_res(self): 
         # read results from RASCAS
-        f = fortranfile.FortranFile(self.resFile)
+        if self.bakFile is not None:
+            self.load_bak()
+        else:
+            f = fortranfile.FortranFile(self.resFile)
+            [self.nphoton] = f.readInts()
+            # ID
+            xx = f.readInts()
+            self.ID = xx 
+            # status
+            xx = f.readInts()
+            self.status = xx
+            # xlast(3)
+            xx = f.readReals('d')
+            xx = xx.reshape((self.nphoton,3))
+            self.x = xx[:,0]
+            self.y = xx[:,1]
+            self.z = xx[:,2]
+            # nu_ext
+            xx = f.readReals('d')
+            self.nu = xx
+            # k(3)
+            xx = f.readReals('d')
+            xx = xx.reshape((self.nphoton,3))
+            self.kx = xx[:,0]
+            self.ky = xx[:,1]
+            self.kz = xx[:,2]
+            # nb_abs
+            xx = f.readInts()
+            self.nscat = xx
+            # time
+            xx = f.readReals('d')
+            self.time = xx
+            f.close()
+        
+
+    def load_bak(self): 
+        # read backup file from RASCAS
+        f = fortranfile.FortranFile(self.bakFile)
         [self.nphoton] = f.readInts()
         # ID
         xx = f.readInts()
@@ -50,6 +91,12 @@ class photonlist(object):
         self.x = xx[:,0]
         self.y = xx[:,1]
         self.z = xx[:,2]
+        # xcurr(3)
+        xx = f.readReals('d')
+        xx = xx.reshape((self.nphoton,3))
+        self.xcurr = xx[:,0]
+        self.ycurr = xx[:,1]
+        self.zcurr = xx[:,2]
         # nu_ext
         xx = f.readReals('d')
         self.nu = xx
@@ -65,6 +112,12 @@ class photonlist(object):
         # time
         xx = f.readReals('d')
         self.time = xx
+        # tau_abs_curr
+        xx = f.readReals('d')
+        self.tau = xx
+        # iran
+        xx = f.readInts()
+        self.iran = xx
         f.close()
 
 
