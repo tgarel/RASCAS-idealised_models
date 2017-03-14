@@ -47,45 +47,38 @@ program PhotonsFromStars
   real(kind=8)              :: star_dom_rin       = 0.0              ! inner radius of shell [code units]
   real(kind=8)              :: star_dom_rout      = 0.3              ! outer radius of shell [code units]
   real(kind=8)              :: star_dom_thickness = 0.1              ! thickness of slab [code units]
-  ! define star particles weights (i.e. luminosities)
+  ! --- define star particles luminosities (in total nb of photons)
+  character(30)             :: weight_type = 'SED'  ! May be 'SED', 'age_step_function' 
+  ! SED-option parameters
+  character(2000)           :: weight_sed_file = 'F1600.txt' ! file containing weights from SEDs
   
-  
-  ! define how star particls emit (i.e. the star-particle-frame spectral shape)
-  
+  ! age_step_function-option parameters
+  real(kind=8)              :: weight_max_age = 10.0d0       ! stars older than this don't shine [Myr]
+  real(kind=8)              :: weight_powlaw_l0_Ang = 1216.  ! F_l = F_0 * (lambda/sed_powlaw_l0)**beta), with F_0 and beta given in tables...
 
   
-  ! --- which stars shine
-  integer(kind=4)           :: nphot   = 1000000      ! number of photons to generate
-  real(kind=8)              :: max_age = 10.0d0       ! stars older than this don't shine [Myr]
-  ! --- how stars shine
-  character(30)             :: spec_type = 'monochromatic' ! how to draw frequencies
-  ! ------ spec_type == 'monochromatic' : all photons at the same frequency nu_0
-  real(kind=8)              :: nu_0    = clight/1215.6701d-8 ! emission frequency [Hz]
-  ! ------ spec_type == 'flat_fnu' : photons have a flat distribution in nu, between nu_min and nu_max
-  real(kind=8)              :: nu_min  = clight/1221d-8    ! min frequency [Hz]
-  real(kind=8)              :: nu_max  = clight/1210d-8    ! max frequency [Hz]
-  ! ------ spec_type == 'gauss' : photons have a gaussian distribution in nu.
-  real(kind=8)              :: nu_cen   = clight / 1215.6701d-8 ! central frequency [Hz]
-  real(kind=8)              :: velwidth = 10.0                  ! line width in velocity [km/s]
-  ! ------ spec_type == 'SED' : monochromatic emission with each star's contribution fixed by a table read as input.
-  real(kind=8)              :: nu_sed   = clight/1600.d-8  ! frequency [Hz]
-  character(2000)           :: SED_file = 'F1600.txt'      ! weights from BC03, in erg/s/A/Msun
-  ! ------ spec_type == 'SED-Gauss' : gaussian emission with each star's contribution fixed by a table read as input.
-  real(kind=8)              :: sed_gauss_nu       = clight/1215.6701d-8  ! frequency [Hz]
-  character(2000)           :: sed_gauss_file     = 'FLya.txt'           ! weights from BC03, in erg / s / Msun
-  real(kind=8)              :: sed_gauss_velwidth = 10.0                 ! line width in velocity [km/s]
-  ! ------ spec_type == 'SED-PowLaw' : a power-law fit to continuum of each star particle, vs. its age and met.
-  character(2000)           :: sed_powlaw_file = 'PowerLawCont1216.txt'  ! name of file to read
-  real(kind=8)              :: sed_powlaw_lmin = 1120.    ! min wavelength to sample (should be in the range where fit was made ...)
-  real(kind=8)              :: sed_powlaw_lmax = 1320.    ! max ...
-  real(kind=8)              :: sed_powlaw_l0   = 1216.    ! F_l = F_0 * (lambda/sed_powlaw_l0)**beta), with F_0 and beta given in tables... 
+  ! --- define how star particles emit (i.e. the star-particle-frame spectral shape)
+  character(30)             :: spec_type = 'Gaussian' ! May be 'monochromatic', 'Gaussian', 'PowerLaw' ...   
+  ! parameters for spec_type == 'monochromatic'
+  real(kind=8)              :: spec_mono_lambda0_Ang = 1215.6701  ! emission wavelength [A] -> this is the parameter read from file. 
+  real(kind=8)              :: spec_mono_nu0         = clight/spec_mono_lambda0_Ang*1d8 ! emission frequency [Hz]
+  ! parameters for spec_type == 'Gaussian'
+  real(kind=8)              :: spec_gauss_lambda0_Ang = spec_mono_lambda0_Ang ! emission wavelength at center [A] -> read from file.
+  real(kind=8)              :: spec_gauss_nu0 = clight / spec_gauss_lambda0_Ang * 1d8 ! central frequency [Hz]
+  real(kind=8)              :: spec_gauss_velwidth_kms = 10.0                  ! line width in velocity [km/s] -> red from file. 
+  ! ------ spec_type == 'PowerLaw' : a power-law fit to continuum of each star particle, vs. its age and met.
+  ! (NB: only wavelength range is defined here. The power-law associated to each star particle is read from weights file...)
+  real(kind=8)              :: spec_powlaw_lmin_Ang = 1120.    ! min wavelength to sample (should be in the range where fit was made ...)
+  real(kind=8)              :: spec_powlaw_lmax_Ang = 1320.    ! max ...
+  
   ! --- miscelaneous
+  integer(kind=4)           :: nphot   = 1000000      ! number of photons to generate
   integer(kind=4)           :: ranseed = -100         ! seed for random generator
   logical                   :: verbose = .true.
   logical                   :: cosmo = .true.         ! cosmo flag
   ! --------------------------------------------------------------------------
 
-
+  
   
   ! -------------------- read parameters --------------------
   narg = command_argument_count()
