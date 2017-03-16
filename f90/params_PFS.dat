@@ -1,24 +1,35 @@
-
 !--------------------------------------------------------------------------------
 [PhotonsFromStars]
 # input / output parameters
-  repository = directory_where_ramses_outputs_are
-  snapnum    = output_number
-  outputfile = name_of_the_photonsIC_file
+  repository = /Users/blaizot/Documents/Astro/SIMULATIONS/P13-20h-1Mpc-MUSIC/Zoom-7-1290/hdRun-LSS150pkpc-new-new-prime/
+  snapnum    = 23
+  outputfile = /Users/blaizot/Documents/Astro/SIMULATIONS/P13-20h-1Mpc-MUSIC/Zoom-7-1290/hdRun-LSS150pkpc-new-new-prime/PhotICs_new.dat
 
 # computational domain parameters
   star_dom_type      = sphere
   star_dom_pos       = 5.000E-01 5.000E-01 5.000E-01
-  star_dom_rsp       = 3.000E-01
+  star_dom_rsp       = 3.000E-02
+  star_dom_size      = 3.000E-01
+  star_dom_rin       = 0.000E+00
+  star_dom_rout      = 3.000E-01
+  star_dom_thickness = 1.000E-01
 
-# how stars shine
-  nphot         = 100
-  max_age       = 1.000E+01 ! [Myr]
-  spec_type     = monochromatic
+# Particle weights 
+  weight_type        = PowLaw
+  weight_input_file  = /Users/blaizot/Documents/Astro/Dev/rascas-git/f90/TestPhotTable.txt
+
+# Spectral shape 
+  spec_type               = Gauss
+#  spec_mono_lambda0_Ang  = 1215.6701
+  spec_gauss_lambda0_Ang  = 1215.6701
+  spec_gauss_velwidth_kms = 20.0
+#  spec_powlaw_lmin_Ang    = 1.120E+03 ! [A]
+#  spec_powlaw_lmax_Ang    = 1.320E+03 ! [A]
 
 # miscelaneous parameters
-  ranseed    =     -123
-  verbose    = T
-  cosmo      = T
+  nphot           = 1000000
+  ranseed         = -100
+  verbose         = T
+  cosmo           = T
 !--------------------------------------------------------------------------------
 

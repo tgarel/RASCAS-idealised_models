@@ -1,0 +1,17 @@
+# This is a test phot table ... 
+# yes it is 
+# oh yes. 
+2 2
+1 20
+0.001 0.01
+1216.
+1 1
+1 1
+
+
+
+1 1
+-1 -1
+1 1
+-1 -1
+
