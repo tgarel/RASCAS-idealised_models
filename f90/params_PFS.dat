@@ -20,14 +20,14 @@
 
 # Spectral shape 
   spec_type               = Gauss
-#  spec_mono_lambda0_Ang  = 1215.6701
+  spec_mono_lambda0_Ang   = 1215.6701
   spec_gauss_lambda0_Ang  = 1215.6701
-  spec_gauss_velwidth_kms = 20.0
-#  spec_powlaw_lmin_Ang    = 1.120E+03 ! [A]
-#  spec_powlaw_lmax_Ang    = 1.320E+03 ! [A]
+  spec_gauss_sigma_kms    = 20.0
+  spec_powlaw_lmin_Ang    = 1.120E+03 ! [A]
+  spec_powlaw_lmax_Ang    = 1.320E+03 ! [A]
 
 # miscelaneous parameters
-  nphot           = 1000000
+  nphot           = 5000000
   ranseed         = -100
   verbose         = T
   cosmo           = T
