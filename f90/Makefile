@@ -44,8 +44,8 @@ endif
 
 ifeq ($(SYSTYPE),"mac")
 F90         = gfortran-mp-4.7 -ffree-line-length-none -ffree-form  ###-fopenmp
-FFLAGS      = -g -fcheck=all -ftrapv -fbacktrace -Wall -fbounds-check
-##FFLAGS      = -O2
+#FFLAGS      = -g -fcheck=all -ftrapv -fbacktrace -Wall -fbounds-check
+FFLAGS      = -O2
 FFLAGS += $(OPTIONS)
 ###FFLAGS      = -O3
 LDFLAGS     = 
@@ -106,8 +106,8 @@ all: clean CreateDomDump PhotonsFromSourceModel PhotonsFromStars rascas-serial
 PhotonsFromSourceModel: $(OBJSPHO) PhotonsFromSourceModel.o
 	$(F90) $(FFLAGS) $(LDFLAGS) -o $@ $(OBJSPHO) PhotonsFromSourceModel.o
 
-PhotonsFromStars: $(OBJSPHO) PhotonsFromStars.o
-	$(F90) $(FFLAGS) $(LDFLAGS) -o $@ $(OBJSPHO) PhotonsFromStars.o
+PhotonsFromStars: $(OBJSPHO) PhotonsFromStars_v2.o
+	$(F90) $(FFLAGS) $(LDFLAGS) -o $@ $(OBJSPHO) PhotonsFromStars_v2.o
 
 CreateDomDump: $(OBJSDOM) CreateDomDump.o
 	$(F90) $(FFLAGS) $(LDFLAGS) -o $@ $(OBJSDOM) CreateDomDump.o

@@ -5,18 +5,19 @@ import lya_utils as lya  # all lya-specific constants and conversions.
 
 class photonlist(object):
     
-    def __init__(self,icFile,resFile,load=True):
+    def __init__(self,icFile,resFile,load=True,stars=False):
         self.icFile  = icFile
         self.resFile = resFile
         if load: 
-            self.load_ic()
+            self.load_ic(stars=stars)
             self.load_res()
 
             
-    def load_ic(self):
+    def load_ic(self,stars=False):
         # read photn IC file
         f = fortranfile.FortranFile(self.icFile)
         [self.nphoton]  = f.readInts()
+        [self.nRealPhotons] = f.readReals('d')
         [self.iseed_ic] = f.readInts()
         self.ID_ic = f.readInts()
         self.nu_ic = f.readReals('d')
@@ -31,6 +32,8 @@ class photonlist(object):
         self.ky_ic = xx[:,1]
         self.kz_ic = xx[:,2]
         self.iran_ic = f.readInts()
+        if stars:
+            self.nu_star = f.readReals('d')
         f.close()
 
                 

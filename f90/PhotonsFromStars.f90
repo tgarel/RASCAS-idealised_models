@@ -126,14 +126,6 @@ program PhotonsFromStars
   if (verbose) write(*,*) '> reading star particles'
   call ramses_read_stars_in_domain(repository,snapnum,emission_domain,star_pos,star_age,star_mass,star_vel,star_met,cosmo)
 
-  ! debug -
-  !star_vel = 0.0
-  !f0 = sum(star_mass) ! total mass
-  !star_mass = star_mass / f0  * 1.989d33 ! now total mass is 1 Msun (in g)
-  !star_age = star_age + 11.
-  ! - debug
-  ! --------------------------------------------------------------------------------------
-
 
   if (trim(spec_type) == 'SED' .or. trim(spec_type)=='SED-Gauss' .or. trim(spec_type) == 'SED-PowLaw') then
 
