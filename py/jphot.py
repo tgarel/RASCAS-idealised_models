@@ -1,5 +1,6 @@
 # nouvelle tentative de classe photons.
-import fortranfile
+#import fortranfile
+from scipy.io import FortranFile as ff # JB
 import numpy as np
 import lya_utils as lya  # all lya-specific constants and conversions.
 
@@ -15,55 +16,55 @@ class photonlist(object):
             
     def load_ic(self):
         # read photn IC file
-        f = fortranfile.FortranFile(self.icFile)
-        [self.nphoton]  = f.readInts()
-        [self.iseed_ic] = f.readInts()
-        self.ID_ic = f.readInts()
-        self.nu_ic = f.readReals('d')
-        xx = f.readReals('d')
+        f = ff(self.icFile) # fortranfile.FortranFile(self.icFile)
+        [self.nphoton]  = f.read_ints()
+        [self.iseed_ic] = f.read_ints()
+        self.ID_ic = f.read_ints()
+        self.nu_ic = f.read_reals('d')
+        xx = f.read_reals('d')
         xx = xx.reshape((self.nphoton,3))
         self.x_ic = xx[:,0]
         self.y_ic = xx[:,1]
         self.z_ic = xx[:,2]
-        xx = f.readReals('d')
+        xx = f.read_reals('d')
         xx = xx.reshape((self.nphoton,3))
         self.kx_ic = xx[:,0]
         self.ky_ic = xx[:,1]
         self.kz_ic = xx[:,2]
-        self.iran_ic = f.readInts()
+        self.iran_ic = f.read_ints()
         f.close()
 
                 
     def load_res(self): 
         # read results from RASCAS
-        f = fortranfile.FortranFile(self.resFile)
-        [self.nphoton] = f.readInts()
+        f = ff(self.resFile) # fortranfile.FortranFile(self.resFile)
+        [self.nphoton] = f.read_ints()
         # ID
-        xx = f.readInts()
+        xx = f.read_ints()
         self.ID = xx 
         # status
-        xx = f.readInts()
+        xx = f.read_ints()
         self.status = xx
         # xlast(3)
-        xx = f.readReals('d')
+        xx = f.read_reals('d')
         xx = xx.reshape((self.nphoton,3))
         self.x = xx[:,0]
         self.y = xx[:,1]
         self.z = xx[:,2]
         # nu_ext
-        xx = f.readReals('d')
+        xx = f.read_reals('d')
         self.nu = xx
         # k(3)
-        xx = f.readReals('d')
+        xx = f.read_reals('d')
         xx = xx.reshape((self.nphoton,3))
         self.kx = xx[:,0]
         self.ky = xx[:,1]
         self.kz = xx[:,2]
         # nb_abs
-        xx = f.readInts()
+        xx = f.read_ints()
         self.nscat = xx
         # time
-        xx = f.readReals('d')
+        xx = f.read_reals('d')
         self.time = xx
         f.close()
 
