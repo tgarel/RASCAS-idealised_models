@@ -18,9 +18,13 @@ module module_master
   type(domain),dimension(:),allocatable            :: domain_list
   
   ! --------------------------------------------------------------------------
-  ! user-defined parameters - read from section [worker] of the parameter file
+  ! user-defined parameters - read from section [master] of the parameter file
   ! --------------------------------------------------------------------------
   logical                   :: verbose = .false.
+  ! checkpoint/restart
+  logical                   :: restart = .false.    ! if true, start the run from backup file PhotonBakFile
+  character(2000)           :: PhotonBakFile = 'backup_photons.dat'
+  real(kind=8)              :: dt_backup = 7200.    ! time in seconds between 2 backups, default is 7200
   ! --------------------------------------------------------------------------
 
   public :: master, read_master_params, print_master_params
@@ -39,25 +43,37 @@ contains
     character(2000),intent(in)                    :: fileout
     integer(kind=4)                               :: i,j,icpu,idcpu,jnewdom,nphottodo,ncpuended,ntest
     logical                                       :: everything_not_done
-    real(kind=8)                                  :: start_initphot, end_initphot
+    real(kind=8)                                  :: start_initphot, end_initphot, time_now, dt_since_last_backup, time_last_backup
 
     call cpu_time(start_initphot)
 
-    ! read ICs photons
-    if (verbose) print *,'[master] --> reading ICs photons in file: ',trim(file_ICs)
-    call init_photons_from_file(file_ICs,photgrid)
-    nphot = size(photgrid)
-    if (verbose) print *,'[master] --> Nphoton =',nphot
+    ! read ICs photons or restore from backup
+    if(restart)then
+       if (verbose) print *,'[master] --> restoring photons from file: ',trim(PhotonBakFile)
+       call restore_photons(PhotonBakFile,photgrid)
+       nphot = size(photgrid)
+       nphottodo = count(mask=(photgrid(:)%status==0))
+       if (verbose)then
+          print *,'[master] --> Nphoton =',nphot
+          print *,'[master] --> Nphoton to do =',nphottodo
+       endif
+    else
+       if (verbose) print *,'[master] --> reading ICs photons in file: ',trim(file_ICs)
+       call init_photons_from_file(file_ICs,photgrid)
+       nphot = size(photgrid)
+       nphottodo = nphot
+       if (verbose) print *,'[master] --> Nphoton =',nphot
+    endif
 
     ! some sanity checks
-    if(nbuffer*nslave>nphot)then
+    if(nbuffer*nslave>nphottodo)then
        print *,'ERROR: decrease nbuffer and/or ncpu'
        call stop_mpi
     endif
     ! guidance for a good load-balancing
-    if(4*nbuffer*nslave>nphot)then
+    if(4*nbuffer*nslave>nphottodo)then
        print *,'ERROR: decrease nbuffer for a good load-balancing of the code'
-       print *,'--> suggested nbuffer =', nphot/nslave/10
+       print *,'--> suggested nbuffer =', nphottodo/nslave/10
        call stop_mpi
     endif
 
@@ -86,8 +102,10 @@ contains
     last(:)=-1
     nqueue(:)=0
     do i=1,nphot
-       j = get_my_new_domain(photgrid(i)%xcurr,domain_list)
-       call add_photon_to_domain(i,j)
+       if(photgrid(i)%status==0)then  ! for restart
+          j = get_my_new_domain(photgrid(i)%xcurr,domain_list)
+          call add_photon_to_domain(i,j)
+       endif
     enddo
 
     ! according to the distribution of photons in domains, ditribute cpus to each domain
@@ -96,6 +114,7 @@ contains
     call cpu_time(end_initphot)
     if (verbose) print '(" [master] --> time to initialize photons in master = ",f12.3," seconds.")',end_initphot-start_initphot
     if (verbose) print*,'[master] send a first chunk of photons to each worker'
+    time_last_backup = end_initphot
 
     ! send a first chunk of photons to each worker
     do icpu=1,nslave
@@ -166,6 +185,14 @@ contains
        ! clear photpacket
        photpacket(:)%status=-1
 
+       ! check if it is time to back up
+       call cpu_time(time_now)
+       dt_since_last_backup = time_now - time_last_backup
+       if(dt_since_last_backup > dt_backup)then
+          call backup_run
+          time_last_backup = time_now
+       endif
+
        ! check end of work
        nphottodo=sum(nqueue)
        if(nphottodo <= 0)then
@@ -224,6 +251,33 @@ contains
 
   end subroutine master
   !===================================================================================================
+
+
+  subroutine backup_run
+
+    character(1000) :: filebak, copyfile
+    logical         :: file_exists
+
+    ! first, copy last backup file into filebak
+    filebak = trim(PhotonBakFile)//'.bak'
+    ! check if file exists
+    INQUIRE(FILE=PhotonBakFile, EXIST=file_exists)
+    !if(access(PhotonBakFile,' ') == 0) then
+    if(file_exists)then
+       copyfile = 'mv '//trim(PhotonBakFile)//' '//trim(filebak) 
+       !call execute_command_file(copyfile)
+       call system(copyfile)
+    endif
+
+    ! then, write a new backup file
+    ! in this 1st attempt, we save only photon_current grid
+    ! => restart from the grid, need to reconstruct all the queues, but can restart with any number of CPU
+    call save_photons(PhotonBakFile,photgrid)
+
+    if (verbose) print *,'[master] --> backup done'
+
+  end subroutine backup_run
+
 
 
   subroutine print_diagnostics
@@ -471,6 +525,12 @@ contains
           select case (trim(name))
           case ('verbose')
              read(value,*) verbose
+          case ('restart')
+             read(value,*) restart
+          case ('PhotonBakFile')
+             write(PhotonBakFile,'(a)') trim(value)
+          case ('dt_backup')
+             read(value,*) dt_backup
           end select
        end do
     end if
@@ -496,11 +556,17 @@ contains
     if (present(unit)) then 
        write(unit,'(a)')             '[master]'
        write(unit,'(a,L1)')          '  verbose        = ',verbose
+       write(unit,'(a,L1)')          '  restart        = ',restart
+       write(unit,'(a,a)')           '  PhotonBakFile  = ',trim(PhotonBakFile)
+       write(unit,'(a,f12.3)')       '  dt_backup      = ',dt_backup
        write(unit,'(a)')             ' '
        call print_mesh_params(unit)
     else
        write(*,'(a)')             '[master]'
        write(*,'(a,L1)')          '  verbose        = ',verbose
+       write(*,'(a,L1)')          '  restart        = ',restart
+       write(*,'(a,a)')           '  PhotonBakFile  = ',trim(PhotonBakFile)
+       write(*,'(a,f12.3)')       '  dt_backup      = ',dt_backup
        write(*,'(a)')             ' '       
        call print_mesh_params
     end if
