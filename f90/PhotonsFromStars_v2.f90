@@ -58,7 +58,7 @@ program PhotonsFromStars
   !                             age and metallicity, and we use this as a weight.
   character(30)             :: weight_type       = 'PowLaw'  ! May be 'PowLaw', 'Mono'
   character(2000)           :: weight_input_file = 'F1600.txt' ! file containing weights from SEDs
-  real(kind=8)              :: weight_l0_Ang ! this is the lbda_0 above or the monochromatic wavelength, and is read from weight file 
+  real(kind=8)              :: weight_l0_Ang ! this is the lbda_0 above or the monochromatic or line-center wavelength, and is read from weight file 
 
   ! --- define how star particles emit (i.e. the star-particle-frame spectral shape)
   ! Three options here :
@@ -67,11 +67,9 @@ program PhotonsFromStars
   ! - spec_type=='PowLaw' : we sample a power-law continuum between two wavelengths. 
   character(30)             :: spec_type = 'Gauss' ! May be 'Mono', 'Gauss', 'PowLaw' ...   
   ! parameters for spec_type == 'Mono'
-  real(kind=8)              :: spec_mono_lambda0_Ang = 1215.6701  ! emission wavelength [A] -> this is the parameter read from file. 
-  real(kind=8)              :: spec_mono_nu0          ! emission frequency [Hz] -> computed from spec_mono_lambda0_Ang
+  real(kind=8)              :: spec_mono_nu0          ! emission frequency [Hz] -> computed from weight_l0_Ang
   ! parameters for spec_type == 'Gauss'
-  real(kind=8)              :: spec_gauss_lambda0_Ang = 1215.6701 ! emission wavelength at center [A] -> read from file.
-  real(kind=8)              :: spec_gauss_nu0         ! central frequency [Hz] -> computed from spec_mono_lambda0_Ang
+  real(kind=8)              :: spec_gauss_nu0         ! central frequency [Hz] -> computed from weight_l0_Ang
   real(kind=8)              :: spec_gauss_sigma_kms = 10.0                  ! line width in velocity [km/s] -> read from file. 
   ! ------ spec_type == 'PowLaw' : a power-law fit to continuum of each star particle, vs. its age and met.
   real(kind=8)              :: spec_powlaw_lmin_Ang = 1120.    ! min wavelength to sample (should be in the range where fit was made ...)
@@ -244,8 +242,10 @@ program PhotonsFromStars
 
   
   ! --------------------------------------------------------------------------------------
-  ! now we can draw integers from 1 to nflux and assign photons to stars ...
+  ! now we can draw integers from 1 to nflux and assign photons to stars according to spectral shape.
   ! --------------------------------------------------------------------------------------
+  if (trim(weight_type) == 'Mono' .and. trim(spec_type) == 'Mono')  spec_mono_nu0  = clight/weight_l0_Ang*1d8
+  if (trim(weight_type) == 'Mono' .and. trim(spec_type) == 'Gauss') spec_gauss_nu0 = clight/weight_l0_Ang*1d8
   allocate(photgrid(nphot),nu_star(nphot))
   iran = ranseed
   do i = 1,nphot
@@ -280,16 +280,6 @@ program PhotonsFromStars
            nu   = clight / (nu*1e-8) ! this is freq. [Hz]
         end if
      case('Gauss')
-!!$        ! rejection method 
-!!$        ok = .false.
-!!$        sigma_nu = (spec_gauss_sigma_kms * 1d5 * spec_gauss_nu0 / clight)
-!!$        do while (.not. ok)
-!!$           nu = clight / (ran3(iran) * 20. - 10. + spec_gauss_lambda0_Ang) * 1e8
-!!$           r1 = ran3(iran)
-!!$           r2 = exp( -(nu - spec_gauss_nu0)**2 / 2./sigma_nu**2)
-!!$           if (r1 <= r2) ok = .true. 
-!!$        end do
-        ! ohter method (not convincingly working ...) 
         r1 = ran3(iran)
         r2 = ran3(iran)
         nu = sqrt(-2.*log(r1)) * cos(2.0d0*pi*r2)
@@ -404,12 +394,6 @@ contains
              write(weight_input_file,'(a)') trim(value)
           case ('spec_type')
              write(spec_type,'(a)') trim(value)
-          case ('spec_mono_lambda0_Ang')
-             read(value,*) spec_mono_lambda0_Ang
-             spec_mono_nu0  = clight/spec_mono_lambda0_Ang*1d8
-          case ('spec_gauss_lambda0_Ang')
-             read(value,*) spec_gauss_lambda0_Ang
-             spec_gauss_nu0 = clight / spec_gauss_lambda0_Ang * 1d8
           case ('spec_gauss_sigma_kms')
              read(value,*) spec_gauss_sigma_kms
           case ('spec_powlaw_lmin_Ang')
@@ -429,8 +413,8 @@ contains
           end select
        end do
     end if
-    close(10)
-
+    close(10)          
+    
     return
 
   end subroutine read_PhotonsFromStars_params
@@ -471,10 +455,7 @@ contains
        write(unit,'(a)')             '# Spectral shape '
        write(unit,'(a,a)')           '  spec_type               = ',trim(spec_type)
        select case(trim(spec_type))
-       case('Mono')
-          write(unit,'(a,es9.3,a)')     '  spec_mono_lambda0_Ang   = ',spec_mono_lambda0_Ang, ' ! [A]' 
        case('Gauss')
-          write(unit,'(a,es9.3,a)')     '  spec_gauss_lambda0_Ang  = ',spec_gauss_lambda0_Ang, ' ! [A]' 
           write(unit,'(a,es9.3,a)')     '  spec_gauss_sigma_kms = ',spec_gauss_sigma_kms, ' ! [km/s]'
        case('PowLaw')
           write(unit,'(a,es9.3,a)')     '  spec_powlaw_lmin_Ang    = ',spec_powlaw_lmin_Ang, ' ! [A]' 
@@ -512,10 +493,7 @@ contains
        write(*,'(a)')             '# Spectral shape '
        write(*,'(a,a)')           '  spec_type               = ',trim(spec_type)
        select case(trim(spec_type))
-       case('Mono')
-          write(*,'(a,es9.3,a)')     '  spec_mono_lambda0_Ang   = ',spec_mono_lambda0_Ang, ' ! [A]' 
        case('Gauss')
-          write(*,'(a,es9.3,a)')     '  spec_gauss_lambda0_Ang  = ',spec_gauss_lambda0_Ang, ' ! [A]' 
           write(*,'(a,es9.3,a)')     '  spec_gauss_sigma_kms = ',spec_gauss_sigma_kms, ' ! [km/s]'
        case('PowLaw')
           write(*,'(a,es9.3,a)')     '  spec_powlaw_lmin_Ang    = ',spec_powlaw_lmin_Ang, ' ! [A]' 

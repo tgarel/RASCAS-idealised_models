@@ -18,6 +18,7 @@ class photonlist(object):
         # read photn IC file
         f = ff(self.icFile) # fortranfile.FortranFile(self.icFile)
         [self.nphoton]  = f.read_ints()
+        [self.nRealPhotons] = f.read_reals('d')
         [self.iseed_ic] = f.read_ints()
         self.ID_ic = f.read_ints()
         self.nu_ic = f.read_reals('d')
