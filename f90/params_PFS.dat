@@ -1,9 +1,9 @@
 !--------------------------------------------------------------------------------
 [PhotonsFromStars]
 # input / output parameters
-  repository = /Users/blaizot/Documents/Astro/SIMULATIONS/P13-20h-1Mpc-MUSIC/Zoom-7-1290/hdRun-LSS150pkpc-new-new-prime/
-  snapnum    = 23
-  outputfile = /Users/blaizot/Documents/Astro/SIMULATIONS/P13-20h-1Mpc-MUSIC/Zoom-7-1290/hdRun-LSS150pkpc-new-new-prime/PhotICs_new.dat
+  repository = /Users/blaizot/Documents/Astro/SIMULATIONS/P13-20h-1Mpc-MUSIC/Zoom-7-10508/hdRun-LSS150pkpc-new-new-prime-jeans-fbk/
+  snapnum    = 50
+  outputfile = /Users/blaizot/Documents/Astro/SIMULATIONS/P13-20h-1Mpc-MUSIC/Zoom-7-10508/hdRun-LSS150pkpc-new-new-prime-jeans-fbk/PhotICs_new.dat
 
 # computational domain parameters
   star_dom_type      = sphere
@@ -15,19 +15,17 @@
   star_dom_thickness = 1.000E-01
 
 # Particle weights 
-  weight_type        = PowLaw
-  weight_input_file  = /Users/blaizot/Documents/Astro/Dev/rascas-git/f90/TestPhotTable.txt
+  weight_type        = Mono
+  weight_input_file  = ./TestPhotTable_Mono.txt
 
 # Spectral shape 
   spec_type               = Gauss
-  spec_mono_lambda0_Ang   = 1215.6701
-  spec_gauss_lambda0_Ang  = 1215.6701
   spec_gauss_sigma_kms    = 20.0
-  spec_powlaw_lmin_Ang    = 1.120E+03 ! [A]
-  spec_powlaw_lmax_Ang    = 1.320E+03 ! [A]
+#  spec_powlaw_lmin_Ang    = 1.120E+03 ! [A]
+#  spec_powlaw_lmax_Ang    = 1.320E+03 ! [A]
 
 # miscelaneous parameters
-  nphot           = 5000000
+  nphot           = 1000000
   ranseed         = -100
   verbose         = T
   cosmo           = T

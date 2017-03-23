@@ -43,7 +43,8 @@ LDFLAGS     =  -lmpi
 endif
 
 ifeq ($(SYSTYPE),"mac")
-F90         = gfortran-mp-4.7 -ffree-line-length-none -ffree-form  ###-fopenmp
+#F90         = gfortran-mp-4.7 -ffree-line-length-none -ffree-form  ###-fopenmp
+F90         = gfortran-mp-6 -ffree-line-length-none -ffree-form  ###-fopenmp
 #FFLAGS      = -g -fcheck=all -ftrapv -fbacktrace -Wall -fbounds-check
 FFLAGS      = -O2
 FFLAGS += $(OPTIONS)

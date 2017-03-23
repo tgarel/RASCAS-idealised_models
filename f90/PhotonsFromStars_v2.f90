@@ -24,11 +24,12 @@ program PhotonsFromStars
   real(kind=8), allocatable :: nu_star(:)
   ! SED-related variables
   integer(kind=4) :: sed_nage,sed_nmet,imet,iage
-  integer(kind=8) :: nflux,n
+  integer(kind=8) :: nflux,n,ir,ix
   real(kind=8),allocatable :: sed_age(:),sed_met(:),sweight(:),sed_nphot(:,:),sed_F_0(:,:),sed_beta(:,:)
   integer(kind=8), allocatable :: cum_flux_prob(:)
+  integer(kind=4),allocatable :: star_iage(:),star_imet(:)
   real(kind=8),allocatable :: star_beta(:) 
-  real(kind=8) :: total_flux,minflux,check_flux,f0,beta,betaplus2,sigma_nu,lambda
+  real(kind=8) :: total_flux,minflux,check_flux,f0,beta,betaplus2,sigma_nu,lambda,l1,l2,x,dx1,dx2,dx
   logical:: ok
   
   ! --------------------------------------------------------------------------
@@ -56,7 +57,10 @@ program PhotonsFromStars
   !                             and spec_powlaw_lmax_Ang) to compute the integral of F_lbda for each star particle as its weight.
   !   - weight_type=='Mono'   : Here the weight_input_file simply provides a number of photons (per sec.) emitted as a function of
   !                             age and metallicity, and we use this as a weight.
-  character(30)             :: weight_type       = 'PowLaw'  ! May be 'PowLaw', 'Mono'
+  !   - weight_type=='Table'  : Here, the weight is the integrated nb of photons over a wavelength range, and the table also provides
+  !                             means to reconstruct the spectral shape via the tabulated reciprocal of P(<lambda)
+  !                             -> has to be used with spec_type=='Table'.
+  character(30)             :: weight_type       = 'PowLaw'  ! May be 'PowLaw', 'Mono', 'Table'
   character(2000)           :: weight_input_file = 'F1600.txt' ! file containing weights from SEDs
   real(kind=8)              :: weight_l0_Ang ! this is the lbda_0 above or the monochromatic or line-center wavelength, and is read from weight file 
 
@@ -71,9 +75,12 @@ program PhotonsFromStars
   ! parameters for spec_type == 'Gauss'
   real(kind=8)              :: spec_gauss_nu0         ! central frequency [Hz] -> computed from weight_l0_Ang
   real(kind=8)              :: spec_gauss_sigma_kms = 10.0                  ! line width in velocity [km/s] -> read from file. 
-  ! ------ spec_type == 'PowLaw' : a power-law fit to continuum of each star particle, vs. its age and met.
+  ! parameters for spec_type == 'PowLaw' : a power-law fit to continuum of each star particle, vs. its age and met.
   real(kind=8)              :: spec_powlaw_lmin_Ang = 1120.    ! min wavelength to sample (should be in the range where fit was made ...)
   real(kind=8)              :: spec_powlaw_lmax_Ang = 1320.    ! max ...
+  ! parameters for spec_type == 'Table'
+  integer(kind=4)           :: spec_table_nbins ! read from the weight file
+  real(kind=8),allocatable  :: spec_table_lofx(:,:,:) ! -> allocated to (spec_table_nbins,sed_nage,sed_nmet)
   
   ! --- miscelaneous
   integer(kind=4)           :: nphot   = 1000000      ! number of photons to generate
@@ -137,18 +144,28 @@ program PhotonsFromStars
   allocate(sed_age(sed_nage),sed_met(sed_nmet))
   read(15,*) sed_age ! in Myr
   read(15,*) sed_met ! metallicities (absolute)
-  read(15,*) weight_l0_Ang  ! ref. wavelength in A
   select case (trim(weight_type))
   case ('Mono')
+     read(15,*) weight_l0_Ang  ! ref. wavelength in A
      allocate(sed_nphot(sed_nage,sed_nmet))
      do imet = 1,sed_nmet
         read(15,*) sed_nphot(:,imet)  ! nb phots (at weight_l0_Ang) per sec, per solar mass. 
      end do
   case ('PowLaw')
+     read(15,*) weight_l0_Ang  ! ref. wavelength in A
      allocate(sed_F_0(sed_nage,sed_nmet),sed_beta(sed_nage,sed_nmet))
      do imet = 1,sed_nmet
         read(15,*) sed_F_0(:,imet)  ! normalisation of power law (in erg/s/A/Msun)
         read(15,*) sed_beta(:,imet) ! slope of power law
+     end do
+  case ('Table')
+     read(15,*) spec_table_nbins
+     allocate(spec_table_lofx(spec_table_nbins,sed_nage,sed_nmet)) ! lambda of x...
+     allocate(sed_nphot(sed_nage,sed_nmet)) ! nb of phots [#/s/Msun] integrated over some wavelength range
+     do imet = 1,sed_nmet
+        do iage = 1,sed_nage
+           read(15,*) sed_nphot(iage,imet),spec_table_lofx(:,iage,imet)
+        end do
      end do
   case default
      write(*,'(a,a,a)') 'weight_type ',trim(weight_type),' not implemented ... '
@@ -160,6 +177,7 @@ program PhotonsFromStars
   print*,'nstars = ',nstars
   allocate(sweight(nstars))
   if (trim(weight_type) == 'PowLaw') allocate(star_beta(nstars))
+  if (trim(weight_type) == 'Table') allocate(star_iage(nstars),star_imet(nstars))
   do i = 1,nstars
      ! pick SED with closest metallicity and age (no interpolation for now)
      call locatedb(sed_met,sed_nmet,star_met(i),imet)
@@ -175,6 +193,10 @@ program PhotonsFromStars
      select case (trim(weight_type))
      case('Mono')
         sweight(i) = sweight(i) * sed_nphot(iage,imet)  ! nb of photons per sec. 
+     case ('Table')
+        sweight(i) = sweight(i) * sed_nphot(iage,imet)  ! nb of photons per sec.
+        star_iage(i) = iage
+        star_imet(i) = imet
      case('PowLaw')
         ! integrate powerlaw from min to max wavelengths.
         ! We actually want to sample the number of photons per lambda bin.
@@ -196,7 +218,7 @@ program PhotonsFromStars
            sweight(i) = sweight(i) * ( (spec_powlaw_lmax_Ang/weight_l0_Ang)**(2.+beta) - (spec_powlaw_lmin_Ang/weight_l0_Ang)**(2.+beta) )
         end if
         ! -> sweight is the number of photons in [lbda_min;lbda_max]
-        star_beta(i) = beta ! keep for later. 
+        star_beta(i) = beta ! keep for later.
      end select
   end do
   ! --------------------------------------------------------------------------------------
@@ -286,6 +308,16 @@ program PhotonsFromStars
         nu = (spec_gauss_sigma_kms * 1d5 * spec_gauss_nu0 / clight) * nu + spec_gauss_nu0
      case('Mono')
         nu = spec_mono_nu0
+     case ('Table')
+        x  = ran3(iran)
+        dx = 1.0d0 / (spec_table_nbins-1)  ! there are nbins-1 bins (nbins values) ... 
+        ix = int(x /dx) + 1 
+        if (ix >= spec_table_nbins) ix = spec_table_nbins-1
+        dx1 = x - (ix-1)*dx
+        dx2 = ix*dx - x
+        lambda = spec_table_lofx(ix,iage,imet)*dx2 + spec_table_lofx(ix+1,iage,imet)*dx1
+        lambda = lambda / dx
+        nu = clight/(lambda * 1e-8)  ! [Hz]
      end select
      nu_star(i) = nu  ! star-particle-frame frequency
      ! now put in external frame using particle's velocity. 
@@ -322,10 +354,11 @@ program PhotonsFromStars
   case('Mono')
      deallocate(sed_nphot)
   case('PowLaw')
-     deallocate(sed_F_0,sed_beta)
+     deallocate(sed_F_0,sed_beta,star_beta)
+  case ('Table')
+     deallocate(sed_nphot,spec_table_lofx,star_iage,star_imet)
   end select
   deallocate(sweight)
-  if (trim(weight_type) == 'PowLaw') deallocate(star_beta)
   deallocate(cum_flux_prob,photgrid,nu_star)
   ! --------------------------------------------------------------------------------------
 
