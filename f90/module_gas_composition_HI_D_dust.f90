@@ -4,7 +4,7 @@ module module_gas_composition
   ! - The Deuterium density is set as a fraction of H density through the parameter deut2H_nb_ratio.
   ! - The thermal velocity of D is derived from the one of H using the mass ratio (sqrt_H2Deut_mass_ratio in module_constants.f90).
   ! - The HI content is from RAMSES
-  ! - The dust content is a function of metallicity and HI. 
+  ! - The dust content is a function of metallicity, HI and HII, following Laursen+09.
 
   use module_HI_model
   use module_D_model

@@ -10,10 +10,13 @@ module module_dust_model
 
   private
 
+  ! --------------------------------------------------------------------------
   ! user-defined parameters - read from section [dust] of the parameter file 
+  ! --------------------------------------------------------------------------
   real(kind=8)  :: albedo     = 0.32    ! dust albedo [default 0.32 for Lya, from Li & Draine 2001]. 
   real(kind=8)  :: g_dust     = 0.73    ! g parameter of the Henyey-Greenstein phase function for dust scattering [default 0.73 from Li & Draine 2001]
   character(20) :: dust_model = 'SMC' 
+  ! --------------------------------------------------------------------------
   
   public get_tau_dust, scatter_dust, read_dust_params, print_dust_params
   private sigma_d

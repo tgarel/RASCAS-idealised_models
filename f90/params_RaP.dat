@@ -27,8 +27,8 @@
 [gas_composition] 
 # mixture parameters
   deut2H_nb_ratio     = 3.000E-05
-  dust_to_metal_ratio = 3.000E-01
-  mH_over_mdust       = 5.000E-08
+  fion                = 0.01
+  Zref                = 0.005   ! OK for LMC dust model.
 # overwrite parameters
   gas_overwrite       = F
 # miscelaneous parameters
@@ -49,7 +49,7 @@
 
 !--------------------------------------------------------------------------------
 [dust]
-  albedo       = 4.600E-01
-  g_dust       = 7.300E-01
-  grain_radius = 2.000E-06
+  albedo       = 0.32
+  g_dust       = 0.73
+  dust_model   = 'SMC'  
 !--------------------------------------------------------------------------------

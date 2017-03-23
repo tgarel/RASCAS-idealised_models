@@ -2,7 +2,7 @@ module module_gas_composition
 
   ! mix of HI and dust.
   ! - The HI content is from RAMSES
-  ! - The dust content is a function of metallicity and HI. 
+  ! - The dust content is a function of metallicity, HI and HII, following Laursen+09.
 
   use module_HI_model
   use module_dust_model

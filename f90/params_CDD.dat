@@ -1,5 +1,3 @@
-
-
 !--------------------------------------------------------------------------------
 [CreateDomDump]
 # input outputs:
@@ -40,8 +38,8 @@
 [gas_composition] 
 # mixture parameters
   deut2H_nb_ratio     = 3.000E-05
-  dust_to_metal_ratio = 3.000E-01
-  mH_over_mdust       = 5.000E-08
+  fion                = 0.01
+  Zref                = 0.005   ! OK for LMC dust model.
 # overwrite parameters
   gas_overwrite       = F
 # miscelaneous parameters
