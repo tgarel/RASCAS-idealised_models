@@ -443,6 +443,60 @@ contains
 
 
 
+  subroutine restore_photons(file,pgrid)
+
+    character(2000),intent(in)                                 :: file
+    type(photon_current),dimension(:),allocatable, intent(out) :: pgrid
+    integer(kind=4)                                            :: i, np
+
+    ! restore photons from saved file
+    open(unit=16, file=trim(file), status='old', form='unformatted', action='read')
+    read(16) np
+
+    allocate(pgrid(np))
+
+    read(16) (pgrid(i)%ID,           i=1,np)
+    read(16) (pgrid(i)%status,       i=1,np)
+    read(16) (pgrid(i)%xlast(:),     i=1,np)
+    read(16) (pgrid(i)%xcurr(:),     i=1,np)
+    read(16) (pgrid(i)%nu_ext,       i=1,np)
+    read(16) (pgrid(i)%k(:),         i=1,np)
+    read(16) (pgrid(i)%nb_abs,       i=1,np)
+    read(16) (pgrid(i)%time,         i=1,np)
+    read(16) (pgrid(i)%tau_abs_curr, i=1,np)
+    read(16) (pgrid(i)%iran,         i=1,np)
+
+    close(16)
+
+  end subroutine restore_photons
+
+
+
+  subroutine save_photons(file,pgrid)
+
+    character(2000),intent(in)                   :: file
+    type(photon_current),dimension(:),intent(in) :: pgrid
+    integer(kind=4)                              :: i,np
+
+    np = size(pgrid)
+    open(unit=16, file=trim(file), status='unknown', form='unformatted', action='write')
+    write(16) np
+    write(16) (pgrid(i)%ID,           i=1,np)
+    write(16) (pgrid(i)%status,       i=1,np)
+    write(16) (pgrid(i)%xlast(:),     i=1,np)
+    write(16) (pgrid(i)%xcurr(:),     i=1,np)
+    write(16) (pgrid(i)%nu_ext,       i=1,np)
+    write(16) (pgrid(i)%k(:),         i=1,np)
+    write(16) (pgrid(i)%nb_abs,       i=1,np)
+    write(16) (pgrid(i)%time,         i=1,np)
+    write(16) (pgrid(i)%tau_abs_curr, i=1,np)
+    write(16) (pgrid(i)%iran,         i=1,np)
+    close(16)
+
+  end subroutine save_photons
+
+
+
   subroutine dump_photons(file,pgrid)
 
     character(2000),intent(in)                   :: file
