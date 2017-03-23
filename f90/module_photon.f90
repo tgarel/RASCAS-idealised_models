@@ -408,10 +408,12 @@ contains
     type(photon_current),dimension(:),allocatable, intent(out) :: pgrid
     type(photon_init),dimension(:),allocatable                 :: pgridinit
     integer(kind=4)                                            :: i, n_photon, iseed
+    real(kind=8)                                               :: total_flux
 
     ! read ICs
     open(unit=14, file=trim(file), status='unknown', form='unformatted', action='read')
     read(14) n_photon
+    read(14) total_flux    ! nb of real photons [# / s]
     allocate(pgridinit(n_photon))
     read(14) iseed
     read(14) (pgridinit(i)%ID,i=1,n_photon)

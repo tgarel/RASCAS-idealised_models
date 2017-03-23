@@ -9,7 +9,7 @@ program PhotonsFromSourceModel
 
   type(photon_init),dimension(:),allocatable :: photgrid
   integer(kind=4)                            :: iran, i, narg
-  real(kind=8)                               :: nu, r1, r2
+  real(kind=8)                               :: nu, r1, r2, one
   character(2000)                            :: parameter_file
 
   ! --------------------------------------------------------------------------
@@ -92,6 +92,8 @@ program PhotonsFromSourceModel
   if (verbose) write(*,*) '--> writing file'
   open(unit=14, file=trim(outputfile), status='unknown', form='unformatted', action='write')
   write(14) nphot
+  one = 1.0d0
+  write(14) one ! nb of real photons emited per sec ... This is irrelevant here but needed to match format of PhotonsFromStars.f90
   write(14) ranseed
   write(14) (photgrid(i)%ID,i=1,nphot)
   write(14) (photgrid(i)%nu_em,i=1,nphot)
