@@ -376,6 +376,28 @@ contains
 
   end subroutine ramses_get_metallicity
 
+  ! dumoulin-
+  subroutine ramses_get_nsiII_cgs(nleaf,nsi_ii, metallicity, solar_metallicity, nhi, T)
+
+    implicit none
+    integer(kind=4),intent(in)  :: nleaf 
+    real(kind=8),intent(inout)  :: nsi_ii(nleaf)
+    real(kind=8),intent(in)     :: solar_metallicity 
+    real(kind=8),intent(in)     :: metallicity(nleaf), nhi(nleaf), T(nleaf)
+    integer(kind=4)             :: i
+    
+    ! derive SiII density from ramses using the same ionization fraction than HI
+    ! SiII is present only between 94.5d4K and 189.7d4K, outside nsiII = 0.0d0
+
+    do i=1, nleaf,1
+      if(94.5d4<=T(i) .and. T(i)<=189.7d4) then
+        nsi_ii(i) = 2.8d-5 * nhi(i) * metallicity(i) / solar_metallicity
+      else
+        nsi_ii(i) = 0.0d0
+      endif
+    enddo
+  end subroutine ramses_get_nsiII_cgs
+  ! -dumoulin
 
   function ramses_get_box_size_cm(repository,snapnum)
 
