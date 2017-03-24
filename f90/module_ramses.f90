@@ -1,6 +1,6 @@
 module module_ramses
 
-  use module_constants, only : kB, mp, XH
+  use module_constants, only : kB, mp, XH, mSi
   use module_domain
 
   implicit none
@@ -90,7 +90,7 @@ module module_ramses
   
 
   public  :: read_leaf_cells, get_ngridtot, ramses_get_velocity_cgs, ramses_get_T_nhi_cgs, ramses_get_metallicity, ramses_get_box_size_cm, ramses_get_nh
-  public  :: ramses_read_stars_in_domain, read_ramses_params, print_ramses_params, dump_ramses_info
+  public  :: ramses_read_stars_in_domain, read_ramses_params, print_ramses_params, dump_ramses_info, ramses_get_T_nSiII_cgs
   ! default is private now ... !! private :: read_hydro, read_amr, get_nleaf, get_nvar, clear_amr, get_ncpu, get_param_real
 
   !==================================================================================
@@ -376,28 +376,123 @@ contains
 
   end subroutine ramses_get_metallicity
 
-  ! dumoulin-
-  subroutine ramses_get_nsiII_cgs(nleaf,nsi_ii, metallicity, solar_metallicity, nhi, T)
+  
+  subroutine ramses_get_T_nSiII_cgs(repository,snapnum,nleaf,nvar,ramses_var,temp,nSiII)
 
-    implicit none
-    integer(kind=4),intent(in)  :: nleaf 
-    real(kind=8),intent(inout)  :: nsi_ii(nleaf)
-    real(kind=8),intent(in)     :: solar_metallicity 
-    real(kind=8),intent(in)     :: metallicity(nleaf), nhi(nleaf), T(nleaf)
-    integer(kind=4)             :: i
+    implicit none 
+
+    character(1000),intent(in)  :: repository
+    integer(kind=4),intent(in)  :: snapnum
+    integer(kind=4),intent(in)  :: nleaf, nvar
+    real(kind=8),intent(in)     :: ramses_var(nvar,nleaf) ! one cell only
+    real(kind=8),intent(inout)  :: nSiII(nleaf), temp(nleaf)
+    real(kind=8),allocatable    :: boost(:)
+    real(kind=8)                :: xhi
+    integer(kind=4) :: ihx,ihy,i
+    real(kind=8)    :: xx,yy,dxx1,dxx2,dyy1,dyy2,f
+    integer(kind=4) :: if1,if2,jf1,jf2
+
+    real(kind=8),allocatable,dimension(:)    :: mu, nh, metallicity
+
+    ! get conversion factors if necessary
+    if (.not. conversion_scales_are_known) then 
+       call read_conversion_scales(repository,snapnum)
+       conversion_scales_are_known = .True.
+    end if
+
+
+    if(ramses_rt)then
+       ! ramses RT
+       allocate(mu(1:nleaf))
+       mu   = 1.d0 / (XH * (1.d0*ramses_var(ihii,:) + 0.25d0*(1.d0-XH)*(1.d0 + ramses_var(iheii,:) + 2.d0*ramses_var(iheiii,:)))) ! assumes no metals
+       temp = ramses_var(5,:) / ramses_var(1,:) * dp_scale_T2                ! T/mu [ K ]
+       temp = temp * mu                                                      ! This is now T (in K) with no bloody mu ... 
+       deallocate(mu)
+    else
+       ! ramses standard
+       if (.not. cooling_is_read) then
+          call read_cooling(repository,snapnum)
+          cooling_is_read = .True.
+       end if
+       allocate(nh(nleaf))
+       nh   = ramses_var(1,:) * dp_scale_nh  ! nb of H atoms per cm^3
+       temp = ramses_var(5,:) / ramses_var(1,:) * dp_scale_T2  ! T/mu [ K ]
+       allocate(boost(nleaf))
+       if (self_shielding) then
+          do i=1,nleaf
+             boost(i)=MAX(exp(-nh(i)/0.01),1.0D-20) ! same as hard-coded in RAMSES. 
+          end do
+       else
+          boost = 1.0d0
+       end if
+       ! compute the ionization state and temperature using the 'cooling' tables
+       do i = 1, nleaf
+          xx  = min(max(log10(nh(i)/boost(i)),cooling%nh(1)),cooling%nh(cooling%n11))
+          ihx = int((xx - cool_int%nh_start)/cool_int%nh_step) + 1
+          if (ihx < 1) then 
+             ihx = 1 
+          else if (ihx > cool_int%n_nh) then
+             ihx = cool_int%n_nh
+          end if
+          yy  = log10(temp(i))
+          ihy = int((yy - cool_int%t2_start)/cool_int%t2_step) + 1
+          if (ihy < 1) then 
+             ihy = 1 
+          else if (ihy > cool_int%n_t2) then
+             ihy = cool_int%n_t2
+          end if
+          ! 2D linear interpolation:
+          if (ihx < cool_int%n_nh) then 
+             dxx1  = max(xx - cooling%nh(ihx),0.0d0) / cool_int%nh_step 
+             dxx2  = min(cooling%nh(ihx+1) - xx,cool_int%nh_step) / cool_int%nh_step
+             if1  = ihx
+             if2  = ihx+1
+          else
+             dxx1  = 0.0d0
+             dxx2  = 1.0d0
+             if1  = ihx
+             if2  = ihx
+          end if
+          if (ihy < cool_int%n_t2) then 
+             dyy1  = max(yy - cooling%t2(ihy),0.0d0) / cool_int%t2_step
+             dyy2  = min(cooling%t2(ihy+1) - yy,cool_int%t2_step) / cool_int%t2_step
+             jf1  = ihy
+             jf2  = ihy + 1
+          else
+             dyy1  = 0.0d0
+             dyy2  = 1.0d0
+             jf1  = ihy
+             jf2  = ihy
+          end if
+          if (abs(dxx1+dxx2-1.0d0) > 1.0d-6 .or. abs(dyy1+dyy2-1.0d0) > 1.0d-6) then 
+             write(*,*) 'Fucked up the interpolation ... '
+             print*,dxx1+dxx2,dyy1+dyy2
+             stop
+          end if
+          ! GET MU to convert T/MU into T ... 
+          f = dxx1 * dyy1 * cooling%mu(if2,jf2) + dxx2 * dyy1 * cooling%mu(if1,jf2) &
+               & + dxx1 * dyy2 * cooling%mu(if2,jf1) + dxx2 * dyy2 * cooling%mu(if1,jf1)
+          temp(i) = temp(i) * f   ! This is now T (in K) with no bloody mu ... 
+       end do
+       deallocate(boost,nh)
+    endif
+
+    ! from T, we can compute the SiII fraction as 100% between 6.306571e+04 K and 1.264600e+05 K, and 0% elsewhere.
+    ! (These limits correspond to the following ionisation energies:
+    ! - Si-Si+   : 8.15169 ev
+    ! - Si+-Si++ : 16.34585 eV
+    do i = 1,nleaf
+       if (temp(i) >= 6.306571d4 .and. temp(i) <= 1.2646d5) then
+          nSiII = ramses_var(1,i) * dp_scale_m * ramses_var(imetal,i) * dp_scale_zsun * 7.33d-4 / mSi   ! [#/cm3]
+       else
+          nSiII = 0.0d0
+       end if
+    end do
     
-    ! derive SiII density from ramses using the same ionization fraction than HI
-    ! SiII is present only between 94.5d4K and 189.7d4K, outside nsiII = 0.0d0
+    return
 
-    do i=1, nleaf,1
-      if(94.5d4<=T(i) .and. T(i)<=189.7d4) then
-        nsi_ii(i) = 2.8d-5 * nhi(i) * metallicity(i) / solar_metallicity
-      else
-        nsi_ii(i) = 0.0d0
-      endif
-    enddo
-  end subroutine ramses_get_nsiII_cgs
-  ! -dumoulin
+  end subroutine ramses_get_T_nSiII_cgs
+
 
   function ramses_get_box_size_cm(repository,snapnum)
 
@@ -418,8 +513,6 @@ contains
     return
 
   end function ramses_get_box_size_cm
-
-
 
 
   subroutine dump_ramses_info(repository,snapnum,ilun)

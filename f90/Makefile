@@ -76,13 +76,15 @@ endif
 
 # choose the gas mix you want to use
 # 1/ HI, D, and dust
-COMPOBJS = module_dust_model.o module_D_model.o module_HI_model.o module_gas_composition_HI_D_dust.o
+#COMPOBJS = module_dust_model.o module_D_model.o module_HI_model.o module_gas_composition_HI_D_dust.o
 # 2/ HI and dust
 #COMPOBJS = module_dust_model.o module_HI_model.o module_gas_composition_HI_dust.o
 # 3/ pure HI
 #COMPOBJS = module_HI_model.o module_gas_composition_HI.o
 # 4/ pure RAMSES hydro variables
 #COMPOBJS = module_gas_composition_ramses.o
+# 5/ SiII
+COMPOBJS = module_SiII_1190_model.o module_SiII_1193_model.o module_gas_composition_SiII.o
 
 
 GASOBJS = module_domain.o module_constants.o module_ramses.o module_random.o module_utils.o module_uparallel.o $(COMPOBJS)

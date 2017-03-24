@@ -19,6 +19,8 @@ module module_constants
   real(kind=8),parameter :: planck  = 6.626070040e-27         ![erg s] Planck's constant
   real(kind=8),parameter :: sqrt_H2Deut_mass_ratio = 0.7071067811865d0   ! == sqrt(mp/mdeut) = 1/sqrt(2).
   real(kind=8),parameter :: XH = 0.76
+  real(kind=8),parameter :: amu = 1.66054d-24                 ! atomic mass unit
+  real(kind=8),parameter :: mSi = 28.085 * amu                ! [g] mass of Silicon
 
-end module module_constants  
+end module module_constants
 
