@@ -1,0 +1,18 @@
+How to run a simple test with SiII 
+
+From test/SiII/. :
+
+1/ compile the code
+cd ../../f90
+mv Makefile Makefile_std
+cp ../tests/SiII/Makefile_SiII Makefile
+make 
+cd ../tests/SiII
+
+2/ run
+../../f90/CreateDomDump params_CDD.dat
+../../f90/PhotonsFromSourceModel params_PFSM.dat
+../../f90/rascas-serial params_RaS.dat
+
+3/ look at the results with the ipython notebook plotSpec.ipynb.
+

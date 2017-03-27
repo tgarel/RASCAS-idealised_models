@@ -128,6 +128,7 @@ class photonlist(object):
         # return a photon object, which is a subsample of self defined by indexes (i.e. self[indexes])
         p = photonlist(self.icFile,self.resFile,load=False)
         p.nphoton = len(indexes)
+        p.nRealPhotons = self.nRealPhotons * p.nphoton / float(self.nphoton)
         # simple copy of numbers 
         p.iseed_ic = self.iseed_ic
         # selection in arrays

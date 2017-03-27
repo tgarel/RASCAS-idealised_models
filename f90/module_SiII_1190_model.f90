@@ -118,7 +118,7 @@ contains
     ! -> get velocity of interacting atom parallel to propagation
     blah = ran3(iran)
 #ifdef SWITCH_OFF_UPARALLEL
-    upar = 0.5
+    upar = 0.
 #else
     upar = get_uparallel(a,x_cell,blah)
 #endif
