@@ -475,17 +475,17 @@ contains
           temp(i) = temp(i) * f   ! This is now T (in K) with no bloody mu ... 
        end do
        deallocate(boost,nh)
-    endif
-
+    endif       
+    
     ! from T, we can compute the SiII fraction as 100% between 6.306571e+04 K and 1.264600e+05 K, and 0% elsewhere.
     ! (These limits correspond to the following ionisation energies:
     ! - Si-Si+   : 8.15169 ev
     ! - Si+-Si++ : 16.34585 eV
     do i = 1,nleaf
        if (temp(i) >= 6.306571d4 .and. temp(i) <= 1.2646d5) then
-          nSiII = ramses_var(1,i) * dp_scale_m * ramses_var(imetal,i) * dp_scale_zsun * 7.33d-4 / mSi   ! [#/cm3]
+          nSiII(i) = ramses_var(1,i) * dp_scale_m * ramses_var(imetal,i) * dp_scale_zsun * 7.33d-4 / mSi   ! [#/cm3]
        else
-          nSiII = 0.0d0
+          nSiII(i) = 0.0d0
        end if
     end do
     
