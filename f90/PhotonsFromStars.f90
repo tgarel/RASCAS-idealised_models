@@ -12,25 +12,23 @@ program PhotonsFromStars
   implicit none
   
   type(domain)    :: emission_domain
-  integer         :: narg
   character(2000) :: parameter_file
   real(kind=8),allocatable :: star_pos(:,:),star_age(:),star_mass(:),star_vel(:,:),star_met(:)
-  integer(kind=4) :: iran,i,nstars
+  integer(kind=4) :: iran,i,nstars,narg
   integer(kind=8) :: ilast,j
-  real(kind=8) :: scalar,nu,r1,r2
+  real(kind=8)    :: scalar,nu,r1,r2
   type(photon_init),dimension(:),allocatable :: photgrid
   ! for analysis purposes (a posteriori weighting) we want to save the emitter-frame
   ! frequency (here the freq. in the emitting stellar particle's frame)
-  real(kind=8), allocatable :: nu_star(:)
+  real(kind=8),allocatable    :: nu_star(:)
   ! SED-related variables
-  integer(kind=4) :: sed_nage,sed_nmet,imet,iage
-  integer(kind=8) :: nflux,n,ir,ix
-  real(kind=8),allocatable :: sed_age(:),sed_met(:),sweight(:),sed_nphot(:,:),sed_F_0(:,:),sed_beta(:,:)
-  integer(kind=8), allocatable :: cum_flux_prob(:)
+  integer(kind=4)             :: sed_nage,sed_nmet,imet,iage
+  integer(kind=8)             :: nflux,n,ix
+  real(kind=8),allocatable    :: sed_age(:),sed_met(:),sweight(:),sed_nphot(:,:),sed_F_0(:,:),sed_beta(:,:)
+  integer(kind=8),allocatable :: cum_flux_prob(:)
   integer(kind=4),allocatable :: star_iage(:),star_imet(:)
-  real(kind=8),allocatable :: star_beta(:) 
-  real(kind=8) :: total_flux,minflux,check_flux,f0,beta,betaplus2,sigma_nu,lambda,l1,l2,x,dx1,dx2,dx
-  logical:: ok
+  real(kind=8),allocatable    :: star_beta(:) 
+  real(kind=8)                :: total_flux,minflux,check_flux,f0,beta,betaplus2,lambda,x,dx1,dx2,dx
   
   ! --------------------------------------------------------------------------
   ! user-defined parameters - read from section [PhotonsFromStars] of the parameter file
@@ -60,33 +58,33 @@ program PhotonsFromStars
   !   - weight_type=='Table'  : Here, the weight is the integrated nb of photons over a wavelength range, and the table also provides
   !                             means to reconstruct the spectral shape via the tabulated reciprocal of P(<lambda)
   !                             -> has to be used with spec_type=='Table'.
-  character(30)             :: weight_type       = 'PowLaw'  ! May be 'PowLaw', 'Mono', 'Table'
+  character(30)             :: weight_type       = 'PowLaw'    ! May be 'PowLaw', 'Mono', 'Table'
   character(2000)           :: weight_input_file = 'F1600.txt' ! file containing weights from SEDs
   real(kind=8)              :: weight_l0_Ang ! this is the lbda_0 above or the monochromatic or line-center wavelength, and is read from weight file 
 
   ! --- define how star particles emit (i.e. the star-particle-frame spectral shape)
   ! Three options here :
-  ! - spec_type=='Mono'  : we emit all photons at the same wavelength (in star's frame)
-  ! - spec_type=='Gauss' : we sample a Gaussian distribution ...
+  ! - spec_type=='Mono'   : we emit all photons at the same wavelength (in star's frame)
+  ! - spec_type=='Gauss'  : we sample a Gaussian distribution ...
   ! - spec_type=='PowLaw' : we sample a power-law continuum between two wavelengths. 
-  character(30)             :: spec_type = 'Gauss' ! May be 'Mono', 'Gauss', 'PowLaw' ...   
+  character(30)             :: spec_type = 'Gauss'           ! May be 'Mono', 'Gauss', 'PowLaw' ...   
   ! parameters for spec_type == 'Mono'
-  real(kind=8)              :: spec_mono_nu0          ! emission frequency [Hz] -> computed from weight_l0_Ang
+  real(kind=8)              :: spec_mono_nu0                 ! emission frequency [Hz] -> computed from weight_l0_Ang
   ! parameters for spec_type == 'Gauss'
-  real(kind=8)              :: spec_gauss_nu0         ! central frequency [Hz] -> computed from weight_l0_Ang
-  real(kind=8)              :: spec_gauss_sigma_kms = 10.0                  ! line width in velocity [km/s] -> read from file. 
+  real(kind=8)              :: spec_gauss_nu0                ! central frequency [Hz] -> computed from weight_l0_Ang
+  real(kind=8)              :: spec_gauss_sigma_kms = 10.0   ! line width in velocity [km/s] -> read from file. 
   ! parameters for spec_type == 'PowLaw' : a power-law fit to continuum of each star particle, vs. its age and met.
-  real(kind=8)              :: spec_powlaw_lmin_Ang = 1120.    ! min wavelength to sample (should be in the range where fit was made ...)
-  real(kind=8)              :: spec_powlaw_lmax_Ang = 1320.    ! max ...
+  real(kind=8)              :: spec_powlaw_lmin_Ang = 1120.  ! min wavelength to sample (should be in the range where fit was made ...)
+  real(kind=8)              :: spec_powlaw_lmax_Ang = 1320.  ! max ...
   ! parameters for spec_type == 'Table'
-  integer(kind=4)           :: spec_table_nbins ! read from the weight file
+  integer(kind=4)           :: spec_table_nbins       ! read from the weight file
   real(kind=8),allocatable  :: spec_table_lofx(:,:,:) ! -> allocated to (spec_table_nbins,sed_nage,sed_nmet)
   
   ! --- miscelaneous
   integer(kind=4)           :: nphot   = 1000000      ! number of photons to generate
   integer(kind=4)           :: ranseed = -100         ! seed for random generator
   logical                   :: verbose = .true.
-  logical                   :: cosmo   = .true.         ! cosmo flag
+  logical                   :: cosmo   = .true.       ! cosmo flag
   ! --------------------------------------------------------------------------
 
 
