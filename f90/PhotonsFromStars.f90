@@ -551,8 +551,12 @@ contains
     
     implicit none
     
-    integer(kind=4) ::  n,j,jl,ju,jm
-    real(kind=8)    ::  xx(n),x
+    integer(kind=4),intent(in)           :: n
+    integer(kind=4),intent(out)          :: j
+    integer(kind=4)                      :: jl,ju,jm
+    real(kind=8),intent(in)              :: x
+    real(kind=8),dimension(n),intent(in) :: xx
+
     
     jl = 0
     ju = n+1
