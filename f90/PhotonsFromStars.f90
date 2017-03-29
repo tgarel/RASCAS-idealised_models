@@ -183,7 +183,7 @@ program PhotonsFromStars
      call locatedb(sed_age,sed_nage,star_age(i),iage)
      if (iage < 1) iage = 1
      ! correct mass for feedback (we need mass of stars formed)
-     sweight(i) = star_mass(i) / 1.989d33  ! M_sun
+     sweight(i) = star_mass(i) / msun  ! M_sun
      if (sed_age(iage) < 10.) then ! SNs go off at 10Myr ... 
         sweight(i) = sweight(i)/0.8  !! correct for recycling ... we want the mass of stars formed ...
      end if
@@ -267,7 +267,7 @@ program PhotonsFromStars
   if (trim(weight_type) == 'Mono' .and. trim(spec_type) == 'Mono')  spec_mono_nu0  = clight/weight_l0_Ang*1d8
   if (trim(weight_type) == 'Mono' .and. trim(spec_type) == 'Gauss') spec_gauss_nu0 = clight/weight_l0_Ang*1d8
   allocate(photgrid(nphot),nu_star(nphot))
-  iran = ranseed
+  iran = -abs(ranseed)
   do i = 1,nphot
      j = int(ran3(iran)*nflux,kind=8)+1
      if (j > nflux) j = nflux
