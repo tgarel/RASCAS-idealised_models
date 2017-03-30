@@ -85,6 +85,8 @@ endif
 #COMPOBJS = module_gas_composition_ramses.o
 # 5/ SiII
 COMPOBJS = module_SiII_1190_model.o module_SiII_1193_model.o module_gas_composition_SiII.o
+# 6/ SiII and dust
+#COMPOBJS = module_dust_model.o module_SiII_1190_model.o module_SiII_1193_model.o module_gas_composition_SiII_dust.o
 
 
 GASOBJS = module_domain.o module_constants.o module_ramses.o module_random.o module_utils.o module_uparallel.o $(COMPOBJS)

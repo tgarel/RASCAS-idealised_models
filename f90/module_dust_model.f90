@@ -40,9 +40,9 @@ contains
     real(kind=8),intent(in) :: ndust,distance,nu
     real(kind=8)            :: get_tau_dust,lbda_A
     
-    lbda_A = nu/clight*1d8
+    lbda_A = clight/nu*1d8
     get_tau_dust = sigma_d(lbda_A,dust_model) * ndust * distance
-
+    
     return
 
   end function get_tau_dust

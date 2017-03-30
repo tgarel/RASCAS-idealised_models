@@ -483,7 +483,7 @@ contains
     ! - Si+-Si++ : 16.34585 eV
     do i = 1,nleaf
        if (temp(i) >= 6.306571d4 .and. temp(i) <= 1.2646d5) then
-          nSiII(i) = ramses_var(1,i) * dp_scale_m * ramses_var(imetal,i) * dp_scale_zsun * 7.33d-4 / mSi   ! [#/cm3]
+          nSiII(i) = ramses_var(1,i) * dp_scale_d * ramses_var(imetal,i) * dp_scale_zsun * 7.33d-4 / mSi   ! [#/cm3]
        else
           nSiII(i) = 0.0d0
        end if
