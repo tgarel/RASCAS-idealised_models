@@ -468,17 +468,17 @@ contains
        write(unit,'(a,i5)')          '  snapnum         = ',snapnum
        write(unit,'(a)')             '# computational domain parameters'
        write(unit,'(a,a)')           '  star_dom_type      = ',trim(star_dom_type)
-       write(unit,'(a,3(ES9.3,1x))') '  star_dom_pos       = ',star_dom_pos(1),star_dom_pos(2),star_dom_pos(3)
+       write(unit,'(a,3(ES10.3,1x))') '  star_dom_pos       = ',star_dom_pos(1),star_dom_pos(2),star_dom_pos(3)
        select case (trim(star_dom_type))
        case ('sphere')
-          write(unit,'(a,ES9.3)')       '  star_dom_rsp       = ',star_dom_rsp
+          write(unit,'(a,ES10.3)')       '  star_dom_rsp       = ',star_dom_rsp
        case ('shell')
-          write(unit,'(a,ES9.3)')       '  star_dom_rin       = ',star_dom_rin
-          write(unit,'(a,ES9.3)')       '  star_dom_rout      = ',star_dom_rout
+          write(unit,'(a,ES10.3)')       '  star_dom_rin       = ',star_dom_rin
+          write(unit,'(a,ES10.3)')       '  star_dom_rout      = ',star_dom_rout
        case('cube')
-          write(unit,'(a,ES9.3)')       '  star_dom_size      = ',star_dom_size
+          write(unit,'(a,ES10.3)')       '  star_dom_size      = ',star_dom_size
        case('slab')
-          write(unit,'(a,ES9.3)')       '  star_dom_thickness = ',star_dom_thickness
+          write(unit,'(a,ES10.3)')       '  star_dom_thickness = ',star_dom_thickness
        end select
        write(unit,'(a)')             '# Particle weights '
        write(unit,'(a,a)')           '  weight_type        = ',trim(weight_type)
@@ -487,10 +487,10 @@ contains
        write(unit,'(a,a)')           '  spec_type               = ',trim(spec_type)
        select case(trim(spec_type))
        case('Gauss')
-          write(unit,'(a,es9.3,a)')     '  spec_gauss_sigma_kms = ',spec_gauss_sigma_kms, ' ! [km/s]'
+          write(unit,'(a,ES10.3,a)')     '  spec_gauss_sigma_kms = ',spec_gauss_sigma_kms, ' ! [km/s]'
        case('PowLaw')
-          write(unit,'(a,es9.3,a)')     '  spec_powlaw_lmin_Ang    = ',spec_powlaw_lmin_Ang, ' ! [A]' 
-          write(unit,'(a,es9.3,a)')     '  spec_powlaw_lmax_Ang    = ',spec_powlaw_lmax_Ang, ' ! [A]'
+          write(unit,'(a,es10.3,a)')     '  spec_powlaw_lmin_Ang    = ',spec_powlaw_lmin_Ang, ' ! [A]' 
+          write(unit,'(a,es10.3,a)')     '  spec_powlaw_lmax_Ang    = ',spec_powlaw_lmax_Ang, ' ! [A]'
        end select
        write(unit,'(a)')             '# miscelaneous parameters'
        write(unit,'(a,i8)')          '  nphot           = ',nphot
@@ -506,17 +506,17 @@ contains
        write(*,'(a,i5)')          '  snapnum         = ',snapnum
        write(*,'(a)')             '# computational domain parameters'
        write(*,'(a,a)')           '  star_dom_type      = ',trim(star_dom_type)
-       write(*,'(a,3(ES9.3,1x))') '  star_dom_pos       = ',star_dom_pos(1),star_dom_pos(2),star_dom_pos(3)
+       write(*,'(a,3(ES10.3,1x))') '  star_dom_pos       = ',star_dom_pos(1),star_dom_pos(2),star_dom_pos(3)
        select case (trim(star_dom_type))
        case ('sphere')
-          write(*,'(a,ES9.3)')       '  star_dom_rsp       = ',star_dom_rsp
+          write(*,'(a,ES10.3)')       '  star_dom_rsp       = ',star_dom_rsp
        case ('shell')
-          write(*,'(a,ES9.3)')       '  star_dom_rin       = ',star_dom_rin
-          write(*,'(a,ES9.3)')       '  star_dom_rout      = ',star_dom_rout
+          write(*,'(a,ES10.3)')       '  star_dom_rin       = ',star_dom_rin
+          write(*,'(a,ES10.3)')       '  star_dom_rout      = ',star_dom_rout
        case('cube')
-          write(*,'(a,ES9.3)')       '  star_dom_size      = ',star_dom_size
+          write(*,'(a,ES10.3)')       '  star_dom_size      = ',star_dom_size
        case('slab')
-          write(*,'(a,ES9.3)')       '  star_dom_thickness = ',star_dom_thickness
+          write(*,'(a,ES10.3)')       '  star_dom_thickness = ',star_dom_thickness
        end select
        write(*,'(a)')             '# Particle weights '
        write(*,'(a,a)')           '  weight_type        = ',trim(weight_type)
@@ -525,10 +525,10 @@ contains
        write(*,'(a,a)')           '  spec_type               = ',trim(spec_type)
        select case(trim(spec_type))
        case('Gauss')
-          write(*,'(a,es9.3,a)')     '  spec_gauss_sigma_kms = ',spec_gauss_sigma_kms, ' ! [km/s]'
+          write(*,'(a,es10.3,a)')     '  spec_gauss_sigma_kms = ',spec_gauss_sigma_kms, ' ! [km/s]'
        case('PowLaw')
-          write(*,'(a,es9.3,a)')     '  spec_powlaw_lmin_Ang    = ',spec_powlaw_lmin_Ang, ' ! [A]' 
-          write(*,'(a,es9.3,a)')     '  spec_powlaw_lmax_Ang    = ',spec_powlaw_lmax_Ang, ' ! [A]'
+          write(*,'(a,es10.3,a)')     '  spec_powlaw_lmin_Ang    = ',spec_powlaw_lmin_Ang, ' ! [A]' 
+          write(*,'(a,es10.3,a)')     '  spec_powlaw_lmax_Ang    = ',spec_powlaw_lmax_Ang, ' ! [A]'
        end select
        write(*,'(a)')             '# miscelaneous parameters'
        write(*,'(a,i8)')          '  nphot           = ',nphot
