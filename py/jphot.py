@@ -125,10 +125,11 @@ class photonlist(object):
 
 
     def extract_sample(self,indexes):
-        # return a photon object, which is a subsample of self defined by indexes (i.e. self[indexes])
+        # return a photonlist object, which is a subsample of self defined by indexes (i.e. self[indexes])
         p = photonlist(self.icFile,self.resFile,load=False)
         p.nphoton = len(indexes)
-        p.nRealPhotons = self.nRealPhotons * p.nphoton / float(self.nphoton)
+        # update nRealPhotons so that the nb of real photons per MC photon is always p.nRealPhotons/p.nphoton (= self.nRealPhotons/self.nphoton)
+        p.nRealPhotons = self.nRealPhotons * p.nphoton / float(self.nphoton)  
         # simple copy of numbers 
         p.iseed_ic = self.iseed_ic
         # selection in arrays
@@ -157,9 +158,12 @@ class photonlist(object):
 
     def append(self,p): 
         # append a photonlist p to self.
+        # NB: This should be done only with photonlists which correspond to complementary ICs
+        # (i.e. different realisations of the _same_ sources)
         self.icFile = 'mix'
         self.resFile = 'mix'
         self.nphoton = self.nphoton + p.nphoton
+        # NB: dont change nRealPhotons : the sources are the same. 
         # reset seed to absurd value 
         self.iseed_ic = 0
         # selection in arrays
@@ -186,7 +190,37 @@ class photonlist(object):
         return p      
 
     
-            
+    def spectrum(self,frame='obs',nbins=200,Flambda=True):
+        # compute the spectrum (F_lambda) corresponding to list of photons (self)
+        # inputs:
+        #    frame (optional)   : can be 'obs', 'ic', or 'star'
+        #    nbins (optional)   : nb of bins
+        #    Flambda (optional) : compute spectrum or just MC photon histogram
+        # outputs:
+        # bin_centers : wavelengths [A]
+        # h           : spectrum [erg/s/A] if Flambda==True or distribution of MC photons [#/A] if Flambda==False
+        #
+        nphot_per_packet = self.nRealPhotons / self.nphoton # nb of real phot /s / MC phot
+        if frame == 'star':
+            nu = self.nu_star  # [Hz]
+        if frame == 'ic':
+            nu = self.nu_ic  # [Hz]
+        if frame == 'obs':
+            nu = self.nu  # [Hz]
+        lbda = lya.clight / nu * 1e8  # [A]
+        if Flambda: 
+            ener    = nphot_per_packet * lya.h_cgs * nu  # [erg/s/MC phot]
+            h,edges = np.histogram(lbda,bins=nbins,weights=ener)
+        else:
+            h,edges = np.histogram(lbda,bins=nbins) # histogram with MC photon counts, not energy
+        
+        bin_centers = 0.5*(edges[:-1]+edges[1:])
+        dlbda = bin_centers[1]-bin_centers[0]
+        h = h / dlbda # erg/s/A (if Flambda==True), or nb of MC photon per A (if Flambda==False)
+    
+        return bin_centers, h 
+
+    
     def project_pos(self,k,thetamax):
         # compute projected positions (x,y) of photons going along k, in a plane perp. to k.
         # NB: used with thetamax=180, this selects all photons and may be used to compute
@@ -228,3 +262,50 @@ class photonlist(object):
         x = self.x[ii] * u1_x + self.y[ii] * u1_y + self.z[ii] * u1_z
         y = self.x[ii] * u2_x + self.y[ii] * u2_y + self.z[ii] * u2_z
         return x,y
+
+    
+def projected_positions(k,x,y,z,xc,yc,zc):
+    # compute projected positions (xp,yp) in a plane perp. to k.
+    # inputs :
+    #    - k: a 3D array [kx,ky,kz]
+    #    - x,y,z : original coords of points
+    #    - xc,yc,zc : center around which to rotate.
+    xp  = np.empty_like(x)
+    yp  = np.empty_like(x)
+    # define projection basis
+    knorm = k / np.sqrt(k[0]*k[0]+k[1]*k[1]+k[2]*k[2])
+    if (knorm[0] < 1.):  # then we k not colinear with x
+        #-> compute u1 as cross prod of k and x. 
+        u1_x = 0.
+        u1_y = knorm[2]
+        u1_z = -knorm[1]
+        # compute u2 as cross product of k and u1.
+        u2_x = knorm[1]*u1_z - knorm[2]*u1_y
+        u2_y = -knorm[0]*u1_z
+        u2_z = knorm[0]*u1_y
+        # normalize u1 and u2
+        mod_u1 = np.sqrt(u1_y*u1_y+u1_z*u1_z)
+        u1_y = u1_y / mod_u1
+        u1_z = u1_z / mod_u1
+        mod_u2 = np.sqrt(u2_x*u2_x+u2_y*u2_y+u2_z*u2_z)
+        u2_x = u2_x / mod_u2
+        u2_y = u2_y / mod_u2
+        u2_z = u2_z / mod_u2
+    else:   # k is along x -> use u1 = y, u2 = z
+        u1_x = 0.
+        u1_y = 1.
+        u1_z = 0.
+        u2_x = 0.
+        u2_y = 0.
+        u2_z = 1.
+    # compute projected coordinates
+    xx = x - xc
+    yy = y - yc
+    zz = z - zc
+    xp = xx * u1_x + yy * u1_y + zz * u1_z
+    yp = xx * u2_x + yy * u2_y + zz * u2_z
+
+    return xp,yp
+
+    
+    
