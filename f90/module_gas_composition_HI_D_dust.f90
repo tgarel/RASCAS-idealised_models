@@ -221,7 +221,7 @@ contains
        call scatter_D(cell_gas%v,cell_gas%dopwidth*sqrt_H2Deut_mass_ratio, nu_cell, k, nu_ext, iran)
     case(3)
        call scatter_dust(cell_gas%v, nu_cell, k, nu_ext, iran, ilost)
-       if(ilost==1)flag=4
+       if(ilost==1)flag=-1
     end select
 
   end subroutine gas_scatter

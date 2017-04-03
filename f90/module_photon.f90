@@ -325,7 +325,8 @@ contains
              ! there has been an interaction -> reset tau_abs
              tau_abs = -1.0d0
              ! scatter_flag allows to know the status (aborbed or not) of the photon in case of dust
-             if(scatter_flag==4)then
+             ! new convention: negative if absorbed
+             if(scatter_flag<0)then
                 ! photon has been absorbed by dust, photon done, nothing else to do
                 p%status       = 2
                 p%xcurr        = ppos
