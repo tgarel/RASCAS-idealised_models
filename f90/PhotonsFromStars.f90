@@ -105,6 +105,7 @@ program PhotonsFromStars
   ! ------------------------------------------------------------
 
 
+
   ! --------------------------------------------------------------------------------------
   ! define domain within which stars may shine
   ! --------------------------------------------------------------------------------------
@@ -246,7 +247,7 @@ program PhotonsFromStars
   end do
   if (verbose) write(*,*) '> We sample this fraction of total flux: ',check_flux / total_flux
   if ((total_flux - check_flux) / total_flux > 0.001) then
-     print*,'Flux losses > 0.1 percent... change algorithm ...'
+     print*,'> Flux losses > 0.1 percent... change algorithm ...'
      ! debug - stop
   end if
   ! construct the cumulative flux distribution, with enough bins to have the smallest star-particle flux in a bin. 
@@ -260,7 +261,7 @@ program PhotonsFromStars
      end if
   end do
   nflux = ilast
-  print*,'nflux, size(cum_fllux_prob):', nflux, size(cum_flux_prob)
+  print*,'> nflux, size(cum_flux_prob):', nflux, size(cum_flux_prob)
   ! --------------------------------------------------------------------------------------
 
   
@@ -376,7 +377,7 @@ contains
     character(*),intent(in) :: pfile
     character(1000) :: line,name,value
     integer(kind=4) :: err,i
-    logical         :: section_present
+    logical         :: section_present,ok
     
     section_present = .false.
     open(unit=10,file=trim(pfile),status='old',form='formatted')
@@ -443,11 +444,19 @@ contains
           case ('cosmo')
              read(value,*) cosmo
           case default
-             write(*,'(a,a,a)') 'WARNING: parameter ',trim(name),' unknown '
+             write(*,'(a,a,a)') '> WARNING: parameter ',trim(name),' unknown '
           end select
        end do
     end if
-    close(10)          
+    close(10)
+
+    ! test for compatibility of parameters
+    ok = (weight_type=='Mono' .and. spec_type=='Mono') .or. (weight_type=='Mono' .and. spec_type=='Gauss')
+    ok = ok .or. (weight_type=='PowLaw' .and. spec_type=='PowLaw') .or. (weight_type=='Table' .and. spec_type=='Table')
+    if (.not. ok) then
+       write(*,'(a,a,a,a)') '> ERROR: incompatible options : weight_type==',trim(weight_type),' and spec_type==',trim(spec_type)
+       stop
+    end if
     
     return
 
