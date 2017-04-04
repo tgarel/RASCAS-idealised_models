@@ -79,6 +79,9 @@ program PhotonsFromStars
   ! parameters for spec_type == 'Table'
   integer(kind=4)           :: spec_table_nbins       ! read from the weight file
   real(kind=8),allocatable  :: spec_table_lofx(:,:,:) ! -> allocated to (spec_table_nbins,sed_nage,sed_nmet)
+  ! parameters for star particles/feedback in simulation
+  real(kind=8)              :: tdelay_SN = 10.        ![Myr] SNs go off at tdelay_SN ... 
+  real(kind=8)              :: recyc_frac = 0.8       ! correct for recycling ... we want the mass of stars formed ...
   
   ! --- miscelaneous
   integer(kind=4)           :: nphot   = 1000000      ! number of photons to generate
@@ -184,8 +187,8 @@ program PhotonsFromStars
      if (iage < 1) iage = 1
      ! correct mass for feedback (we need mass of stars formed)
      sweight(i) = star_mass(i) / msun  ! M_sun
-     if (sed_age(iage) < 10.) then ! SNs go off at 10Myr ... 
-        sweight(i) = sweight(i)/0.8  !! correct for recycling ... we want the mass of stars formed ...
+     if (sed_age(iage) < tdelay_SN) then ! SNs go off at 10Myr ... 
+        sweight(i) = sweight(i)/recyc_frac  !! correct for recycling ... we want the mass of stars formed ...
      end if
      ! compute luminosity
      select case (trim(weight_type))
