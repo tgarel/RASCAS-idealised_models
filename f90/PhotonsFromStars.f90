@@ -63,10 +63,11 @@ program PhotonsFromStars
   real(kind=8)              :: weight_l0_Ang ! this is the lbda_0 above or the monochromatic or line-center wavelength, and is read from weight file 
 
   ! --- define how star particles emit (i.e. the star-particle-frame spectral shape)
-  ! Three options here :
+  ! Four options here :
   ! - spec_type=='Mono'   : we emit all photons at the same wavelength (in star's frame)
   ! - spec_type=='Gauss'  : we sample a Gaussian distribution ...
   ! - spec_type=='PowLaw' : we sample a power-law continuum between two wavelengths. 
+  ! - spec_type=='Table'  : we sample a tabulated spectrum. 
   character(30)             :: spec_type = 'Gauss'           ! May be 'Mono', 'Gauss', 'PowLaw' ...   
   ! parameters for spec_type == 'Mono'
   real(kind=8)              :: spec_mono_nu0                 ! emission frequency [Hz] -> computed from weight_l0_Ang
@@ -554,38 +555,6 @@ contains
     return
 
   end subroutine print_PhotonsFromStars_params
-
-  
-  subroutine locatedb(xx,n,x,j)
-
-    ! subroutine which locates the position j of a value x in an array xx of n elements
-    ! NB : here xx is double precision
-    
-    implicit none
-    
-    integer(kind=4),intent(in)           :: n
-    integer(kind=4),intent(out)          :: j
-    integer(kind=4)                      :: jl,ju,jm
-    real(kind=8),intent(in)              :: x
-    real(kind=8),dimension(n),intent(in) :: xx
-
-    
-    jl = 0
-    ju = n+1
-    do while (ju-jl > 1) 
-       jm = (ju+jl)/2
-       if ((xx(n) > xx(1)) .eqv. (x > xx(jm))) then
-          jl = jm
-       else
-          ju = jm
-       endif
-    enddo
-    j = jl
-
-    return
-
-  end subroutine locatedb
-
 
   
 end program PhotonsFromStars

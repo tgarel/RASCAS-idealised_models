@@ -255,4 +255,36 @@ contains
   end subroutine anisotropic_direction_Dust
 
 
+  subroutine locatedb(xx,n,x,j)
+    
+    ! subroutine which locates the position j of a value x in an array xx of n elements
+    ! NB : here xx is double precision
+    
+    implicit none
+    
+    integer(kind=4),intent(in)           :: n
+    integer(kind=4),intent(out)          :: j
+    integer(kind=4)                      :: jl,ju,jm
+    real(kind=8),intent(in)              :: x
+    real(kind=8),dimension(n),intent(in) :: xx
+    
+    
+    jl = 0
+    ju = n+1
+    do while (ju-jl > 1) 
+       jm = (ju+jl)/2
+       if ((xx(n) > xx(1)) .eqv. (x > xx(jm))) then
+          jl = jm
+       else
+          ju = jm
+       endif
+    enddo
+    j = jl
+    
+    return
+    
+  end subroutine locatedb
+
+
+
 end module module_utils
