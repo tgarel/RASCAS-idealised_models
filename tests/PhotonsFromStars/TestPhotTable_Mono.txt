@@ -1,0 +1,10 @@
+# This is a test phot table ... 
+# For option weight_type=='Mono'
+# change the numbers as you will (and port consistently to TestPhotonsFromStars.ipynb)
+2 2
+1 30
+0.001 0.01
+1216.
+10 1
+10 1
+

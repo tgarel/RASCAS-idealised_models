@@ -1,0 +1,12 @@
+# This is a test phot table ... 
+# totally ad-hoc, for option weight_type=='PowLaw'
+# change the numbers as you will (and port consistently to TestPhotonsFromStars.ipynb)
+2 2
+1 20
+0.001 0.01
+1216.
+10 1
+-2.5 -2.5
+10 1
+-2.5 -2.5
+

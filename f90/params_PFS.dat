@@ -1,4 +1,3 @@
-
 !--------------------------------------------------------------------------------
 [PhotonsFromStars]
 # input / output parameters
@@ -9,16 +8,26 @@
 # computational domain parameters
   star_dom_type      = sphere
   star_dom_pos       = 5.000E-01 5.000E-01 5.000E-01
-  star_dom_rsp       = 3.000E-01
+  star_dom_rsp       = 3.000E-02
+#  star_dom_size      = 3.000E-01
+#  star_dom_rin       = 0.000E+00
+#  star_dom_rout      = 3.000E-01
+#  star_dom_thickness = 1.000E-01
 
-# how stars shine
-  nphot         = 100
-  max_age       = 1.000E+01 ! [Myr]
-  spec_type     = monochromatic
+# Particle weights 
+  weight_type        = Mono
+  weight_input_file  = name_of_the_table_file_with_SSP_weights
+
+# Spectral shape 
+  spec_type               = Gauss
+  spec_gauss_sigma_kms    = 20.0
+#  spec_powlaw_lmin_Ang    = 1.120E+03 ! [A]
+#  spec_powlaw_lmax_Ang    = 1.320E+03 ! [A]
 
 # miscelaneous parameters
-  ranseed    =     -123
-  verbose    = T
-  cosmo      = T
+  nphot           = 1000000
+  ranseed         = -100
+  verbose         = T
+  cosmo           = T
 !--------------------------------------------------------------------------------
 
