@@ -7,8 +7,7 @@ make PhotonsFromSourceModel
 
 2/ go to rascas/tests/PhotonsFromSourceModel/ and link the rascas/py scripts here as follows (or add rascas/py to your PYTHONPATH)
 ```
-ln -s ../../py/lya_utils.py .
-ln -s ../../py/jphot.py .
+ln -s ../../py/*.py .
 ```
 
 Start the python notebook TestPhotonsFromSourceModel.ipynb and execute cells. 
