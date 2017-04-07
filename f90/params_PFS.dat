@@ -1,22 +1,22 @@
 !--------------------------------------------------------------------------------
 [PhotonsFromStars]
 # input / output parameters
-  repository = /Users/blaizot/Documents/Astro/SIMULATIONS/P13-20h-1Mpc-MUSIC/Zoom-7-10508/hdRun-LSS150pkpc-new-new-prime-jeans-fbk/
-  snapnum    = 50
-  outputfile = /Users/blaizot/Documents/Astro/SIMULATIONS/P13-20h-1Mpc-MUSIC/Zoom-7-10508/hdRun-LSS150pkpc-new-new-prime-jeans-fbk/PhotICs_new.dat
+  repository = directory_where_ramses_outputs_are
+  snapnum    = output_number
+  outputfile = name_of_the_photonsIC_file
 
 # computational domain parameters
   star_dom_type      = sphere
   star_dom_pos       = 5.000E-01 5.000E-01 5.000E-01
   star_dom_rsp       = 3.000E-02
-  star_dom_size      = 3.000E-01
-  star_dom_rin       = 0.000E+00
-  star_dom_rout      = 3.000E-01
-  star_dom_thickness = 1.000E-01
+#  star_dom_size      = 3.000E-01
+#  star_dom_rin       = 0.000E+00
+#  star_dom_rout      = 3.000E-01
+#  star_dom_thickness = 1.000E-01
 
 # Particle weights 
   weight_type        = Mono
-  weight_input_file  = ./TestPhotTable_Mono.txt
+  weight_input_file  = name_of_the_table_file_with_SSP_weights
 
 # Spectral shape 
   spec_type               = Gauss

@@ -12,25 +12,23 @@ program PhotonsFromStars
   implicit none
   
   type(domain)    :: emission_domain
-  integer         :: narg
   character(2000) :: parameter_file
   real(kind=8),allocatable :: star_pos(:,:),star_age(:),star_mass(:),star_vel(:,:),star_met(:)
-  integer(kind=4) :: iran,i,nstars
+  integer(kind=4) :: iran,i,nstars,narg
   integer(kind=8) :: ilast,j
-  real(kind=8) :: scalar,nu,r1,r2
+  real(kind=8)    :: scalar,nu,r1,r2
   type(photon_init),dimension(:),allocatable :: photgrid
   ! for analysis purposes (a posteriori weighting) we want to save the emitter-frame
   ! frequency (here the freq. in the emitting stellar particle's frame)
-  real(kind=8), allocatable :: nu_star(:)
+  real(kind=8),allocatable    :: nu_star(:)
   ! SED-related variables
-  integer(kind=4) :: sed_nage,sed_nmet,imet,iage
-  integer(kind=8) :: nflux,n,ir,ix
-  real(kind=8),allocatable :: sed_age(:),sed_met(:),sweight(:),sed_nphot(:,:),sed_F_0(:,:),sed_beta(:,:)
-  integer(kind=8), allocatable :: cum_flux_prob(:)
+  integer(kind=4)             :: sed_nage,sed_nmet,imet,iage
+  integer(kind=8)             :: nflux,n,ix
+  real(kind=8),allocatable    :: sed_age(:),sed_met(:),sweight(:),sed_nphot(:,:),sed_F_0(:,:),sed_beta(:,:)
+  integer(kind=8),allocatable :: cum_flux_prob(:)
   integer(kind=4),allocatable :: star_iage(:),star_imet(:)
-  real(kind=8),allocatable :: star_beta(:) 
-  real(kind=8) :: total_flux,minflux,check_flux,f0,beta,betaplus2,sigma_nu,lambda,l1,l2,x,dx1,dx2,dx
-  logical:: ok
+  real(kind=8),allocatable    :: star_beta(:) 
+  real(kind=8)                :: total_flux,minflux,check_flux,f0,beta,betaplus2,lambda,x,dx1,dx2,dx
   
   ! --------------------------------------------------------------------------
   ! user-defined parameters - read from section [PhotonsFromStars] of the parameter file
@@ -60,33 +58,37 @@ program PhotonsFromStars
   !   - weight_type=='Table'  : Here, the weight is the integrated nb of photons over a wavelength range, and the table also provides
   !                             means to reconstruct the spectral shape via the tabulated reciprocal of P(<lambda)
   !                             -> has to be used with spec_type=='Table'.
-  character(30)             :: weight_type       = 'PowLaw'  ! May be 'PowLaw', 'Mono', 'Table'
+  character(30)             :: weight_type       = 'PowLaw'    ! May be 'PowLaw', 'Mono', 'Table'
   character(2000)           :: weight_input_file = 'F1600.txt' ! file containing weights from SEDs
   real(kind=8)              :: weight_l0_Ang ! this is the lbda_0 above or the monochromatic or line-center wavelength, and is read from weight file 
 
   ! --- define how star particles emit (i.e. the star-particle-frame spectral shape)
-  ! Three options here :
-  ! - spec_type=='Mono'  : we emit all photons at the same wavelength (in star's frame)
-  ! - spec_type=='Gauss' : we sample a Gaussian distribution ...
+  ! Four options here :
+  ! - spec_type=='Mono'   : we emit all photons at the same wavelength (in star's frame)
+  ! - spec_type=='Gauss'  : we sample a Gaussian distribution ...
   ! - spec_type=='PowLaw' : we sample a power-law continuum between two wavelengths. 
-  character(30)             :: spec_type = 'Gauss' ! May be 'Mono', 'Gauss', 'PowLaw' ...   
+  ! - spec_type=='Table'  : we sample a tabulated spectrum. 
+  character(30)             :: spec_type = 'Gauss'           ! May be 'Mono', 'Gauss', 'PowLaw' ...   
   ! parameters for spec_type == 'Mono'
-  real(kind=8)              :: spec_mono_nu0          ! emission frequency [Hz] -> computed from weight_l0_Ang
+  real(kind=8)              :: spec_mono_nu0                 ! emission frequency [Hz] -> computed from weight_l0_Ang
   ! parameters for spec_type == 'Gauss'
-  real(kind=8)              :: spec_gauss_nu0         ! central frequency [Hz] -> computed from weight_l0_Ang
-  real(kind=8)              :: spec_gauss_sigma_kms = 10.0                  ! line width in velocity [km/s] -> read from file. 
+  real(kind=8)              :: spec_gauss_nu0                ! central frequency [Hz] -> computed from weight_l0_Ang
+  real(kind=8)              :: spec_gauss_sigma_kms = 10.0   ! line width in velocity [km/s] -> read from file. 
   ! parameters for spec_type == 'PowLaw' : a power-law fit to continuum of each star particle, vs. its age and met.
-  real(kind=8)              :: spec_powlaw_lmin_Ang = 1120.    ! min wavelength to sample (should be in the range where fit was made ...)
-  real(kind=8)              :: spec_powlaw_lmax_Ang = 1320.    ! max ...
+  real(kind=8)              :: spec_powlaw_lmin_Ang = 1120.  ! min wavelength to sample (should be in the range where fit was made ...)
+  real(kind=8)              :: spec_powlaw_lmax_Ang = 1320.  ! max ...
   ! parameters for spec_type == 'Table'
-  integer(kind=4)           :: spec_table_nbins ! read from the weight file
+  integer(kind=4)           :: spec_table_nbins       ! read from the weight file
   real(kind=8),allocatable  :: spec_table_lofx(:,:,:) ! -> allocated to (spec_table_nbins,sed_nage,sed_nmet)
+  ! parameters for star particles/feedback in simulation
+  real(kind=8)              :: tdelay_SN = 10.        ![Myr] SNs go off at tdelay_SN ... 
+  real(kind=8)              :: recyc_frac = 0.8       ! correct for recycling ... we want the mass of stars formed ...
   
   ! --- miscelaneous
   integer(kind=4)           :: nphot   = 1000000      ! number of photons to generate
   integer(kind=4)           :: ranseed = -100         ! seed for random generator
   logical                   :: verbose = .true.
-  logical                   :: cosmo   = .true.         ! cosmo flag
+  logical                   :: cosmo   = .true.       ! cosmo flag
   ! --------------------------------------------------------------------------
 
 
@@ -102,6 +104,7 @@ program PhotonsFromStars
   call read_PhotonsFromStars_params(parameter_file)
   if (verbose) call print_PhotonsFromStars_params
   ! ------------------------------------------------------------
+
 
 
   ! --------------------------------------------------------------------------------------
@@ -185,9 +188,9 @@ program PhotonsFromStars
      call locatedb(sed_age,sed_nage,star_age(i),iage)
      if (iage < 1) iage = 1
      ! correct mass for feedback (we need mass of stars formed)
-     sweight(i) = star_mass(i) / 1.989d33  ! M_sun
-     if (sed_age(iage) < 10.) then ! SNs go off at 10Myr ... 
-        sweight(i) = sweight(i)/0.8  !! correct for recycling ... we want the mass of stars formed ...
+     sweight(i) = star_mass(i) / msun  ! M_sun
+     if (sed_age(iage) < tdelay_SN) then ! SNs go off at 10Myr ... 
+        sweight(i) = sweight(i)/recyc_frac  !! correct for recycling ... we want the mass of stars formed ...
      end if
      ! compute luminosity
      select case (trim(weight_type))
@@ -245,7 +248,7 @@ program PhotonsFromStars
   end do
   if (verbose) write(*,*) '> We sample this fraction of total flux: ',check_flux / total_flux
   if ((total_flux - check_flux) / total_flux > 0.001) then
-     print*,'Flux losses > 0.1 percent... change algorithm ...'
+     print*,'> Flux losses > 0.1 percent... change algorithm ...'
      ! debug - stop
   end if
   ! construct the cumulative flux distribution, with enough bins to have the smallest star-particle flux in a bin. 
@@ -259,7 +262,7 @@ program PhotonsFromStars
      end if
   end do
   nflux = ilast
-  print*,'nflux, size(cum_fllux_prob):', nflux, size(cum_flux_prob)
+  print*,'> nflux, size(cum_flux_prob):', nflux, size(cum_flux_prob)
   ! --------------------------------------------------------------------------------------
 
   
@@ -269,7 +272,7 @@ program PhotonsFromStars
   if (trim(weight_type) == 'Mono' .and. trim(spec_type) == 'Mono')  spec_mono_nu0  = clight/weight_l0_Ang*1d8
   if (trim(weight_type) == 'Mono' .and. trim(spec_type) == 'Gauss') spec_gauss_nu0 = clight/weight_l0_Ang*1d8
   allocate(photgrid(nphot),nu_star(nphot))
-  iran = ranseed
+  iran = -abs(ranseed)
   do i = 1,nphot
      j = int(ran3(iran)*nflux,kind=8)+1
      if (j > nflux) j = nflux
@@ -375,7 +378,7 @@ contains
     character(*),intent(in) :: pfile
     character(1000) :: line,name,value
     integer(kind=4) :: err,i
-    logical         :: section_present
+    logical         :: section_present,ok
     
     section_present = .false.
     open(unit=10,file=trim(pfile),status='old',form='formatted')
@@ -442,11 +445,19 @@ contains
           case ('cosmo')
              read(value,*) cosmo
           case default
-             write(*,'(a,a,a)') 'WARNING: parameter ',trim(name),' unknown '
+             write(*,'(a,a,a)') '> WARNING: parameter ',trim(name),' unknown '
           end select
        end do
     end if
-    close(10)          
+    close(10)
+
+    ! test for compatibility of parameters
+    ok = (weight_type=='Mono' .and. spec_type=='Mono') .or. (weight_type=='Mono' .and. spec_type=='Gauss')
+    ok = ok .or. (weight_type=='PowLaw' .and. spec_type=='PowLaw') .or. (weight_type=='Table' .and. spec_type=='Table')
+    if (.not. ok) then
+       write(*,'(a,a,a,a)') '> ERROR: incompatible options : weight_type==',trim(weight_type),' and spec_type==',trim(spec_type)
+       stop
+    end if
     
     return
 
@@ -470,17 +481,17 @@ contains
        write(unit,'(a,i5)')          '  snapnum         = ',snapnum
        write(unit,'(a)')             '# computational domain parameters'
        write(unit,'(a,a)')           '  star_dom_type      = ',trim(star_dom_type)
-       write(unit,'(a,3(ES9.3,1x))') '  star_dom_pos       = ',star_dom_pos(1),star_dom_pos(2),star_dom_pos(3)
+       write(unit,'(a,3(ES10.3,1x))') '  star_dom_pos       = ',star_dom_pos(1),star_dom_pos(2),star_dom_pos(3)
        select case (trim(star_dom_type))
        case ('sphere')
-          write(unit,'(a,ES9.3)')       '  star_dom_rsp       = ',star_dom_rsp
+          write(unit,'(a,ES10.3)')       '  star_dom_rsp       = ',star_dom_rsp
        case ('shell')
-          write(unit,'(a,ES9.3)')       '  star_dom_rin       = ',star_dom_rin
-          write(unit,'(a,ES9.3)')       '  star_dom_rout      = ',star_dom_rout
+          write(unit,'(a,ES10.3)')       '  star_dom_rin       = ',star_dom_rin
+          write(unit,'(a,ES10.3)')       '  star_dom_rout      = ',star_dom_rout
        case('cube')
-          write(unit,'(a,ES9.3)')       '  star_dom_size      = ',star_dom_size
+          write(unit,'(a,ES10.3)')       '  star_dom_size      = ',star_dom_size
        case('slab')
-          write(unit,'(a,ES9.3)')       '  star_dom_thickness = ',star_dom_thickness
+          write(unit,'(a,ES10.3)')       '  star_dom_thickness = ',star_dom_thickness
        end select
        write(unit,'(a)')             '# Particle weights '
        write(unit,'(a,a)')           '  weight_type        = ',trim(weight_type)
@@ -489,10 +500,10 @@ contains
        write(unit,'(a,a)')           '  spec_type               = ',trim(spec_type)
        select case(trim(spec_type))
        case('Gauss')
-          write(unit,'(a,es9.3,a)')     '  spec_gauss_sigma_kms = ',spec_gauss_sigma_kms, ' ! [km/s]'
+          write(unit,'(a,ES10.3,a)')     '  spec_gauss_sigma_kms = ',spec_gauss_sigma_kms, ' ! [km/s]'
        case('PowLaw')
-          write(unit,'(a,es9.3,a)')     '  spec_powlaw_lmin_Ang    = ',spec_powlaw_lmin_Ang, ' ! [A]' 
-          write(unit,'(a,es9.3,a)')     '  spec_powlaw_lmax_Ang    = ',spec_powlaw_lmax_Ang, ' ! [A]'
+          write(unit,'(a,es10.3,a)')     '  spec_powlaw_lmin_Ang    = ',spec_powlaw_lmin_Ang, ' ! [A]' 
+          write(unit,'(a,es10.3,a)')     '  spec_powlaw_lmax_Ang    = ',spec_powlaw_lmax_Ang, ' ! [A]'
        end select
        write(unit,'(a)')             '# miscelaneous parameters'
        write(unit,'(a,i8)')          '  nphot           = ',nphot
@@ -508,17 +519,17 @@ contains
        write(*,'(a,i5)')          '  snapnum         = ',snapnum
        write(*,'(a)')             '# computational domain parameters'
        write(*,'(a,a)')           '  star_dom_type      = ',trim(star_dom_type)
-       write(*,'(a,3(ES9.3,1x))') '  star_dom_pos       = ',star_dom_pos(1),star_dom_pos(2),star_dom_pos(3)
+       write(*,'(a,3(ES10.3,1x))') '  star_dom_pos       = ',star_dom_pos(1),star_dom_pos(2),star_dom_pos(3)
        select case (trim(star_dom_type))
        case ('sphere')
-          write(*,'(a,ES9.3)')       '  star_dom_rsp       = ',star_dom_rsp
+          write(*,'(a,ES10.3)')       '  star_dom_rsp       = ',star_dom_rsp
        case ('shell')
-          write(*,'(a,ES9.3)')       '  star_dom_rin       = ',star_dom_rin
-          write(*,'(a,ES9.3)')       '  star_dom_rout      = ',star_dom_rout
+          write(*,'(a,ES10.3)')       '  star_dom_rin       = ',star_dom_rin
+          write(*,'(a,ES10.3)')       '  star_dom_rout      = ',star_dom_rout
        case('cube')
-          write(*,'(a,ES9.3)')       '  star_dom_size      = ',star_dom_size
+          write(*,'(a,ES10.3)')       '  star_dom_size      = ',star_dom_size
        case('slab')
-          write(*,'(a,ES9.3)')       '  star_dom_thickness = ',star_dom_thickness
+          write(*,'(a,ES10.3)')       '  star_dom_thickness = ',star_dom_thickness
        end select
        write(*,'(a)')             '# Particle weights '
        write(*,'(a,a)')           '  weight_type        = ',trim(weight_type)
@@ -527,10 +538,10 @@ contains
        write(*,'(a,a)')           '  spec_type               = ',trim(spec_type)
        select case(trim(spec_type))
        case('Gauss')
-          write(*,'(a,es9.3,a)')     '  spec_gauss_sigma_kms = ',spec_gauss_sigma_kms, ' ! [km/s]'
+          write(*,'(a,es10.3,a)')     '  spec_gauss_sigma_kms = ',spec_gauss_sigma_kms, ' ! [km/s]'
        case('PowLaw')
-          write(*,'(a,es9.3,a)')     '  spec_powlaw_lmin_Ang    = ',spec_powlaw_lmin_Ang, ' ! [A]' 
-          write(*,'(a,es9.3,a)')     '  spec_powlaw_lmax_Ang    = ',spec_powlaw_lmax_Ang, ' ! [A]'
+          write(*,'(a,es10.3,a)')     '  spec_powlaw_lmin_Ang    = ',spec_powlaw_lmin_Ang, ' ! [A]' 
+          write(*,'(a,es10.3,a)')     '  spec_powlaw_lmax_Ang    = ',spec_powlaw_lmax_Ang, ' ! [A]'
        end select
        write(*,'(a)')             '# miscelaneous parameters'
        write(*,'(a,i8)')          '  nphot           = ',nphot
@@ -544,34 +555,6 @@ contains
     return
 
   end subroutine print_PhotonsFromStars_params
-
-  
-  subroutine locatedb(xx,n,x,j)
-
-    ! subroutine which locates the position j of a value x in an array xx of n elements
-    ! NB : here xx is double precision
-    
-    implicit none
-    
-    integer(kind=4) ::  n,j,jl,ju,jm
-    real(kind=8)    ::  xx(n),x
-    
-    jl = 0
-    ju = n+1
-    do while (ju-jl > 1) 
-       jm = (ju+jl)/2
-       if ((xx(n) > xx(1)) .eqv. (x > xx(jm))) then
-          jl = jm
-       else
-          ju = jm
-       endif
-    enddo
-    j = jl
-
-    return
-
-  end subroutine locatedb
-
 
   
 end program PhotonsFromStars
