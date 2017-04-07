@@ -12,7 +12,10 @@ cd ../tests/SiII
 2/ run
 ../../f90/CreateDomDump params_CDD.dat
 
-3/ start the ipython notebook plotSpec.ipynb
+3/ link python scripts
+ln -s ../../py/*py .
+
+4/ start the ipython notebook plotSpec.ipynb
 -> follow steps to generate parameter files, run PhotonsFromSourceModel and rascas-serial, and plot the results. 
 
 

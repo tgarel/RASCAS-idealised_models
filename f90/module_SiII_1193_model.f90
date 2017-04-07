@@ -132,7 +132,7 @@ contains
 
     ! 3/ chose de-excitation channel to determine output freq. in atom's frame
     r2 = ran3(iran)
-    if (r2 >= A31_over_A31_plus_A32) then
+    if (r2 <= A31_over_A31_plus_A32) then
        ! photon goes down to level 1 -> coherent scattering
        nu_atom = nu_cell - nu_ext * upar/clight ! incoming frequency in atom's frame = outcoming freq in same frame
     else
