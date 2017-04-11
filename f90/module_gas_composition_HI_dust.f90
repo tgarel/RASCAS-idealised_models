@@ -74,7 +74,7 @@ contains
        box_size_cm = ramses_get_box_size_cm(repository,snapnum)
 
        ! compute velocities in cm / s
-       if (verbose) write(*,*) '-- module_gas_composition_HI_D_dust : extracting velocities from ramses '
+       if (verbose) write(*,*) '-- module_gas_composition_HI_dust : extracting velocities from ramses '
        allocate(v(3,nleaf))
        call ramses_get_velocity_cgs(repository,snapnum,nleaf,nvar,ramses_var,v)
        do ileaf = 1,nleaf
@@ -83,7 +83,7 @@ contains
        deallocate(v)
 
        ! get nHI and temperature from ramses
-       if (verbose) write(*,*) '-- module_gas_composition_HI_D_dust : extracting nHI and T from ramses '
+       if (verbose) write(*,*) '-- module_gas_composition_HI_dust : extracting nHI and T from ramses '
        allocate(T(nleaf),nhi(nleaf))
        call ramses_get_T_nhi_cgs(repository,snapnum,nleaf,nvar,ramses_var,T,nhi)
        g(:)%nHI = nhi(:)
