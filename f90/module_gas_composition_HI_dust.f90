@@ -2,7 +2,7 @@ module module_gas_composition
 
   ! mix of HI and dust.
   ! - The HI content is from RAMSES
-  ! - The dust content is a function of metallicity and HI. 
+  ! - The dust content is a function of metallicity, HI and HII, following Laursen+09.
 
   use module_HI_model
   use module_dust_model
@@ -20,8 +20,10 @@ module module_gas_composition
      ! Hydrogen 
      real(kind=8) :: nHI       ! HI numerical density [HI/cm3]
      real(kind=8) :: dopwidth  ! Doppler width [cm/s]
-     ! dust
-     real(kind=8) :: ndust     ! numerical density of dust particles [#/cm3]
+     ! DUST -> model of Laursen, Sommer-Larsen and Andersen 2009.
+     ! ->  ndust = (nHI + f_ion nHII)*Z/Zref
+     ! f_ion and Zref are two free parameters . 
+     real(kind=8) :: ndust     ! pseudo-numerical density of dust particles [#/cm3]
   end type gas
   real(kind=8),public :: box_size_cm   ! size of simulation box in cm. 
   
@@ -29,8 +31,8 @@ module module_gas_composition
   ! user-defined parameters - read from section [gas_composition] of the parameter file
   ! --------------------------------------------------------------------------
   ! mixture parameters 
-  real(kind=8)             :: dust_to_metal_ratio = 0.3d0  ! ask Thibault ... 
-  real(kind=8)             :: mH_over_mdust       = 5.d-8  ! ask Thibault ... 
+  real(kind=8)             :: f_ion           = 0.01   ! ndust = (n_HI + f_ion*n_HII) * Z/Zsun [Laursen+09]
+  real(kind=8)             :: Zref            = 0.005  ! reference metallicity. Should be ~ 0.005 for SMC and ~ 0.01 for LMC. 
   ! possibility to overwrite ramses values with an ad-hoc model 
   logical                  :: gas_overwrite       = .false. ! if true, define cell values from following parameters 
   real(kind=8)             :: fix_nhi             = 0.0d0   ! ad-hoc HI density (H/cm3)
@@ -59,7 +61,7 @@ contains
     real(kind=8),intent(in),dimension(nvar,nleaf)  :: ramses_var
     type(gas),dimension(:),allocatable,intent(out) :: g
     integer(kind=4)                                :: ileaf
-    real(kind=8),dimension(:),allocatable          :: T, nhi, metallicity
+    real(kind=8),dimension(:),allocatable          :: T, nhi, metallicity, nhii
     real(kind=8),dimension(:,:),allocatable        :: v
 
     ! allocate gas-element array
@@ -68,32 +70,37 @@ contains
     if (gas_overwrite) then
        call overwrite_gas(g)
     else
+       
        box_size_cm = ramses_get_box_size_cm(repository,snapnum)
+
        ! compute velocities in cm / s
-       if (verbose) write(*,*) '-- module_gas_composition_HI_D_dust : extracting velocities from ramses '
+       if (verbose) write(*,*) '-- module_gas_composition_HI_dust : extracting velocities from ramses '
        allocate(v(3,nleaf))
        call ramses_get_velocity_cgs(repository,snapnum,nleaf,nvar,ramses_var,v)
        do ileaf = 1,nleaf
           g(ileaf)%v = v(:,ileaf)
        end do
        deallocate(v)
+
        ! get nHI and temperature from ramses
-       if (verbose) write(*,*) '-- module_gas_composition_HI_D_dust : extracting nHI and T from ramses '
+       if (verbose) write(*,*) '-- module_gas_composition_HI_dust : extracting nHI and T from ramses '
        allocate(T(nleaf),nhi(nleaf))
        call ramses_get_T_nhi_cgs(repository,snapnum,nleaf,nvar,ramses_var,T,nhi)
        g(:)%nHI = nhi(:)
        ! compute thermal velocity 
        ! ++++++ TURBULENT VELOCITY >>>>> parameter to add and use here
        g(:)%dopwidth = sqrt((2.0d0*kb/mp)*T) ! [ cm/s ]
-       deallocate(T,nhi)
-       ! get ndust (Use Verhamme 2012, Eq. 3.)
-       if (verbose) write(*,*) '-- module_gas_composition_HI_D_dust : extracting ndust from ramses '
-       allocate(metallicity(nleaf))
+
+       ! get ndust (pseudo dust density from Laursen, Sommer-Larsen, Andersen 2009)
+       if (verbose) write(*,*) '-- module_gas_composition_HI_dust : extracting ndust from ramses '
+       allocate(metallicity(nleaf),nhii(nleaf))
        call ramses_get_metallicity(nleaf,nvar,ramses_var,metallicity)
+       call ramses_get_nh_cgs(repository,snapnum,nleaf,nvar,ramses_var,nhii)
+       nhii = nhii - nhi
        do ileaf = 1,nleaf
-          g(ileaf)%ndust = (dust_to_metal_ratio * mH_over_mdust / XH) * metallicity(ileaf) * g(ileaf)%nHI 
+          g(ileaf)%ndust = metallicity(ileaf) / Zref * ( nhi(ileaf) + f_ion*nhii(ileaf) )   ! [ /cm3 ]
        end do
-       deallocate(metallicity)
+       deallocate(metallicity,T,nhi,nhii)
     end if
 
     return
@@ -166,7 +173,7 @@ contains
 
     ! compute optical depths for different components of the gas.
     tau_HI   = get_tau_HI(cell_gas%nHI, cell_gas%dopwidth, distance_to_border_cm, nu_cell)
-    tau_dust = get_tau_dust(cell_gas%ndust, distance_to_border_cm)
+    tau_dust = get_tau_dust(cell_gas%ndust, distance_to_border_cm, nu_cell)
     tau_cell = tau_HI + tau_dust
 
     if (tau_abs > tau_cell) then  ! photon is due for absorption outside the cell 
@@ -293,10 +300,10 @@ contains
           i = scan(value,'!')
           if (i /= 0) value = trim(adjustl(value(:i-1)))
           select case (trim(name))
-          case ('dust_to_metal_ratio')
-             read(value,*) dust_to_metal_ratio
-          case ('mH_over_mdust')
-             read(value,*) mH_over_mdust
+          case ('f_ion')
+             read(value,*) f_ion
+          case ('Zref')
+             read(value,*) Zref
           case ('gas_overwrite')
              read(value,*) gas_overwrite
           case ('fix_nhi')
@@ -337,18 +344,18 @@ contains
 
     if (present(unit)) then 
        write(unit,'(a,a,a)') '[gas_composition]'
-       write(unit,'(a)')       '# mixture parameters'
-       write(unit,'(a,ES10.3)') '  dust_to_metal_ratio = ',dust_to_metal_ratio
-       write(unit,'(a,ES10.3)') '  mH_over_mdust       = ',mH_over_mdust
-       write(unit,'(a)')       '# overwrite parameters'
-       write(unit,'(a,L1)')    '  gas_overwrite        = ',gas_overwrite
+       write(unit,'(a)')        '# mixture parameters'
+       write(unit,'(a,ES10.3)') '  f_ion               = ',f_ion
+       write(unit,'(a,ES10.3)') '  Zref                = ',Zref
+       write(unit,'(a)')        '# overwrite parameters'
+       write(unit,'(a,L1)')     '  gas_overwrite       = ',gas_overwrite
        write(unit,'(a,ES10.3)') '  fix_nhi             = ',fix_nhi
        write(unit,'(a,ES10.3)') '  fix_vth             = ',fix_vth
        write(unit,'(a,ES10.3)') '  fix_ndust           = ',fix_ndust
        write(unit,'(a,ES10.3)') '  fix_vel             = ',fix_vel
        write(unit,'(a,ES10.3)') '  fix_box_size_cm     = ',fix_box_size_cm
-       write(unit,'(a)')       '# miscelaneous parameters'
-       write(unit,'(a,L1)')    '  verbose              = ',verbose
+       write(unit,'(a)')        '# miscelaneous parameters'
+       write(unit,'(a,L1)')     '  verbose             = ',verbose
        write(unit,'(a)')             ' '
        call print_ramses_params(unit)
        write(unit,'(a)')             ' '
@@ -357,18 +364,18 @@ contains
        call print_dust_params(unit)
     else
        write(*,'(a,a,a)') '[gas_composition]'
-       write(*,'(a)')       '# mixture parameters'
-       write(*,'(a,ES10.3)') '  dust_to_metal_ratio = ',dust_to_metal_ratio
-       write(*,'(a,ES10.3)') '  mH_over_mdust       = ',mH_over_mdust
-       write(*,'(a)')       '# overwrite parameters'
-       write(*,'(a,L1)')    '  gas_overwrite        = ',gas_overwrite
+       write(*,'(a)')        '# mixture parameters'
+       write(*,'(a,ES10.3)') '  f_ion               = ',f_ion
+       write(*,'(a,ES10.3)') '  Zref                = ',Zref
+       write(*,'(a)')        '# overwrite parameters'
+       write(*,'(a,L1)')     '  gas_overwrite       = ',gas_overwrite
        write(*,'(a,ES10.3)') '  fix_nhi             = ',fix_nhi
        write(*,'(a,ES10.3)') '  fix_vth             = ',fix_vth
        write(*,'(a,ES10.3)') '  fix_ndust           = ',fix_ndust
        write(*,'(a,ES10.3)') '  fix_vel             = ',fix_vel
        write(*,'(a,ES10.3)') '  fix_box_size_cm     = ',fix_box_size_cm
-       write(*,'(a)')       '# miscelaneous parameters'
-       write(*,'(a,L1)')    '  verbose              = ',verbose
+       write(*,'(a)')        '# miscelaneous parameters'
+       write(*,'(a,L1)')     '  verbose             = ',verbose
        write(*,'(a)')             ' '
        call print_ramses_params
        write(*,'(a)')             ' '

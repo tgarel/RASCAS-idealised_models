@@ -190,12 +190,14 @@ class photonlist(object):
         return p      
 
     
-    def spectrum(self,frame='obs',nbins=200,Flambda=True):
+    def spectrum(self,frame='obs',nbins=200,Flambda=True,lmin=None,lmax=None):
         # compute the spectrum (F_lambda) corresponding to list of photons (self)
         # inputs:
         #    frame (optional)   : can be 'obs', 'ic', or 'star'
         #    nbins (optional)   : nb of bins
         #    Flambda (optional) : compute spectrum or just MC photon histogram
+        #    lmin (optional) : minimum wavelentgh to use [A]
+        #    lmax (optional) : max wavelength to use [A]
         # outputs:
         # bin_centers : wavelengths [A]
         # h           : spectrum [erg/s/A] if Flambda==True or distribution of MC photons [#/A] if Flambda==False
@@ -208,11 +210,17 @@ class photonlist(object):
         if frame == 'obs':
             nu = self.nu  # [Hz]
         lbda = lya.clight / nu * 1e8  # [A]
+
+        if lmin is None:
+            lmin = min(lbda)
+        if lmax is None:
+            lmax = max(lbda)
+
         if Flambda: 
             ener    = nphot_per_packet * lya.h_cgs * nu  # [erg/s/MC phot]
-            h,edges = np.histogram(lbda,bins=nbins,weights=ener)
+            h,edges = np.histogram(lbda,bins=nbins,weights=ener,range=(lmin,lmax))
         else:
-            h,edges = np.histogram(lbda,bins=nbins) # histogram with MC photon counts, not energy
+            h,edges = np.histogram(lbda,bins=nbins,range=(lmin,lmax)) # histogram with MC photon counts, not energy
         
         bin_centers = 0.5*(edges[:-1]+edges[1:])
         dlbda = bin_centers[1]-bin_centers[0]
