@@ -91,13 +91,6 @@ contains
     ! - k        : updated propagation direction
     ! _ iran     : updated value of seed
     ! ---------------------------------------------------------------------------------
-    !
-    ! Notes on the phase function :
-    ! -----------------------------
-    ! - for core photons (|x| < 0.2) we use P(mu) = 11/24 + 3/24 * mu**2
-    ! - for wing photons (|x| > 0.2) we use P(mu) = 3/8 * (1 + mu**2) [this is Rayleigh]
-    ! where mu = cos(theta), (and theta in [0,pi]).
-    ! ---------------------------------------------------------------------------------
 
     real(kind=8),intent(inout)              :: nu_cell, nu_ext
     real(kind=8),dimension(3),intent(inout) :: k
@@ -106,7 +99,6 @@ contains
     integer(kind=4),intent(inout)           :: iran
     real(kind=8)                            :: delta_nu_doppler, a, x_cell, blah, upar, ruper
     real(kind=8)                            :: r2, uper, nu_atom, mu, bu, scalar
-    real(kind=8)                            :: x_atom
     real(kind=8),dimension(3)               :: knew
 
     ! define x_cell & a

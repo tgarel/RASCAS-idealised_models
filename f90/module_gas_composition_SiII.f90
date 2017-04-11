@@ -36,10 +36,6 @@ module module_gas_composition
   ! miscelaneous
   logical                  :: verbose             = .false. ! display some run-time info on this module
   ! --------------------------------------------------------------------------
-
-
-  real(kind=8)                      :: solar_metallicity = 0.0127d0      !module_ramses.f90:868
-
   
   ! public functions:
   public :: gas_from_ramses_leaves,get_gas_velocity,gas_get_scatter_flag,gas_scatter,dump_gas
@@ -70,7 +66,7 @@ contains
        box_size_cm = ramses_get_box_size_cm(repository,snapnum)
 
        ! compute velocities in cm / s
-       if (verbose) write(*,*) '-- module_gas_composition_SiII : extracting velocities form ramses '
+       if (verbose) write(*,*) '-- module_gas_composition_SiII : extracting velocities from ramses '
        allocate(v(3,nleaf))
        call ramses_get_velocity_cgs(repository,snapnum,nleaf,nvar,ramses_var,v)
        do ileaf = 1,nleaf
@@ -79,7 +75,7 @@ contains
        deallocate(v)
 
        ! get nSiII and temperature from ramses
-       if (verbose) write(*,*) '-- module_gas_composition_SiII : extracting nSiII form ramses '
+       if (verbose) write(*,*) '-- module_gas_composition_SiII : extracting nSiII from ramses '
        allocate(T(nleaf),nSiII(nleaf))
        call ramses_get_T_nSiII_cgs(repository,snapnum,nleaf,nvar,ramses_var,T,nSiII)
        g(:)%nSiII = nSiII(:)

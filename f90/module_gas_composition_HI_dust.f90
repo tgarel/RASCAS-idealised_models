@@ -31,7 +31,7 @@ module module_gas_composition
   ! user-defined parameters - read from section [gas_composition] of the parameter file
   ! --------------------------------------------------------------------------
   ! mixture parameters 
-  real(kind=8)             :: fion            = 0.01   ! ndust = (n_HI + fion*n_HII) * Z/Zsun [Laurse+09]
+  real(kind=8)             :: fion            = 0.01   ! ndust = (n_HI + fion*n_HII) * Z/Zsun [Laursen+09]
   real(kind=8)             :: Zref            = 0.005  ! reference metallicity. Should be ~ 0.005 for SMC and ~ 0.01 for LMC. 
   ! possibility to overwrite ramses values with an ad-hoc model 
   logical                  :: gas_overwrite       = .false. ! if true, define cell values from following parameters 
@@ -92,10 +92,10 @@ contains
        g(:)%dopwidth = sqrt((2.0d0*kb/mp)*T) ! [ cm/s ]
 
        ! get ndust (pseudo dust density from Laursen, Sommer-Larsen, Andersen 2009)
-       if (verbose) write(*,*) '-- module_gas_composition_HI_dust : extracting ndust form ramses '
+       if (verbose) write(*,*) '-- module_gas_composition_HI_dust : extracting ndust from ramses '
        allocate(metallicity(nleaf),nhii(nleaf))
        call ramses_get_metallicity(nleaf,nvar,ramses_var,metallicity)
-       call ramses_get_nh(repository,snapnum,nleaf,nvar,ramses_var,nhii)
+       call ramses_get_nh_cgs(repository,snapnum,nleaf,nvar,ramses_var,nhii)
        nhii = nhii - nhi
        do ileaf = 1,nleaf
           g(ileaf)%ndust = metallicity(ileaf) / Zref * ( nhi(ileaf) + fion*nhii(ileaf) )   ! [ /cm3 ]

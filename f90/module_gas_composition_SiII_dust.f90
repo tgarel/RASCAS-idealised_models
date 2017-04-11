@@ -32,7 +32,7 @@ module module_gas_composition
   ! user-defined parameters - read from section [gas_composition] of the parameter file
   ! --------------------------------------------------------------------------
   ! mixture parameters 
-  real(kind=8)             :: fion            = 0.01   ! ndust = (n_HI + fion*n_HII) * Z/Zsun [Laurse+09]
+  real(kind=8)             :: fion            = 0.01   ! ndust = (n_HI + fion*n_HII) * Z/Zsun [Laursen+09]
   real(kind=8)             :: Zref            = 0.005  ! reference metallicity. Should be ~ 0.005 for SMC and ~ 0.01 for LMC. 
   ! possibility to overwrite ramses values with an ad-hoc model 
   logical                  :: gas_overwrite       = .false. ! if true, define cell values from following parameters 
@@ -45,10 +45,6 @@ module module_gas_composition
   logical                  :: verbose             = .true. ! display some run-time info on this module
   ! --------------------------------------------------------------------------
 
-
-  real(kind=8)                      :: solar_metallicity = 0.0127d0      !module_ramses.f90:868
-
-  
   ! public functions:
   public :: gas_from_ramses_leaves,get_gas_velocity,gas_get_scatter_flag,gas_scatter,dump_gas
   public :: read_gas,gas_destructor,read_gas_composition_params,print_gas_composition_params
@@ -78,7 +74,7 @@ contains
        box_size_cm = ramses_get_box_size_cm(repository,snapnum)
 
        ! compute velocities in cm / s
-       if (verbose) write(*,*) '-- module_gas_composition_SiII_dust : extracting velocities form ramses '
+       if (verbose) write(*,*) '-- module_gas_composition_SiII_dust : extracting velocities from ramses '
        allocate(v(3,nleaf))
        call ramses_get_velocity_cgs(repository,snapnum,nleaf,nvar,ramses_var,v)
        do ileaf = 1,nleaf
@@ -87,7 +83,7 @@ contains
        deallocate(v)
 
        ! get nSiII and temperature from ramses
-       if (verbose) write(*,*) '-- module_gas_composition_SiII_dust : extracting nSiII form ramses '
+       if (verbose) write(*,*) '-- module_gas_composition_SiII_dust : extracting nSiII from ramses '
        allocate(T(nleaf),nSiII(nleaf))
        call ramses_get_T_nSiII_cgs(repository,snapnum,nleaf,nvar,ramses_var,T,nSiII)
        g(:)%nSiII = nSiII(:)
@@ -99,11 +95,11 @@ contains
        if (verbose) print*,'min/max of nSiII : ',minval(g(:)%nSiII),maxval(g(:)%nSiII)
        
        ! get ndust (pseudo dust density from Laursen, Sommer-Larsen, Andersen 2009)
-       if (verbose) write(*,*) '-- module_gas_composition_SiII_dust : extracting ndust form ramses '
+       if (verbose) write(*,*) '-- module_gas_composition_SiII_dust : extracting ndust from ramses '
        allocate(T(nleaf),nhi(nleaf),metallicity(nleaf),nhii(nleaf))
        call ramses_get_T_nhi_cgs(repository,snapnum,nleaf,nvar,ramses_var,T,nhi)
        call ramses_get_metallicity(nleaf,nvar,ramses_var,metallicity)
-       call ramses_get_nh(repository,snapnum,nleaf,nvar,ramses_var,nhii)
+       call ramses_get_nh_cgs(repository,snapnum,nleaf,nvar,ramses_var,nhii)
        nhii = nhii - nhi
        do ileaf = 1,nleaf
           g(ileaf)%ndust = metallicity(ileaf) / Zref * ( nhi(ileaf) + fion*nhii(ileaf) )   ! [ /cm3 ]

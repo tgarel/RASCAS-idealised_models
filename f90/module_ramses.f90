@@ -89,7 +89,7 @@ module module_ramses
 
   
 
-  public  :: read_leaf_cells, get_ngridtot, ramses_get_velocity_cgs, ramses_get_T_nhi_cgs, ramses_get_metallicity, ramses_get_box_size_cm, ramses_get_nh
+  public  :: read_leaf_cells, get_ngridtot, ramses_get_velocity_cgs, ramses_get_T_nhi_cgs, ramses_get_metallicity, ramses_get_box_size_cm, ramses_get_nh_cgs
   public  :: ramses_read_stars_in_domain, read_ramses_params, print_ramses_params, dump_ramses_info, ramses_get_T_nSiII_cgs
   ! default is private now ... !! private :: read_hydro, read_amr, get_nleaf, get_nvar, clear_amr, get_ncpu, get_param_real
 
@@ -335,7 +335,7 @@ contains
 
   end subroutine ramses_get_velocity_cgs
 
-  subroutine ramses_get_nh(repository,snapnum,nleaf,nvar,ramses_var,nh)
+  subroutine ramses_get_nh_cgs(repository,snapnum,nleaf,nvar,ramses_var,nh)
 
     implicit none
 
@@ -355,7 +355,7 @@ contains
 
     return
 
-  end subroutine ramses_get_nh
+  end subroutine ramses_get_nh_cgs
 
 
   subroutine ramses_get_metallicity(nleaf,nvar,ramses_var,metallicity)
@@ -381,18 +381,16 @@ contains
 
     implicit none 
 
-    character(1000),intent(in)  :: repository
-    integer(kind=4),intent(in)  :: snapnum
-    integer(kind=4),intent(in)  :: nleaf, nvar
-    real(kind=8),intent(in)     :: ramses_var(nvar,nleaf) ! one cell only
-    real(kind=8),intent(inout)  :: nSiII(nleaf), temp(nleaf)
-    real(kind=8),allocatable    :: boost(:)
-    real(kind=8)                :: xhi
-    integer(kind=4) :: ihx,ihy,i
-    real(kind=8)    :: xx,yy,dxx1,dxx2,dyy1,dyy2,f
-    integer(kind=4) :: if1,if2,jf1,jf2
-
-    real(kind=8),allocatable,dimension(:)    :: mu, nh, metallicity
+    character(1000),intent(in)            :: repository
+    integer(kind=4),intent(in)            :: snapnum
+    integer(kind=4),intent(in)            :: nleaf, nvar
+    real(kind=8),intent(in)               :: ramses_var(nvar,nleaf) ! one cell only
+    real(kind=8),intent(inout)            :: nSiII(nleaf), temp(nleaf)
+    real(kind=8),allocatable              :: boost(:)
+    integer(kind=4)                       :: ihx,ihy,i
+    real(kind=8)                          :: xx,yy,dxx1,dxx2,dyy1,dyy2,f
+    integer(kind=4)                       :: if1,if2,jf1,jf2
+    real(kind=8),allocatable,dimension(:) :: mu, nh
 
     ! get conversion factors if necessary
     if (.not. conversion_scales_are_known) then 
