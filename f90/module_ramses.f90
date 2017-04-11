@@ -85,6 +85,10 @@ module module_ramses
   integer(kind=4),parameter :: ihii   = 7
   integer(kind=4),parameter :: iheii  = 8
   integer(kind=4),parameter :: iheiii = 9
+  ! Solar abundance ratio
+  ! Si
+  ! abundance_Si_mass == abundance_Si_number * 28.085
+  real(kind=8),parameter    :: abundance_Si_mass = 9.1d-4 ! From Scarlata (private comm.): abundance_Si_number = 3.24d-5
   ! --------------------------------------------------------------------------
 
   
@@ -481,7 +485,7 @@ contains
     ! - Si+-Si++ : 16.34585 eV
     do i = 1,nleaf
        if (temp(i) >= 6.306571d4 .and. temp(i) <= 1.2646d5) then
-          nSiII(i) = ramses_var(1,i) * dp_scale_d * ramses_var(imetal,i) * dp_scale_zsun * 7.33d-4 / mSi   ! [#/cm3]
+          nSiII(i) = ramses_var(1,i) * dp_scale_d * ramses_var(imetal,i) * dp_scale_zsun * abundance_Si_mass / mSi   ! [#/cm3]
        else
           nSiII(i) = 0.0d0
        end if
