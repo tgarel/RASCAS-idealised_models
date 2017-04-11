@@ -22,8 +22,8 @@ module module_gas_composition
      real(kind=8) :: nsiII     ! numerical density of SiII  [#/cm3]
      real(kind=8) :: dopwidth  ! Doppler width [cm/s]
      ! DUST -> model of Laursen, Sommer-Larsen and Andersen 2009.
-     ! ->  ndust = (nHI + fion nHII)*Z/Zref
-     ! fion and Zref are two free parameters . 
+     ! ->  ndust = (nHI + f_ion nHII)*Z/Zref
+     ! f_ion and Zref are two free parameters . 
      real(kind=8) :: ndust     ! pseudo-numerical density of dust particles [#/cm3]
   end type gas
   real(kind=8),public :: box_size_cm   ! size of simulation box in cm. 
@@ -32,7 +32,7 @@ module module_gas_composition
   ! user-defined parameters - read from section [gas_composition] of the parameter file
   ! --------------------------------------------------------------------------
   ! mixture parameters 
-  real(kind=8)             :: fion            = 0.01   ! ndust = (n_HI + fion*n_HII) * Z/Zsun [Laursen+09]
+  real(kind=8)             :: f_ion           = 0.01   ! ndust = (n_HI + f_ion*n_HII) * Z/Zsun [Laursen+09]
   real(kind=8)             :: Zref            = 0.005  ! reference metallicity. Should be ~ 0.005 for SMC and ~ 0.01 for LMC. 
   ! possibility to overwrite ramses values with an ad-hoc model 
   logical                  :: gas_overwrite       = .false. ! if true, define cell values from following parameters 
@@ -102,7 +102,7 @@ contains
        call ramses_get_nh_cgs(repository,snapnum,nleaf,nvar,ramses_var,nhii)
        nhii = nhii - nhi
        do ileaf = 1,nleaf
-          g(ileaf)%ndust = metallicity(ileaf) / Zref * ( nhi(ileaf) + fion*nhii(ileaf) )   ! [ /cm3 ]
+          g(ileaf)%ndust = metallicity(ileaf) / Zref * ( nhi(ileaf) + f_ion*nhii(ileaf) )   ! [ /cm3 ]
        end do
        deallocate(metallicity,T,nhi,nhii)
 
@@ -311,8 +311,8 @@ contains
           i = scan(value,'!')
           if (i /= 0) value = trim(adjustl(value(:i-1)))
           select case (trim(name))
-          case ('fion')
-             read(value,*) fion
+          case ('f_ion')
+             read(value,*) f_ion
           case ('Zref')
              read(value,*) Zref
           case ('gas_overwrite')
@@ -354,8 +354,8 @@ contains
 
     if (present(unit)) then 
        write(unit,'(a,a,a)') '[gas_composition]'
-       write(unit,'(a,ES10.3)') '  fion            = ',fion
-       write(unit,'(a,ES10.3)') '  Zref            = ',Zref
+       write(unit,'(a,ES10.3)') '  f_ion                = ',f_ion
+       write(unit,'(a,ES10.3)') '  Zref                 = ',Zref
        write(unit,'(a)')       '# overwrite parameters'
        write(unit,'(a,L1)')    '  gas_overwrite         = ',gas_overwrite
        write(unit,'(a,ES10.3)') '  fix_nSiII            = ',fix_nSiII
@@ -370,8 +370,8 @@ contains
        call print_dust_params
     else
        write(*,'(a,a,a)') '[gas_composition]'
-       write(*,'(a,ES10.3)') '  fion            = ',fion
-       write(*,'(a,ES10.3)') '  Zref            = ',Zref
+       write(*,'(a,ES10.3)') '  f_ion                = ',f_ion
+       write(*,'(a,ES10.3)') '  Zref                 = ',Zref
        write(*,'(a)')       '# overwrite parameters'
        write(*,'(a,L1)')    '  gas_overwrite         = ',gas_overwrite
        write(*,'(a,ES10.3)') '  fix_nSiII            = ',fix_nSiII
