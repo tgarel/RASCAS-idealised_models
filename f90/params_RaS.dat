@@ -13,7 +13,7 @@
 [gas_composition] 
 # mixture parameters
   deut2H_nb_ratio     = 3.000E-05
-  fion                = 0.01
+  f_ion               = 0.01
   Zref                = 0.005   ! OK for LMC dust model.
 # overwrite parameters
   gas_overwrite       = F
