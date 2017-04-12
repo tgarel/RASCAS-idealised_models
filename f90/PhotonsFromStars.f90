@@ -318,7 +318,7 @@ program PhotonsFromStars
         if (ix >= spec_table_nbins) ix = spec_table_nbins-1
         dx1 = x - (ix-1)*dx
         dx2 = ix*dx - x
-        lambda = spec_table_lofx(ix,iage,imet)*dx2 + spec_table_lofx(ix+1,iage,imet)*dx1
+        lambda = spec_table_lofx(ix,star_iage(j),star_imet(j))*dx2 + spec_table_lofx(ix+1,star_iage(j),star_imet(j))*dx1
         lambda = lambda / dx
         nu = clight/(lambda * 1e-8)  ! [Hz]
      end select
