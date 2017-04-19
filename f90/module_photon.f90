@@ -450,4 +450,27 @@ contains
 
   end subroutine dump_photons
 
+  subroutine read_photon_dump(file,pgrid)
+
+    ! read a file written with subroutine dump_photons.
+    
+    character(2000),intent(in)                    :: file
+    type(photon_current),allocatable,intent(out)  :: pgrid(:)
+    integer(kind=4)                               :: i,np
+
+    open(unit=14, file=trim(file), status='unknown', form='unformatted', action='read')
+    read(14) np
+    allocate(pgrid(np))
+    read(14) (pgrid(i)%ID,      i=1,np)
+    read(14) (pgrid(i)%status,  i=1,np)
+    read(14) (pgrid(i)%xlast(:),i=1,np)
+    read(14) (pgrid(i)%nu_ext,  i=1,np)
+    read(14) (pgrid(i)%k(:),    i=1,np)
+    read(14) (pgrid(i)%nb_abs,  i=1,np)
+    read(14) (pgrid(i)%time,    i=1,np)
+    close(14)
+
+  end subroutine read_photon_dump
+
+  
 end module module_photon

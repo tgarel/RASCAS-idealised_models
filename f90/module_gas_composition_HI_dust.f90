@@ -166,7 +166,7 @@ contains
 
     ! compute optical depths for different components of the gas.
     tau_HI   = get_tau_HI(cell_gas%nHI, cell_gas%dopwidth, distance_cm, nu_cell)
-    tau_dust = get_tau_dust(cell_gas%ndust, distance_cm)
+    tau_dust = get_tau_dust(cell_gas%ndust, distance_cm, nu_cell)
     gas_get_tau = tau_HI + tau_dust
 
     return
