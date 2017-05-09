@@ -24,6 +24,13 @@ class gas(object):
             self.ndust     = ndust
             self.xleaf     = xleaf
             self.leaflevel = leaflevel
+        elif self.mix == 'SiII_dust':
+            self.nSiII     = nSiII
+            self.dopwidth  = dopwidth
+            self.vleaf     = vleaf
+            self.ndust     = ndust
+            self.xleaf     = xleaf
+            self.leaflevel = leaflevel
            
 class mesh(object):
     """ This class manages mesh objects, which contain a domain object, the mesh data structure itself, and a gas object.
@@ -129,6 +136,35 @@ class mesh(object):
                 icell = np.abs(self.son[ileaf])
                 print np.shape(icell), np.amin(icell), np.amax(icell)
                 self.gas = gas(gasmix, nHI[icell-1], dopwidth[icell-1], v[:,icell-1], ndust[icell-1], xleaf, leaflevel)
+            if gasmix == 'SiII_dust':
+                # for SiII and dust composition
+                print "-----> gas"
+                # velocity
+                v = f.read_reals('d')
+                v = v.reshape((3,self.nleaf)) # ou (3,nleaf)??? to be checked
+                print "INFO gas v:",np.shape(v),np.amin(v),np.amax(v)
+                # nHI
+                nSiII = f.read_reals('d')
+                print "INFO gas nSiII:",np.shape(nSiII),np.amin(nSiII),np.amax(nSiII)
+                # dopwidth
+                dopwidth = f.read_reals('d')
+                print "INFO gas dopwidth:",np.shape(dopwidth),np.amin(dopwidth),np.amax(dopwidth)
+                # ndust
+                ndust = f.read_reals('d')
+                print "INFO gas ndust:",np.shape(ndust),np.amin(ndust),np.amax(ndust)
+                # boxsize
+                [box_size_cm] = f.read_reals('d')
+                print "boxsize [cm] =",box_size_cm
+                f.close()
+                # get leaf positions
+                xleaf = self.get_leaf_position()
+                # get leaf level
+                leaflevel = self.get_leaf_level()                
+                # Re-indexing gas mix arrays
+                ileaf = np.where(self.son<0)
+                icell = np.abs(self.son[ileaf])
+                print np.shape(icell), np.amin(icell), np.amax(icell)
+                self.gas = gas(gasmix, nSiII[icell-1], dopwidth[icell-1], v[:,icell-1], ndust[icell-1], xleaf, leaflevel)
             else:
                 #return IOError("mix not defined",gasmix)
                 raise NameError("mix not defined",gasmix)
