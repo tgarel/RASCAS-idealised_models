@@ -7,7 +7,7 @@ program RaysFromPhotons
 
   type(photon_current),allocatable :: pgrid(:)
   type(ray_type),allocatable       :: rays(:)
-  integer(kind=4)                  :: nrays,i,narg
+  integer(kind=4)                  :: nrays,i,narg,n
   character(2000)                  :: parameter_file
   ! --------------------------------------------------------------------------
   ! user-defined parameters - read from section [RaysFromSourceModel] of the parameter file
@@ -40,23 +40,27 @@ program RaysFromPhotons
   if (verbose) write(*,*) 'defining rays ... '
   nrays = size(pgrid)
   allocate(rays(nrays))
+  n = 0
   do i=1,nrays
-     rays(i)%ID     = pgrid(i)%ID
-     rays(i)%x_em   = pgrid(i)%xlast
-     rays(i)%k_em   = kobs
-     rays(i)%nu_ext = pgrid(i)%nu_ext
+     if (pgrid(i)%status >0) then !== 1) then 
+        n = n + 1
+        rays(n)%ID     = pgrid(i)%ID
+        rays(n)%x_em   = pgrid(i)%xlast
+        rays(n)%k_em   = kobs
+        rays(n)%nu_ext = pgrid(i)%nu_ext
+     end if
   end do
-
+  
   ! --------------------------------------------------------------------------------------
   ! write ICs
   ! --------------------------------------------------------------------------------------
   if (verbose) write(*,*) '--> writing file'
   open(unit=14, file=trim(outputfile), status='unknown', form='unformatted', action='write')
-  write(14) nrays
-  write(14) (rays(i)%ID,i=1,nrays)
-  write(14) (rays(i)%nu_ext,i=1,nrays)
-  write(14) (rays(i)%x_em(:),i=1,nrays)
-  write(14) (rays(i)%k_em(:),i=1,nrays)
+  write(14) n
+  write(14) (rays(i)%ID,i=1,n)
+  write(14) (rays(i)%nu_ext,i=1,n)
+  write(14) (rays(i)%x_em(:),i=1,n)
+  write(14) (rays(i)%k_em(:),i=1,n)
   close(14)
   ! --------------------------------------------------------------------------------------
 
