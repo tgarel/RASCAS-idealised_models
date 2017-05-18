@@ -69,7 +69,10 @@ program main
      call master(file_compute_dom, ndomain, domain_file_list, PhotonICFile, nbuffer, fileout)
   else
      ! Worker section, will mostly do radiative transfer (MCRT)
-     call worker(file_compute_dom, ndomain, mesh_file_list, nbuffer)
+     !--PEEL--
+     !call worker(file_compute_dom, ndomain, mesh_file_list, nbuffer)
+     call worker(file_compute_dom, ndomain, mesh_file_list, nbuffer,fileout)
+     !--LEEP--
   end if
 
   ! write results: this is done by master

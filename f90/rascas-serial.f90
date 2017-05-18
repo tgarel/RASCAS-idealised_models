@@ -101,12 +101,35 @@ program main
   if (verbose) print '(" --> Time = ",f12.3," seconds.")',tmptime-start
 
 
+  !--PEEL--
+  write(peeloff_file,'(a,a,i5.5)') trim(fileout),'.peel',1
+  open(unit=peeloff_unit, file=trim(peeloff_file), status='unknown', form='unformatted', action='write')
+  ! initialise peeling-off 
+  nPeeled = 0 
+  !--LEEP--
+
+  
   ! do the Monte Carlo Radiative Transfer
   if (verbose) print *,'--> starting RT...'
   call MCRT(nphot,photgrid,meshdom,compute_dom)
 
   if (verbose) print *,'--> RT done'
 
+  !--PEEL--
+  ! finish writing buffer 
+  if (nPeeled > 0) then 
+     write(peeloff_unit) nPeeled
+     write(peeloff_unit) (PeelBuffer(i)%peeloff_fraction,i=1,nPeeled)
+     write(peeloff_unit) (PeelBuffer(i)%nu,i=1,nPeeled)
+     write(peeloff_unit) (PeelBuffer(i)%x(:),i=1,nPeeled)
+     write(peeloff_unit) (PeelBuffer(i)%k(:),i=1,nPeeled)
+     write(peeloff_unit) (PeelBuffer(i)%scatter_flag,i=1,nPeeled)
+     nPeeled=0
+  end if
+  close(peeloff_unit) 
+  !--LEEP--
+
+  
   ! some checks & logs
   if(verbose)then
      ! test status of photons

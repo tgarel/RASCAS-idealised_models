@@ -17,7 +17,10 @@ module module_worker
   
 contains
 
-  subroutine worker(file_compute_dom, ndomain, mesh_file_list, nbuffer)
+  !--PEEL--
+  !subroutine worker(file_compute_dom, ndomain, mesh_file_list, nbuffer)
+  subroutine worker(file_compute_dom, ndomain, mesh_file_list, nbuffer,fileout)
+  !--LEEP--
 
     implicit none
     
@@ -25,7 +28,10 @@ contains
     integer(kind=4),intent(in)                    :: ndomain
     character(2000),dimension(ndomain),intent(in) :: mesh_file_list
     integer(kind=4),intent(in)                    :: nbuffer
-    
+    !--PEEL--
+    character(2000),intent(in)                    :: fileout
+    integer(kind=4)                               :: i
+    !--LEEP--
     integer(kind=4)                               :: jdomain, mydom
     type(photon_current),dimension(nbuffer)       :: photpacket
     type(mesh)                                    :: meshdom
@@ -36,6 +42,13 @@ contains
     call domain_constructor_from_file(file_compute_dom,compute_dom)
 
     mydom=-1
+
+    !--PEEL--
+    write(peeloff_file,'(a,a,i5.5)') trim(fileout),'.peel',rank
+    open(unit=peeloff_unit, file=trim(peeloff_file), status='unknown', form='unformatted', action='write')
+    ! initialise peeling-off 
+    nPeeled = 0 
+    !--LEEP--
 
     do while (status(MPI_TAG) .ne. EXI_TAG)
 
@@ -66,7 +79,7 @@ contains
 
        ! do the RT stuff. This is a single loop over photons in photpacket.
        call MCRT(nbuffer,photpacket,meshdom,compute_dom)
-
+       
        call cpu_time(end_photpacket)
 
        if(verbose)then
@@ -81,6 +94,20 @@ contains
 
     enddo
 
+    !--PEEL--
+    ! finish writing buffer 
+    if (nPeeled > 0) then 
+       write(peeloff_unit) nPeeled
+       write(peeloff_unit) (PeelBuffer(i)%peeloff_fraction,i=1,nPeeled)
+       write(peeloff_unit) (PeelBuffer(i)%nu,i=1,nPeeled)
+       write(peeloff_unit) (PeelBuffer(i)%x(:),i=1,nPeeled)
+       write(peeloff_unit) (PeelBuffer(i)%k(:),i=1,nPeeled)
+       write(peeloff_unit) (PeelBuffer(i)%scatter_flag,i=1,nPeeled)
+       nPeeled=0
+    end if
+    close(peeloff_unit) 
+    !--LEEP--
+    
     if(verbose) write(*,'(a,i4.4,a)') ' [w',rank,'] : exit of loop...'
 
     ! synchronization, for profiling purposes

@@ -35,7 +35,23 @@ module module_photon
      integer(kind=4)           :: iran     ! state of the random generator
   end type photon_init
 
+  !--PEEL--
+  type peel
+     real(kind=8)              :: peeloff_fraction  ! if peeloff_fraction is not a constant, this allows to re-normalise rays to correct for weighted sampling
+     real(kind=8)              :: nu ! frequency before scattering occurs
+     real(kind=8),dimension(3) :: x  ! position at scattering
+     real(kind=8),dimension(3) :: k  ! direction before scattering occurs
+     integer(kind=4)           :: scatter_flag ! keep track of the species with which the photon is interacting ... 
+  end type peel
+  integer(kind=4),parameter            :: PeelBufferSize = 100000
+  type(peel),dimension(PeelBufferSize) :: PeelBuffer
+  integer(kind=4)                      :: nPeeled
+  real(kind=8)                         :: peeloff_fraction ! can be a constant (should be read from parameter file) or a function of cell properties for weighted peeling.
+  integer(kind=4),parameter :: peeloff_unit = 100 ! unit of file in which peeled-off photons are written .
+  character(2000) :: peeloff_file   ! User-defined parameter (output file with peeled-off photons will be peeloff_file.xxxxx, with xxxxx == rank of worker)
+  !--LEEP--
 
+  
   public  :: MCRT, propagate, init_photons_from_file, dump_photons
 
 contains
@@ -50,7 +66,7 @@ contains
     type(mesh),intent(in)                                 :: mesh_dom
     type(domain),intent(in)                               :: compute_dom
     integer(kind=4)                                       :: i
-
+    
     do i=1,nbuffer
 #ifdef DEBUG
        print *,'--> MCRT launching new photon number =',i,photpacket(i)
@@ -60,7 +76,7 @@ contains
           call propagate(photpacket(i),mesh_dom,compute_dom)
        endif
     enddo
-
+    
   end subroutine MCRT
 
 
@@ -81,6 +97,9 @@ contains
     real(kind=8),dimension(3)            :: vgas, k, cell_corner, posoct, pcell
     logical                              :: cell_fully_in_domain, flagoutvol, in_domain, OutOfDomainBeforeCell
     real(kind=8)                         :: dborder, dborder_cm, error
+    !--PEEL--
+    real(kind=8) :: x
+    !--LEEP--
     
     ! initialise working props of photon
     ppos    = p%xcurr        ! position within full simulation box, in box units.
@@ -131,6 +150,11 @@ contains
           stop
        endif
 
+       !--PEEL--
+       ! define peeloff_fraction as a function of cell properties, if not constant.
+       peeloff_fraction = 1d-5  ! one photon in 1/peeloff_fraction gets saved as a ray.
+       !--LEEP-- 
+       
        ! get gas velocity (in cgs units)
        vgas         = get_gas_velocity(cell_gas)
        ! compute photon's frequency in cell's moving frame
@@ -276,6 +300,26 @@ contains
              !------------
              ! scattering
              !------------
+             !--PEEL--
+             x=ran3(iran)
+             if (x < peeloff_fraction) then  
+                nPeeled = nPeeled + 1
+                PeelBuffer(nPeeled)%peeloff_fraction = peeloff_fraction  ! if peeloff_fraction is not a constant, this allows to re-normalise rays to correct for weighted sampling
+                PeelBuffer(nPeeled)%nu = p%nu_ext ! frequency (before scattering)
+                PeelBuffer(nPeeled)%x  = p%xlast  ! position (at scattering)
+                PeelBuffer(nPeeled)%k  = p%k      ! direction (before scattering)
+                PeelBuffer(nPeeled)%scatter_flag = scatter_flag ! save the species on which the scattering occurs.
+                if (nPeeled == PeelBufferSize) then ! buffer is full -> dump to disc
+                     write(peeloff_unit) nPeeled
+                     write(peeloff_unit) (PeelBuffer(i)%peeloff_fraction,i=1,nPeeled)
+                     write(peeloff_unit) (PeelBuffer(i)%nu,i=1,nPeeled)
+                     write(peeloff_unit) (PeelBuffer(i)%x(:),i=1,nPeeled)
+                     write(peeloff_unit) (PeelBuffer(i)%k(:),i=1,nPeeled)
+                     write(peeloff_unit) (PeelBuffer(i)%scatter_flag,i=1,nPeeled)
+                     nPeeled=0
+                  endif
+              endif 
+             !--LEEP-- 
              p%nb_abs = p%nb_abs + 1     ! increment nb of scatterings
              p%xlast = ppos              ! memorize the location of "potential" last interaction
              ! a scattering event modifies nu_cell, k, and nu_ext
@@ -286,6 +330,8 @@ contains
              p%nu_ext = nu_ext
              ! NB: for TEST case, to have photons propagating straight on, comment the following line
              p%k = k
+
+             
              ! there has been an interaction -> reset tau_abs
              tau_abs = -1.0d0
              ! scatter_flag allows to know the status (aborbed or not) of the photon in case of dust
