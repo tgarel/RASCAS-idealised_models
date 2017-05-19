@@ -105,6 +105,7 @@ contains
        write(peeloff_unit) (PeelBuffer(i)%scatter_flag,i=1,nPeeled)
        nPeeled=0
     end if
+    write(peeloff_unit) nPeeled ! end file with a zero for ease of read ... 
     close(peeloff_unit) 
     !--LEEP--
     

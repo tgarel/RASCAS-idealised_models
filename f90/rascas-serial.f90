@@ -126,6 +126,7 @@ program main
      write(peeloff_unit) (PeelBuffer(i)%scatter_flag,i=1,nPeeled)
      nPeeled=0
   end if
+  write(peeloff_unit) nPeeled
   close(peeloff_unit) 
   !--LEEP--
 

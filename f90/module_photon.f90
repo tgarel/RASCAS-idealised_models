@@ -518,5 +518,24 @@ contains
 
   end subroutine read_photon_dump
 
+  !--PEEL--
+!!$  subroutine dump_peels()
+!!$    write(peeloff_unit) nPeeled
+!!$    write(peeloff_unit) (PeelBuffer(i)%peeloff_fraction,i=1,nPeeled)
+!!$    write(peeloff_unit) (PeelBuffer(i)%nu,i=1,nPeeled)
+!!$    write(peeloff_unit) (PeelBuffer(i)%x(:),i=1,nPeeled)
+!!$    write(peeloff_unit) (PeelBuffer(i)%k(:),i=1,nPeeled)
+!!$    write(peeloff_unit) (PeelBuffer(i)%scatter_flag,i=1,nPeeled)
+!!$  end subroutine dump_peels
+!!$
+!!$  subroutine read_peels()
+!!$    write(peeloff_unit) nPeeled
+!!$    write(peeloff_unit) (PeelBuffer(i)%peeloff_fraction,i=1,nPeeled)
+!!$    write(peeloff_unit) (PeelBuffer(i)%nu,i=1,nPeeled)
+!!$    write(peeloff_unit) (PeelBuffer(i)%x(:),i=1,nPeeled)
+!!$    write(peeloff_unit) (PeelBuffer(i)%k(:),i=1,nPeeled)
+!!$    write(peeloff_unit) (PeelBuffer(i)%scatter_flag,i=1,nPeeled)
+!!$  end subroutine read_peels
+  !--LEEP--
   
 end module module_photon
