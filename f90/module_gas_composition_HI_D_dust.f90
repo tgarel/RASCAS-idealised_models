@@ -54,6 +54,9 @@ module module_gas_composition
   ! public functions:
   public :: gas_from_ramses_leaves,get_gas_velocity,gas_get_scatter_flag,gas_scatter,dump_gas,gas_get_tau
   public :: read_gas,gas_destructor,read_gas_composition_params,print_gas_composition_params
+  !--PEEL--
+  public :: gas_peeloff_weight
+  !--LEEP--
   
 contains
 
@@ -266,6 +269,31 @@ contains
   end subroutine gas_scatter
 
 
+  !--PEEL--
+  function gas_peeloff_weight(flag,cell_gas,nu_ext,kin,kout,iran)
+
+    integer(kind=4),intent(in)            :: flag
+    type(gas),intent(in)                  :: cell_gas
+    real(kind=8),intent(inout)            :: nu_ext
+    real(kind=8),dimension(3), intent(in) :: kin, kout
+    integer(kind=4),intent(inout)         :: iran
+    real(kind=8)                          :: gas_peeloff_weight
+
+    select case(flag)
+    case(1)
+       gas_peeloff_weight = HI_peeloff_weight(cell_gas%v, cell_gas%dopwidth, nu_ext, kin, kout, iran)
+    case(2)
+       gas_peeloff_weight = D_peeloff_weight(cell_gas%v, cell_gas%dopwidth*sqrt_H2Deut_mass_ratio, nu_ext, kin, kout, iran)
+    case(3)
+       gas_peeloff_weight = dust_peeloff_weight(cell_gas%v, nu_ext, kin, kout)
+    case default
+       print*,'ERROR in module_gas_composition_HI_D_dust.f90:gas_peeloff_weight - unknown case : ',flag 
+       stop
+    end select
+
+  end function gas_peeloff_weight
+  !--LEEP--
+  
 
   subroutine dump_gas(unit,g)
     type(gas),dimension(:),intent(in) :: g

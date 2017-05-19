@@ -1,0 +1,12 @@
+[RaysFromPeel]
+DataDir = ./
+DomDumpFile = domain_decomposition_params.dat
+PeelFile = LyaLineMiles_results_0.dat
+ifirst = 3
+ilast = 28
+
+outputfile = Rays_from_peel_test.dat
+kobs = 0. 1.  1.
+verbose = .true.
+
+

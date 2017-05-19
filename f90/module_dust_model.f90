@@ -4,7 +4,7 @@ module module_dust_model
   
   use module_random
   use module_constants, only : pi, clight
-  use module_utils, only : anisotropic_direction_Dust
+  use module_utils, only : anisotropic_direction_Dust, anisotropic_probability_dust
 
   implicit none
 
@@ -18,7 +18,7 @@ module module_dust_model
   character(20) :: dust_model = 'SMC' 
   ! --------------------------------------------------------------------------
   
-  public get_tau_dust, scatter_dust, read_dust_params, print_dust_params
+  public get_tau_dust, scatter_dust, read_dust_params, print_dust_params, dust_peeloff_weight
   private sigma_d
   
 contains
@@ -95,7 +95,38 @@ contains
 
   end subroutine scatter_dust
 
+!--PEEL--
+  function dust_peeloff_weight(vcell,nu_ext,kin,kout)
+    
+    ! ---------------------------------------------------------------------------------
+    ! Compute probability that a photon coming along kin scatters off in direction kout.
+    ! Also update nu_ext to external-frame frequency along kout
+    ! ---------------------------------------------------------------------------------
+    ! INPUTS :
+    ! - vcell    : bulk velocity of the gas (i.e. cell velocity)       [ cm / s ] 
+    ! - nu_ext   : frequency of incoming photon, in external frame     [ Hz ]
+    ! - kin      : propagation vector (normalized)
+    ! - kout     : direction after interaction (fixed)
+    ! OUTPUTS :
+    ! - nu_ext   : updated frequency in external frame [ Hz ]
+    ! ---------------------------------------------------------------------------------
+    
+    real(kind=8),intent(inout)              :: nu_ext
+    real(kind=8),dimension(3),intent(in)    :: kin, kout
+    real(kind=8),dimension(3),intent(in)    :: vcell
+    real(kind=8)                            :: dust_peeloff_weight
+    real(kind=8)                            :: scalar,nu_cell
 
+    dust_peeloff_weight = anisotropic_probability_Dust(kin,kout,g_dust)
+    ! compute freq. in cell frame
+    scalar  = kin(1) * vcell(1) + kin(2) * vcell(2) + kin(3) * vcell(3)
+    nu_cell = (1.d0 - scalar/clight) * nu_ext
+    ! nu_cell has not changed; we implicitly assume that the interacting dust grain is at rest in cell's frame
+    scalar = kout(1) * vcell(1) + kout(2) * vcell(2) + kout(3)* vcell(3)
+    nu_ext = nu_cell/(1.d0 - scalar/clight)
+
+  end function dust_peeloff_weight
+  !--LEEP--
 
   subroutine read_dust_params(pfile)
 

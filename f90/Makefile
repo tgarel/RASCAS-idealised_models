@@ -9,7 +9,7 @@ SYSTYPE="mac"
 #SYSTYPE="ccage"
 
 OPTIONS = -cpp
-#OPTIONS += -DSWITCH_OFF_UPARALLEL
+OPTIONS += -DSWITCH_OFF_UPARALLEL
 #OPTIONS += -DDEBUG
 
 
@@ -141,6 +141,9 @@ RaysFromSourceModel: $(COLDENS) RaysFromSourceModel.o
 
 RaysFromPhotons: $(PEELING) RaysFromPhotons.o
 	$(F90) $(FFLAGS) $(LDFLAGS) -o $@ $(PEELING) RaysFromPhotons.o
+
+RaysFromPeel: $(PEELING) RaysFromPeel.o
+	$(F90) $(FFLAGS) $(LDFLAGS) -o $@ $(PEELING) RaysFromPeel.o
 
 clean:
 	rm -f $(OBJSDOM) $(OBJSPHO) $(OBJSMPI) *.o *.mod

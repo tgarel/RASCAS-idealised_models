@@ -3,26 +3,39 @@ program RaysFromPeel
 
   use module_ray
   use module_photon
+  use module_mesh
+  use module_domain
+  use module_gas_composition
   
   implicit none
 
   type(peel),allocatable     :: pgrid(:)
+  logical,allocatable        :: pdone(:)
   type(ray_type),allocatable :: rays(:)
-  integer(kind=4)            :: nrays,i,narg,n,ifile
+  integer(kind=4)            :: i,narg,n,ifile,j, ndomain
   integer(kind=4)            :: npeels
-  character(2000)            :: parameter_file
+  character(2000)            :: parameter_file, line, file_compute_dom
+  integer(kind=4)            :: icell, ileaf, iran , cnt
+  real(kind=8)               :: nu, weight
+  character(2000),dimension(:),allocatable :: mesh_file_list 
+  type(mesh)                              :: meshdom
+  type(domain)                            :: compute_dom
+
   ! ------------------------------------------------------------------------------------------------------------------------
   ! user-defined parameters - read from section [RaysFromSourceModel] of the parameter file
   ! ------------------------------------------------------------------------------------------------------------------------
   ! --- input / outputs
   character(2000)            :: PeelFile   = 'PeeleePeelee' ! peeling-off files are named DataDir/PeelFile.peelxxxxx, with 
-  integer(kind=4)            :: ifirst = 1, ilast = 1       ! xxxxx in [ifirst,ilast]
+  integer(kind=4)            :: ifirst = 1, ilast = 10       ! xxxxx in [ifirst,ilast]
   character(2000)            :: outputfile = 'RaysIC.dat'   ! file to which outputs will be written
   real(kind=8)               :: kobs(3)    = (/0.,0.,1./)   ! direction of observation . 
   logical                    :: verbose = .true.
   ! domains
   character(2000)           :: DataDir      = 'test/'                   ! where domain-dump files are 
   character(2000)           :: DomDumpFile  = 'domain_decomposition_params.dat' ! the file describing the outputs of CreateDomDump.
+
+  ! random numbers
+  integer(kind=4)           :: iseed = -100 ! 
   ! ------------------------------------------------------------------------------------------------------------------------
 
 
@@ -37,8 +50,9 @@ program RaysFromPeel
      stop
   end if
   call get_command_argument(1, parameter_file)
-  call read_RaysFromPhotons_params(parameter_file)
-  if (verbose) call print_RaysFromPhotons_params
+  call read_RaysFromPeel_params(parameter_file)
+  if (verbose) call print_RaysFromPeel_params
+  iran = iseed
   ! ------------------------------------------------------------------------------------------------------------------------
 
 
@@ -51,22 +65,24 @@ program RaysFromPeel
   ! first pass to count rays
   do ifile = ifirst, ilast
      write(peeloff_file,'(a,a,i5.5)') trim(PeelFile),'.peel',ifile
-     open(unit=peeloff_unit, file=trim(peeloff_file), status='unknown', form='unformatted', action='write')
+     open(unit=peeloff_unit, file=trim(peeloff_file), status='old', form='unformatted', action='read')
      do 
         read(peeloff_unit) n
         if (n == 0) exit
         npeels = npeels + n
         read(peeloff_unit);read(peeloff_unit);read(peeloff_unit);read(peeloff_unit);read(peeloff_unit)
      end do
-     close(peelof_unit)
+     close(peeloff_unit)
   end do
+  print*,'Nb of peels found : ', npeels
   ! allocate peels 
-  allocate(pgrid(npeels))
+  allocate(pgrid(npeels),pdone(npeels))
+  pdone(:) = .False.
   ! second pass to read the rays
   npeels = 0
   do ifile = ifirst, ilast
      write(peeloff_file,'(a,a,i5.5)') trim(PeelFile),'.peel',ifile
-     open(unit=peeloff_unit, file=trim(peeloff_file), status='unknown', form='unformatted', action='write')
+     open(unit=peeloff_unit, file=trim(peeloff_file), status='old', form='unformatted', action='read')
      do 
         read(peeloff_unit) n
         if (n == 0) exit
@@ -77,14 +93,14 @@ program RaysFromPeel
         read(peeloff_unit) (pgrid(npeels+i)%scatter_flag,i=1,n)
         npeels = npeels + n
      end do
-     close(peelof_unit)
+     close(peeloff_unit)
   end do
   ! ------------------------------------------------------------------------------------------------------------------------
 
 
   
   ! ------------------------------------------------------------------------------------------------------------------------
-  ! read domains and meshe information 
+  ! read domains and mesh information 
   ! ------------------------------------------------------------------------------------------------------------------------
   ! here, we parse the file written out by CreateDomDump, which contains all file names and nb of domains.
   if (verbose) print *,'--> reading domain and mesh...'
@@ -111,54 +127,63 @@ program RaysFromPeel
 
 
   ! ------------------------------------------------------------------------------------------------------------------------
-  ! loop on domains:
-  ! - read mesh
-  ! - locate peels in mesh, find their cell and draw their weights.
-  ! - clear domain
+  ! spawn rays from these peels in a chosen direction
+  ! -> loop on domains:
+  ! ---- read mesh
+  ! ---- locate peels in mesh, find their cell and draw their weights.
+  ! ---- clear domain
   ! ------------------------------------------------------------------------------------------------------------------------
+  allocate(rays(npeels))
   do j = 1, ndomain
      if (verbose) print*,"Reading domain ", j
      call mesh_from_file(mesh_file_list(j),meshdom)
-     
+     if (verbose) print*,"-- done reading "
+     cnt = 0
+     do i = 1,npeels
+        if (.not. pdone(i)) then ! if peel was not treated yet
+            if (domain_contains_point(pgrid(i)%x,meshdom%domain)) then ! if peel is in current domain 
+               icell   = in_cell_finder(meshdom,pgrid(i)%x)
+               ileaf   = - meshdom%son(icell)
+               nu = pgrid(i)%nu
+               weight  = gas_peeloff_weight( pgrid(i)%scatter_flag, meshdom%gas(ileaf), nu, pgrid(i)%k, kobs, iran)
 
-
-  
-  ! ------------------------------------------------------------------------------------------------------------------------
-  ! spawn rays from these peels in a chosen direction
-  ! ------------------------------------------------------------------------------------------------------------------------
-  ! -> need to know upar,uper, vcell(1:3), vth ...
-  ! -> or we use mesh, find cell from xlast, get (vcell, vth) and re-draw upar and uper ... 
-  ! ------------------------------------------------------------------------------------------------------------------------
-  if (verbose) write(*,*) 'defining rays ... '
-  nrays = size(pgrid)
-  allocate(rays(nrays))
-  do i=1,nrays
-     rays(i)%ID     = pgrid(i)%ID
-     rays(i)%x_em   = pgrid(i)%xlast
-     rays(i)%k_em   = kobs
-     rays(i)%nu_ext = pgrid(i)%nu_ext
+               rays(i)%ID     = i
+               rays(i)%x_em   = pgrid(i)%x
+               rays(i)%k_em   = kobs
+               rays(i)%nu_ext = nu
+               
+               pdone(i) = .true.
+               cnt = cnt + 1
+            end if
+        end if
+     end do
+     print *,'npeels in domain : ',cnt
+     call mesh_destructor(meshdom)
   end do
-  ! ------------------------------------------------------------------------------------------------------------------------
-
-  
-
+  ! check that all rays are initialised
+  do i = 1,npeels
+     if (.not. pdone(i)) then
+        print*,'Some rays are not defined ... '
+        stop
+     end if
+  end do
   
   ! ------------------------------------------------------------------------------------------------------------------------
   ! write ICs
   ! ------------------------------------------------------------------------------------------------------------------------
   if (verbose) write(*,*) '--> writing file'
   open(unit=14, file=trim(outputfile), status='unknown', form='unformatted', action='write')
-  write(14) n
-  write(14) (rays(i)%ID,i=1,n)
-  write(14) (rays(i)%nu_ext,i=1,n)
-  write(14) (rays(i)%x_em(:),i=1,n)
-  write(14) (rays(i)%k_em(:),i=1,n)
+  write(14) npeels
+  write(14) (rays(i)%ID,i=1,npeels)
+  write(14) (rays(i)%nu_ext,i=1,npeels)
+  write(14) (rays(i)%x_em(:),i=1,npeels)
+  write(14) (rays(i)%k_em(:),i=1,npeels)
   close(14)
   ! ------------------------------------------------------------------------------------------------------------------------
 
 contains
 
-  subroutine read_RaysFromPhotons_params(pfile)
+  subroutine read_RaysFromPeel_params(pfile)
 
     ! ---------------------------------------------------------------------------------
     ! subroutine which reads parameters of current module in the parameter file pfile
@@ -177,7 +202,7 @@ contains
     do
        read (10,'(a)',iostat=err) line
        if(err/=0) exit
-       if (line(1:17) == '[RaysFromPhotons]') then
+       if (line(1:14) == '[RaysFromPeel]') then
           section_present = .true.
           exit
        end if
@@ -195,14 +220,20 @@ contains
           i = scan(value,'!')
           if (i /= 0) value = trim(adjustl(value(:i-1)))
           select case (trim(name))
-          case ('outputfile')
-             write(outputfile,'(a)') trim(value)
-          case ('PhotonFile')
-             write(PhotonFile,'(a)') trim(value)
+          case ('PeelFile')
+             write(PeelFile,'(a)') trim(value)
           case ('DataDir')
              write(DataDir,'(a)') trim(value)
           case ('DomDumpFile')
              write(DomDumpFile,'(a)') trim(value)
+          case ('outputfile')
+             write(outputfile,'(a)') trim(value)
+          case ('ifirst')
+             read(value,*) ifirst
+          case ('ilast')
+             read(value,*) ilast
+          case ('iseed')
+             read(value,*) iseed
           case ('kobs')
              read(value,*) kobs(1:3)
              ! force normalisation of kobs
@@ -225,10 +256,10 @@ contains
 
     return
 
-  end subroutine read_RaysFromPhotons_params
+  end subroutine read_RaysFromPeel_params
 
 
-  subroutine print_RaysFromPhotons_params(unit)
+  subroutine print_RaysFromPeel_params(unit)
 
     ! ---------------------------------------------------------------------------------
     ! write parameter values to std output or to an open file if argument unit is
@@ -238,18 +269,16 @@ contains
     integer(kind=4),optional,intent(in) :: unit
 
     if (present(unit)) then 
-       write(unit,'(a,a,a)')         '[RaysFromPhotons]'
+       write(unit,'(a,a,a)')         '[RaysFromPeel]'
        write(unit,'(a)')             '# input / output parameters'
        write(unit,'(a,a)')           '  outputfile      = ',trim(outputfile)
-       write(unit,'(a,a)')           '  PhotonFile      = ',trim(PhotonFile)
        write(unit,'(a)')             '# miscelaneous parameters'
        write(unit,'(a,L1)')          '  verbose         = ',verbose
        write(unit,'(a)')             ' '
     else
-       write(*,'(a,a,a)')         '[RaysFromPhotons]'
+       write(*,'(a,a,a)')         '[RaysFromPeel]'
        write(*,'(a)')             '# input / output parameters'
        write(*,'(a,a)')           '  outputfile      = ',trim(outputfile)
-       write(*,'(a,a)')           '  PhotonFile      = ',trim(PhotonFile)
        write(*,'(a)')             '# miscelaneous parameters'
        write(*,'(a,L1)')          '  verbose         = ',verbose
        write(*,'(a)')             ' '
@@ -257,7 +286,7 @@ contains
 
     return
 
-  end subroutine print_RaysFromPhotons_params
+  end subroutine print_RaysFromPeel_params
 
 end program RaysFromPeel
 !--LEEP--
