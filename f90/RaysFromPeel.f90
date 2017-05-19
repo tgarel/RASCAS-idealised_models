@@ -10,13 +10,14 @@ program RaysFromPeel
   implicit none
 
   type(peel),allocatable     :: pgrid(:)
+  real(kind=8),allocatable   :: ray_weight(:) ! contains the phase weighting and the peel-off strategy weighting (peel_fraction). 
   logical,allocatable        :: pdone(:)
   type(ray_type),allocatable :: rays(:)
   integer(kind=4)            :: i,narg,n,ifile,j, ndomain
   integer(kind=4)            :: npeels
   character(2000)            :: parameter_file, line, file_compute_dom
   integer(kind=4)            :: icell, ileaf, iran , cnt
-  real(kind=8)               :: nu, weight
+  real(kind=8)               :: nu
   character(2000),dimension(:),allocatable :: mesh_file_list 
   type(mesh)                              :: meshdom
   type(domain)                            :: compute_dom
@@ -76,7 +77,7 @@ program RaysFromPeel
   end do
   print*,'Nb of peels found : ', npeels
   ! allocate peels 
-  allocate(pgrid(npeels),pdone(npeels))
+  allocate(pgrid(npeels),pdone(npeels),ray_weight(npeels))
   pdone(:) = .False.
   ! second pass to read the rays
   npeels = 0
@@ -94,6 +95,10 @@ program RaysFromPeel
         npeels = npeels + n
      end do
      close(peeloff_unit)
+  end do
+  ! compute first term of ray's weights : the peeling-off strategy
+  do i=1,npeels
+     ray_weight(i) = 1.0d0 / pgrid(i)%peeloff_fraction
   end do
   ! ------------------------------------------------------------------------------------------------------------------------
 
@@ -145,7 +150,8 @@ program RaysFromPeel
                icell   = in_cell_finder(meshdom,pgrid(i)%x)
                ileaf   = - meshdom%son(icell)
                nu = pgrid(i)%nu
-               weight  = gas_peeloff_weight( pgrid(i)%scatter_flag, meshdom%gas(ileaf), nu, pgrid(i)%k, kobs, iran)
+               ! compute first term of ray's weights : the peeling-off strategy
+               ray_weight(i) = ray_weight(i) * gas_peeloff_weight( pgrid(i)%scatter_flag, meshdom%gas(ileaf), nu, pgrid(i)%k, kobs, iran)
 
                rays(i)%ID     = i
                rays(i)%x_em   = pgrid(i)%x
@@ -167,6 +173,10 @@ program RaysFromPeel
         stop
      end if
   end do
+  ! ------------------------------------------------------------------------------------------------------------------------
+
+
+
   
   ! ------------------------------------------------------------------------------------------------------------------------
   ! write ICs
@@ -178,6 +188,8 @@ program RaysFromPeel
   write(14) (rays(i)%nu_ext,i=1,npeels)
   write(14) (rays(i)%x_em(:),i=1,npeels)
   write(14) (rays(i)%k_em(:),i=1,npeels)
+  ! append weights ...
+  write(14) (ray_weight(i),i=1,npeels)
   close(14)
   ! ------------------------------------------------------------------------------------------------------------------------
 

@@ -152,7 +152,13 @@ contains
 
        !--PEEL--
        ! define peeloff_fraction as a function of cell properties, if not constant.
-       peeloff_fraction = 1d-5  ! one photon in 1/peeloff_fraction gets saved as a ray.
+       if (cell_gas%nhi < 0.01) then
+          peeloff_fraction=1.0d0
+       else
+          peeloff_fraction=exp(-(cell_gas%nhi - 0.01)/0.1d0)
+          if (peeloff_fraction < 1d-6) peeloff_fraction=1d-6
+       end if
+       !peeloff_fraction = 1d-5  ! one photon in 1/peeloff_fraction gets saved as a ray.
        !--LEEP-- 
        
        ! get gas velocity (in cgs units)
@@ -302,7 +308,7 @@ contains
              !------------
              !--PEEL--
              x=ran3(iran)
-             if (x < peeloff_fraction) then  
+             if (x <= peeloff_fraction) then  
                 nPeeled = nPeeled + 1
                 PeelBuffer(nPeeled)%peeloff_fraction = peeloff_fraction  ! if peeloff_fraction is not a constant, this allows to re-normalise rays to correct for weighted sampling
                 PeelBuffer(nPeeled)%nu = p%nu_ext ! frequency (before scattering)
