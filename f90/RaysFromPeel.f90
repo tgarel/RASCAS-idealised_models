@@ -23,7 +23,7 @@ program RaysFromPeel
   type(domain)                            :: compute_dom
 
   ! ------------------------------------------------------------------------------------------------------------------------
-  ! user-defined parameters - read from section [RaysFromSourceModel] of the parameter file
+  ! user-defined parameters - read from section [RaysFromPeel] of the parameter file
   ! ------------------------------------------------------------------------------------------------------------------------
   ! --- input / outputs
   character(2000)            :: PeelFile   = 'PeeleePeelee' ! peeling-off files are named DataDir/PeelFile.peelxxxxx, with 

@@ -155,8 +155,7 @@ contains
        if (cell_gas%nhi < 0.01) then
           peeloff_fraction=1.0d0
        else
-          peeloff_fraction=exp(-(cell_gas%nhi - 0.01)/0.1d0)
-          if (peeloff_fraction < 1d-6) peeloff_fraction=1d-6
+          peeloff_fraction=exp(-(cell_gas%nhi - 0.01)/0.1d0) + 1d-6
        end if
        !peeloff_fraction = 1d-5  ! one photon in 1/peeloff_fraction gets saved as a ray.
        !--LEEP-- 
