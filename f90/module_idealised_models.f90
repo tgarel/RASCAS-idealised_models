@@ -84,76 +84,82 @@ contains
     dist_cell = sqrt(dist2)
     dist_cell_max = dist_cell + dx_cell * sqrt(3.0d0) / 2.0d0 ! dx_cell * sqrt(3.0) / 2. is half the longest length in a cube
     dist_cell_min = dist_cell - dx_cell * sqrt(3.0d0) / 2.0d0 ! dx_cell * sqrt(3.0) / 2. is half the longest length in a cube
-    if (dist_cell_min > rw .or. dist_cell_max < rsf) then  ! cell completely out of sphere or completely within Rsf
+!    if (dist_cell_min > rw .or. dist_cell_max < rsf) then  ! cell completely out of sphere or completely within Rsf
+!       vx_ideal  = 0.0d0
+!       vy_ideal  = 0.0d0
+!       vz_ideal  = 0.0d0
+!       nh_ideal  = 0.0d0
+!    end if
+    if ((dist_cell_max > rw .and. dist_cell_min < rw) .or. (dist_cell_max > rsf .and. dist_cell_min < rsf)) then ! cell partially within sphere
+       ! bounds of cell
+       xmin = xcell_ideal - 0.5d0*dx_cell 
+       xmax = xcell_ideal + 0.5d0*dx_cell
+       ymin = ycell_ideal - 0.5d0*dx_cell 
+       ymax = ycell_ideal + 0.5d0*dx_cell
+       zmin = zcell_ideal - 0.5d0*dx_cell 
+       zmax = zcell_ideal + 0.5d0*dx_cell
+       
+       ! use Monte Carlo to compute density of cell (i.e. fraction of its volume within the sphere)
+       volfrac = 0.0d0
+       nMC = 0
+       do while(volfrac .lt. 1000.d0)
+          if (volfrac .lt. 1.d0 .and. nMC .eq. 100) then
+             exit
+          end if
+          r = ran3(localseed)
+          xmc = r * dx_cell + xmin
+          r = ran3(localseed)
+          ymc = r * dx_cell + ymin
+          r = ran3(localseed)
+          zmc = r * dx_cell + zmin
+          dist_mc2 = 0.0d0
+          dist_mc2 = (xmc-0.5d0)**2 + (ymc-0.5d0)**2 + (zmc-0.5d0)**2
+          dist_mc = sqrt(dist_mc2)
+          if (dist_mc < rw .and. dist_mc > rsf) then ! point within sphere
+             volfrac = volfrac + 1.0d0
+             ! fix_vel = V0 from S+15
+             vx_mc = vx_mc + fix_vel * (xmc - 0.5d0) / rw 
+             vy_mc = vy_mc + fix_vel * (ymc - 0.5d0) / rw
+             vz_mc = vz_mc + fix_vel * (zmc - 0.5d0) / rw
+             dist_cell_mc = dist_cell_mc + dist_mc
+          end if
+          nMC = nMC + 1
+       end do
+       
+       if(volfrac .ne. 0) then
+          ! Velocity
+          vx_ideal = vx_mc / volfrac
+          vy_ideal = vy_mc / volfrac
+          vz_ideal = vz_mc / volfrac
+          ! redefine dist_cell as mean of dist_mc
+          dist_cell = dist_cell_mc / volfrac
+       end if
+       volfrac2 = volfrac / dble(nMC)
+       
+    end if
+    if (dist_cell_max < rw .and. dist_cell_min > rsf) then ! cell completely within sphere
+       vx_ideal = fix_vel * (xcell_ideal-0.5d0) / rw
+       vy_ideal = fix_vel * (ycell_ideal-0.5d0) / rw
+       vz_ideal = fix_vel * (zcell_ideal-0.5d0) / rw
+       volfrac2 = 1.0
+    end if
+    
+    ! assign density, ndust
+    rho      = rho_rsf *  (dist_cell / rsf)**(-vel_gamma-2.)
+    nh_ideal = rho * volfrac2
+ 
+    if (dist_cell_min > rw .or. dist_cell_max < rsf) then  ! cell completely out of sphere or completely within Rsf                                                       
        vx_ideal  = 0.0d0
        vy_ideal  = 0.0d0
        vz_ideal  = 0.0d0
        nh_ideal  = 0.0d0
     end if
-    if ((dist_cell_max > rw .and. dist_cell_min < rw) .or. (dist_cell_max > rsf .and. dist_cell_min < rsf)) then ! cell partially within sphere
-          ! bounds of cell
-          xmin = xcell_ideal - 0.5d0*dx_cell 
-          xmax = xcell_ideal + 0.5d0*dx_cell
-          ymin = ycell_ideal - 0.5d0*dx_cell 
-          ymax = ycell_ideal + 0.5d0*dx_cell
-          zmin = zcell_ideal - 0.5d0*dx_cell 
-          zmax = zcell_ideal + 0.5d0*dx_cell
-          
-          ! use Monte Carlo to compute density of cell (i.e. fraction of its volume within the sphere)
-          volfrac = 0.0d0
-          nMC = 0
-          do while(volfrac .lt. 1000.d0)
-             if (volfrac .lt. 1.d0 .and. nMC .eq. 100) then
-                exit
-             end if
-             r = ran3(localseed)
-             xmc = r * dx_cell + xmin
-             r = ran3(localseed)
-             ymc = r * dx_cell + ymin
-             r = ran3(localseed)
-             zmc = r * dx_cell + zmin
-             dist_mc2 = 0.0d0
-             dist_mc2 = (xmc-0.5d0)**2 + (ymc-0.5d0)**2 + (zmc-0.5d0)**2
-             dist_mc = sqrt(dist_mc2)
-             if (dist_mc < rw .and. dist_mc > rsf) then ! point within sphere
-                volfrac = volfrac + 1.0d0
-                ! fix_vel = V0 from S+15
-                vx_mc = vx_mc + fix_vel * (xmc - 0.5d0) / rw 
-                vy_mc = vy_mc + fix_vel * (ymc - 0.5d0) / rw
-                vz_mc = vz_mc + fix_vel * (zmc - 0.5d0) / rw
-                dist_cell_mc = dist_cell_mc + dist_mc
-             end if
-             nMC = nMC + 1
-          end do
-
-          if(volfrac .ne. 0) then
-             ! Velocity
-             vx_ideal = vx_mc / volfrac
-             vy_ideal = vy_mc / volfrac
-             vz_ideal = vz_mc / volfrac
-             ! redefine dist_cell as mean of dist_mc
-             dist_cell = dist_cell_mc / volfrac
-          end if
-          volfrac2 = volfrac / dble(nMC)
-
-       end if
-       if (dist_cell_max < rw .and. dist_cell_min > rsf) then ! cell completely within sphere
-          vx_ideal = fix_vel * (xcell_ideal-0.5d0) / rw
-          vy_ideal = fix_vel * (ycell_ideal-0.5d0) / rw
-          vz_ideal = fix_vel * (zcell_ideal-0.5d0) / rw
-          volfrac2 = 1.0
-       end if
-       
-       ! assign density, ndust
-       rho      = rho_rsf *  (dist_cell / rsf)**(-vel_gamma-2.)
-       nh_ideal = rho * volfrac2
-    end if
+ 
+ ! Give all cells shell_temp (cells not in sphere won't matter for RT as dnh = 0...)
+ dopwidth_ideal = sqrt((2.0d0*kb/mp)*fix_temp) 
     
-    ! Give all cells shell_temp (cells not in sphere won't matter for RT as dnh = 0...)
-    dopwidth_ideal = sqrt((2.0d0*kb/mp)*fix_temp) 
-    
-    return
-    
+ return
+ 
   end subroutine sphere_scarlata15
 
 
