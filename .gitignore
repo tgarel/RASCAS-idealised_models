@@ -1,0 +1,34 @@
+# File extensions 
+###################
+*.pdf
+*.o
+*.ps
+*.png
+*.pro~
+*.mod
+parameters*dat
+parameters*dat~
+pbscript
+pbscript~
+Makefile
+rascas.*
+
+# Executables
+###################
+PhotonsMonoPointSource
+PhotonsFromSourceModel
+CreateDomDump
+MCLya
+rascas
+
+# Directories
+###################
+plots/
+output/
+toto/
+idl/
+py/
+
+# File 
+###################
+run.log
