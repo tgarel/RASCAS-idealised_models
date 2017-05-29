@@ -115,12 +115,12 @@ program PhotonsFromSourceModel
      case('PowLaw')
         ! sample F_lbda = F_0 (lbda / lbda_0)**beta (in erg/s/A) ...
         ! -> we actually want to sample the nb of photons : N_lbda = F_lbda * lbda / (hc) = F_0*lbda_0/(h*c) * (lbda/lbda_0)**(beta+1)
-        ! FOR BETA /= 2 : 
+        ! FOR BETA /= -2 : 
         ! -> the probability of drawing a photon with l in [lbda_min;lbda] is:
         !      P(<lbda) = (lbda**(2+beta) - lbda_min**(2+beta))/(lbda_max**(2+beta)-lbda_min**(2+beta))
         ! -> and thus for a random number x in [0,1], we get
         !      lbda = [ lbda_min**(2+beta) + x * ( lbda_max**(2+beta) - lbda_min**(2+beta) ) ]**(1/(2+beta))
-        ! FOR BETA == 2:
+        ! FOR BETA == -2:
         ! -> the probability of drawing a photon with l in [lbda_min;lbda] is:
         !      P(<lbda) = log(lbda/lbda_min) / log(lbda_max/lbda_min)
         ! -> and thus for a random number x in [0,1], we get

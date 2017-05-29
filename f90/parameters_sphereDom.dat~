@@ -1,0 +1,121 @@
+# Parameters for CreateDomDump, and Serial 
+
+
+!--------------------------------------------------------------------------------
+[CreateDomDump]
+# input outputs:
+  DataDir    = /scratch/garel/sphere_models/Rascas/output/sphere_static_homogen_tauH1e4_temp1e2/
+  repository = /scratch/dansac/Grid_for_RT/
+  snapnum    = 00001
+
+# computational domain parameters
+  comput_dom_type      =  sphere
+  comput_dom_pos       =  0.5, 0.5, 0.5
+  comput_dom_rsp       =  0.45
+
+# domain decomposition parameters
+  decomp_dom_type      =  sphere
+  decomp_dom_ndomain   =  1
+  decomp_dom_xc        =  0.5!, 0.5
+  decomp_dom_yc        =  0.5!, 0.5
+  decomp_dom_zc        =  0.5!, 0.5
+
+  decomp_dom_rsp       =  0.49	       
+
+# miscelaneous :
+  verbose    = T
+!--------------------------------------------------------------------------------
+
+
+
+!--------------------------------------------------------------------------------
+[serial]
+  DataDir      = /scratch/garel/sphere_models/Rascas/output/sphere_static_homogen_tauH1e4_temp1e2/
+  DomDumpFile  = MCLya_domain_params.dat
+  PhotonICFile = ICs_photons_n1e6.dat
+  outfile      = /scratch/garel/sphere_models/Rascas/output/sphere_static_homogen_tauH1e4_temp1e2/photons_out.dat
+  verbose = T
+!--------------------------------------------------------------------------------
+
+
+!--------------------------------------------------------------------------------
+[MCLya]
+  DataDir      = /scratch/garel/sphere_models/Rascas/output/sphere_static_homogen_tauH1e4_temp1e2/
+  DomDumpFile  = MCLya_domain_params.dat
+  PhotonICFile = ICs_photons_n1e6.dat
+  fileout      = /scratch/garel/sphere_models/Rascas/output/sphere_static_homogen_tauH1e4_temp1e2/photons_out.dat
+  nbuffer      = 100
+  verbose      = T
+!--------------------------------------------------------------------------------
+
+
+!--------------------------------------------------------------------------------
+[worker]
+  verbose = T
+!--------------------------------------------------------------------------------
+
+!--------------------------------------------------------------------------------
+[master]
+  verbose = T
+!--------------------------------------------------------------------------------
+
+
+
+!--------------------------------------------------------------------------------
+[mesh]
+  verbose = F
+!--------------------------------------------------------------------------------
+
+
+!--------------------------------------------------------------------------------
+[gas_composition] 
+# mixture parameters
+  deut2H_nb_ratio     = 0.0 ! 3.000E-05
+  dust_to_metal_ratio = 0.0 ! 3.000E-01
+  mH_over_mdust       = 1.33E-10 ! = mh/md where md = rhod * Vgrain=(3g/cm^3)*4/3*pi*(1.d-5)^3 Inoue12 
+# overwrite parameters
+  gas_overwrite       = T
+  overwrite_model     = sphere_homogen       ! uniform (fixed params for whole grid), sphere_homogen, sphere_gradient
+
+# all cases
+fix_box_size_cm     = 1.d22
+fix_vel             = 0.000
+# uniform case only
+  fix_nhi             = 0.01 ! 0.70776d0
+  fix_vth             = 128500.0d0
+  fix_ndust           = 0.000
+# sphere_homogen/sphere_gradient cases
+  fix_tauH            = 1.d4
+  fix_temp            = 1.d2
+  fix_taudust         = 0.000
+# sphere_gradient case only
+  fix_dens_grad       = isothermal
+  
+# miscelaneous parameters
+  verbose             = T
+!--------------------------------------------------------------------------------
+
+
+
+!--------------------------------------------------------------------------------
+[HI]
+  recoil    = F
+  isotropic = T
+!--------------------------------------------------------------------------------
+
+
+
+!--------------------------------------------------------------------------------
+[Deuterium]
+  recoil    = F
+  isotropic = T
+!--------------------------------------------------------------------------------
+
+
+
+!--------------------------------------------------------------------------------
+[dust]
+  albedo       = 4.600E-01
+  g_dust       = 7.300E-01
+  grain_radius = 2.000E-06
+!--------------------------------------------------------------------------------
