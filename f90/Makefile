@@ -1,10 +1,10 @@
 #############################################################################
 # Fortran compiler options and directives
 
-#SYSTYPE="CCF"
+SYSTYPE="CCF"
 #SYSTYPE="lyocral"
 #SYSTYPE="lyocralP"
-SYSTYPE="mac"
+#SYSTYPE="mac"
 #SYSTYPE="macP"
 #SYSTYPE="ccage"
 
@@ -34,9 +34,9 @@ endif
 
 ifeq ($(SYSTYPE),"CCF")
 F90         = ifort
-#FFLAGS      = -g -fpp -check all -debug -warn all -ftrapuv -traceback
+FFLAGS      = -g -fpp -check all -debug -warn all -ftrapuv -traceback
 ##FFLAGS      = -O3 -fpp -ftz  -xavx -sox -ipo -fno-alias -fno-fnalias -no-prec-div -no-prec-sqrt -align all
-FFLAGS      = -O3 -fpp -ftz  -xavx -ipo -fno-alias -fno-fnalias -no-prec-div -no-prec-sqrt -align all
+#FFLAGS      = -O3 -fpp -ftz  -xavx -ipo -fno-alias -fno-fnalias -no-prec-div -no-prec-sqrt -align all
 ##FFLAGS      = -p -g
 FFLAGS += $(OPTIONS)
 LDFLAGS     =  -lmpi
@@ -76,7 +76,7 @@ endif
 
 # choose the gas mix you want to use
 # 1/ HI, D, and dust
-COMPOBJS = module_dust_model.o module_D_model.o module_HI_model.o module_gas_composition_HI_D_dust.o
+#COMPOBJS = module_dust_model.o module_D_model.o module_HI_model.o module_gas_composition_HI_D_dust.o
 # 2/ HI and dust
 #COMPOBJS = module_dust_model.o module_HI_model.o module_gas_composition_HI_dust.o
 # 3/ pure HI
@@ -87,7 +87,8 @@ COMPOBJS = module_dust_model.o module_D_model.o module_HI_model.o module_gas_com
 #COMPOBJS = module_SiII_1190_model.o module_SiII_1193_model.o module_gas_composition_SiII.o
 # 6/ SiII and dust
 #COMPOBJS = module_dust_model.o module_SiII_1190_model.o module_SiII_1193_model.o module_gas_composition_SiII_dust.o
-
+# 7/ pure HI + idealised_models
+COMPOBJS = module_HI_model.o module_idealised_models.o module_gas_composition_HI.o
 
 GASOBJS = module_domain.o module_constants.o module_ramses.o module_random.o module_utils.o module_uparallel.o $(COMPOBJS)
 
