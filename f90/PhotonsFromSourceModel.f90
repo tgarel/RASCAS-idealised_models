@@ -21,7 +21,7 @@ program PhotonsFromSourceModel
   ! --- input / outputs
   character(2000)           :: outputfile = 'ICs_photons_n5e6.dat'   ! file to which outputs will be written
   ! --- source type 
-  character(10)             :: source_type = 'pointlike'             ! type of source model
+  character(30)             :: source_type = 'pointlike'             ! type of source model
   real(kind=8),dimension(3) :: source_pos  = (/0.5d0,0.5d0,0.5d0/)   ! position of the source [code units]
   integer(kind=4)           :: nphot       = 5000000                 ! number of photons to generate
   ! --- how source shines
