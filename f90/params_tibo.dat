@@ -34,9 +34,6 @@
   decomp_dom_zc        =  0.5
   decomp_dom_rsp       =  0.49	
 
-# miscelaneous :
-  verbose    = T
-
 !--------------------------------------------------------------------------------
 [RASCAS]
   DataDir      = /scratch/garel/IdealisedModels/output/blah/

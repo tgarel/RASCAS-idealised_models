@@ -78,6 +78,8 @@ contains
     vy_mc = 0.0d0
     vz_mc = 0.0d0
     dist2 = 0.0d0
+    dist_cell_mc = 0.0d0
+
     ! xcell, ycell and zcell are in frame with origin at bottom-left corner of box
     dist2 = (xcell_ideal-0.5d0)**2 + (ycell_ideal-0.5d0)**2 + (zcell_ideal-0.5d0)**2  ! in frame with origin at center of box
 
@@ -198,6 +200,7 @@ contains
     vy_mc       = 0.0d0
     vz_mc       = 0.0d0
     nh_ideal    = 0.d0
+    dist_cell_mc = 0.0d0
 
     !Sigma0    = fix_mtot_hi / 2.d0 / pi / (fix_rd_disc * fix_box_size_cm)**2 ! atoms/cm^2 - Central HI surface density
     !! in log10
@@ -258,7 +261,7 @@ contains
           volfrac2 = volfrac / dble(nMC)
           
        if(volfrac .ne. 0) then
-       ! Velocity
+          ! Velocity
           vx_ideal = vx_mc / volfrac
           vy_ideal = vy_mc / volfrac
           vz_ideal = vz_mc / volfrac
@@ -331,7 +334,8 @@ contains
     vy_mc       = 0.0d0
     vz_mc       = 0.0d0
     nh_ideal    = 0.0d0
-    
+    dist_cell_mc = 0.0d0
+
     ! I use mtot_hi_tilde instead of fix_mtot_hi such that fix_mtot_hi is encompssed into r_max
     mtot_hi_tilde = fix_mtot_hi / (1.0-(r_max/fix_rd_disc+1.0)*exp(-r_max/fix_rd_disc))
     ! in log10
@@ -386,6 +390,11 @@ contains
              end if
              nMC = nMC + 1
           end do
+
+          if(volfrac .ne. 0) then
+             ! redefine dist_cell as mean of dist_mc
+             dist_cell = dist_cell_mc / volfrac
+          end if
           
           volfrac2 = volfrac / dble(nMC)
           
@@ -453,6 +462,8 @@ contains
     vy_mc = 0.0d0
     vz_mc = 0.0d0
     dist2 = 0.0d0
+    dist_cell_mc = 0.0d0
+
     ! xcell, ycell and zcell are in frame with origin at bottom-left corner of box
     dist2 = (xcell_ideal-0.5d0)**2 + (ycell_ideal-0.5d0)**2 + (zcell_ideal-0.5d0)**2  ! in frame with origin at center of box
 
@@ -552,6 +563,8 @@ contains
     vy_mc = 0.0d0
     vz_mc = 0.0d0
     dist2 = 0.0d0
+    dist_cell_mc = 0.0d0
+
     ! xcell, ycell and zcell are in frame with origin at bottom-left corner of box
     dist2 = (xcell_ideal-0.5d0)**2 + (ycell_ideal-0.5d0)**2 + (zcell_ideal-0.5d0)**2  ! in frame with origin at center of box
 
@@ -655,10 +668,12 @@ contains
 
     rho  = rho_sphere_from_tau0_T_rs_Lbox(fix_tauH,fix_temp,sphere_radius)
     
-    vx_mc = 0.0d0
-    vy_mc = 0.0d0
-    vz_mc = 0.0d0
-    dist2 = 0.0d0
+    vx_mc        = 0.0d0
+    vy_mc        = 0.0d0
+    vz_mc        = 0.0d0
+    dist2        = 0.0d0
+    dist_cell_mc = 0.0d0
+    
     ! xcell, ycell and zcell are in frame with origin at bottom-left corner of box
     dist2 = (xcell_ideal-0.5d0)**2 + (ycell_ideal-0.5d0)**2 + (zcell_ideal-0.5d0)**2  ! in frame with origin at center of box
 
@@ -762,10 +777,12 @@ contains
     rmin          = min_dist
     rmax          = max_dist
         
-    vx_mc = 0.0d0
-    vy_mc = 0.0d0
-    vz_mc = 0.0d0
-    dist2 = 0.0d0
+    vx_mc        = 0.0d0
+    vy_mc        = 0.0d0
+    vz_mc        = 0.0d0
+    dist2        = 0.0d0
+    dist_cell_mc = 0.0d0
+    
     ! xcell, ycell and zcell are in frame with origin at bottom-left corner of box
     dist2 = (xcell_ideal-0.5d0)**2 + (ycell_ideal-0.5d0)**2 + (zcell_ideal-0.5d0)**2  ! in frame with origin at center of box
 
@@ -877,6 +894,8 @@ contains
     vy_mc = 0.0d0
     vz_mc = 0.0d0
     dist2 = 0.0d0
+    dist_cell_mc = 0.0d0
+    
     ! xcell, ycell and zcell are in frame with origin at bottom-left corner of box
     dist2 = (xcell_ideal-0.5d0)**2 + (ycell_ideal-0.5d0)**2 + (zcell_ideal-0.5d0)**2  ! in frame with origin at center of box
 
@@ -985,6 +1004,8 @@ contains
     vy_mc = 0.0d0
     vz_mc = 0.0d0
     dist2 = 0.0d0
+    dist_cell_mc = 0.0d0
+    
     ! xcell, ycell and zcell are in frame with origin at bottom-left corner of box
     dist2 = (xcell_ideal-0.5d0)**2 + (ycell_ideal-0.5d0)**2 + (zcell_ideal-0.5d0)**2  ! in frame with origin at center of box
 
@@ -1104,6 +1125,8 @@ contains
     vy_mc = 0.0d0
     vz_mc = 0.0d0
     dist2 = 0.0d0
+    dist_cell_mc = 0.0d0
+    
     ! xcell, ycell and zcell are in frame with origin at bottom-left corner of box
     dist2 = (xcell_ideal-0.5d0)**2 + (ycell_ideal-0.5d0)**2 + (zcell_ideal-0.5d0)**2  ! in frame with origin at center of box
 
@@ -1213,6 +1236,7 @@ contains
     vy_mc = 0.0d0
     vz_mc = 0.0d0
     dist2 = 0.0d0
+    dist_cell_mc = 0.0d0
     ! xcell, ycell and zcell are in frame with origin at bottom-left corner of box
     dist2 = (xcell_ideal-0.5d0)**2 + (ycell_ideal-0.5d0)**2 + (zcell_ideal-0.5d0)**2  ! in frame with origin at center of box
 
