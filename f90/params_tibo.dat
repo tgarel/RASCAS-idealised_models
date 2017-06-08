@@ -2,9 +2,9 @@
 [PhotonsFromSourceModel]
   outputfile              = /scratch/garel/IdealisedModels/output/blah/ICs_photons.dat
   source_pos              = 0.5 0.5 0.5
-  source_type             = 'pointlike'
+  source_type             = pointlike
   ranseed                 = -100
-  spec_type               = 'PowLaw'
+  spec_type               = PowLaw
   spec_mono_l0_Ang        = 1215.67 ! A
   spec_gauss_l0_Ang       = 0.2     ! A
   spec_gauss_sigma_kms    = 100.0   ! km/s
@@ -85,6 +85,6 @@
 [dust]
   albedo       = 0.32
   g_dust       = 0.73
-  dust_model   = 'SMC'  
+  dust_model   = SMC
 !--------------------------------------------------------------------------------
 
