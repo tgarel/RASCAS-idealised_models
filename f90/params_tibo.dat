@@ -1,0 +1,90 @@
+!--------------------------------------------------------------------------------
+[PhotonsFromSourceModel]
+  outputfile              = /scratch/garel/IdealisedModels/output/blah/ICs_photons.dat
+  source_pos              = 0.5 0.5 0.5
+  source_type             = 'pointlike'
+  ranseed                 = -100
+  spec_type               = 'PowLaw'
+  spec_mono_l0_Ang        = 1215.67 ! A
+  spec_gauss_l0_Ang       = 0.2     ! A
+  spec_gauss_sigma_kms    = 100.0   ! km/s
+  spec_powlaw_lmin_Ang    = 1212.0  ! A
+  spec_powlaw_lmax_Ang    = 1222.0  ! A
+  spec_powlaw_l0_Ang      = 1215.67 ! A
+  spec_powlaw_beta        = 0.0     ! 0=flat
+  nphot                   = 1000000
+
+!--------------------------------------------------------------------------------
+[CreateDomDump]
+# input outputs:
+  DataDir    = /scratch/garel/IdealisedModels/output/blah/
+  repository = /scratch/dansac/Grid_for_RT/
+  snapnum    = 00001
+
+# computational domain parameters
+  comput_dom_type      =  sphere
+  comput_dom_pos       =  0.5, 0.5, 0.5
+  comput_dom_rsp       =  0.47
+
+# domain decomposition parameters
+  decomp_dom_type      =  sphere
+  decomp_dom_ndomain   =  1
+  decomp_dom_xc        =  0.5
+  decomp_dom_yc        =  0.5
+  decomp_dom_zc        =  0.5
+  decomp_dom_rsp       =  0.49	
+
+# miscelaneous :
+  verbose    = T
+
+!--------------------------------------------------------------------------------
+[RASCAS]
+  DataDir      = /scratch/garel/IdealisedModels/output/blah/
+  DomDumpFile  = domain_decomposition_params.dat
+  PhotonICFile = ICs_photons.dat
+  fileout      = /scratch/garel/IdealisedModels/output/blah/photons_out.dat
+  nbuffer      = 10
+  verbose      = T
+  
+!--------------------------------------------------------------------------------
+[gas_composition] 
+# mixture parameters
+  deut2H_nb_ratio     = 0.0     ! 3.000E-05
+  Zref                = 0.005   ! OK for LMC dust model.
+# overwrite parameters
+  gas_overwrite       = T
+  overwrite_model     = sphere_homog_velgrad       ! uniform (fixed params for whole grid), sphere_homogen, sphere_gradient
+# all cases
+  fix_box_size_cm     = 3.086d22    ! <=> 10kpc   !1.d22 ! cm
+  fix_vel             = 1.d7        ! cm/s
+# uniform case only
+  fix_nhi             = 0.01        ! 0.70776d0
+  fix_vth             = 1285000.0d0 ! 128500.0d0 <=> T=1e2 K
+  fix_ndust           = 0.000
+# sphere_homogen/sphere_gradient cases
+  fix_tauH            = 1.d4
+  fix_temp            = 1.d4
+  fix_taudust         = 0.000
+  
+# miscelaneous parameters
+  verbose             = T
+
+!--------------------------------------------------------------------------------
+[HI]
+  recoil    = F
+  isotropic = T
+!--------------------------------------------------------------------------------
+
+!--------------------------------------------------------------------------------
+[Deuterium]
+  recoil    = T
+  isotropic = F
+!--------------------------------------------------------------------------------
+
+!--------------------------------------------------------------------------------
+[dust]
+  albedo       = 0.32
+  g_dust       = 0.73
+  dust_model   = 'SMC'  
+!--------------------------------------------------------------------------------
+
