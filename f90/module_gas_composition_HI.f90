@@ -442,7 +442,7 @@ contains
     do
        read (10,'(a)',iostat=err) line
        if(err/=0) exit
-       if (line(1:7) == '[MCLya]') then
+       if (line(1:70) == '[RASCAS]') then
           section_present = .true.
           exit
        end if

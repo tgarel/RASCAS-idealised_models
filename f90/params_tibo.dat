@@ -4,7 +4,7 @@
   source_pos              = 0.5 0.5 0.5
   source_type             = pointlike
   ranseed                 = -100
-  spec_type               = PowLaw
+  spec_type               = Mono
   spec_mono_l0_Ang        = 1215.67 ! A
   spec_gauss_l0_Ang       = 0.2     ! A
   spec_gauss_sigma_kms    = 100.0   ! km/s
@@ -33,7 +33,8 @@
   decomp_dom_yc        =  0.5
   decomp_dom_zc        =  0.5
   decomp_dom_rsp       =  0.49	
-
+  verbose              = T
+  
 !--------------------------------------------------------------------------------
 [RASCAS]
   DataDir      = /scratch/garel/IdealisedModels/output/blah/
@@ -74,7 +75,7 @@
 
 !--------------------------------------------------------------------------------
 [Deuterium]
-  recoil    = T
+  recoil    = F
   isotropic = F
 !--------------------------------------------------------------------------------
 
@@ -84,4 +85,3 @@
   g_dust       = 0.73
   dust_model   = SMC
 !--------------------------------------------------------------------------------
-
