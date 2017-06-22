@@ -32,6 +32,10 @@ program main
   call define_mpi_type
 
   nslave=nb_cpus-1
+  if(nslave==0)then
+     print*,'rascas is a parallel code, you should run it with MPI'
+     stop
+  end if
 
   ! -------------------- read parameters -----------------------------------------------------
   narg = command_argument_count()
@@ -107,7 +111,7 @@ contains
     do
        read (10,'(a)',iostat=err) line
        if(err/=0) exit
-       if (line(1:8) == '[RASCAS]') then
+       if ((line(1:8) == '[RASCAS]').or.(line(1:8) == '[rascas]')) then
           section_present = .true.
           exit
        end if
