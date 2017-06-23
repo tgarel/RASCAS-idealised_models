@@ -136,7 +136,7 @@ class mesh(object):
                 icell = np.abs(self.son[ileaf])
                 print np.shape(icell), np.amin(icell), np.amax(icell)
                 self.gas = gas(gasmix, nHI[icell-1], dopwidth[icell-1], v[:,icell-1], ndust[icell-1], xleaf, leaflevel)
-            if gasmix == 'SiII_dust':
+            elif gasmix == 'SiII_dust':
                 # for SiII and dust composition
                 print "-----> gas"
                 # velocity
