@@ -54,16 +54,16 @@ contains
     ! --------------------------------------------------------------------------
     
     real(kind=8),intent(in) :: nSiII,vth,distance_to_border_cm,nu_cell
-    real(kind=8)            :: nu_D,x_cell,sigma,a,h,get_tau_SiII_1193
+    real(kind=8)            :: delta_nu_doppler,x_cell,sigma,a,h,get_tau_SiII_1193
 
     ! compute Doppler width and a-parameter
-    nu_D = vth / lambda13_cm
-    a    = A31 / (fourpi * nu_D)
+    delta_nu_doppler = vth / lambda13_cm
+    a    = A31 / (fourpi *  delta_nu_doppler)
 
     ! cross section of SiII-1193.28
-    x_cell = (nu_cell - nu13) / nu_D
+    x_cell = (nu_cell - nu13) / delta_nu_doppler
     h      = voigt_fit(x_cell,a)
-    sigma  = sigma13_factor / nu_D * h
+    sigma  = sigma13_factor / delta_nu_doppler * h
 
     get_tau_SiII_1193 = sigma * nSiII * distance_to_border_cm
    

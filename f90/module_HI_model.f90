@@ -45,16 +45,16 @@ contains
     ! --------------------------------------------------------------------------
     
     real(kind=8),intent(in) :: nhi,vth,distance_to_border_cm,nu_cell
-    real(kind=8)            :: nu_D,x_cell,sigmaH,a,h, get_tau_HI
+    real(kind=8)            :: delta_nu_doppler,x_cell,sigmaH,a,h, get_tau_HI
 
     ! compute Doppler width and a-parameter, for H 
-    nu_D = vth / lambda_0_cm 
-    a    = gamma / (fourpi * nu_D)
+    delta_nu_doppler = vth / lambda_0_cm 
+    a = gamma_over_fourpi / delta_nu_doppler
  
     ! Cross section of H 
-    x_cell  = (nu_cell - nu_0)/nu_D
+    x_cell  = (nu_cell - nu_0)/delta_nu_doppler
     h       = voigt_fit(x_cell,a)
-    sigmaH  = sigmaH_factor / nu_D * h
+    sigmaH  = sigmaH_factor / delta_nu_doppler * h
  
     get_tau_HI = sigmaH * nhi * distance_to_border_cm
 
