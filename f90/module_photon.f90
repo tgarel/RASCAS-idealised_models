@@ -54,15 +54,12 @@ contains
     integer(kind=4)                                       :: i
 
     do i=1,nbuffer
-#ifdef DEBUG
-       print *,'--> MCRT launching new photon number =',i,photpacket(i)
-#endif
        ! case of photpacket not fully filled...
        if (photpacket(i)%ID>0) then
           call propagate(photpacket(i),mesh_dom,compute_dom)
        endif
     enddo
-
+ 
   end subroutine MCRT
 
 
@@ -91,15 +88,6 @@ contains
     tau_abs = p%tau_abs_curr
     iran    = p%iran
 
-#ifdef DEBUG
-    print *,'--> propagating photon from',ppos, iran
-    print *,'--> in mesh domain',domesh%nCoarse,domesh%nOct,domesh%nLeaf,domesh%nCell
-    print *,minval(domesh%xoct(:,1)),maxval(domesh%xoct(:,1))
-    print *,minval(domesh%xoct(:,2)),maxval(domesh%xoct(:,2))
-    print *,minval(domesh%xoct(:,3)),maxval(domesh%xoct(:,3))
-    print *,minval(domesh%gas%nHI),maxval(domesh%gas%nHI)
-#endif
-
     ! find cell in which the photon is, and define all its indices
     icell = in_cell_finder(domesh,ppos)
     if(domesh%son(icell)>=0)then
@@ -111,10 +99,6 @@ contains
     ioct  = icell - domesh%nCoarse - (ind - 1) * domesh%nOct
     flagoutvol = .false.
 
-#ifdef DEBUG
-    print *,'--> cell where photon starts',icell,ileaf,ind,ioct
-    print *,'--> starting photon_propagation loop'
-#endif
 
     ! propagate photon until escape or death ... 
     photon_propagation : do 
@@ -148,19 +132,6 @@ contains
        cell_fully_in_domain =  domain_contains_cell(ppos,cell_size,domaine_calcul)
 
 
-#ifdef DEBUG
-       print *,'--> cell properties',cell_level,cell_size,cell_size_cm
-       print *,'        cell_gas  =',cell_gas
-       print *,'        pos corner=',cell_corner
-       print *,'                   ',(ppos-cell_corner)
-       print *,'       pos in cell=',ppos_cell
-       print *,'                   ',cell_fully_in_domain
-       print *,'                   ',epsilon_cell
-       print *,'                k= ',p%k
-       print *,'          pos oct =',posoct
-       print *,'--> current photon position',ppos
-#endif
-
        propag_in_cell : do
           
           ! generate the opt depth where the photon is scattered/absorbed
@@ -176,15 +147,6 @@ contains
           ! check whether scattering occurs within cell (scatter_flag > 0) or not (scatter_flag==0)
           scatter_flag = gas_get_scatter_flag(cell_gas, distance_to_border_cm, nu_cell, tau_abs, iran)
 
-#ifdef DEBUG
-          print*,'distance_to_border_cm =',distance_to_border_cm
-          print*,'distance_to_border    =',distance_to_border
-          print*,'scatter_flag          =',scatter_flag
-          print*,'box_size_cm           =',box_size_cm
-          print*,'cell crossing time    =',cell_size_cm/clight
-          print*,'epsilon crossing time =',epsilon_cell*cell_size_cm/clight
-#endif
-
           if (scatter_flag == 0) then
              ! next scattering event will not occur in the cell, then move photon to next cell
 
@@ -195,9 +157,7 @@ contains
              ! update ppos (in box units)
              ppos_old = ppos
              ppos = ppos_cell * cell_size + cell_corner
-#ifdef DEBUG
-             print*,'diff ppos =',ppos-ppos_old
-#endif
+
              ! correct for periodicity
              do i=1,3
                 if (ppos(i) < 0.d0) ppos(i)=ppos(i)+1.d0
@@ -219,9 +179,6 @@ contains
                 p%time         = time
                 p%tau_abs_curr = tau_abs
                 p%iran         = iran
-#ifdef DEBUG
-                print*,'-exit propagation, photon escaped comp. domain'
-#endif
                 exit photon_propagation
              endif
 
@@ -250,9 +207,6 @@ contains
                 p%time         = time
                 p%tau_abs_curr = tau_abs
                 p%iran         = iran
-#ifdef DEBUG
-                print*,'-exit propagation, photon escaped mesh domain'
-#endif
                 exit photon_propagation
              endif
              ! else, new cell is in the cpu domain and photon goes to this new cell
@@ -267,10 +221,6 @@ contains
 
              ! there has been no interaction in the cell, tau_abs has been updated in gas_get_scatter_flag
              ! -> move to next cell
-#ifdef DEBUG
-             print*,'--> exit cell, photon moves to cell',icellnew,ileaf,ind,ioct
-#endif
-
              exit propag_in_cell
 
           else
@@ -302,9 +252,6 @@ contains
                    p%time         = time
                    p%tau_abs_curr = tau_abs
                    p%iran         = iran
-#ifdef DEBUG
-                   print*,'-exit propagation, photon escaped comp. domain'
-#endif
                    exit photon_propagation
                 endif
              endif
@@ -333,19 +280,12 @@ contains
                 p%time         = time
                 p%tau_abs_curr = tau_abs
                 p%iran         = iran
-#ifdef DEBUG
-                print*,'-exit propagation, photon is dead'
-#endif
                 exit photon_propagation
              endif
 
           end if
 
        end do propag_in_cell
-
-#ifdef DEBUG
-       print*,'nb scattering in cell',p%nb_abs
-#endif
 
     end do photon_propagation
 

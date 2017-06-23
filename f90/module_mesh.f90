@@ -307,9 +307,6 @@ module module_mesh
       inside  = ((abs(xc(1)-xpnew(1))<dx).and.(abs(xc(2)-xpnew(2))<dx).and.(abs(xc(3)-xpnew(3))<dx))
       
       if(inside)then
-#ifdef DEBUG
-         print*,'-WIPG case 1'
-#endif
          ! if yes -> dig
          icellnew = dig_in_cell(m,xpnew,ifather)
          ! check if icellnew is inside the domain
@@ -337,9 +334,6 @@ module module_mesh
                !dx     = 0.5d0**(level)
                inside = ((abs(xc(1)-xpnew(1))<dx).and.(abs(xc(2)-xpnew(2))<dx).and.(abs(xc(3)-xpnew(3))<dx))      
                if(inside)then
-#ifdef DEBUG
-                  print*,'-WIPG case 2'
-#endif
                   ! if yes -> dig
                   icellnew = dig_in_cell(m,xpnew,icell)
                   ! check if icellnew is inside the domain
@@ -355,9 +349,6 @@ module module_mesh
                xc       = xc + offset(1:3,indleaf)*dx*2   ! but then 2*dx for level l+1 
                inside   = ((abs(xc(1)-xpnew(1))<dx).and.(abs(xc(2)-xpnew(2))<dx).and.(abs(xc(3)-xpnew(3))<dx))      
                if(inside)then
-#ifdef DEBUG
-                  print*,'-WIPG case 2'
-#endif
                   icellnew=icell
                   if(ison==0)flagoutvol=.true.
                   return
@@ -365,9 +356,6 @@ module module_mesh
             endif
          enddo
          ! if not in the 3 neighbors, then dig from the top (escaped by an edge or a corner...)
-#ifdef DEBUG
-         print*,'-WIPG case 3'
-#endif
          icellnew = in_cell_finder(m,xpnew)
          ! test if son(icellnew)==0 -> outside of domain
          if(m%son(icellnew)==0) flagoutvol=.true.
@@ -466,18 +454,6 @@ module module_mesh
          write(*,*) '...writing mesh in file: ',trim(file)
          write(*,*)
       end if
-
-#ifdef DEBUG
-      print *,'--> check mesh dom'
-      print *,m%domain
-      print *,m%nCoarse,m%nOct,m%nLeaf,m%nCell
-      print *,minval(m%xoct(:,:)),maxval(m%xoct(:,:))
-      print *,minval(m%nbor(:,:)),maxval(m%nbor(:,:))
-      print *,minval(m%octlevel(:)),maxval(m%octlevel(:))
-      print *,minval(m%son(:)),maxval(m%son(:))
-      print *,minval(m%father(:)),maxval(m%father(:))
-#endif
-
 
       open(unit=13, file=file, status='unknown', form='unformatted', action='write')
 

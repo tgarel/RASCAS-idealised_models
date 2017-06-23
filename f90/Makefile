@@ -10,7 +10,6 @@ SYSTYPE="mac"
 
 OPTIONS = -cpp
 #OPTIONS += -DSWITCH_OFF_UPARALLEL
-#OPTIONS += -DDEBUG
 
 
 ifeq ($(SYSTYPE),"lyocral")
