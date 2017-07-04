@@ -1,0 +1,13 @@
+[Lya_tests]
+species        = dust   ! H, D or dust
+T              = 1.e4   ! in K
+n_xin          = 6
+x_in           = 0.0d0,1.0d0,2.0d0,3.0d0,4.0d0,5.0d0  ! input frequency in Doppler unit
+nphotons       = 1000000
+outputdir      = LyaTests_output_data/SingleScatt_dust/
+[HI]
+recoil         = false
+isotropic      = false
+[dust]
+albedo         = 0.46
+g_dust         = 0.73

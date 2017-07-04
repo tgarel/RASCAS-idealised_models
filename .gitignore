@@ -1,0 +1,47 @@
+# File extensions 
+###################
+*.pdf
+*.o
+*.ps
+*.png
+*.pro~
+*.mod
+parameters*dat
+parameters*dat~
+pbscript
+pbscript~
+rascas.*
+
+# Executables
+###################
+PhotonsMonoPointSource
+PhotonsFromSourceModel
+PhotonsFromStars
+CreateDomDump
+MCLya
+rascas
+
+
+# Directories
+###################
+plots/
+output/
+idl/
+py/
+LyaTests_output_data/
+hummer_old/
+
+# File 
+###################
+run.log
+f90/Makefile
+
+# OS generated files #
+######################
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
