@@ -1,4 +1,4 @@
-program tests
+program tests_onescattering
 
   ! -----------------------------------------------------------------------------------------------------------------
   ! Test Lya radiative transfer
@@ -428,7 +428,7 @@ contains
   end subroutine read_test_parameters
 
   
-end program tests
+end program tests_onescattering
   
 
 

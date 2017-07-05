@@ -85,10 +85,10 @@ GASOBJS = ../../f90/module_constants.o ../../f90/module_random.o ../../f90/modul
 	$(F90) $(FFLAGS) -c $^ -o $@
 
 #############################################################################
-all: clean2 tests clean
+all: clean2 tests_onescattering clean
 
-tests: $(GASOBJS) tests.o 
-	$(F90) $(FFLAGS) -o $@ $(GASOBJS) tests.o
+tests_onescattering: $(GASOBJS) tests_onescattering.o 
+	$(F90) $(FFLAGS) -o $@ $(GASOBJS) tests_onescattering.o
 
 clean:
 	rm -f $(GASOBJS) *.o *.mod
@@ -98,5 +98,5 @@ clean2:
 	rm -f *.o
 	rm -f *.mod
 	rm -f *~
-	rm -f tests 	
+	rm -f tests_onescattering	
 #############################################################################
