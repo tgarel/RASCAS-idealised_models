@@ -73,8 +73,6 @@ program tests_onescattering
   if (species .eq. 'H') then
      call read_HI_params(param_file)
      call print_HI_params
-     print*,isotropic
-     print*,recoil
      
      !! Convert T into well-formatted string
      write(temp_st,'(es14.0)') T
@@ -197,11 +195,18 @@ program tests_onescattering
      
      call read_D_params(param_file)
      call print_D_params
+
+     !! Convert T into well-formatted string
+     write(temp_st,'(es14.0)') T
+!!$     print*,T
+!!$     print*,trim(temp_st)
+     write(temp_st,'(a6)') trim(adjustl(temp_st))
+     print*,temp_st
      
      vcell = 0.                     ! cm/s
      vth   = sqrt((2.0d0*kb/mp)*T) * sqrt_H2Deut_mass_ratio ! cm/s
      delta_nu_doppler  = vth / lambda_0_Deut_cm 
-
+     
      do j=1,n_xin
         x_input = x_in(j)
 
