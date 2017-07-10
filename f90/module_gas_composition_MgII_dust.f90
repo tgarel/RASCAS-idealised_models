@@ -9,6 +9,7 @@ module module_gas_composition
   use module_random
   use module_ramses
   use module_constants
+  use module_idealised_models
 
   implicit none
 
@@ -51,7 +52,7 @@ module module_gas_composition
 contains
   
 
-  subroutine gas_from_ramses_leaves(repository,snapnum,nleaf,nvar,ramses_var, g)
+  subroutine gas_from_ramses_leaves(repository,snapnum,nleaf,nvar,ramses_var, g, x_leaf, leaf_level)
 
     ! define gas contents from ramses raw data
 
@@ -63,13 +64,27 @@ contains
     integer(kind=4)                   :: ileaf
     real(kind=8),allocatable          :: v(:,:), T(:), nMgII(:), nHI(:), nHII(:), metallicity(:)
 
+    character(2000)                                :: file,datadir_path
+    real(kind=8),intent(in),dimension(nleaf,3)     :: x_leaf
+    integer(kind=4),intent(in),dimension(nleaf)    :: leaf_level
+    character(200)                                 :: modelprops_file
+    
     ! allocate gas-element array
     allocate(g(nleaf))
 
     if (gas_overwrite) then
-       call overwrite_gas(g)
+       call overwrite_gas(g,x_leaf,leaf_level,nleaf)
+       ! Dump idealised model (nh, temp, pos...)
+       call read_datadir(datadir_path)
+       modelprops_file = 'modelprops_file'
+       file = trim(datadir_path)//trim(modelprops_file)
+       open(unit=15, file=trim(file), status='unknown', form='unformatted', action='write')
+       write(15) nleaf
+       do ileaf = 1,nleaf
+          write(15) x_leaf(ileaf,1),x_leaf(ileaf,2),x_leaf(ileaf,3),g(ileaf)%v(1),g(ileaf)%v(2),g(ileaf)%v(3),g(ileaf)%dopwidth,g(ileaf)%nhi
+       end do
+       close(15)
     else
-       
        box_size_cm = ramses_get_box_size_cm(repository,snapnum)
 
        ! compute velocities in cm / s
@@ -113,21 +128,126 @@ contains
 
   end subroutine gas_from_ramses_leaves
   
-
-  subroutine overwrite_gas(g)
-
+  
+  ! move to idealised_models ?
+  subroutine overwrite_gas(g,x_leaf,leaf_level,nleaf)
+    
     type(gas),dimension(:),intent(inout) :: g
-
+    real(kind=8),intent(in)              :: x_leaf(nleaf,3)
+    integer(kind=4),intent(in)           :: leaf_level(nleaf)
+    integer(kind=4)                      :: ileaf
+    integer(kind=4),intent(in)           :: nleaf
+    real(kind=8)                         :: dx_cell
+    character(50)                        :: overwrite_model
+    
+    call read_overwrite_params(overwrite_model)
+    
     box_size_cm   = fix_box_size_cm
     
-    g(:)%v(1)     = fix_vel
-    g(:)%v(2)     = fix_vel
-    g(:)%v(3)     = fix_vel
-    g(:)%nMgII    = fix_nMgII
-    g(:)%dopwidth = fix_vth
-    g(:)%ndust    = fix_ndust
+    select case (overwrite_model)
+    case('uniform')
+       g(:)%v(1)     = fix_vel
+       g(:)%v(2)     = fix_vel
+       g(:)%v(3)     = fix_vel
+       g(:)%nMgII    = fix_nMgII
+       g(:)%dopwidth = fix_vth     
        
+#ifdef DEBUG
+       print*,'in overwrite_gas: allocated g?',shape(g)
+       print*,'in overwrite_gas: ',minval(g%nhi),maxval(g%nhi)
+       print*,'in overwrite_gas: ',minval(g%dopwidth),maxval(g%dopwidth)
+       print*,'in overwrite_gas: ',minval(g%v),maxval(g%v)
+       print*,'in overwrite_gas: ',box_size_cm
+#endif
+    case('sphere_homogen_velfix')      
+       do ileaf=1,nleaf
+          dx_cell = 0.5d0**leaf_level(ileaf)
+          call sphere_homogen_velfix(g(ileaf)%v(1),g(ileaf)%v(2),g(ileaf)%v(3),g(ileaf)%nMgII,g(ileaf)%dopwidth,x_leaf(ileaf,1),x_leaf(ileaf,2),x_leaf(ileaf,3),dx_cell)
+       end do
+       
+    case('shell_homogen_velfix')      
+       do ileaf=1,nleaf
+          dx_cell = 0.5d0**leaf_level(ileaf)
+          call shell_homogen_velfix(g(ileaf)%v(1),g(ileaf)%v(2),g(ileaf)%v(3),g(ileaf)%nMgII,g(ileaf)%dopwidth,x_leaf(ileaf,1),x_leaf(ileaf,2),x_leaf(ileaf,3),dx_cell)
+       end do
+
+    case('sphere_homog_velgrad')      
+       do ileaf=1,nleaf
+          dx_cell = 0.5d0**leaf_level(ileaf)
+          call sphere_homogen_velgrad(g(ileaf)%v(1),g(ileaf)%v(2),g(ileaf)%v(3),g(ileaf)%nMgII,g(ileaf)%dopwidth,x_leaf(ileaf,1),x_leaf(ileaf,2),x_leaf(ileaf,3),dx_cell)
+       end do
+
+    case('sphere_homogen_steidel')      
+       do ileaf=1,nleaf
+          dx_cell = 0.5d0**leaf_level(ileaf)
+          call sphere_homogen_steidel(g(ileaf)%v(1),g(ileaf)%v(2),g(ileaf)%v(3),g(ileaf)%nMgII,g(ileaf)%dopwidth,x_leaf(ileaf,1),x_leaf(ileaf,2),x_leaf(ileaf,3),dx_cell)
+       end do
+       
+    case('sphere_homogen_velgrad_ct_outflow_rate')      
+       do ileaf=1,nleaf
+          dx_cell = 0.5d0**leaf_level(ileaf)
+          call sphere_homogen_velgrad_ct_outflow_rate(g(ileaf)%v(1),g(ileaf)%v(2),g(ileaf)%v(3),g(ileaf)%nMgII,g(ileaf)%dopwidth,x_leaf(ileaf,1),x_leaf(ileaf,2),x_leaf(ileaf,3),dx_cell)
+       end do
+
+    case('sphere_homogen_velgrad_rad_pressure')      
+       do ileaf=1,nleaf
+          dx_cell = 0.5d0**leaf_level(ileaf)
+          call sphere_homogen_velgrad_rad_pressure(g(ileaf)%v(1),g(ileaf)%v(2),g(ileaf)%v(3),g(ileaf)%nMgII,g(ileaf)%dopwidth,x_leaf(ileaf,1),x_leaf(ileaf,2),x_leaf(ileaf,3),dx_cell)
+       end do
+       
+    case('sphere_densgrad_velgrad')      
+       do ileaf=1,nleaf
+          dx_cell = 0.5d0**leaf_level(ileaf)
+          call sphere_densgrad_velgrad(g(ileaf)%v(1),g(ileaf)%v(2),g(ileaf)%v(3),g(ileaf)%nMgII,g(ileaf)%dopwidth,x_leaf(ileaf,1),x_leaf(ileaf,2),x_leaf(ileaf,3),dx_cell)
+       end do
+
+    case('sphere_densgrad_velfix')      
+       do ileaf=1,nleaf
+          dx_cell = 0.5d0**leaf_level(ileaf)
+          call sphere_densgrad_velfix(g(ileaf)%v(1),g(ileaf)%v(2),g(ileaf)%v(3),g(ileaf)%nMgII,g(ileaf)%dopwidth,x_leaf(ileaf,1),x_leaf(ileaf,2),x_leaf(ileaf,3),dx_cell)
+       end do
+
+    case('sphere_scarlata15')      
+       do ileaf=1,nleaf
+          dx_cell = 0.5d0**leaf_level(ileaf)
+          call sphere_scarlata15(g(ileaf)%v(1),g(ileaf)%v(2),g(ileaf)%v(3),g(ileaf)%nMgII,g(ileaf)%dopwidth,x_leaf(ileaf,1),x_leaf(ileaf,2),x_leaf(ileaf,3),dx_cell)
+       end do
+
+    case('sphere_prochaska11')      
+       do ileaf=1,nleaf
+          dx_cell = 0.5d0**leaf_level(ileaf)
+          call sphere_prochaska11(g(ileaf)%v(1),g(ileaf)%v(2),g(ileaf)%v(3),g(ileaf)%nMgII,g(ileaf)%dopwidth,x_leaf(ileaf,1),x_leaf(ileaf,2),x_leaf(ileaf,3),dx_cell)
+       end do
+       
+    case('disc_thin')      
+       do ileaf=1,nleaf
+          dx_cell = 0.5d0**leaf_level(ileaf)
+          call disc_thin(g(ileaf)%v(1),g(ileaf)%v(2),g(ileaf)%v(3),g(ileaf)%nMgII,g(ileaf)%dopwidth,x_leaf(ileaf,1),x_leaf(ileaf,2),x_leaf(ileaf,3),dx_cell)
+       end do
+    case('disc_thick')      
+       do ileaf=1,nleaf
+          dx_cell = 0.5d0**leaf_level(ileaf)
+          call disc_thick(g(ileaf)%v(1),g(ileaf)%v(2),g(ileaf)%v(3),g(ileaf)%nMgII,g(ileaf)%dopwidth,x_leaf(ileaf,1),x_leaf(ileaf,2),x_leaf(ileaf,3),dx_cell)
+       end do
+       
+    end select
+      
   end subroutine overwrite_gas
+  
+!!$  subroutine overwrite_gas(g)
+!!$
+!!$    type(gas),dimension(:),intent(inout) :: g
+!!$
+!!$    box_size_cm   = fix_box_size_cm
+!!$    
+!!$    g(:)%v(1)     = fix_vel
+!!$    g(:)%v(2)     = fix_vel
+!!$    g(:)%v(3)     = fix_vel
+!!$    g(:)%nMgII    = fix_nMgII
+!!$    g(:)%dopwidth = fix_vth
+!!$    g(:)%ndust    = fix_ndust
+!!$       
+!!$  end subroutine overwrite_gas
 
 
 
@@ -236,22 +356,39 @@ contains
   end subroutine dump_gas
 
 
-
   subroutine read_gas(unit,n,g)
-    integer,intent(in)                             :: unit,n
+    integer(kind=4),intent(in)                     :: unit,n
     type(gas),dimension(:),allocatable,intent(out) :: g
-    integer                                        :: i
+    integer(kind=4)                                :: i
+    
     allocate(g(1:n))
-    if (gas_overwrite) then
-       call overwrite_gas(g)
-    else
-       read(unit) (g(i)%v(:),i=1,n)
-       read(unit) (g(i)%nMgII,i=1,n)
-       read(unit) (g(i)%dopwidth,i=1,n)
-       read(unit) (g(i)%ndust,i=1,n)
-       read(unit) box_size_cm 
-    end if
+    
+    read(unit) (g(i)%v(:),i=1,n)
+    read(unit) (g(i)%nMgII,i=1,n)
+    read(unit) (g(i)%dopwidth,i=1,n)
+    read(unit) (g(i)%ndust,i=1,n)
+    read(unit) box_size_cm 
+
+    if (verbose) print*,'min/max of nMgII : ',minval(g(:)%nMgII),maxval(g(:)%nMgII)
+    
   end subroutine read_gas
+
+  
+!!$  subroutine read_gas(unit,n,g)
+!!$    integer,intent(in)                             :: unit,n
+!!$    type(gas),dimension(:),allocatable,intent(out) :: g
+!!$    integer                                        :: i
+!!$    allocate(g(1:n))
+!!$    if (gas_overwrite) then
+!!$       call overwrite_gas(g)
+!!$    else
+!!$       read(unit) (g(i)%v(:),i=1,n)
+!!$       read(unit) (g(i)%nMgII,i=1,n)
+!!$       read(unit) (g(i)%dopwidth,i=1,n)
+!!$       read(unit) (g(i)%ndust,i=1,n)
+!!$       read(unit) box_size_cm 
+!!$    end if
+!!$  end subroutine read_gas
 
   
 
@@ -377,5 +514,48 @@ contains
   end subroutine print_gas_composition_params
 
 
+  subroutine read_datadir(DataDir)
+     
+    character(1000) :: line,name,value
+    integer(kind=4) :: err,i
+    logical         :: section_present
+    character(2000) :: pfile,DataDir
+    
+    call get_command_argument(1, pfile)
+    open(unit=10,file=trim(pfile),status='old',form='formatted')
+    section_present = .false.
+    ! search for section start
+    do
+       read (10,'(a)',iostat=err) line
+       if(err/=0) exit
+       if (line(1:70) == '[RASCAS]') then
+          section_present = .true.
+          exit
+       end if
+    end do
+    ! read section if present
+    if (section_present) then 
+       do
+          read (10,'(a)',iostat=err) line
+          if(err/=0) exit
+          if (line(1:1) == '[') exit ! next section starting... -> leave
+          i = scan(line,'=')
+          if (i==0 .or. line(1:1)=='#' .or. line(1:1)=='!') cycle  ! skip blank or commented lines
+          name=trim(adjustl(line(:i-1)))
+          value=trim(adjustl(line(i+1:)))
+          i = scan(value,'!')
+          if (i /= 0) value = trim(adjustl(value(:i-1)))
+          select case (trim(name))
+          case ('DataDir')
+             write(DataDir,'(a)') trim(value)
+          end select
+       end do
+    end if
+    close(10)
+
+    return
+    
+  end subroutine read_datadir
+  
 
 end module module_gas_composition

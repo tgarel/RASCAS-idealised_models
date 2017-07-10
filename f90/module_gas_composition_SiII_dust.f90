@@ -82,7 +82,7 @@ contains
        open(unit=15, file=trim(file), status='unknown', form='unformatted', action='write')
        write(15) nleaf
        do ileaf = 1,nleaf
-          write(15) x_leaf(ileaf,1),x_leaf(ileaf,2),x_leaf(ileaf,3),g(ileaf)%v(1),g(ileaf)%v(2),g(ileaf)%v(3),g(ileaf)%dopwidth,g(ileaf)%nhi
+          write(15) x_leaf(ileaf,1),x_leaf(ileaf,2),x_leaf(ileaf,3),g(ileaf)%v(1),g(ileaf)%v(2),g(ileaf)%v(3),g(ileaf)%dopwidth,g(ileaf)%nSiII
        end do
        close(15)
     else
@@ -148,12 +148,12 @@ contains
        g(:)%v(1)     = fix_vel
        g(:)%v(2)     = fix_vel
        g(:)%v(3)     = fix_vel
-       g(:)%nSiII      = fix_nhi
+       g(:)%nSiII    = fix_nSiII
        g(:)%dopwidth = fix_vth     
        
 #ifdef DEBUG
        print*,'in overwrite_gas: allocated g?',shape(g)
-       print*,'in overwrite_gas: ',minval(g%nhi),maxval(g%nhi)
+       print*,'in overwrite_gas: ',minval(g%nSiII),maxval(g%nSiII)
        print*,'in overwrite_gas: ',minval(g%dopwidth),maxval(g%dopwidth)
        print*,'in overwrite_gas: ',minval(g%v),maxval(g%v)
        print*,'in overwrite_gas: ',box_size_cm
