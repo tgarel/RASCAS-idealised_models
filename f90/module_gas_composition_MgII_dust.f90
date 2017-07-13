@@ -88,7 +88,7 @@ contains
        g(:)%nMgII = nMgII(:)
        ! compute thermal velocity 
        ! ++++++ TURBULENT VELOCITY >>>>> parameter to add and use here
-       g(:)%dopwidth = sqrt(2.0d0*kb/mSi*T) ! [ cm/s ]
+       g(:)%dopwidth = sqrt(2.0d0*kb/mMg*T) ! [ cm/s ]
        deallocate(T,nMgII)
 
        if (verbose) print*,'min/max of nMgII : ',minval(g(:)%nMgII),maxval(g(:)%nMgII)
