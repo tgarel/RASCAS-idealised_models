@@ -145,6 +145,9 @@ RaysFromPhotons: $(PEELING) RaysFromPhotons.o
 RaysFromPeel: $(PEELING) RaysFromPeel.o
 	$(F90) $(FFLAGS) $(LDFLAGS) -o $@ $(PEELING) RaysFromPeel.o
 
+Analyse: $(PEELING) Analyse.o
+	$(F90) $(FFLAGS) $(LDFLAGS) -o $@ $(PEELING) Analyse.o
+
 clean:
 	rm -f $(OBJSDOM) $(OBJSPHO) $(OBJSMPI) *.o *.mod
 #############################################################################
