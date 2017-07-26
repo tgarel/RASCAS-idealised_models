@@ -39,12 +39,8 @@ module module_FeII_2344_model ! Fe_II UV3
   real(kind=8),parameter :: lambda34_cm    = lambda34 / cmtoA         ! [cm]
   real(kind=8),parameter :: nu34           = clight / lambda34_cm     ! [Hz]
   real(kind=8),parameter :: A43            = 3.1d7                   ! spontaneous decay [/s]
-
-
   
-  
-  real(kind=8),parameter :: A41_over_A41_plus_A42_plus_A43 = A41 / (A41+A42+A43)
-  real(kind=8),parameter :: A42_over_A41_plus_A42_plus_A43 = A42 / (A41+A42+A43)
+  real(kind=8),parameter :: Atot = A41+A42+A43
   
   public :: get_tau_FeII_2344, scatter_FeII_2344
 
@@ -109,7 +105,7 @@ contains
     real(kind=8),intent(in)                 :: vth
     integer(kind=4),intent(inout)           :: iran
     real(kind=8)                            :: delta_nu_doppler, a, x_cell, blah, upar, ruper
-    real(kind=8)                            :: r2, uper, nu_atom, mu, bu, scalar
+    real(kind=8)                            :: r2, uper, nu_atom, mu, bu, scalar, proba41, proba42
     real(kind=8),dimension(3)               :: knew
 
     ! define x_cell & a
@@ -135,10 +131,12 @@ contains
 
     ! 3/ chose de-excitation channel to determine output freq. in atom's frame
     r2 = ran3(iran)
-    if (r2 <= A41_over_A41_plus_A42_plus_A43) then
-       ! photon goes down to level 1 -> coherent scattering
-       nu_atom = nu_cell - nu_ext * upar/clight ! incoming frequency in atom's frame = outcoming freq in same frame       
-    else if (r2 > A41_over_A41_plus_A42_plus_A43 .and. r2 <= A42_over_A41_plus_A42_plus_A43) then
+    proba41 = A41/Atot
+    proba42 = proba41 + A42/Atot
+    if (r2 <= proba41) then
+       ! photon goes down to level 1 -> resonant scattering
+       nu_atom = nu_cell - nu_ext * upar/clight ! incoming frequency in atom's frame = outcoming freq in same frame
+    else if (r2 <= proba42) then
        ! photons goes down to level 2 ... -> fluorecent 2
        nu_atom = nu24
     else
