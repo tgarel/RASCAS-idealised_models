@@ -74,8 +74,11 @@ program ExtractSubvol
   nOctSnap = get_nGridTot(repository,snapnum)
 
   ! Extract and convert properties of cells into gas mix properties
-  call gas_from_ramses_leaves(repository,snapnum,nleaftot,nvar,ramses_var, gas_leaves)
-
+  ! call gas_from_ramses_leaves(repository,snapnum,nleaftot,nvar,ramses_var, gas_leaves)
+  ! TIBO
+  call gas_from_ramses_leaves(repository,snapnum,nleaftot,nvar,ramses_var, gas_leaves, x_leaf, leaf_level)
+  ! OBIT
+  
   ! domain decomposition 
   if (verbose)then
      print *

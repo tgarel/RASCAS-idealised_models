@@ -48,7 +48,7 @@ module module_idealised_models
   logical                  :: verbose             = .false.       ! display some run-time info on this module
   
   ! public functions:
-  public :: read_overwrite_params, print_overwrite_params, disc_thin, disc_thick, sphere_homogen_velfix, sphere_homogen_velgrad, sphere_densgrad_velfix, sphere_densgrad_velgrad, shell_homogen_velfix, sphere_homogen_steidel, sphere_homogen_velgrad_ct_outflow_rate, sphere_homogen_velgrad_rad_pressure, sphere_scarlata15, sphere_prochaska11, sphere_prochaska11_steidel
+  public :: read_overwrite_params, print_overwrite_params, disc_thin, disc_thick, sphere_homogen_velfix, sphere_homogen_velgrad, sphere_densgrad_velfix, sphere_densgrad_velgrad, shell_homogen_velfix, sphere_homogen_steidel, sphere_homogen_velgrad_ct_outflow_rate, sphere_homogen_velgrad_rad_pressure, sphere_scarlata15, sphere_prochaska11
   
   
 contains
