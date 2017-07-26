@@ -22,10 +22,6 @@ module module_gas_composition
      ! -> density is computed as 2.8d-5 * nHI * metallicity / solar_metallicity
      real(kind=8) :: nFeII     ! numerical density of FeII  [#/cm3]
      real(kind=8) :: dopwidth  ! Doppler width [cm/s]
-     ! DUST -> model of Laursen, Sommer-Larsen and Andersen 2009.
-     ! ->  ndust = (nHI + f_ion nHII)*Z/Zref
-     ! f_ion and Zref are two free parameters . 
-     real(kind=8) :: ndust     ! pseudo-numerical density of dust particles [#/cm3]
   end type gas
   real(kind=8),public :: box_size_cm   ! size of simulation box in cm. 
 
@@ -86,7 +82,7 @@ contains
        g(:)%nFeII = nFeII(:)
        ! compute thermal velocity 
        ! ++++++ TURBULENT VELOCITY >>>>> parameter to add and use here
-       g(:)%dopwidth = sqrt(2.0d0*kb/mSi*T) ! [ cm/s ]
+       g(:)%dopwidth = sqrt(2.0d0*kb/mFe*T) ! [ cm/s ]
        deallocate(T,nFeII)
 
        if (verbose) print*,'min/max of nFeII : ',minval(g(:)%nFeII),maxval(g(:)%nFeII)

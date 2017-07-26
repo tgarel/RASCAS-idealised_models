@@ -31,7 +31,7 @@ module module_FeII_2600_model ! Fe_II UV1
   real(kind=8),parameter :: lambda23       = 2626.45d0                ! transition wavelength [A]
   real(kind=8),parameter :: lambda23_cm    = lambda23 / cmtoA         ! [cm]
   real(kind=8),parameter :: nu23           = clight / lambda23_cm     ! [Hz]
-  real(kind=8),parameter :: A32            = 3.52d7                   ! spontaneous decay [/s]
+  real(kind=8),parameter :: A32            = 3.52d7                   ! spontaneous decay [/s]  ! Prochaska+11 give A32=3.41d7
 
   real(kind=8),parameter :: A31_over_A31_plus_A32 = A31 / (A31+A32)
   
