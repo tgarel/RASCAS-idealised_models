@@ -19,12 +19,12 @@ module module_MgII_2796_model
   ! level 2 is 2p^6 3p 2P 3/2
 
   ! transition between levels 2 and 1
-  real(kind=8),parameter :: lambda12       = 2796.35d0                ! transition wavelength [A]
+  real(kind=8),parameter :: lambda12       = 2796.351d0 !2796.35d0                ! transition wavelength [A]
   real(kind=8),parameter :: lambda12_cm    = lambda12 / cmtoA         ! [cm]
   real(kind=8),parameter :: nu12           = clight / lambda12_cm     ! [Hz]
   real(kind=8),parameter :: f12            = 0.608d0                  ! oscillator strength
   real(kind=8),parameter :: sigma12_factor = pi*e_ch**2*f12/me/clight ! multiply by Voigt(x,a)/nu_D to get sigma.
-  real(kind=8),parameter :: A21            = 2.60d8                   ! spontaneous decay [/s]
+  real(kind=8),parameter :: A21            = 2.63d8 ! 2.60d8                   ! spontaneous decay [/s]
 
   public :: get_tau_MgII_2796, scatter_MgII_2796
 
@@ -55,7 +55,7 @@ contains
     x_cell = (nu_cell - nu12) / nu_D
     h      = voigt_fit(x_cell,a)
     sigma  = sigma12_factor / nu_D * h
-
+    
     get_tau_MgII_2796 = sigma * nMgII * distance_to_border_cm
    
     return
@@ -91,6 +91,7 @@ contains
     real(kind=8)                            :: r2, uper, nu_atom, mu, bu, scalar
     real(kind=8),dimension(3)               :: knew
 
+    
     ! define x_cell & a
     delta_nu_doppler = vth / lambda12_cm 
     a = A21 / fourpi / delta_nu_doppler

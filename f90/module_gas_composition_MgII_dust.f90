@@ -81,7 +81,7 @@ contains
        open(unit=15, file=trim(file), status='unknown', form='unformatted', action='write')
        write(15) nleaf
        do ileaf = 1,nleaf
-          write(15) x_leaf(ileaf,1),x_leaf(ileaf,2),x_leaf(ileaf,3),g(ileaf)%v(1),g(ileaf)%v(2),g(ileaf)%v(3),g(ileaf)%dopwidth,g(ileaf)%nhi
+          write(15) x_leaf(ileaf,1),x_leaf(ileaf,2),x_leaf(ileaf,3),g(ileaf)%v(1),g(ileaf)%v(2),g(ileaf)%v(3),g(ileaf)%dopwidth,g(ileaf)%nMgII
        end do
        close(15)
     else
@@ -103,7 +103,7 @@ contains
        g(:)%nMgII = nMgII(:)
        ! compute thermal velocity 
        ! ++++++ TURBULENT VELOCITY >>>>> parameter to add and use here
-       g(:)%dopwidth = sqrt(2.0d0*kb/mSi*T) ! [ cm/s ]
+       g(:)%dopwidth = sqrt(2.0d0*kb/mMg*T) ! [ cm/s ]
        deallocate(T,nMgII)
 
        if (verbose) print*,'min/max of nMgII : ',minval(g(:)%nMgII),maxval(g(:)%nMgII)
@@ -154,7 +154,7 @@ contains
        
 #ifdef DEBUG
        print*,'in overwrite_gas: allocated g?',shape(g)
-       print*,'in overwrite_gas: ',minval(g%nhi),maxval(g%nhi)
+       print*,'in overwrite_gas: ',minval(g%nMgII),maxval(g%nMgII)
        print*,'in overwrite_gas: ',minval(g%dopwidth),maxval(g%dopwidth)
        print*,'in overwrite_gas: ',minval(g%v),maxval(g%v)
        print*,'in overwrite_gas: ',box_size_cm
@@ -216,7 +216,7 @@ contains
     case('sphere_prochaska11')      
        do ileaf=1,nleaf
           dx_cell = 0.5d0**leaf_level(ileaf)
-          call sphere_prochaska11(g(ileaf)%v(1),g(ileaf)%v(2),g(ileaf)%v(3),g(ileaf)%nMgII,g(ileaf)%dopwidth,x_leaf(ileaf,1),x_leaf(ileaf,2),x_leaf(ileaf,3),dx_cell)
+          call sphere_prochaska11(g(ileaf)%v(1),g(ileaf)%v(2),g(ileaf)%v(3),g(ileaf)%nMgII,g(ileaf)%dopwidth,x_leaf(ileaf,1),x_leaf(ileaf,2),x_leaf(ileaf,3),dx_cell,g(ileaf)%ndust)
        end do
        
     case('disc_thin')      
@@ -328,7 +328,7 @@ contains
     real(kind=8), dimension(3), intent(inout) :: k
     integer, intent(inout)                    :: iran
     integer(kind=4)                           :: ilost 
-
+    
     select case(flag)
     case(1)
        call scatter_MgII_2796(cell_gas%v, cell_gas%dopwidth, nu_cell, k, nu_ext, iran)
@@ -338,6 +338,7 @@ contains
        call scatter_dust(cell_gas%v, nu_cell, k, nu_ext, iran, ilost)
        if(ilost==1)flag=-1
     end select
+
     
   end subroutine gas_scatter
 
@@ -528,7 +529,8 @@ contains
     do
        read (10,'(a)',iostat=err) line
        if(err/=0) exit
-       if (line(1:70) == '[RASCAS]') then
+       !if (line(1:70) == '[RASCAS]') then
+       if (line(1:70) == '[RASCAS-serial]') then
           section_present = .true.
           exit
        end if

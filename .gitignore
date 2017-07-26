@@ -11,7 +11,8 @@ parameters*dat~
 pbscript
 pbscript~
 Makefile
-rascas.*
+rascas.o*
+rascas.e*
 
 # Executables
 ###################
@@ -20,6 +21,7 @@ PhotonsFromSourceModel
 CreateDomDump
 MCLya
 rascas
+rascas-serial
 
 # Directories
 ###################
@@ -42,3 +44,4 @@ run.log
 .Trashes
 ehthumbs.db
 Thumbs.db
+*.dSYM

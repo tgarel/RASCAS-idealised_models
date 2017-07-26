@@ -1,7 +1,7 @@
 module module_idealised_models
 
   use module_random
-  use module_constants, only : kb, mp, pi
+  use module_constants, only : kb, mp, pi, mMg, mSi
   
   implicit none
 
@@ -37,12 +37,18 @@ module module_idealised_models
   real(kind=8)             :: rw        = -0.4
   real(kind=8)             :: vel_gamma = -999.0d0
   real(kind=8)             :: rho_rsf   = -999.0d0
+
+  !! Prochaska models
+  real(kind=8)             :: r_inner   = -0.1
+  real(kind=8)             :: r_outer   = -0.4
+  real(kind=8)             :: rho_gamma = -999.0d0
+  real(kind=8)             :: fix_ndens = -999.0d0
   
   ! miscelaneous
   logical                  :: verbose             = .false.       ! display some run-time info on this module
   
   ! public functions:
-  public :: read_overwrite_params, print_overwrite_params, disc_thin, disc_thick, sphere_homogen_velfix, sphere_homogen_velgrad, sphere_densgrad_velfix, sphere_densgrad_velgrad, shell_homogen_velfix, sphere_homogen_steidel, sphere_homogen_velgrad_ct_outflow_rate, sphere_homogen_velgrad_rad_pressure, sphere_scarlata15, sphere_prochaska11
+  public :: read_overwrite_params, print_overwrite_params, disc_thin, disc_thick, sphere_homogen_velfix, sphere_homogen_velgrad, sphere_densgrad_velfix, sphere_densgrad_velgrad, shell_homogen_velfix, sphere_homogen_steidel, sphere_homogen_velgrad_ct_outflow_rate, sphere_homogen_velgrad_rad_pressure, sphere_scarlata15, sphere_prochaska11, sphere_prochaska11_steidel
   
   
 contains
@@ -52,7 +58,118 @@ contains
   
   !!+++++++++++++++++++++++++++++ SPHERE a la sphere_prochaska11 : Velocity gradient and density gradient ++++++++++++++++++++++++++++++++++++++
   
-  subroutine sphere_prochaska11(vx_ideal,vy_ideal,vz_ideal,nh_ideal,dopwidth_ideal,xcell_ideal,ycell_ideal,zcell_ideal,dx_cell)
+!!$  subroutine sphere_prochaska11(vx_ideal,vy_ideal,vz_ideal,nh_ideal,dopwidth_ideal,xcell_ideal,ycell_ideal,zcell_ideal,dx_cell)
+!!$    
+!!$    implicit none
+!!$    
+!!$    ! point source at center and medium transparent at R < r_inner and at R > r_outer
+!!$    
+!!$    integer(kind=4)                :: nMC
+!!$    real(kind=8)                   :: dx_cell     ! Cell size
+!!$    real(kind=8)                   :: volfrac,volfrac2
+!!$    real(kind=8)                   :: dist_cell,dist_cell_min,dist_cell_max,dist2,dist_mc2,dist_mc
+!!$    real(kind=8)                   :: vx_mc,vy_mc,vz_mc
+!!$    real(kind=8)                   :: xcell_ideal,ycell_ideal,zcell_ideal
+!!$    real(kind=8)                   :: xmin,xmax,xmc,ymin,ymax,ymc,zmin,zmax,zmc
+!!$    real(kind=8),intent(inout)     :: nh_ideal,vx_ideal,vy_ideal,vz_ideal,dopwidth_ideal
+!!$    real(kind=8)                   :: r
+!!$    integer(kind=4)                :: localseed
+!!$    real(kind=8)                   :: rho,rho_0
+!!$    real(kind=8)                   :: max_dist, dist_cell_mc
+!!$    
+!!$    ! define sphere radius : from param file now
+!!$    sphere_radius = 0.45d0          ! Maximum extent of the gas  
+!!$    max_dist      = sphere_radius
+!!$
+!!$    
+!!$    vx_mc = 0.0d0
+!!$    vy_mc = 0.0d0
+!!$    vz_mc = 0.0d0
+!!$    dist2 = 0.0d0
+!!$    dist_cell_mc = 0.0d0
+!!$
+!!$    ! xcell, ycell and zcell are in frame with origin at bottom-left corner of box
+!!$    dist2 = (xcell_ideal-0.5d0)**2 + (ycell_ideal-0.5d0)**2 + (zcell_ideal-0.5d0)**2  ! in frame with origin at center of box
+!!$
+!!$    dist_cell = sqrt(dist2)
+!!$    dist_cell_max = dist_cell + dx_cell * sqrt(3.0d0) / 2.0d0 ! dx_cell * sqrt(3.0) / 2. is half the longest length in a cube
+!!$    dist_cell_min = dist_cell - dx_cell * sqrt(3.0d0) / 2.0d0 ! dx_cell * sqrt(3.0) / 2. is half the longest length in a cube
+!!$
+!!$    if ((dist_cell_max > r_outer .and. dist_cell_min < r_outer) .or. (dist_cell_max > r_inner .and. dist_cell_min < r_inner)) then ! cell partially within sphere
+!!$       ! bounds of cell
+!!$       xmin = xcell_ideal - 0.5d0*dx_cell 
+!!$       xmax = xcell_ideal + 0.5d0*dx_cell
+!!$       ymin = ycell_ideal - 0.5d0*dx_cell 
+!!$       ymax = ycell_ideal + 0.5d0*dx_cell
+!!$       zmin = zcell_ideal - 0.5d0*dx_cell 
+!!$       zmax = zcell_ideal + 0.5d0*dx_cell
+!!$       
+!!$       ! use Monte Carlo to compute density of cell (i.e. fraction of its volume within the sphere)
+!!$       volfrac = 0.0d0
+!!$       nMC = 0
+!!$       do while(volfrac .lt. 1000.d0)
+!!$          if (volfrac .lt. 1.d0 .and. nMC .eq. 100) then
+!!$             exit
+!!$          end if
+!!$          r = ran3(localseed)
+!!$          xmc = r * dx_cell + xmin
+!!$          r = ran3(localseed)
+!!$          ymc = r * dx_cell + ymin
+!!$          r = ran3(localseed)
+!!$          zmc = r * dx_cell + zmin
+!!$          dist_mc2 = 0.0d0
+!!$          dist_mc2 = (xmc-0.5d0)**2 + (ymc-0.5d0)**2 + (zmc-0.5d0)**2
+!!$          dist_mc = sqrt(dist_mc2)
+!!$          if (dist_mc < r_outer .and. dist_mc > r_inner) then ! point within sphere
+!!$             volfrac = volfrac + 1.0d0
+!!$             ! fix_vel = V0 from P+11, i.e. v=V0 at r=r_outer (different from S+15)
+!!$             vx_mc = vx_mc + fix_vel * (xmc - 0.5d0) / r_outer 
+!!$             vy_mc = vy_mc + fix_vel * (ymc - 0.5d0) / r_outer
+!!$             vz_mc = vz_mc + fix_vel * (zmc - 0.5d0) / r_outer
+!!$             dist_cell_mc = dist_cell_mc + dist_mc
+!!$          end if
+!!$          nMC = nMC + 1
+!!$       end do
+!!$       
+!!$       if(volfrac .ne. 0) then
+!!$          ! Velocity
+!!$          vx_ideal = vx_mc / volfrac
+!!$          vy_ideal = vy_mc / volfrac
+!!$          vz_ideal = vz_mc / volfrac
+!!$          ! redefine dist_cell as mean of dist_mc
+!!$          dist_cell = dist_cell_mc / volfrac
+!!$       end if
+!!$       volfrac2 = volfrac / dble(nMC)
+!!$       
+!!$    end if
+!!$    if (dist_cell_max < r_outer .and. dist_cell_min > r_inner) then ! cell completely within sphere
+!!$       vx_ideal = fix_vel * (xcell_ideal-0.5d0) / r_outer
+!!$       vy_ideal = fix_vel * (ycell_ideal-0.5d0) / r_outer
+!!$       vz_ideal = fix_vel * (zcell_ideal-0.5d0) / r_outer
+!!$       volfrac2 = 1.0
+!!$    end if
+!!$    
+!!$    ! assign density, ndust
+!!$    rho      = fix_ndens *  (r_inner / dist_cell)**(rho_gamma) ! rho_gamma  = +2 for P+11 fiducial model
+!!$    nh_ideal = rho * volfrac2 
+!!$ 
+!!$    if (dist_cell_min > r_outer .or. dist_cell_max < r_inner) then  ! cell completely out of sphere or completely within r_inner                                                       
+!!$       vx_ideal  = 0.0d0
+!!$       vy_ideal  = 0.0d0
+!!$       vz_ideal  = 0.0d0
+!!$       nh_ideal  = 0.0d0
+!!$    end if
+!!$    
+!!$    ! Give all cells shell_temp (cells not in sphere won't matter for RT as rho = 0...)
+!!$    ! choose Mg or Si etc....
+!!$    ! dopwidth_ideal = sqrt((2.0d0*kb/mMg)*fix_temp) 
+!!$    dopwidth_ideal = 15.0d5 ! cm/s - bturb = 15km/s
+!!$    
+!!$    return
+!!$    
+!!$  end subroutine sphere_prochaska11
+
+  subroutine sphere_prochaska11(vx_ideal,vy_ideal,vz_ideal,nh_ideal,dopwidth_ideal,xcell_ideal,ycell_ideal,zcell_ideal,dx_cell,ndust_ideal)
     
     implicit none
     
@@ -65,16 +182,16 @@ contains
     real(kind=8)                   :: vx_mc,vy_mc,vz_mc
     real(kind=8)                   :: xcell_ideal,ycell_ideal,zcell_ideal
     real(kind=8)                   :: xmin,xmax,xmc,ymin,ymax,ymc,zmin,zmax,zmc
-    real(kind=8),intent(inout)     :: nh_ideal,vx_ideal,vy_ideal,vz_ideal,dopwidth_ideal
+    real(kind=8),intent(inout)     :: nh_ideal,vx_ideal,vy_ideal,vz_ideal,dopwidth_ideal,ndust_ideal
     real(kind=8)                   :: r
     integer(kind=4)                :: localseed
-    real(kind=8)                   :: rho
+    real(kind=8)                   :: rho,rho_0
     real(kind=8)                   :: max_dist, dist_cell_mc
     
     ! define sphere radius : from param file now
-!!$    sphere_radius = 0.45d0          ! Maximum extent of the gas  
-!!$    max_dist      = sphere_radius
-    
+!!$    !sphere_radius = 0.45d0          ! Maximum extent of the gas  
+!!$    !max_dist      = sphere_radius
+
     
     vx_mc = 0.0d0
     vy_mc = 0.0d0
@@ -144,9 +261,10 @@ contains
     end if
     
     ! assign density, ndust
-    rho      = rho_0 *  (r_inner / dist_cell)**(rho_gamma) ! rho_gamma  = +2 for P+11 fiducial model
+    rho      = fix_ndens *  (r_inner / dist_cell)**(rho_gamma) ! rho_gamma  = +2 for P+11 fiducial model
     nh_ideal = rho * volfrac2 
- 
+    nh_ideal = nh_ideal / 2.0d0 ! corr P11 value...
+    
     if (dist_cell_min > r_outer .or. dist_cell_max < r_inner) then  ! cell completely out of sphere or completely within r_inner                                                       
        vx_ideal  = 0.0d0
        vy_ideal  = 0.0d0
@@ -155,12 +273,91 @@ contains
     end if
     
     ! Give all cells shell_temp (cells not in sphere won't matter for RT as rho = 0...)
-    dopwidth_ideal = sqrt((2.0d0*kb/mp)*fix_temp) 
-    
+    ! choose Mg or Si etc....
+    ! dopwidth_ideal = sqrt((2.0d0*kb/mMg)*fix_temp) 
+    dopwidth_ideal = 15.0d5 ! cm/s - bturb = 15km/s
+
+    ! dust a la laursen...
+    ndust_ideal = fix_ndust * nh_ideal / fix_ndens
+       
     return
     
   end subroutine sphere_prochaska11
+
   
+  
+    ! here don't don't weigh down the density
+!!$    subroutine sphere_prochaska11(vx_ideal,vy_ideal,vz_ideal,nh_ideal,dopwidth_ideal,xcell_ideal,ycell_ideal,zcell_ideal,dx_cell)
+!!$    
+!!$    implicit none
+!!$    
+!!$    ! point source at center and medium transparent at R < r_inner and at R > r_outer
+!!$    
+!!$    integer(kind=4)                :: nMC
+!!$    real(kind=8)                   :: dx_cell     ! Cell size
+!!$    real(kind=8)                   :: volfrac,volfrac2
+!!$    real(kind=8)                   :: dist_cell,dist_cell_min,dist_cell_max,dist2,dist_mc2,dist_mc
+!!$    real(kind=8)                   :: vx_mc,vy_mc,vz_mc
+!!$    real(kind=8)                   :: xcell_ideal,ycell_ideal,zcell_ideal
+!!$    real(kind=8)                   :: xmin,xmax,xmc,ymin,ymax,ymc,zmin,zmax,zmc
+!!$    real(kind=8),intent(inout)     :: nh_ideal,vx_ideal,vy_ideal,vz_ideal,dopwidth_ideal
+!!$    real(kind=8)                   :: r
+!!$    integer(kind=4)                :: localseed
+!!$    real(kind=8)                   :: rho,rho_0
+!!$    real(kind=8)                   :: max_dist, dist_cell_mc
+!!$    
+!!$    ! define sphere radius : from param file now
+!    sphere_radius = 0.45d0          ! Maximum extent of the gas  
+!    max_dist      = sphere_radius
+!!$
+!!$    
+!!$    vx_mc = 0.0d0
+!!$    vy_mc = 0.0d0
+!!$    vz_mc = 0.0d0
+!!$    dist2 = 0.0d0
+!!$    dist_cell_mc = 0.0d0
+!!$
+!!$    ! xcell, ycell and zcell are in frame with origin at bottom-left corner of box
+!!$    dist2 = (xcell_ideal-0.5d0)**2 + (ycell_ideal-0.5d0)**2 + (zcell_ideal-0.5d0)**2  ! in frame with origin at center of box
+!!$    
+!!$    dist_cell = sqrt(dist2)
+!!$    
+!!$    if ((dist_cell < r_outer) .and. (dist_cell > r_inner)) then ! cell in => nh=nhc(distcell)
+!!$       
+!!$       vx_ideal = fix_vel * (xcell_ideal-0.5d0) / r_outer
+!!$       vy_ideal = fix_vel * (ycell_ideal-0.5d0) / r_outer
+!!$       vz_ideal = fix_vel * (zcell_ideal-0.5d0) / r_outer
+!!$       volfrac2 = 1.0d0
+!!$       
+!!$       ! assign density, ndust
+!!$       rho      = fix_ndens *  (r_inner / dist_cell)**(rho_gamma) ! rho_gamma  = +2 for P+11 fiducial model
+!!$       nh_ideal = rho * volfrac2 !/ 2.0d0
+!!$       if (nh_ideal < 8.4711071d-10) then
+!!$          nh_ideal = 0.0d0
+!!$       endif
+!!$       if (nh_ideal > 3.3884432d-7) then
+!!$          nh_ideal = 3.3884432d-7
+!!$       endif
+!!$    endif
+!!$    
+!!$    if ((dist_cell > r_outer) .or. (dist_cell < r_inner)) then ! cell in => nh=nhc(distcell)
+!!$       vx_ideal  = 0.0d0
+!!$       vy_ideal  = 0.0d0
+!!$       vz_ideal  = 0.0d0
+!!$       nh_ideal  = 0.0d0
+!!$    end if
+!!$    
+!!$    ! Give all cells shell_temp (cells not in sphere won't matter for RT as rho = 0...)
+!!$    ! choose Mg or Si etc....
+!!$    ! dopwidth_ideal = sqrt((2.0d0*kb/mMg)*fix_temp) 
+!!$    dopwidth_ideal = 15.0d5 ! cm/s - bturb = 15km/s
+!!$    
+!!$    return
+!!$    
+!!$  end subroutine sphere_prochaska11
+!!$
+!!$  
+    
   !!+++++++++++++++++++++++++++++ SPHERE a la Scarlata+15 : Velocity gradient and ct outflow rate (=>rho(r)) ++++++++++++++++++++++++++++++++++++++
   
   subroutine sphere_scarlata15(vx_ideal,vy_ideal,vz_ideal,nh_ideal,dopwidth_ideal,xcell_ideal,ycell_ideal,zcell_ideal,dx_cell)
@@ -272,7 +469,7 @@ contains
     end if
  
  ! Give all cells shell_temp (cells not in sphere won't matter for RT as dnh = 0...)
- dopwidth_ideal = sqrt((2.0d0*kb/mp)*fix_temp) 
+    dopwidth_ideal = sqrt((2.0d0*kb/mp)*fix_temp) 
     
  return
  
@@ -1235,6 +1432,9 @@ contains
     max_dist      = sphere_radius
     min_dist      = 0.02d0
 
+    rmax  = max_dist
+    rmin  = min_dist
+    
     vx_mc = 0.0d0
     vy_mc = 0.0d0
     vz_mc = 0.0d0
@@ -1690,6 +1890,48 @@ contains
                 read(value,*) fix_box_size_cm
              end select
           end if
+          !! sphere_prochaska11 model
+          if (overwrite_model .eq. 'sphere_prochaska11') then
+             select case (trim(name))
+             case ('r_inner')
+                read(value,*) r_inner
+             case ('r_outer')
+                read(value,*) r_outer
+             case ('fix_temp')
+                read(value,*) fix_temp
+             case ('fix_ndust')
+                read(value,*) fix_ndust
+             case ('rho_gamma')
+                read(value,*) rho_gamma
+             case ('fix_ndens')
+                read(value,*) fix_ndens
+             case ('fix_vel')
+                read(value,*) fix_vel
+             case ('fix_box_size_cm')
+                read(value,*) fix_box_size_cm
+             end select
+          end if
+           !! sphere_prochaska11 model with steidel v prof
+          if (overwrite_model .eq. 'sphere_prochaska11_steidel') then
+             select case (trim(name))
+             case ('r_inner')
+                read(value,*) r_inner
+             case ('r_outer')
+                read(value,*) r_outer
+             case ('fix_temp')
+                read(value,*) fix_temp
+             case ('fix_ndust')
+                read(value,*) fix_ndust
+             case ('rho_gamma')
+                read(value,*) rho_gamma
+             case ('fix_ndens')
+                read(value,*) fix_ndens
+             case ('fix_vel')
+                read(value,*) fix_vel
+             case ('fix_box_size_cm')
+                read(value,*) fix_box_size_cm
+             end select
+          end if
           !! disc_thin model
           if (overwrite_model .eq. 'disc_thin') then
              select case (trim(name))
@@ -1842,6 +2084,14 @@ contains
           write(unit,'(a,ES10.3)') '  vel_gamma          = ',vel_gamma
           write(unit,'(a,ES10.3)') '  rho_rsf            = ',rho_rsf
           write(unit,'(a,ES10.3)') '  fix_vel            = ',fix_vel
+       case('sphere_prochaska11')
+          write(unit,'(a,ES10.3)') '  r_inner            = ',r_inner
+          write(unit,'(a,ES10.3)') '  r_outer            = ',r_outer
+          write(unit,'(a,ES10.3)') '  fix_temp           = ',fix_temp
+          write(unit,'(a,ES10.3)') '  fix_ndust          = ',fix_ndust
+          write(unit,'(a,ES10.3)') '  rho_gamma          = ',rho_gamma
+          write(unit,'(a,ES10.3)') '  fix_ndens          = ',fix_ndens
+          write(unit,'(a,ES10.3)') '  fix_vel            = ',fix_vel
        end select
        write(unit,'(a,ES10.3)')    '  fix_box_size_cm    = ',fix_box_size_cm
     else
@@ -1915,6 +2165,22 @@ contains
           write(*,'(a,ES10.3)') '  fix_temp           = ',fix_temp
           write(*,'(a,ES10.3)') '  fix_vel            = ',fix_vel
           write(*,'(a,ES10.3)') '  fix_taudust        = ',fix_taudust
+       case('sphere_scarlata15')
+          write(*,'(a,ES10.3)') '  rsf                = ',rsf
+          write(*,'(a,ES10.3)') '  rw                 = ',rw
+          write(*,'(a,ES10.3)') '  fix_temp           = ',fix_temp
+          write(*,'(a,ES10.3)') '  fix_taudust        = ',fix_taudust
+          write(*,'(a,ES10.3)') '  vel_gamma          = ',vel_gamma
+          write(*,'(a,ES10.3)') '  rho_rsf            = ',rho_rsf
+          write(*,'(a,ES10.3)') '  fix_vel            = ',fix_vel
+       case('sphere_prochaska11')
+          write(*,'(a,ES10.3)') '  r_inner            = ',r_inner
+          write(*,'(a,ES10.3)') '  r_outer            = ',r_outer
+          write(*,'(a,ES10.3)') '  fix_temp           = ',fix_temp
+          write(*,'(a,ES10.3)') '  fix_ndust          = ',fix_ndust
+          write(*,'(a,ES10.3)') '  rho_gamma          = ',rho_gamma
+          write(*,'(a,ES10.3)') '  fix_ndens          = ',fix_ndens
+          write(*,'(a,ES10.3)') '  fix_vel            = ',fix_vel
        end select
        write(*,'(a,ES10.3)') '  fix_box_size_cm    = ',fix_box_size_cm
     end if

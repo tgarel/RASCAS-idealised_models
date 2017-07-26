@@ -72,7 +72,7 @@ contains
        open(unit=15, file=trim(file), status='unknown', form='unformatted', action='write')
        write(15) nleaf
        do ileaf = 1,nleaf
-          write(15) x_leaf(ileaf,1),x_leaf(ileaf,2),x_leaf(ileaf,3),g(ileaf)%v(1),g(ileaf)%v(2),g(ileaf)%v(3),g(ileaf)%dopwidth,g(ileaf)%nhi
+          write(15) x_leaf(ileaf,1),x_leaf(ileaf,2),x_leaf(ileaf,3),g(ileaf)%v(1),g(ileaf)%v(2),g(ileaf)%v(3),g(ileaf)%dopwidth,g(ileaf)%nMgII
        end do
        close(15)
     else
@@ -94,7 +94,7 @@ contains
        g(:)%nMgII = nMgII(:)
        ! compute thermal velocity 
        ! ++++++ TURBULENT VELOCITY >>>>> parameter to add and use here
-       g(:)%dopwidth = sqrt(2.0d0*kb/mSi*T) ! [ cm/s ]
+       g(:)%dopwidth = sqrt(2.0d0*kb/mMg*T) ! [ cm/s ]
        deallocate(T,nMgII)
     end if
 
@@ -128,7 +128,7 @@ contains
        
 #ifdef DEBUG
        print*,'in overwrite_gas: allocated g?',shape(g)
-       print*,'in overwrite_gas: ',minval(g%nhi),maxval(g%nhi)
+       print*,'in overwrite_gas: ',minval(g%nMgII),maxval(g%nMgII)
        print*,'in overwrite_gas: ',minval(g%dopwidth),maxval(g%dopwidth)
        print*,'in overwrite_gas: ',minval(g%v),maxval(g%v)
        print*,'in overwrite_gas: ',box_size_cm

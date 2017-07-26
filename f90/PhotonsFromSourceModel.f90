@@ -41,7 +41,7 @@ program PhotonsFromSourceModel
   ! parameters for spec_type == 'PowLaw' : a power-law F_lambda = F_0 * (lambda/lambda_0)**beta  (with F_0 == 1)
   real(kind=8)              :: spec_powlaw_lmin_Ang = 1120.  ! min wavelength to sample (should be in the range where fit was made ...)
   real(kind=8)              :: spec_powlaw_lmax_Ang = 1320.  ! max ...
-  real(kind=8)              :: spec_powlaw_l0_Ang   = 1200   ! lambda_0 in the expression above [A]
+  real(kind=8)              :: spec_powlaw_l0_Ang   = 1200.  ! lambda_0 in the expression above [A]
   real(kind=8)              :: spec_powlaw_beta     = -2.3   ! beta in the expression above. 
   ! parameters for spec_type == 'Table'
   character(2000)           :: spec_table_file  = 'F1600.txt' ! file containing tabulated data from SEDs
@@ -293,7 +293,7 @@ contains
           write(unit,'(a,es9.3,a)')     '  spec_powlaw_lmin_Ang = ',spec_powlaw_lmin_Ang, ' ! [A]'
           write(unit,'(a,es9.3,a)')     '  spec_powlaw_lmax_Ang = ',spec_powlaw_lmax_Ang, ' ! [A]'
           write(unit,'(a,es9.3,a)')     '  spec_powlaw_l0_Ang   = ',spec_powlaw_l0_Ang, ' ! [A]'
-          write(unit,'(a,es9.3)')       '  spec_powlaw_beta     = ',spec_powlaw_beta
+          write(unit,'(a,es10.3)')      '  spec_powlaw_beta     = ',spec_powlaw_beta
        case('Table')
           write(unit,'(a,a)')           '  spec_table_file      = ',trim(spec_table_file)
           write(unit,'(a,es9.3,a)')     '  spec_table_age       = ',spec_table_age, ' ! [Myr]'
@@ -325,7 +325,7 @@ contains
           write(*,'(a,es9.3,a)')     '  spec_powlaw_lmin_Ang = ',spec_powlaw_lmin_Ang, ' ! [A]'
           write(*,'(a,es9.3,a)')     '  spec_powlaw_lmax_Ang = ',spec_powlaw_lmax_Ang, ' ! [A]'
           write(*,'(a,es9.3,a)')     '  spec_powlaw_l0_Ang   = ',spec_powlaw_l0_Ang, ' ! [A]'
-          write(*,'(a,es9.3)')       '  spec_powlaw_beta     = ',spec_powlaw_beta
+          write(*,'(a,es10.3)')      '  spec_powlaw_beta     = ',spec_powlaw_beta
        case('Table')
           write(*,'(a,a)')           '  spec_table_file      = ',trim(spec_table_file)
           write(*,'(a,es9.3,a)')     '  spec_table_age       = ',spec_table_age, ' ! [Myr]'

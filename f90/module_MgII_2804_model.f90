@@ -19,12 +19,12 @@ module module_MgII_2804_model
   ! level 2 is 2p^6 3p 2P 1/2
 
   ! transition between levels 2 and 1
-  real(kind=8),parameter :: lambda12       = 2803.53d0                ! transition wavelength [A]
+  real(kind=8),parameter :: lambda12       = 2803.528d0 ! 2803.53d0                ! transition wavelength [A]
   real(kind=8),parameter :: lambda12_cm    = lambda12 / cmtoA         ! [cm]
   real(kind=8),parameter :: nu12           = clight / lambda12_cm     ! [Hz]
   real(kind=8),parameter :: f12            = 0.303d0                  ! oscillator strength
   real(kind=8),parameter :: sigma12_factor = pi*e_ch**2*f12/me/clight ! multiply by Voigt(x,a)/nu_D to get sigma.
-  real(kind=8),parameter :: A21            = 2.57d8                   ! spontaneous decay [/s]
+  real(kind=8),parameter :: A21            = 2.60d8 ! 2.57d8                   ! spontaneous decay [/s]
 
   public :: get_tau_MgII_2804, scatter_MgII_2804
 
