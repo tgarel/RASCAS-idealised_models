@@ -189,7 +189,7 @@ contains
        call cpu_time(time_now)
        dt_since_last_backup = time_now - time_last_backup
        if(dt_since_last_backup > dt_backup)then
-          call backup_run
+          !call backup_run
           time_last_backup = time_now
        endif
 
