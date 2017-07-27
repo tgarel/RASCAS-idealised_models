@@ -1,10 +1,10 @@
 #############################################################################
 # Fortran compiler options and directives
 
-#SYSTYPE="CCF"
+SYSTYPE="CCF"
 #SYSTYPE="lyocral"
 #SYSTYPE="lyocralP"
-SYSTYPE="mac"
+#SYSTYPE="mac"
 #SYSTYPE="macP"
 #SYSTYPE="ccage"
 
@@ -76,11 +76,11 @@ endif
 
 # choose the gas mix you want to use
 # 1/ HI, D, and dust
-COMPOBJS = module_dust_model.o module_D_model.o module_HI_model.o module_gas_composition_HI_D_dust.o
+#COMPOBJS = module_dust_model.o module_D_model.o module_HI_model.o module_gas_composition_HI_D_dust.o
 # 2/ HI and dust
 #COMPOBJS = module_dust_model.o module_HI_model.o module_gas_composition_HI_dust.o
 # 3/ pure HI
-#COMPOBJS = module_HI_model.o module_gas_composition_HI.o
+COMPOBJS = module_HI_model.o module_gas_composition_HI.o
 # 4/ pure RAMSES hydro variables
 #COMPOBJS = module_gas_composition_ramses.o
 # 5/ SiII
