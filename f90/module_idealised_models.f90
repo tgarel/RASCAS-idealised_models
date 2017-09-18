@@ -36,19 +36,19 @@ module module_idealised_models
   real(kind=8)             :: rsf       = -0.1
   real(kind=8)             :: rw        = -0.4
   real(kind=8)             :: vel_gamma = -999.0d0
-  real(kind=8)             :: rho_rsf   = -999.0d0
 
   !! Prochaska models
   real(kind=8)             :: r_inner   = -0.1
   real(kind=8)             :: r_outer   = -0.4
   real(kind=8)             :: rho_gamma = -999.0d0
+  
   real(kind=8)             :: fix_ndens = -999.0d0
   
   ! miscelaneous
   logical                  :: verbose             = .false.       ! display some run-time info on this module
   
   ! public functions:
-  public :: read_overwrite_params, print_overwrite_params, disc_thin, disc_thick, sphere_homogen_velfix, sphere_homogen_velgrad, sphere_densgrad_velfix, sphere_densgrad_velgrad, shell_homogen_velfix, sphere_homogen_steidel, sphere_homogen_velgrad_ct_outflow_rate, sphere_homogen_velgrad_rad_pressure, sphere_scarlata15, sphere_prochaska11
+  public :: read_overwrite_params, print_overwrite_params, disc_thin, disc_thick, sphere_homogen_velfix, sphere_homogen_velgrad, sphere_densgrad_velfix, sphere_densgrad_velgrad, shell_homogen_velfix, sphere_homogen_steidel, sphere_homogen_velgrad_ct_outflow_rate, sphere_homogen_velgrad_rad_pressure, sphere_scarlata15, sphere_prochaska11, sphere_homogen_steidel_ndens,disc_thin_vcirc
   
   
 contains
@@ -263,7 +263,7 @@ contains
     ! assign density, ndust
     rho      = fix_ndens *  (r_inner / dist_cell)**(rho_gamma) ! rho_gamma  = +2 for P+11 fiducial model
     nh_ideal = rho * volfrac2 
-    nh_ideal = nh_ideal / 2.0d0 ! corr P11 value...
+    !nh_ideal = nh_ideal ! corr P11 value...
     
     if (dist_cell_min > r_outer .or. dist_cell_max < r_inner) then  ! cell completely out of sphere or completely within r_inner                                                       
        vx_ideal  = 0.0d0
@@ -360,7 +360,7 @@ contains
     
   !!+++++++++++++++++++++++++++++ SPHERE a la Scarlata+15 : Velocity gradient and ct outflow rate (=>rho(r)) ++++++++++++++++++++++++++++++++++++++
   
-  subroutine sphere_scarlata15(vx_ideal,vy_ideal,vz_ideal,nh_ideal,dopwidth_ideal,xcell_ideal,ycell_ideal,zcell_ideal,dx_cell)
+  subroutine sphere_scarlata15(vx_ideal,vy_ideal,vz_ideal,nh_ideal,dopwidth_ideal,xcell_ideal,ycell_ideal,zcell_ideal,dx_cell,ndust_ideal)
     
     implicit none
 
@@ -373,7 +373,7 @@ contains
     real(kind=8)                   :: vx_mc,vy_mc,vz_mc
     real(kind=8)                   :: xcell_ideal,ycell_ideal,zcell_ideal
     real(kind=8)                   :: xmin,xmax,xmc,ymin,ymax,ymc,zmin,zmax,zmc
-    real(kind=8),intent(inout)     :: nh_ideal,vx_ideal,vy_ideal,vz_ideal,dopwidth_ideal
+    real(kind=8),intent(inout)     :: nh_ideal,vx_ideal,vy_ideal,vz_ideal,dopwidth_ideal,ndust_ideal
     real(kind=8)                   :: r
     integer(kind=4)                :: localseed
     real(kind=8)                   :: rho
@@ -431,9 +431,9 @@ contains
           if (dist_mc < rw .and. dist_mc > rsf) then ! point within sphere
              volfrac = volfrac + 1.0d0
              ! fix_vel = V0 from S+15
-             vx_mc = vx_mc + fix_vel * (xmc - 0.5d0) / rw 
-             vy_mc = vy_mc + fix_vel * (ymc - 0.5d0) / rw
-             vz_mc = vz_mc + fix_vel * (zmc - 0.5d0) / rw
+             vx_mc = vx_mc + fix_vel * (xmc - 0.5d0) / rsf
+             vy_mc = vy_mc + fix_vel * (ymc - 0.5d0) / rsf
+             vz_mc = vz_mc + fix_vel * (zmc - 0.5d0) / rsf
              dist_cell_mc = dist_cell_mc + dist_mc
           end if
           nMC = nMC + 1
@@ -451,14 +451,14 @@ contains
        
     end if
     if (dist_cell_max < rw .and. dist_cell_min > rsf) then ! cell completely within sphere
-       vx_ideal = fix_vel * (xcell_ideal-0.5d0) / rw
-       vy_ideal = fix_vel * (ycell_ideal-0.5d0) / rw
-       vz_ideal = fix_vel * (zcell_ideal-0.5d0) / rw
+       vx_ideal = fix_vel * (xcell_ideal-0.5d0) / rsf
+       vy_ideal = fix_vel * (ycell_ideal-0.5d0) / rsf
+       vz_ideal = fix_vel * (zcell_ideal-0.5d0) / rsf
        volfrac2 = 1.0
     end if
     
     ! assign density, ndust
-    rho      = rho_rsf *  (dist_cell / rsf)**(-vel_gamma-2.)
+    rho      = fix_ndens *  (dist_cell / rsf)**(-vel_gamma-2.)
     nh_ideal = rho * volfrac2
  
     if (dist_cell_min > rw .or. dist_cell_max < rsf) then  ! cell completely out of sphere or completely within Rsf                                                       
@@ -469,7 +469,7 @@ contains
     end if
  
  ! Give all cells shell_temp (cells not in sphere won't matter for RT as dnh = 0...)
-    dopwidth_ideal = sqrt((2.0d0*kb/mp)*fix_temp) 
+    dopwidth_ideal = 1.0d5 ! cm/s <=> 1km/s... ~dirac ! sqrt((2.0d0*kb/mp)*fix_temp) 
     
  return
  
@@ -479,7 +479,7 @@ contains
   
   !!+++++++++++++++++++++++++++++ THIN DISC ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
   
-   subroutine disc_thin(vx_ideal,vy_ideal,vz_ideal,nh_ideal,dopwidth_ideal,xcell_ideal,ycell_ideal,zcell_ideal,dx_cell)
+   subroutine disc_thin(vx_ideal,vy_ideal,vz_ideal,nh_ideal,dopwidth_ideal,xcell_ideal,ycell_ideal,zcell_ideal,dx_cell,ndust_ideal)
 
     implicit none
     
@@ -490,7 +490,7 @@ contains
     real(kind=8)                   :: vx_mc,vy_mc,vz_mc
     real(kind=8)                   :: xcell_ideal,ycell_ideal,zcell_ideal
     real(kind=8)                   :: xmin,xmax,xmc,ymin,ymax,ymc,zmin,zmax,zmc
-    real(kind=8),intent(inout)     :: nh_ideal,vx_ideal,vy_ideal,vz_ideal,dopwidth_ideal
+    real(kind=8),intent(inout)     :: nh_ideal,vx_ideal,vy_ideal,vz_ideal,dopwidth_ideal,ndust_ideal
     real(kind=8)                   :: r
     integer(kind=4)                :: localseed
     real(kind=8)                   :: max_dist, dist_cell_mc
@@ -611,9 +611,9 @@ contains
      
   end subroutine disc_thin
 
-  !!+++++++++++++++++++++++++++++ THICK DISC ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+   !!+++++++++++++++++++++++++++++ THIN DISC with circular velocity ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
   
-  subroutine disc_thick(vx_ideal,vy_ideal,vz_ideal,nh_ideal,dopwidth_ideal,xcell_ideal,ycell_ideal,zcell_ideal,dx_cell)
+   subroutine disc_thin_vcirc(vx_ideal,vy_ideal,vz_ideal,nh_ideal,dopwidth_ideal,xcell_ideal,ycell_ideal,zcell_ideal,dx_cell,ndust_ideal)
 
     implicit none
     
@@ -624,7 +624,137 @@ contains
     real(kind=8)                   :: vx_mc,vy_mc,vz_mc
     real(kind=8)                   :: xcell_ideal,ycell_ideal,zcell_ideal
     real(kind=8)                   :: xmin,xmax,xmc,ymin,ymax,ymc,zmin,zmax,zmc
-    real(kind=8),intent(inout)     :: nh_ideal,vx_ideal,vy_ideal,vz_ideal,dopwidth_ideal
+    real(kind=8),intent(inout)     :: nh_ideal,vx_ideal,vy_ideal,vz_ideal,dopwidth_ideal,ndust_ideal
+    real(kind=8)                   :: r
+    integer(kind=4)                :: localseed
+    real(kind=8)                   :: max_dist, dist_cell_mc
+    real(kind=8),parameter         :: msun_to_gram  = 1.9891d33 ! g
+    real(kind=8),parameter         :: gram_to_atoms = 1.673534d-24 ! Hydrogen mass in g
+    real(kind=8)                   :: Sigma0, dz, rdisc_max , logSigma0, log_mtot, cosphi2
+
+
+    ! fix_mtot_hi = fix_mtot_hi * msun_to_gram
+    ! fix_mtot_hi = fix_mtot_hi / gram_to_atoms    ! Number of HI atoms
+    ! in log10
+    log_mtot = log10(fix_mtot_hi) + log10(msun_to_gram) - log10(gram_to_atoms)    ! Msun -> g -> atoms
+   
+    dz          = dx_cell                        ! thickness of disc = size of cell
+    rdisc_max   = 0.45d0                         ! rdisc_max*fix_box_size_cm should be equal to the HI radius measured for LARS object
+    max_dist    = rdisc_max
+    vx_mc       = 0.0d0
+    vy_mc       = 0.0d0
+    vz_mc       = 0.0d0
+    nh_ideal    = 0.d0
+    dist_cell_mc = 0.0d0
+
+    !Sigma0    = fix_mtot_hi / 2.d0 / pi / (fix_rd_disc * fix_box_size_cm)**2 ! atoms/cm^2 - Central HI surface density
+    !! in log10
+    logSigma0  = log_mtot - log10(2.d0) - log10(pi) - 2.d0 * log10(fix_rd_disc * fix_box_size_cm)
+    Sigma0    = 10.d0**logSigma0
+        
+    ! Select only cells which are exactly in the z=0 plane. Others cells have nh_ideal=0.d0 (from initialization)
+    if (abs(zcell_ideal-0.5d0) .lt. 0.5*dz) then !  if (abs(zcell_ideal-0.5d0) .eq. 0.d0) should also work
+       
+       ! Then, I should now have only cells with (zcell_ideal-0.5d0)=0
+       dist2 = 0.0d0
+       dist2 = (xcell_ideal-0.5d0)**2 + (ycell_ideal-0.5d0)**2 ! squared distance of cell from center in xy plane
+       
+       dist_cell = sqrt(dist2)
+       dist_cell_max = dist_cell + dx_cell / sqrt(2.0d0) ! dx_cell / sqrt(2.0) is half the longest length in a square
+       dist_cell_min = dist_cell - dx_cell / sqrt(2.0d0) 
+       if (dist_cell_min > max_dist) then  ! cell completely out of disc 
+          vx_ideal  = 0.0d0
+          vy_ideal  = 0.0d0
+          vz_ideal  = 0.0d0
+          nh_ideal  = 0.0d0
+       else
+          ! bounds of cell
+          xmin = xcell_ideal - 0.5d0*dx_cell 
+          xmax = xcell_ideal + 0.5d0*dx_cell
+          ymin = ycell_ideal - 0.5d0*dx_cell 
+          ymax = ycell_ideal + 0.5d0*dx_cell
+          zmin = zcell_ideal - 0.5d0*dx_cell 
+          zmax = zcell_ideal + 0.5d0*dx_cell
+          
+          ! use Monte Carlo to compute density of cell
+          volfrac = 0.0d0
+          nMC = 0
+          do while(volfrac .lt. 1000.d0)
+             if (volfrac .lt. 1.d0 .and. nMC .eq. 100) then
+                exit
+             end if
+             r   = ran3(localseed)
+             xmc = r * dx_cell + xmin
+             r   = ran3(localseed)
+             ymc = r * dx_cell + ymin
+             r   = ran3(localseed)
+             zmc = r * dx_cell + zmin
+             ! test if point is in the disc
+             dist_mc2 = 0.0d0
+             dist_mc2 = (xmc-0.5d0)**2 + (ymc-0.5d0)**2 + (zmc-0.5d0)**2
+             dist_mc  = sqrt(dist_mc2)
+             cosphi2  = 0.0d0
+             if (dist_mc < max_dist) then ! point within sphere
+                volfrac = volfrac + 1.0d0
+                cosphi2 = xmc*xmc / (xmc*xmc + ymc*ymc)
+                vx_mc = vx_mc - fix_vel * sqrt(1.0d0 - cosphi2) 
+                vy_mc = vy_mc + fix_vel * sqrt(cosphi2)
+               ! vz_mc = vz_mc + fix_vel * (zmc - 0.5d0) / dist_mc ! no z vel 
+                dist_cell_mc = dist_cell_mc + dist_mc
+             end if
+             nMC = nMC + 1
+          end do
+          
+          volfrac2 = volfrac / dble(nMC)
+          
+          if(volfrac .ne. 0) then
+             ! Velocity
+             vx_ideal = vx_mc / volfrac
+             vy_ideal = vy_mc / volfrac
+             !vz_ideal = vz_mc / volfrac
+             ! redefine dist_cell as mean of dist_mc
+             dist_cell = dist_cell_mc / volfrac
+          end if
+
+          vz_ideal = 0.0d0 ! no z vel 
+          
+          ! assign density, ndust
+          nh_ideal = Sigma0 / (dz * fix_box_size_cm) * exp(-dist_cell/fix_rd_disc) * volfrac2 ! atoms/cm^3
+          
+          if(volfrac2 .gt. 1.0d0) then
+             print*,volfrac2,volfrac,nMC
+             stop
+          endif
+       end if
+    else
+       vx_ideal  = 0.0d0
+       vy_ideal  = 0.0d0
+       vz_ideal  = 0.0d0
+       nh_ideal  = 0.0d0
+    end if
+    
+    ! Give all cells shell_temp (cells not in sphere won't matter for RT as dnh = 0...)
+    dopwidth_ideal = sqrt((2.0d0*kb/mp)*fix_temp) 
+    
+    return
+    
+  end subroutine disc_thin_vcirc
+  
+  
+  !!+++++++++++++++++++++++++++++ THICK DISC ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+  
+  subroutine disc_thick(vx_ideal,vy_ideal,vz_ideal,nh_ideal,dopwidth_ideal,xcell_ideal,ycell_ideal,zcell_ideal,dx_cell,ndust_ideal)
+
+    implicit none
+    
+    integer(kind=4)                :: nMC
+    real(kind=8)                   :: dx_cell     ! Cell size
+    real(kind=8)                   :: volfrac,volfrac2
+    real(kind=8)                   :: dist_cell,dist_cell_min,dist_cell_max,dist2,dist_mc2,dist_mc
+    real(kind=8)                   :: vx_mc,vy_mc,vz_mc
+    real(kind=8)                   :: xcell_ideal,ycell_ideal,zcell_ideal
+    real(kind=8)                   :: xmin,xmax,xmc,ymin,ymax,ymc,zmin,zmax,zmc
+    real(kind=8),intent(inout)     :: nh_ideal,vx_ideal,vy_ideal,vz_ideal,dopwidth_ideal,ndust_ideal
     real(kind=8)                   :: r
     integer(kind=4)                :: localseed
     real(kind=8)                   :: max_dist, dist_cell_mc
@@ -740,7 +870,7 @@ contains
   
  !!+++++++++++++++++++++++++++++ HOMOGEN SHELL with Fixed Velocity ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
   
-  subroutine shell_homogen_velfix(vx_ideal,vy_ideal,vz_ideal,nh_ideal,dopwidth_ideal,xcell_ideal,ycell_ideal,zcell_ideal,dx_cell)
+  subroutine shell_homogen_velfix(vx_ideal,vy_ideal,vz_ideal,nh_ideal,dopwidth_ideal,xcell_ideal,ycell_ideal,zcell_ideal,dx_cell,ndust_ideal)
     
     implicit none
     
@@ -751,7 +881,7 @@ contains
     real(kind=8)                   :: vx_mc,vy_mc,vz_mc
     real(kind=8)                   :: xcell_ideal,ycell_ideal,zcell_ideal
     real(kind=8)                   :: xmin,xmax,xmc,ymin,ymax,ymc,zmin,zmax,zmc
-    real(kind=8),intent(inout)     :: nh_ideal,vx_ideal,vy_ideal,vz_ideal,dopwidth_ideal
+    real(kind=8),intent(inout)     :: nh_ideal,vx_ideal,vy_ideal,vz_ideal,dopwidth_ideal,ndust_ideal
     real(kind=8)                   :: r
     integer(kind=4)                :: localseed
     real(kind=8)                   :: sphere_radius,rho
@@ -846,7 +976,7 @@ contains
   
   !!+++++++++++++++++++++++++++++ HOMOGEN SPHERE with Fixed Velocity ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
   
-  subroutine sphere_homogen_velfix(vx_ideal,vy_ideal,vz_ideal,nh_ideal,dopwidth_ideal,xcell_ideal,ycell_ideal,zcell_ideal,dx_cell)
+  subroutine sphere_homogen_velfix(vx_ideal,vy_ideal,vz_ideal,nh_ideal,dopwidth_ideal,xcell_ideal,ycell_ideal,zcell_ideal,dx_cell,ndust_ideal)
     
     implicit none
     
@@ -857,7 +987,7 @@ contains
     real(kind=8)                   :: vx_mc,vy_mc,vz_mc
     real(kind=8)                   :: xcell_ideal,ycell_ideal,zcell_ideal
     real(kind=8)                   :: xmin,xmax,xmc,ymin,ymax,ymc,zmin,zmax,zmc
-    real(kind=8),intent(inout)     :: nh_ideal,vx_ideal,vy_ideal,vz_ideal,dopwidth_ideal
+    real(kind=8),intent(inout)     :: nh_ideal,vx_ideal,vy_ideal,vz_ideal,dopwidth_ideal,ndust_ideal
     real(kind=8)                   :: r
     integer(kind=4)                :: localseed
     real(kind=8)                   :: sphere_radius,rho
@@ -955,7 +1085,7 @@ contains
 
   !!+++++++++++++++++++++++++++++ HOMOGEN SPHERE with Velocity gradient ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-  subroutine sphere_homogen_velgrad(vx_ideal,vy_ideal,vz_ideal,nh_ideal,dopwidth_ideal,xcell_ideal,ycell_ideal,zcell_ideal,dx_cell)
+  subroutine sphere_homogen_velgrad(vx_ideal,vy_ideal,vz_ideal,nh_ideal,dopwidth_ideal,xcell_ideal,ycell_ideal,zcell_ideal,dx_cell,ndust_ideal)
 
     implicit none
     
@@ -966,7 +1096,7 @@ contains
     real(kind=8)                   :: vx_mc,vy_mc,vz_mc
     real(kind=8)                   :: xcell_ideal,ycell_ideal,zcell_ideal
     real(kind=8)                   :: xmin,xmax,xmc,ymin,ymax,ymc,zmin,zmax,zmc
-    real(kind=8),intent(inout)     :: nh_ideal,vx_ideal,vy_ideal,vz_ideal,dopwidth_ideal
+    real(kind=8),intent(inout)     :: nh_ideal,vx_ideal,vy_ideal,vz_ideal,dopwidth_ideal,ndust_ideal
     real(kind=8)                   :: r
     integer(kind=4)                :: localseed
     real(kind=8)                   :: sphere_radius,rho
@@ -1061,7 +1191,7 @@ contains
 
  !!+++++++++++++++++++++++++++++ SPHERE with Velocity gradient and ct outflow rate (=>rho(r)) ++++++++++++++++++++++++++++++++++++++
 
-  subroutine sphere_homogen_velgrad_ct_outflow_rate(vx_ideal,vy_ideal,vz_ideal,nh_ideal,dopwidth_ideal,xcell_ideal,ycell_ideal,zcell_ideal,dx_cell)
+  subroutine sphere_homogen_velgrad_ct_outflow_rate(vx_ideal,vy_ideal,vz_ideal,nh_ideal,dopwidth_ideal,xcell_ideal,ycell_ideal,zcell_ideal,dx_cell,ndust_ideal)
 
     implicit none
     
@@ -1072,7 +1202,7 @@ contains
     real(kind=8)                   :: vx_mc,vy_mc,vz_mc
     real(kind=8)                   :: xcell_ideal,ycell_ideal,zcell_ideal
     real(kind=8)                   :: xmin,xmax,xmc,ymin,ymax,ymc,zmin,zmax,zmc
-    real(kind=8),intent(inout)     :: nh_ideal,vx_ideal,vy_ideal,vz_ideal,dopwidth_ideal
+    real(kind=8),intent(inout)     :: nh_ideal,vx_ideal,vy_ideal,vz_ideal,dopwidth_ideal,ndust_ideal
     real(kind=8)                   :: r
     integer(kind=4)                :: localseed
     real(kind=8)                   :: sphere_radius,rho
@@ -1172,7 +1302,7 @@ contains
 
 !!+++++++++++++++++++++++++++++ SPHERE with Velocity gradient from Steidel10 ++++++++++++++++++++++++++++++++++++++
 
-  subroutine sphere_homogen_steidel(vx_ideal,vy_ideal,vz_ideal,nh_ideal,dopwidth_ideal,xcell_ideal,ycell_ideal,zcell_ideal,dx_cell)
+  subroutine sphere_homogen_steidel(vx_ideal,vy_ideal,vz_ideal,nh_ideal,dopwidth_ideal,xcell_ideal,ycell_ideal,zcell_ideal,dx_cell,ndust_ideal)
 
     implicit none
     
@@ -1183,7 +1313,7 @@ contains
     real(kind=8)                   :: vx_mc,vy_mc,vz_mc
     real(kind=8)                   :: xcell_ideal,ycell_ideal,zcell_ideal
     real(kind=8)                   :: xmin,xmax,xmc,ymin,ymax,ymc,zmin,zmax,zmc
-    real(kind=8),intent(inout)     :: nh_ideal,vx_ideal,vy_ideal,vz_ideal,dopwidth_ideal
+    real(kind=8),intent(inout)     :: nh_ideal,vx_ideal,vy_ideal,vz_ideal,dopwidth_ideal,ndust_ideal
     real(kind=8)                   :: r
     integer(kind=4)                :: localseed
     real(kind=8)                   :: sphere_radius,rho
@@ -1282,9 +1412,9 @@ contains
     
   end subroutine sphere_homogen_steidel
 
-  !!+++++++++++++++++++++++++++++ HOMOGEN SPHERE + radiation pressure feedback ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+  !!+++++++++++++++++++++++++++++ SPHERE with Velocity gradient from Steidel10 parametrised in density ++++++++++++++++++++++++++++++++++++++
 
-  subroutine sphere_homogen_velgrad_rad_pressure(vx_ideal,vy_ideal,vz_ideal,nh_ideal,dopwidth_ideal,xcell_ideal,ycell_ideal,zcell_ideal,dx_cell)
+  subroutine sphere_homogen_steidel_ndens(vx_ideal,vy_ideal,vz_ideal,nh_ideal,dopwidth_ideal,xcell_ideal,ycell_ideal,zcell_ideal,dx_cell,ndust_ideal)
 
     implicit none
     
@@ -1295,7 +1425,124 @@ contains
     real(kind=8)                   :: vx_mc,vy_mc,vz_mc
     real(kind=8)                   :: xcell_ideal,ycell_ideal,zcell_ideal
     real(kind=8)                   :: xmin,xmax,xmc,ymin,ymax,ymc,zmin,zmax,zmc
-    real(kind=8),intent(inout)     :: nh_ideal,vx_ideal,vy_ideal,vz_ideal,dopwidth_ideal
+    real(kind=8),intent(inout)     :: nh_ideal,vx_ideal,vy_ideal,vz_ideal,dopwidth_ideal,ndust_ideal
+    real(kind=8)                   :: r
+    integer(kind=4)                :: localseed
+    real(kind=8)                   :: sphere_radius,rho
+    real(kind=8)                   :: max_dist, min_dist, rmin, rmax, dist_cell_mc
+
+    !! Here V=0 and rho=0 at r < min_dist
+    
+    vx_mc = 0.0d0
+    vy_mc = 0.0d0
+    vz_mc = 0.0d0
+    dist2 = 0.0d0
+    dist_cell_mc = 0.0d0
+    
+    ! xcell, ycell and zcell are in frame with origin at bottom-left corner of box
+    dist2 = (xcell_ideal-0.5d0)**2 + (ycell_ideal-0.5d0)**2 + (zcell_ideal-0.5d0)**2  ! in frame with origin at center of box
+
+    dist_cell = sqrt(dist2)
+    dist_cell_max = dist_cell + dx_cell * sqrt(3.0d0) / 2.0d0 ! dx_cell * sqrt(3.0) / 2. is half the longest length in a cube
+    dist_cell_min = dist_cell - dx_cell * sqrt(3.0d0) / 2.0d0 ! dx_cell * sqrt(3.0) / 2. is half the longest length in a cube
+    
+    if ((dist_cell_max > r_outer .and. dist_cell_min < r_outer) .or. (dist_cell_max > r_inner .and. dist_cell_min < r_inner)) then ! cell partially within sphere
+       ! bounds of cell
+       xmin = xcell_ideal - 0.5d0*dx_cell 
+       xmax = xcell_ideal + 0.5d0*dx_cell
+       ymin = ycell_ideal - 0.5d0*dx_cell 
+       ymax = ycell_ideal + 0.5d0*dx_cell
+       zmin = zcell_ideal - 0.5d0*dx_cell 
+       zmax = zcell_ideal + 0.5d0*dx_cell
+       
+       ! use Monte Carlo to compute density of cell (i.e. fraction of its volume within the sphere)
+       volfrac = 0.0d0
+       nMC = 0
+       do while(volfrac .lt. 1000.d0)
+          if (volfrac .lt. 1.d0 .and. nMC .eq. 100) then
+             exit
+          end if
+          r = ran3(localseed)
+          xmc = r * dx_cell + xmin
+          r = ran3(localseed)
+          ymc = r * dx_cell + ymin
+          r = ran3(localseed)
+          zmc = r * dx_cell + zmin
+          dist_mc2 = 0.0d0
+          dist_mc2 = (xmc-0.5d0)**2 + (ymc-0.5d0)**2 + (zmc-0.5d0)**2
+          dist_mc = sqrt(dist_mc2)
+          if (dist_mc < r_outer .and. dist_mc > r_inner) then ! point within sphere
+             volfrac = volfrac + 1.0d0
+             vx_mc = vx_mc + fix_vel * sqrt((r_inner**(1.-vel_alpha)-dist_mc**(1.-vel_alpha)) / (r_inner**(1.-vel_alpha)-r_outer**(1.-vel_alpha))) * (xmc - 0.5d0) / dist_mc
+             vy_mc = vy_mc + fix_vel * sqrt((r_inner**(1.-vel_alpha)-dist_mc**(1.-vel_alpha)) / (r_inner**(1.-vel_alpha)-r_outer**(1.-vel_alpha))) * (ymc - 0.5d0) / dist_mc
+             vz_mc = vz_mc + fix_vel * sqrt((r_inner**(1.-vel_alpha)-dist_mc**(1.-vel_alpha)) / (r_inner**(1.-vel_alpha)-r_outer**(1.-vel_alpha))) * (zmc - 0.5d0) / dist_mc
+             dist_cell_mc = dist_cell_mc + dist_mc
+          end if
+          nMC = nMC + 1
+       end do
+       
+       if(volfrac .ne. 0) then
+          ! Velocity
+          vx_ideal = vx_mc / volfrac
+          vy_ideal = vy_mc / volfrac
+          vz_ideal = vz_mc / volfrac
+          ! redefine dist_cell as mean of dist_mc
+          dist_cell = dist_cell_mc / volfrac
+       end if
+       
+       volfrac2 = volfrac / dble(nMC)
+       
+    endif
+    if (dist_cell_max < r_outer .and. dist_cell_min > r_inner) then ! cell completely within sphere
+       vx_ideal = fix_vel * sqrt((r_inner**(1.-vel_alpha)-dist_cell**(1.-vel_alpha)) / (r_inner**(1.-vel_alpha)-r_outer**(1.-vel_alpha))) * (xcell_ideal - 0.5d0) / dist_cell
+       vy_ideal = fix_vel * sqrt((r_inner**(1.-vel_alpha)-dist_cell**(1.-vel_alpha)) / (r_inner**(1.-vel_alpha)-r_outer**(1.-vel_alpha))) * (ycell_ideal - 0.5d0) / dist_cell
+       vz_ideal = fix_vel * sqrt((r_inner**(1.-vel_alpha)-dist_cell**(1.-vel_alpha)) / (r_inner**(1.-vel_alpha)-r_outer**(1.-vel_alpha))) * (zcell_ideal - 0.5d0) / dist_cell
+       volfrac2 = 1.0
+    end if
+    
+    ! assign density, ndust
+    ! If uniform density
+!!$    rho      = fix_ndens   
+!!$    nh_ideal = rho * volfrac2
+    ! P11 fiducial model density
+    rho      = fix_ndens *  (r_inner / dist_cell)**(rho_gamma) ! rho_gamma  = +2 for P+11 fiducial model
+    nh_ideal = rho * volfrac2 
+    nh_ideal = nh_ideal
+    
+    if (dist_cell_min > r_outer .or. dist_cell_max < r_inner) then  ! cell completely out of sphere or completely within r_inner
+       vx_ideal  = 0.0d0
+       vy_ideal  = 0.0d0
+       vz_ideal  = 0.0d0
+       nh_ideal  = 0.0d0
+    end if
+    
+   ! dopwidth_ideal = sqrt((2.0d0*kb/mp)*fix_temp) 
+    dopwidth_ideal = 15.0d5 ! cm/s - bturb = 15km/s
+
+    ! dust a la laursen...
+    ndust_ideal = fix_ndust * nh_ideal / fix_ndens
+
+!!$    print*,vx_ideal,vy_ideal,vz_ideal
+!!$    print*,r_outer,r_inner,vel_alpha,fix_vel
+
+    return
+    
+  end subroutine sphere_homogen_steidel_ndens
+  
+  !!+++++++++++++++++++++++++++++ HOMOGEN SPHERE + radiation pressure feedback ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+  subroutine sphere_homogen_velgrad_rad_pressure(vx_ideal,vy_ideal,vz_ideal,nh_ideal,dopwidth_ideal,xcell_ideal,ycell_ideal,zcell_ideal,dx_cell,ndust_ideal)
+
+    implicit none
+    
+    integer(kind=4)                :: nMC
+    real(kind=8)                   :: dx_cell     ! Cell size
+    real(kind=8)                   :: volfrac,volfrac2
+    real(kind=8)                   :: dist_cell,dist_cell_min,dist_cell_max,dist2,dist_mc2,dist_mc
+    real(kind=8)                   :: vx_mc,vy_mc,vz_mc
+    real(kind=8)                   :: xcell_ideal,ycell_ideal,zcell_ideal
+    real(kind=8)                   :: xmin,xmax,xmc,ymin,ymax,ymc,zmin,zmax,zmc
+    real(kind=8),intent(inout)     :: nh_ideal,vx_ideal,vy_ideal,vz_ideal,dopwidth_ideal,ndust_ideal
     real(kind=8)                   :: r
     integer(kind=4)                :: localseed
     real(kind=8)                   :: sphere_radius,rho
@@ -1407,7 +1654,7 @@ contains
   
   !!+++++++++++++++++++++++++++++ SPHERE with density gradient & fixed velocity ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-  subroutine sphere_densgrad_velfix(vx_ideal,vy_ideal,vz_ideal,nh_ideal,dopwidth_ideal,xcell_ideal,ycell_ideal,zcell_ideal,dx_cell)
+  subroutine sphere_densgrad_velfix(vx_ideal,vy_ideal,vz_ideal,nh_ideal,dopwidth_ideal,xcell_ideal,ycell_ideal,zcell_ideal,dx_cell,ndust_ideal)
 
     implicit none
 
@@ -1420,7 +1667,7 @@ contains
     real(kind=8)                   :: vx_mc,vy_mc,vz_mc
     real(kind=8)                   :: xcell_ideal,ycell_ideal,zcell_ideal
     real(kind=8)                   :: xmin,xmax,xmc,ymin,ymax,ymc,zmin,zmax,zmc
-    real(kind=8),intent(inout)     :: nh_ideal,vx_ideal,vy_ideal,vz_ideal,dopwidth_ideal
+    real(kind=8),intent(inout)     :: nh_ideal,vx_ideal,vy_ideal,vz_ideal,dopwidth_ideal,ndust_ideal
     real(kind=8)                   :: r
     integer(kind=4)                :: localseed
     real(kind=8)                   :: sphere_radius,rho
@@ -1523,7 +1770,7 @@ contains
   
    !!+++++++++++++++++++++++++++++ SPHERE with Velocity & density gradient ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-  subroutine sphere_densgrad_velgrad(vx_ideal,vy_ideal,vz_ideal,nh_ideal,dopwidth_ideal,xcell_ideal,ycell_ideal,zcell_ideal,dx_cell)
+  subroutine sphere_densgrad_velgrad(vx_ideal,vy_ideal,vz_ideal,nh_ideal,dopwidth_ideal,xcell_ideal,ycell_ideal,zcell_ideal,dx_cell,ndust_ideal)
 
     implicit none
     
@@ -1534,7 +1781,7 @@ contains
     real(kind=8)                   :: vx_mc,vy_mc,vz_mc
     real(kind=8)                   :: xcell_ideal,ycell_ideal,zcell_ideal
     real(kind=8)                   :: xmin,xmax,xmc,ymin,ymax,ymc,zmin,zmax,zmc
-    real(kind=8),intent(inout)     :: nh_ideal,vx_ideal,vy_ideal,vz_ideal,dopwidth_ideal
+    real(kind=8),intent(inout)     :: nh_ideal,vx_ideal,vy_ideal,vz_ideal,dopwidth_ideal,ndust_ideal
     real(kind=8)                   :: r
     integer(kind=4)                :: localseed
     real(kind=8)                   :: sphere_radius
@@ -1744,8 +1991,8 @@ contains
                 read(value,*) fix_tauH
              case ('fix_temp')
                 read(value,*) fix_temp
-             case ('fix_taudust')
-                read(value,*) fix_taudust
+             case ('fix_ndust')
+                read(value,*) fix_ndust
              case ('fix_vel')
                 read(value,*) fix_vel
              case ('fix_box_size_cm')
@@ -1759,8 +2006,8 @@ contains
                 read(value,*) fix_tauH
              case ('fix_temp')
                 read(value,*) fix_temp
-             case ('fix_taudust')
-                read(value,*) fix_taudust
+             case ('fix_ndust')
+                read(value,*) fix_ndust
              case ('fix_vel')
                 read(value,*) fix_vel
              case ('fix_box_size_cm')
@@ -1774,8 +2021,8 @@ contains
                 read(value,*) fix_tauH
              case ('fix_temp')
                 read(value,*) fix_temp
-             case ('fix_taudust')
-                read(value,*) fix_taudust
+             case ('fix_ndust')
+                read(value,*) fix_ndust
              case ('fix_vel')
                 read(value,*) fix_vel
              case ('fix_box_size_cm')
@@ -1791,8 +2038,8 @@ contains
                 read(value,*) fix_tauH
              case ('fix_temp')
                 read(value,*) fix_temp
-             case ('fix_taudust')
-                read(value,*) fix_taudust
+             case ('fix_ndust')
+                read(value,*) fix_ndust
              case ('fix_vel')
                 read(value,*) fix_vel
              case ('fix_box_size_cm')
@@ -1808,8 +2055,31 @@ contains
                 read(value,*) vel_alpha
              case ('fix_temp')
                 read(value,*) fix_temp
-             case ('fix_taudust')
-                read(value,*) fix_taudust
+             case ('fix_ndust')
+                read(value,*) fix_ndust
+             case ('fix_vel')
+                read(value,*) fix_vel
+             case ('fix_box_size_cm')
+                read(value,*) fix_box_size_cm
+             end select
+          end if
+          !! sphere_homogen_steidel_ndens
+          if (overwrite_model .eq. 'sphere_homogen_steidel_ndens') then
+             select case (trim(name))
+             case ('r_inner')
+                read(value,*) r_inner
+             case ('r_outer')
+                read(value,*) r_outer
+             case ('vel_alpha')
+                read(value,*) vel_alpha
+             case ('fix_temp')
+                read(value,*) fix_temp
+             case ('fix_ndens')
+                read(value,*) fix_ndens
+             case ('fix_ndust')
+                read(value,*) fix_ndust
+             case ('rho_gamma')
+                read(value,*) rho_gamma
              case ('fix_vel')
                 read(value,*) fix_vel
              case ('fix_box_size_cm')
@@ -1825,8 +2095,8 @@ contains
                 read(value,*) vel_alpha
              case ('fix_temp')
                 read(value,*) fix_temp
-             case ('fix_taudust')
-                read(value,*) fix_taudust
+             case ('fix_ndust')
+                read(value,*) fix_ndust
              case ('fix_vel')
                 read(value,*) fix_vel
              case ('fix_box_size_cm')
@@ -1840,8 +2110,8 @@ contains
                 read(value,*) fix_tauH
              case ('fix_temp')
                 read(value,*) fix_temp
-             case ('fix_taudust')
-                read(value,*) fix_taudust
+             case ('fix_ndust')
+                read(value,*) fix_ndust
              case ('fix_vel')
                 read(value,*) fix_vel
              case ('fix_box_size_cm')
@@ -1861,8 +2131,8 @@ contains
                 read(value,*) rho_0
              case ('fix_temp')
                 read(value,*) fix_temp
-             case ('fix_taudust')
-                read(value,*) fix_taudust
+             case ('fix_ndust')
+                read(value,*) fix_ndust
              case ('fix_vel')
                 read(value,*) fix_vel
              case ('fix_box_size_cm')
@@ -1878,12 +2148,12 @@ contains
                 read(value,*) rw
              case ('fix_temp')
                 read(value,*) fix_temp
-             case ('fix_taudust')
-                read(value,*) fix_taudust
+             case ('fix_ndust')
+                read(value,*) fix_ndust
              case ('vel_gamma')
                 read(value,*) vel_gamma
-             case ('rho_rsf')
-                read(value,*) rho_rsf
+             case ('fix_ndens')
+                read(value,*) fix_ndens
              case ('fix_vel')
                 read(value,*) fix_vel
              case ('fix_box_size_cm')
@@ -1933,7 +2203,7 @@ contains
              end select
           end if
           !! disc_thin model
-          if (overwrite_model .eq. 'disc_thin') then
+          if (overwrite_model .eq. 'disc_thin' .or. overwrite_model .eq. 'disc_thin_vcirc') then
              select case (trim(name))
              case ('fix_mtot_hi')
                 read(value,*) fix_mtot_hi
@@ -1941,8 +2211,8 @@ contains
                 read(value,*) fix_rd_disc
              case ('fix_temp')
                 read(value,*) fix_temp
-             case ('fix_taudust')
-                read(value,*) fix_taudust
+             case ('fix_ndust')
+                read(value,*) fix_ndust
              case ('fix_vel')
                 read(value,*) fix_vel
              case ('fix_box_size_cm')
@@ -1960,8 +2230,8 @@ contains
                 read(value,*) fix_zd_disc
              case ('fix_temp')
                 read(value,*) fix_temp
-             case ('fix_taudust')
-                read(value,*) fix_taudust
+             case ('fix_ndust')
+                read(value,*) fix_ndust
              case ('fix_vel')
                 read(value,*) fix_vel
              case ('fix_box_size_cm')
@@ -1981,8 +2251,8 @@ contains
                 read(value,*) fix_tauH
              case ('fix_temp')
                 read(value,*) fix_temp
-             case ('fix_taudust')
-                read(value,*) fix_taudust
+             case ('fix_ndust')
+                read(value,*) fix_ndust
              case ('fix_vel')
                 read(value,*) fix_vel
              case ('fix_box_size_cm')
@@ -2016,40 +2286,49 @@ contains
           write(unit,'(a,ES10.3)') '  fix_tauH           = ',fix_tauH
           write(unit,'(a,ES10.3)') '  fix_temp           = ',fix_temp
           write(unit,'(a,ES10.3)') '  fix_vel            = ',fix_vel
-          write(unit,'(a,ES10.3)') '  fix_taudust        = ',fix_taudust
+          write(unit,'(a,ES10.3)') '  fix_ndust        = ',fix_ndust
        case('shell_homogen_velfix')
           write(unit,'(a,ES10.3)') '  fix_tauH           = ',fix_tauH
           write(unit,'(a,ES10.3)') '  fix_temp           = ',fix_temp
           write(unit,'(a,ES10.3)') '  fix_vel            = ',fix_vel
-          write(unit,'(a,ES10.3)') '  fix_taudust        = ',fix_taudust
+          write(unit,'(a,ES10.3)') '  fix_ndust        = ',fix_ndust
        case('sphere_gradient')
           write(unit,'(a,ES10.3)') '  fix_tauH           = ',fix_tauH
           write(unit,'(a,ES10.3)') '  fix_temp           = ',fix_temp
           write(unit,'(a,ES10.3)') '  fix_vel            = ',fix_vel
-          write(unit,'(a,ES10.3)') '  fix_taudust        = ',fix_taudust
+          write(unit,'(a,ES10.3)') '  fix_ndust        = ',fix_ndust
           write(unit,'(a,a)')      '  fix_dens_grad      = ',fix_dens_grad
        case('sphere_homog_velgrad')
           write(unit,'(a,ES10.3)') '  fix_tauH           = ',fix_tauH
           write(unit,'(a,ES10.3)') '  fix_temp           = ',fix_temp
           write(unit,'(a,ES10.3)') '  fix_vel            = ',fix_vel
-          write(unit,'(a,ES10.3)') '  fix_taudust        = ',fix_taudust
+          write(unit,'(a,ES10.3)') '  fix_ndust        = ',fix_ndust
        case('sphere_homogen_steidel')
           write(unit,'(a,ES10.3)') '  fix_tauH           = ',fix_tauH
           write(unit,'(a,ES10.3)') '  vel_alpha          = ',vel_alpha
           write(unit,'(a,ES10.3)') '  fix_temp           = ',fix_temp
           write(unit,'(a,ES10.3)') '  fix_vel            = ',fix_vel
-          write(unit,'(a,ES10.3)') '  fix_taudust        = ',fix_taudust
+          write(unit,'(a,ES10.3)') '  fix_ndust        = ',fix_ndust
+       case('sphere_homogen_steidel_ndens')
+          write(unit,'(a,ES10.3)') '  r_inner            = ',r_inner
+          write(unit,'(a,ES10.3)') '  r_outer            = ',r_outer
+          write(unit,'(a,ES10.3)') '  fix_ndens          = ',fix_ndens
+          write(unit,'(a,ES10.3)') '  vel_alpha          = ',vel_alpha
+          write(unit,'(a,ES10.3)') '  fix_temp           = ',fix_temp
+          write(unit,'(a,ES10.3)') '  fix_vel            = ',fix_vel
+          write(unit,'(a,ES10.3)') '  fix_ndust        = ',fix_ndust
+          write(unit,'(a,ES10.3)') '  rho_gamma          = ',rho_gamma
        case('sphere_homogen_velgrad_ct_outflow_rate')
           write(unit,'(a,ES10.3)') '  fix_tauH           = ',fix_tauH
           write(unit,'(a,ES10.3)') '  vel_alpha          = ',vel_alpha
           write(unit,'(a,ES10.3)') '  fix_temp           = ',fix_temp
           write(unit,'(a,ES10.3)') '  fix_vel            = ',fix_vel
-          write(unit,'(a,ES10.3)') '  fix_taudust        = ',fix_taudust
+          write(unit,'(a,ES10.3)') '  fix_ndust        = ',fix_ndust
        case('sphere_homogen_velgrad_rad_pressure')
           write(unit,'(a,ES10.3)') '  fix_tauH           = ',fix_tauH
           write(unit,'(a,ES10.3)') '  fix_temp           = ',fix_temp
           write(unit,'(a,ES10.3)') '  fix_vel            = ',fix_vel
-          write(unit,'(a,ES10.3)') '  fix_taudust        = ',fix_taudust
+          write(unit,'(a,ES10.3)') '  fix_ndust        = ',fix_ndust
        case('sphere_densgrad_velgrad')
           write(unit,'(a,ES10.3)') '  fix_dens_grad      = ',fix_dens_grad
           write(unit,'(a,ES10.3)') '  vel_alpha          = ',vel_alpha
@@ -2057,32 +2336,38 @@ contains
           write(unit,'(a,ES10.3)') '  rho_0              = ',rho_0
           write(unit,'(a,ES10.3)') '  fix_temp           = ',fix_temp
           write(unit,'(a,ES10.3)') '  fix_vel            = ',fix_vel
-          write(unit,'(a,ES10.3)') '  fix_taudust        = ',fix_taudust
+          write(unit,'(a,ES10.3)') '  fix_ndust        = ',fix_ndust
        case('sphere_densgrad_velfix')
           write(unit,'(a,ES10.3)') '  fix_tauH           = ',fix_tauH
           write(unit,'(a,ES10.3)') '  fix_temp           = ',fix_temp
           write(unit,'(a,ES10.3)') '  fix_vel            = ',fix_vel
-          write(unit,'(a,ES10.3)') '  fix_taudust        = ',fix_taudust
+          write(unit,'(a,ES10.3)') '  fix_ndust        = ',fix_ndust
        case('disc_thin')
           write(unit,'(a,ES10.3)') '  fix_mtot_hi        = ',fix_mtot_hi
           write(unit,'(a,ES10.3)') '  fix_rd_disc        = ',fix_rd_disc
           write(unit,'(a,ES10.3)') '  fix_temp           = ',fix_temp
           write(unit,'(a,ES10.3)') '  fix_vel            = ',fix_vel
-          write(unit,'(a,ES10.3)') '  fix_taudust        = ',fix_taudust
+          write(unit,'(a,ES10.3)') '  fix_ndust        = ',fix_ndust
+       case('disc_thin_vcirc')
+          write(unit,'(a,ES10.3)') '  fix_mtot_hi        = ',fix_mtot_hi
+          write(unit,'(a,ES10.3)') '  fix_rd_disc        = ',fix_rd_disc
+          write(unit,'(a,ES10.3)') '  fix_temp           = ',fix_temp
+          write(unit,'(a,ES10.3)') '  fix_vel            = ',fix_vel
+          write(unit,'(a,ES10.3)') '  fix_ndust        = ',fix_ndust
        case('disc_thick')
           write(unit,'(a,ES10.3)') '  fix_mtot_hi        = ',fix_mtot_hi
           write(unit,'(a,ES10.3)') '  fix_rd_disc        = ',fix_rd_disc
           write(unit,'(a,ES10.3)') '  fix_zd_disc        = ',fix_zd_disc
           write(unit,'(a,ES10.3)') '  fix_temp           = ',fix_temp
           write(unit,'(a,ES10.3)') '  fix_vel            = ',fix_vel
-          write(unit,'(a,ES10.3)') '  fix_taudust        = ',fix_taudust
+          write(unit,'(a,ES10.3)') '  fix_ndust        = ',fix_ndust
        case('sphere_scarlata15')
           write(unit,'(a,ES10.3)') '  rsf                = ',rsf
           write(unit,'(a,ES10.3)') '  rw                 = ',rw
           write(unit,'(a,ES10.3)') '  fix_temp           = ',fix_temp
-          write(unit,'(a,ES10.3)') '  fix_taudust        = ',fix_taudust
+          write(unit,'(a,ES10.3)') '  fix_ndust        = ',fix_ndust
           write(unit,'(a,ES10.3)') '  vel_gamma          = ',vel_gamma
-          write(unit,'(a,ES10.3)') '  rho_rsf            = ',rho_rsf
+          write(unit,'(a,ES10.3)') '  fix_ndens            = ',fix_ndens
           write(unit,'(a,ES10.3)') '  fix_vel            = ',fix_vel
        case('sphere_prochaska11')
           write(unit,'(a,ES10.3)') '  r_inner            = ',r_inner
@@ -2105,34 +2390,43 @@ contains
           write(*,'(a,ES10.3)') '  fix_tauH           = ',fix_tauH
           write(*,'(a,ES10.3)') '  fix_temp           = ',fix_temp
           write(*,'(a,ES10.3)') '  fix_vel            = ',fix_vel
-          write(*,'(a,ES10.3)') '  fix_taudust        = ',fix_taudust
+          write(*,'(a,ES10.3)') '  fix_ndust        = ',fix_ndust
        case('shell_homogen_velfix')
           write(*,'(a,ES10.3)') '  fix_tauH           = ',fix_tauH
           write(*,'(a,ES10.3)') '  fix_temp           = ',fix_temp
           write(*,'(a,ES10.3)') '  fix_vel            = ',fix_vel
-          write(*,'(a,ES10.3)') '  fix_taudust        = ',fix_taudust
+          write(*,'(a,ES10.3)') '  fix_ndust        = ',fix_ndust
        case('sphere_homog_velgrad')
           write(*,'(a,ES10.3)') '  fix_tauH           = ',fix_tauH
           write(*,'(a,ES10.3)') '  fix_temp           = ',fix_temp
           write(*,'(a,ES10.3)') '  fix_vel            = ',fix_vel
-          write(*,'(a,ES10.3)') '  fix_taudust        = ',fix_taudust
+          write(*,'(a,ES10.3)') '  fix_ndust        = ',fix_ndust
        case('sphere_homogen_steidel')
           write(*,'(a,ES10.3)') '  fix_tauH           = ',fix_tauH
           write(*,'(a,ES10.3)') '  vel_alpha          = ',vel_alpha
           write(*,'(a,ES10.3)') '  fix_temp           = ',fix_temp
           write(*,'(a,ES10.3)') '  fix_vel            = ',fix_vel
-          write(*,'(a,ES10.3)') '  fix_taudust        = ',fix_taudust
+          write(*,'(a,ES10.3)') '  fix_ndust        = ',fix_ndust
+       case('sphere_homogen_steidel_ndens')
+          write(*,'(a,ES10.3)') '  r_inner            = ',r_inner
+          write(*,'(a,ES10.3)') '  r_outer            = ',r_outer
+          write(*,'(a,ES10.3)') '  fix_ndens          = ',fix_ndens
+          write(*,'(a,ES10.3)') '  vel_alpha          = ',vel_alpha
+          write(*,'(a,ES10.3)') '  fix_temp           = ',fix_temp
+          write(*,'(a,ES10.3)') '  fix_vel            = ',fix_vel
+          write(*,'(a,ES10.3)') '  fix_ndust        = ',fix_ndust
+          write(*,'(a,ES10.3)') '  rho_gamma          = ',rho_gamma
        case('sphere_homogen_velgrad_ct_outflow_rate')
           write(*,'(a,ES10.3)') '  fix_tauH           = ',fix_tauH
           write(*,'(a,ES10.3)') '  vel_alpha          = ',vel_alpha
           write(*,'(a,ES10.3)') '  fix_temp           = ',fix_temp
           write(*,'(a,ES10.3)') '  fix_vel            = ',fix_vel
-          write(*,'(a,ES10.3)') '  fix_taudust        = ',fix_taudust
+          write(*,'(a,ES10.3)') '  fix_ndust        = ',fix_ndust
        case('sphere_homogen_velgrad_rad_pressure')
           write(*,'(a,ES10.3)') '  fix_tauH           = ',fix_tauH
           write(*,'(a,ES10.3)') '  fix_temp           = ',fix_temp
           write(*,'(a,ES10.3)') '  fix_vel            = ',fix_vel
-          write(*,'(a,ES10.3)') '  fix_taudust        = ',fix_taudust
+          write(*,'(a,ES10.3)') '  fix_ndust        = ',fix_ndust
        case('sphere_densgrad_velgrad')
           write(*,'(a,ES10.3)') '  fix_dens_grad      = ',fix_dens_grad
           write(*,'(a,ES10.3)') '  vel_alpha          = ',vel_alpha
@@ -2140,38 +2434,44 @@ contains
           write(*,'(a,ES10.3)') '  rho_0              = ',rho_0
           write(*,'(a,ES10.3)') '  fix_temp           = ',fix_temp
           write(*,'(a,ES10.3)') '  fix_vel            = ',fix_vel
-          write(*,'(a,ES10.3)') '  fix_taudust        = ',fix_taudust
+          write(*,'(a,ES10.3)') '  fix_ndust        = ',fix_ndust
        case('sphere_gradient')
           write(*,'(a,ES10.3)') '  fix_tauH           = ',fix_tauH
           write(*,'(a,ES10.3)') '  fix_temp           = ',fix_temp
           write(*,'(a,ES10.3)') '  fix_vel            = ',fix_vel
-          write(*,'(a,ES10.3)') '  fix_taudust        = ',fix_taudust
+          write(*,'(a,ES10.3)') '  fix_ndust        = ',fix_ndust
           write(*,'(a,a)')      '  fix_dens_grad      = ',fix_dens_grad
        case('disc_thin')
           write(*,'(a,ES10.3)') '  fix_mtot_hi        = ',fix_mtot_hi
           write(*,'(a,ES10.3)') '  fix_rd_disc        = ',fix_rd_disc
           write(*,'(a,ES10.3)') '  fix_temp           = ',fix_temp
           write(*,'(a,ES10.3)') '  fix_vel            = ',fix_vel
-          write(*,'(a,ES10.3)') '  fix_taudust        = ',fix_taudust
+          write(*,'(a,ES10.3)') '  fix_ndust        = ',fix_ndust
+       case('disc_thin_vcirc')
+          write(*,'(a,ES10.3)') '  fix_mtot_hi        = ',fix_mtot_hi
+          write(*,'(a,ES10.3)') '  fix_rd_disc        = ',fix_rd_disc
+          write(*,'(a,ES10.3)') '  fix_temp           = ',fix_temp
+          write(*,'(a,ES10.3)') '  fix_vel            = ',fix_vel
+          write(*,'(a,ES10.3)') '  fix_ndust        = ',fix_ndust
        case('disc_thick')
           write(*,'(a,ES10.3)') '  fix_mtot_hi        = ',fix_mtot_hi
           write(*,'(a,ES10.3)') '  fix_rd_disc        = ',fix_rd_disc
           write(*,'(a,ES10.3)') '  fix_zd_disc        = ',fix_zd_disc
           write(*,'(a,ES10.3)') '  fix_temp           = ',fix_temp
           write(*,'(a,ES10.3)') '  fix_vel            = ',fix_vel
-          write(*,'(a,ES10.3)') '  fix_taudust        = ',fix_taudust
+          write(*,'(a,ES10.3)') '  fix_ndust        = ',fix_ndust
        case('sphere_densgrad_velfix')
           write(*,'(a,ES10.3)') '  fix_tauH           = ',fix_tauH
           write(*,'(a,ES10.3)') '  fix_temp           = ',fix_temp
           write(*,'(a,ES10.3)') '  fix_vel            = ',fix_vel
-          write(*,'(a,ES10.3)') '  fix_taudust        = ',fix_taudust
+          write(*,'(a,ES10.3)') '  fix_ndust        = ',fix_ndust
        case('sphere_scarlata15')
           write(*,'(a,ES10.3)') '  rsf                = ',rsf
           write(*,'(a,ES10.3)') '  rw                 = ',rw
           write(*,'(a,ES10.3)') '  fix_temp           = ',fix_temp
-          write(*,'(a,ES10.3)') '  fix_taudust        = ',fix_taudust
+          write(*,'(a,ES10.3)') '  fix_ndust        = ',fix_ndust
           write(*,'(a,ES10.3)') '  vel_gamma          = ',vel_gamma
-          write(*,'(a,ES10.3)') '  rho_rsf            = ',rho_rsf
+          write(*,'(a,ES10.3)') '  fix_ndens            = ',fix_ndens
           write(*,'(a,ES10.3)') '  fix_vel            = ',fix_vel
        case('sphere_prochaska11')
           write(*,'(a,ES10.3)') '  r_inner            = ',r_inner

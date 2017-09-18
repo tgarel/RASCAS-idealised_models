@@ -162,55 +162,61 @@ contains
     case('sphere_homogen_velfix')      
        do ileaf=1,nleaf
           dx_cell = 0.5d0**leaf_level(ileaf)
-          call sphere_homogen_velfix(g(ileaf)%v(1),g(ileaf)%v(2),g(ileaf)%v(3),g(ileaf)%nMgII,g(ileaf)%dopwidth,x_leaf(ileaf,1),x_leaf(ileaf,2),x_leaf(ileaf,3),dx_cell)
+          call sphere_homogen_velfix(g(ileaf)%v(1),g(ileaf)%v(2),g(ileaf)%v(3),g(ileaf)%nMgII,g(ileaf)%dopwidth,x_leaf(ileaf,1),x_leaf(ileaf,2),x_leaf(ileaf,3),dx_cell,g(ileaf)%ndust)
        end do
        
     case('shell_homogen_velfix')      
        do ileaf=1,nleaf
           dx_cell = 0.5d0**leaf_level(ileaf)
-          call shell_homogen_velfix(g(ileaf)%v(1),g(ileaf)%v(2),g(ileaf)%v(3),g(ileaf)%nMgII,g(ileaf)%dopwidth,x_leaf(ileaf,1),x_leaf(ileaf,2),x_leaf(ileaf,3),dx_cell)
+          call shell_homogen_velfix(g(ileaf)%v(1),g(ileaf)%v(2),g(ileaf)%v(3),g(ileaf)%nMgII,g(ileaf)%dopwidth,x_leaf(ileaf,1),x_leaf(ileaf,2),x_leaf(ileaf,3),dx_cell,g(ileaf)%ndust)
        end do
 
     case('sphere_homog_velgrad')      
        do ileaf=1,nleaf
           dx_cell = 0.5d0**leaf_level(ileaf)
-          call sphere_homogen_velgrad(g(ileaf)%v(1),g(ileaf)%v(2),g(ileaf)%v(3),g(ileaf)%nMgII,g(ileaf)%dopwidth,x_leaf(ileaf,1),x_leaf(ileaf,2),x_leaf(ileaf,3),dx_cell)
+          call sphere_homogen_velgrad(g(ileaf)%v(1),g(ileaf)%v(2),g(ileaf)%v(3),g(ileaf)%nMgII,g(ileaf)%dopwidth,x_leaf(ileaf,1),x_leaf(ileaf,2),x_leaf(ileaf,3),dx_cell,g(ileaf)%ndust)
        end do
 
     case('sphere_homogen_steidel')      
        do ileaf=1,nleaf
           dx_cell = 0.5d0**leaf_level(ileaf)
-          call sphere_homogen_steidel(g(ileaf)%v(1),g(ileaf)%v(2),g(ileaf)%v(3),g(ileaf)%nMgII,g(ileaf)%dopwidth,x_leaf(ileaf,1),x_leaf(ileaf,2),x_leaf(ileaf,3),dx_cell)
+          call sphere_homogen_steidel(g(ileaf)%v(1),g(ileaf)%v(2),g(ileaf)%v(3),g(ileaf)%nMgII,g(ileaf)%dopwidth,x_leaf(ileaf,1),x_leaf(ileaf,2),x_leaf(ileaf,3),dx_cell,g(ileaf)%ndust)
+       end do
+
+    case('sphere_homogen_steidel_ndens')      
+       do ileaf=1,nleaf
+          dx_cell = 0.5d0**leaf_level(ileaf)
+          call sphere_homogen_steidel_ndens(g(ileaf)%v(1),g(ileaf)%v(2),g(ileaf)%v(3),g(ileaf)%nMgII,g(ileaf)%dopwidth,x_leaf(ileaf,1),x_leaf(ileaf,2),x_leaf(ileaf,3),dx_cell,g(ileaf)%ndust)
        end do
        
     case('sphere_homogen_velgrad_ct_outflow_rate')      
        do ileaf=1,nleaf
           dx_cell = 0.5d0**leaf_level(ileaf)
-          call sphere_homogen_velgrad_ct_outflow_rate(g(ileaf)%v(1),g(ileaf)%v(2),g(ileaf)%v(3),g(ileaf)%nMgII,g(ileaf)%dopwidth,x_leaf(ileaf,1),x_leaf(ileaf,2),x_leaf(ileaf,3),dx_cell)
+          call sphere_homogen_velgrad_ct_outflow_rate(g(ileaf)%v(1),g(ileaf)%v(2),g(ileaf)%v(3),g(ileaf)%nMgII,g(ileaf)%dopwidth,x_leaf(ileaf,1),x_leaf(ileaf,2),x_leaf(ileaf,3),dx_cell,g(ileaf)%ndust)
        end do
 
     case('sphere_homogen_velgrad_rad_pressure')      
        do ileaf=1,nleaf
           dx_cell = 0.5d0**leaf_level(ileaf)
-          call sphere_homogen_velgrad_rad_pressure(g(ileaf)%v(1),g(ileaf)%v(2),g(ileaf)%v(3),g(ileaf)%nMgII,g(ileaf)%dopwidth,x_leaf(ileaf,1),x_leaf(ileaf,2),x_leaf(ileaf,3),dx_cell)
+          call sphere_homogen_velgrad_rad_pressure(g(ileaf)%v(1),g(ileaf)%v(2),g(ileaf)%v(3),g(ileaf)%nMgII,g(ileaf)%dopwidth,x_leaf(ileaf,1),x_leaf(ileaf,2),x_leaf(ileaf,3),dx_cell,g(ileaf)%ndust)
        end do
        
     case('sphere_densgrad_velgrad')      
        do ileaf=1,nleaf
           dx_cell = 0.5d0**leaf_level(ileaf)
-          call sphere_densgrad_velgrad(g(ileaf)%v(1),g(ileaf)%v(2),g(ileaf)%v(3),g(ileaf)%nMgII,g(ileaf)%dopwidth,x_leaf(ileaf,1),x_leaf(ileaf,2),x_leaf(ileaf,3),dx_cell)
+          call sphere_densgrad_velgrad(g(ileaf)%v(1),g(ileaf)%v(2),g(ileaf)%v(3),g(ileaf)%nMgII,g(ileaf)%dopwidth,x_leaf(ileaf,1),x_leaf(ileaf,2),x_leaf(ileaf,3),dx_cell,g(ileaf)%ndust)
        end do
 
     case('sphere_densgrad_velfix')      
        do ileaf=1,nleaf
           dx_cell = 0.5d0**leaf_level(ileaf)
-          call sphere_densgrad_velfix(g(ileaf)%v(1),g(ileaf)%v(2),g(ileaf)%v(3),g(ileaf)%nMgII,g(ileaf)%dopwidth,x_leaf(ileaf,1),x_leaf(ileaf,2),x_leaf(ileaf,3),dx_cell)
+          call sphere_densgrad_velfix(g(ileaf)%v(1),g(ileaf)%v(2),g(ileaf)%v(3),g(ileaf)%nMgII,g(ileaf)%dopwidth,x_leaf(ileaf,1),x_leaf(ileaf,2),x_leaf(ileaf,3),dx_cell,g(ileaf)%ndust)
        end do
 
     case('sphere_scarlata15')      
        do ileaf=1,nleaf
           dx_cell = 0.5d0**leaf_level(ileaf)
-          call sphere_scarlata15(g(ileaf)%v(1),g(ileaf)%v(2),g(ileaf)%v(3),g(ileaf)%nMgII,g(ileaf)%dopwidth,x_leaf(ileaf,1),x_leaf(ileaf,2),x_leaf(ileaf,3),dx_cell)
+          call sphere_scarlata15(g(ileaf)%v(1),g(ileaf)%v(2),g(ileaf)%v(3),g(ileaf)%nMgII,g(ileaf)%dopwidth,x_leaf(ileaf,1),x_leaf(ileaf,2),x_leaf(ileaf,3),dx_cell,g(ileaf)%ndust)
        end do
 
     case('sphere_prochaska11')      
@@ -222,12 +228,12 @@ contains
     case('disc_thin')      
        do ileaf=1,nleaf
           dx_cell = 0.5d0**leaf_level(ileaf)
-          call disc_thin(g(ileaf)%v(1),g(ileaf)%v(2),g(ileaf)%v(3),g(ileaf)%nMgII,g(ileaf)%dopwidth,x_leaf(ileaf,1),x_leaf(ileaf,2),x_leaf(ileaf,3),dx_cell)
+          call disc_thin(g(ileaf)%v(1),g(ileaf)%v(2),g(ileaf)%v(3),g(ileaf)%nMgII,g(ileaf)%dopwidth,x_leaf(ileaf,1),x_leaf(ileaf,2),x_leaf(ileaf,3),dx_cell,g(ileaf)%ndust)
        end do
     case('disc_thick')      
        do ileaf=1,nleaf
           dx_cell = 0.5d0**leaf_level(ileaf)
-          call disc_thick(g(ileaf)%v(1),g(ileaf)%v(2),g(ileaf)%v(3),g(ileaf)%nMgII,g(ileaf)%dopwidth,x_leaf(ileaf,1),x_leaf(ileaf,2),x_leaf(ileaf,3),dx_cell)
+          call disc_thick(g(ileaf)%v(1),g(ileaf)%v(2),g(ileaf)%v(3),g(ileaf)%nMgII,g(ileaf)%dopwidth,x_leaf(ileaf,1),x_leaf(ileaf,2),x_leaf(ileaf,3),dx_cell,g(ileaf)%ndust)
        end do
        
     end select
