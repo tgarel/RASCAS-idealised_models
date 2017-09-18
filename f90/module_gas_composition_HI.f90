@@ -207,6 +207,11 @@ contains
           dx_cell = 0.5d0**leaf_level(ileaf)
           call disc_thin(g(ileaf)%v(1),g(ileaf)%v(2),g(ileaf)%v(3),g(ileaf)%nHI,g(ileaf)%dopwidth,x_leaf(ileaf,1),x_leaf(ileaf,2),x_leaf(ileaf,3),dx_cell)
        end do
+    case('disc_thin_vcirc')      
+       do ileaf=1,nleaf
+          dx_cell = 0.5d0**leaf_level(ileaf)
+          call disc_thin_vcirc(g(ileaf)%v(1),g(ileaf)%v(2),g(ileaf)%v(3),g(ileaf)%nHI,g(ileaf)%dopwidth,x_leaf(ileaf,1),x_leaf(ileaf,2),x_leaf(ileaf,3),dx_cell)
+       end do
     case('disc_thick')      
        do ileaf=1,nleaf
           dx_cell = 0.5d0**leaf_level(ileaf)
