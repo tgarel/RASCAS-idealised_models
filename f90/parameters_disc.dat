@@ -1,10 +1,23 @@
-# Parameters for CreateDomDump, and Serial 
-
+!--------------------------------------------------------------------------------
+[PhotonsFromSourceModel]
+  outputfile              = /scratch/garel/IdealisedModels/output/thin_discs/rd045_mh2d8_taudust0_vcirc100ct/ICs_photons.dat
+  source_pos              = 0.5 0.5 0.5
+  source_type             = pointlike
+  ranseed                 = -100
+  spec_type               = Mono
+  spec_mono_l0_Ang        = 1215.67 ! A
+  spec_gauss_l0_Ang       = 0.2     ! A
+  spec_gauss_sigma_kms    = 100.0   ! km/s
+  spec_powlaw_lmin_Ang    = 1212.0  ! A
+  spec_powlaw_lmax_Ang    = 1222.0  ! A
+  spec_powlaw_l0_Ang      = 1215.67 ! A
+  spec_powlaw_beta        = 0.0     ! 0=flat
+  nphot                   = 1000000
 
 !--------------------------------------------------------------------------------
 [CreateDomDump]
 # input outputs:
-  DataDir    = ../output/disc_thin_static_mh2d8_Rmax70kpc_rd003_temp1e4_np1e6/
+  DataDir    = /scratch/garel/IdealisedModels/output/thin_discs/rd045_mh2d8_taudust0_vcirc100ct/
   repository = /scratch/dansac/Grid_for_RT/
   snapnum    = 00001
 
@@ -16,80 +29,41 @@
 # domain decomposition parameters
   decomp_dom_type      =  sphere
   decomp_dom_ndomain   =  1
-  decomp_dom_xc        =  0.5!, 0.5
-  decomp_dom_yc        =  0.5!, 0.5
-  decomp_dom_zc        =  0.5!, 0.5
-
-  decomp_dom_rsp       =  0.49	       
-
-# miscelaneous :
-  verbose    = T
-!--------------------------------------------------------------------------------
-
-
+  decomp_dom_xc        =  0.5
+  decomp_dom_yc        =  0.5
+  decomp_dom_zc        =  0.5
+  decomp_dom_rsp       =  0.49
+  verbose              = T
 
 !--------------------------------------------------------------------------------
-[serial]
-  DataDir      = /scratch/garel/disc_models/Rascas/output/disc_thin_static_mh2d10__temp1e2/
-  DomDumpFile  = MCLya_domain_params.dat
-  PhotonICFile = ICs_photons_n1e6.dat
-  outfile      = /scratch/garel/disc_models/Rascas/output/disc_thin_static_mh2d10__temp1e2/photons_out.dat
-  verbose = T
-!--------------------------------------------------------------------------------
-
-
-!--------------------------------------------------------------------------------
-[MCLya]
-  DataDir      = ../output/disc_thin_static_mh2d8_Rmax70kpc_rd003_temp1e4_np1e6/
-  DomDumpFile  = MCLya_domain_params.dat
-  PhotonICFile = ICs_photons_n1e6.dat
-  fileout      = ../output/disc_thin_static_mh2d8_Rmax70kpc_rd003_temp1e4_np1e6/photons_out.dat
-  nbuffer      = 100
+[RASCAS]
+  DataDir      = /scratch/garel/IdealisedModels/output/thin_discs/rd045_mh2d8_taudust0_vcirc100ct/
+  DomDumpFile  = domain_decomposition_params.dat
+  PhotonICFile = ICs_photons.dat
+  fileout      = /scratch/garel/IdealisedModels/output/thin_discs/rd045_mh2d8_taudust0_vcirc100ct/photons_out.dat
+  nbuffer      = 10
   verbose      = T
-!--------------------------------------------------------------------------------
-
 
 !--------------------------------------------------------------------------------
-[worker]
-  verbose = T
-!--------------------------------------------------------------------------------
-
-!--------------------------------------------------------------------------------
-[master]
-  verbose = T
-!--------------------------------------------------------------------------------
-
-
-
-!--------------------------------------------------------------------------------
-[mesh]
-  verbose = F
-!--------------------------------------------------------------------------------
-
-
-!--------------------------------------------------------------------------------
-[gas_composition] 
+[gas_composition]
 # mixture parameters
-  deut2H_nb_ratio     = 0.0 ! 3.000E-05
-  dust_to_metal_ratio = 0.0 ! 3.000E-01
-  mH_over_mdust       = 1.33E-10 ! = mh/md where md = rhod * Vgrain=(3g/cm^3)*4/3*pi*(1.d-5)^3 Inoue12 
+  deut2H_nb_ratio     = 0.0     ! 3.000E-05
+  Zref                = 0.005   ! OK for LMC dust model.
 # overwrite parameters
   gas_overwrite       = T
-  overwrite_model     = disc_thin       ! uniform (fixed params for whole grid), sphere_homogen, sphere_gradient, disc_thin
+  overwrite_model     = disc_thin_vcirc       ! uniform (fixed params for whole grid), sphere_homogen, sphere_gradient, disc_thin
 
 # disc_thin
   fix_rd_disc         = 0.03d0
   fix_mtot_hi         = 2.d8
   fix_temp            = 1.d4
   fix_taudust         = 0.000
-  fix_vel             = 0.000
+  fix_vel             = 100.000
   fix_box_size_cm     = 9.3921737d23  ! 70kpc / 0.45 for disc ! 1.d22
   
 # miscelaneous parameters
   verbose             = T
 !--------------------------------------------------------------------------------
-
-
 
 !--------------------------------------------------------------------------------
 [HI]
@@ -98,18 +72,15 @@
 !--------------------------------------------------------------------------------
 
 
-
 !--------------------------------------------------------------------------------
 [Deuterium]
   recoil    = F
   isotropic = T
 !--------------------------------------------------------------------------------
 
-
-
 !--------------------------------------------------------------------------------
 [dust]
-  albedo       = 4.600E-01
-  g_dust       = 7.300E-01
-  grain_radius = 2.000E-06
+  albedo       = 0.32
+  g_dust       = 0.73
+  dust_model   = SMC
 !--------------------------------------------------------------------------------
