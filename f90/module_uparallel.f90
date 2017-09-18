@@ -1,5 +1,8 @@
 module module_uparallel
 
+  use module_constants, only:pi
+  use module_random
+
   private
 
   !
@@ -29,9 +32,9 @@ module module_uparallel
   real(kind=8)              :: a_bins(nbins_a)
 
   ! sampling of x_int
-  real(kind=8),parameter    :: xintmin    = -50.0d0
+  real(kind=8),parameter    :: xintmin    = -10.0d0 !-50.0d0
   real(kind=8),parameter    :: xintmax    = 0.0d0
-  integer(kind=4),parameter :: nbins_xint = 500
+  integer(kind=4),parameter :: nbins_xint = 200 ! 500
   real(kind=8)              :: xint_bins(nbins_xint)
   real(kind=8),parameter    :: xint_step  = (xintmax-xintmin)/real(nbins_xint-1,8)
 
@@ -270,98 +273,128 @@ contains
     
     xin   = sign(xxin,-1.0d0) ! -> force x_int to be negative
     get_uparallel = 0.0d0
+
+    !! use Gaussian for |x| > 10 - TIBO
+    if (abs(xxin) .gt. 10.0d0) then
+       get_uparallel = upar_from_gaussian(a,xin,c)
+    else
+
+       
+       ! get nearest tabulated a 
+       la = log10(a)
+       if (la <= amin) then 
+          ia = 1
+       else if (la >= amax) then 
+          ia = nbins_a
+       else
+          ia = nint( (la-amin)/a_step ) + 1
+       end if
+       
+       ! Get nearest tabulated x_int
+       if (xin <= xintmin) then 
+          ix = 1
+       else if (xin > xintmax) then 
+          print*,' this is actually a problem ... '
+          stop
+       else
+          ix = nint( (xin-xintmin)/xint_step ) + 1
+       end if
+       
+       ! get bin of c (and table index)
+       if (c < cmin) then 
+          ! bins in log(c)
+          cbin = 1
+          lc   = log10(c)
+          ic   = int((lc-log10(cminimin))/c_step1) + 1
+          if (ic < 1) then
+             ic  = 1
+             dc1 = 0.0d0
+             dc2 = 1.0d0
+          else if (ic >= nbins_c1) then 
+             ic  = nbins_c1 -1
+             dc1 = 1.0d0
+             dc2 = 0.0d0
+          else
+             dc1 = lc - log10(c_bins1(ic))
+             dc2 = log10(c_bins1(ic+1)) - lc
+          end if
+       else if (c <= cmax) then
+          ! linear c bins
+          cbin = 2
+          ic   = int((c - cmin)/c_step2)+1
+          if (ic < 1) then 
+             ic  = 1
+             dc1 = 0.0d0
+             dc2 = 1.0d0
+          else if (ic >= nbins_c2) then 
+             ic = nbins_c2 - 1
+             dc1 = 1.0d0
+             dc2 = 0.0d0
+          else 
+             dc1 = c - c_bins2(ic)
+             dc2 = c_bins2(ic+1) - c
+          end if
+       else ! c > cmax
+          ! bins in log(1-c) ... and clearly not a log of a headache ... 
+          ! -> linear interpolation, even though sampling is log(1-c)
+          cbin = 3
+          ccc = log10(1.0d0-c)
+          ic   = nbins_c3 - int((ccc - log10(1.0d0-cmaximax))/c_step3) - 1
+          if (ic < 1) then 
+             ic = 1
+             dc1 = 0.0d0
+             dc2 = 1.0d0
+          else if (ic >= nbins_c3) then 
+             ic = nbins_c3-1
+             dc1 = 1.0d0
+             dc2 = 0.0d0
+          else
+             dc1 = ccc - log10(1.0d0 - c_bins3(ic))
+             dc2 = log10(1.0d0 - c_bins3(ic+1)) - ccc
+          end if
+       end if
+       
+       select case(cbin) 
+       case(1)
+          get_uparallel = table1(ic,ix,ia)*dc2 + table1(ic+1,ix,ia)*dc1
+       case(2)
+          get_uparallel = table2(ic,ix,ia)*dc2 + table2(ic+1,ix,ia)*dc1
+       case(3)
+          get_uparallel = table3(ic,ix,ia)*dc2 + table3(ic+1,ix,ia)*dc1
+       end select
+       get_uparallel = get_uparallel / (dc1+dc2)
+       
+    endif
     
-    ! get nearest tabulated a 
-    la = log10(a)
-    if (la <= amin) then 
-       ia = 1
-    else if (la >= amax) then 
-       ia = nbins_a
-    else
-       ia = nint( (la-amin)/a_step ) + 1
-    end if
-
-    ! Get nearest tabulated x_int
-    if (xin <= xintmin) then 
-       ix = 1
-    else if (xin > xintmax) then 
-       print*,' this is actually a problem ... '
-       stop
-    else
-       ix = nint( (xin-xintmin)/xint_step ) + 1
-    end if
-
-    ! get bin of c (and table index)
-    if (c < cmin) then 
-       ! bins in log(c)
-       cbin = 1
-       lc   = log10(c)
-       ic   = int((lc-log10(cminimin))/c_step1) + 1
-       if (ic < 1) then
-          ic  = 1
-          dc1 = 0.0d0
-          dc2 = 1.0d0
-       else if (ic >= nbins_c1) then 
-          ic  = nbins_c1 -1
-          dc1 = 1.0d0
-          dc2 = 0.0d0
-       else
-          dc1 = lc - log10(c_bins1(ic))
-          dc2 = log10(c_bins1(ic+1)) - lc
-       end if
-    else if (c <= cmax) then
-       ! linear c bins
-       cbin = 2
-       ic   = int((c - cmin)/c_step2)+1
-       if (ic < 1) then 
-          ic  = 1
-          dc1 = 0.0d0
-          dc2 = 1.0d0
-       else if (ic >= nbins_c2) then 
-          ic = nbins_c2 - 1
-          dc1 = 1.0d0
-          dc2 = 0.0d0
-       else 
-          dc1 = c - c_bins2(ic)
-          dc2 = c_bins2(ic+1) - c
-       end if
-    else ! c > cmax
-       ! bins in log(1-c) ... and clearly not a log of a headache ... 
-       ! -> linear interpolation, even though sampling is log(1-c)
-       cbin = 3
-       ccc = log10(1.0d0-c)
-       ic   = nbins_c3 - int((ccc - log10(1.0d0-cmaximax))/c_step3) - 1
-       if (ic < 1) then 
-          ic = 1
-          dc1 = 0.0d0
-          dc2 = 1.0d0
-       else if (ic >= nbins_c3) then 
-          ic = nbins_c3-1
-          dc1 = 1.0d0
-          dc2 = 0.0d0
-       else
-          dc1 = ccc - log10(1.0d0 - c_bins3(ic))
-          dc2 = log10(1.0d0 - c_bins3(ic+1)) - ccc
-       end if
-    end if
-
-    select case(cbin) 
-    case(1)
-       get_uparallel = table1(ic,ix,ia)*dc2 + table1(ic+1,ix,ia)*dc1
-    case(2)
-       get_uparallel = table2(ic,ix,ia)*dc2 + table2(ic+1,ix,ia)*dc1
-    case(3)
-       get_uparallel = table3(ic,ix,ia)*dc2 + table3(ic+1,ix,ia)*dc1
-    end select
-    get_uparallel = get_uparallel / (dc1+dc2)
-
     ! if we changed sign of xin (i.e. xxin > 0), then apply symetry to uparallel
     if (xxin > 0.0) get_uparallel = sign(get_uparallel,-get_uparallel) ! -> assign sign of -uparallel to uparallel...
-
+    
     return
 
   end function get_uparallel
 
+  
+  function upar_from_gaussian(a,xin,c)
+    
+    implicit none
+    
+    real(kind=8),intent(in) :: a,xin,c
+    real(kind=8)            :: r1
+    real(kind=8)            :: u_mean
+    real(kind=8)            :: upar_from_gaussian
+    integer(kind=4)         :: iran
+
+    r1 = ran3(iran)
+
+    u_mean = 1.0d0 / xin
+    upar_from_gaussian = sqrt(-2.*log(r1)) * cos(2.0d0*pi*c)
+    upar_from_gaussian = upar_from_gaussian * 1.0d0 / sqrt(2.0d0) + u_mean ! width is 1 since u = x = v / vth
+    
+    return
+    
+  end function upar_from_gaussian
+
+  
 end module module_uparallel
 
 
