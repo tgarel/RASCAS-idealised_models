@@ -475,6 +475,7 @@ contains
   
   function domain_distance_to_border(x,dom)
     ! return distance of point xyz to the closest border of domain dom
+    ! convention: negative distance means outside domain
     real(kind=8),dimension(3),intent(in) :: x
     type(domain),intent(in)              :: dom
     real(kind=8)                         :: domain_distance_to_border, rr, ddx, ddy, ddz
@@ -490,13 +491,19 @@ contains
        domain_distance_to_border = min((rr-dom%sh%r_inbound),(dom%sh%r_outbound-rr))
 
     case('cube')
-       ddx = min((dom%cu%center(1)+dom%cu%size/2.-x(1)), (x(1)-dom%cu%center(1)-dom%cu%size/2.))
-       ddy = min((dom%cu%center(2)+dom%cu%size/2.-x(2)), (x(2)-dom%cu%center(2)-dom%cu%size/2.))
-       ddz = min((dom%cu%center(3)+dom%cu%size/2.-x(3)), (x(3)-dom%cu%center(3)-dom%cu%size/2.))
-       domain_distance_to_border = min(ddx,ddy,ddz)
-    
+       ddx = min((dom%cu%center(1)+dom%cu%size/2.-x(1)), (x(1)-dom%cu%center(1)+dom%cu%size/2.))
+       ddy = min((dom%cu%center(2)+dom%cu%size/2.-x(2)), (x(2)-dom%cu%center(2)+dom%cu%size/2.))
+       ddz = min((dom%cu%center(3)+dom%cu%size/2.-x(3)), (x(3)-dom%cu%center(3)+dom%cu%size/2.))
+       if((ddx>=0.).and.(ddy>=0.).and.(ddz>=0.))then
+          ! inside domain
+          domain_distance_to_border = min(ddx,ddy,ddz)
+       else
+          ! outside domain
+          domain_distance_to_border = sqrt((min(0.,ddx))**2 + (min(0.,ddy))**2 + (min(0.,ddz))**2)
+       endif
+
     case('slab')
-       domain_distance_to_border = min((dom%sl%zc+dom%sl%thickness/2.-x(3)), (x(3)-dom%sl%zc-dom%sl%thickness)) 
+       domain_distance_to_border = min((dom%sl%zc+dom%sl%thickness/2.-x(3)), (x(3)-dom%sl%zc+dom%sl%thickness/2.)) 
 
     end select
 
