@@ -1,6 +1,6 @@
 pro lbox_from_tau0_temp
 
-  tau0          = 1.d7
+  tau0          = 1.d8
   temp          = 1.d2          ; K
 
   radius_sphere = 0.00100000d0

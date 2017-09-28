@@ -8,8 +8,9 @@ pro plot_slab_spectra
    
   vth         = 128500.0d0       ; cm/s
 
-  PS_Start, File='plots/slab_spectraNEUF_temp100K_tau4-8_onePlot.ps',nomatch=1,font=0
-
+  PS_Start, File='plots/tauHall_neufeld_temp1d2_xin0_bis.ps',nomatch=1,font=0
+ ; PS_Start, File='plots/test_thickness.ps',nomatch=1,font=0
+  
   device, helvetica=1,/bold
   device, isolatin1=1,/bold
 
@@ -26,12 +27,15 @@ pro plot_slab_spectra
   !p.thick=7
   !p.charthick=20
 
+  col = [70,254,cgcolor('lime green'),210,30]
+    
   xxi = 0. ; input frequency
   
   for i=0,n_elements(tau0_arr)-1 do begin
 
-     myfile = '/Users/tgarel/Rascas_tests/output/slab_dom/slab_np1e6_T1e2_ndust0.0_DH0.0_tauH1e'+tau0_arr_st[i]+'_vexp0_NoRecoil_iso/photons_out.dat'
-
+     ;if i eq 0 then myfile = '/Users/tgarel/Rascas/output/Lya_tests/slab/tauH'+tau0_arr_st[i]+'_temp1d2_xin0/photons_out.dat'
+     myfile = '/Users/tgarel/Rascas/output/Lya_tests/slab/tauH'+tau0_arr_st[i]+'_temp1d2_xin0/photons_out.dat'
+     
      print,myfile
      tau0 = tau0_arr[i]
  
@@ -47,15 +51,12 @@ pro plot_slab_spectra
      xx = dindgen(4000) / 3999. * 400. - 200.
      histo,x_out,-250.,250.,480,h
 
-   ;  col = [70,150,210,254]
-     col = [70,150,210,254,cgcolor('brown')]
+    ; if i eq 0 then begin
+        plot,h.x,h.dn/h.dx/total(h.dn),xtitle='x',ytitle='J(x,'+greek('tau')+'!d0!n)',charthick=5,xr=[-45.,45.],/xs,thick=8,yr=[0.0001,max(h.dn/h.dx/total(h.dn))*1.1],/nodata ;,/ylog
+        legendold,['R!dslab!n within 1 cell'],box=0,/left,charsize=1.3,spacing=2.1
+   ;  endif
 
-     if i eq 0 then begin
-        plot,h.x,h.dn/h.dx/total(h.dn),xtitle='x',ytitle='J(x,'+greek('tau')+'!d0!n)',charthick=5,xr=[-145.,145.],/xs,thick=8,yr=[0.0001,max(h.dn/h.dx/total(h.dn))*1.1],/nodata ;,/ylog
-       ; legendold,['R!dsphere!n = 0.3 L!dbox!n','R!dsphere!n within 1 cell'],textcolors=col,box=0,/left,charsize=1.3,spacing=2.1
-     endif
-
-     oplot,h.x,h.dn/h.dx/total(h.dn),thick=6,color=col[i],psym=10 ;,linestyle=i
+     oplot,h.x,h.dn/h.dx/total(h.dn),thick=6,color=col[i],psym=10; ,linestyle=i
 
      ;; Exact Eq. 39 from Smith15 - his tau0 is same as us
      j_x = 1. / 4. / sqrt(6.*!pi) / a / tau0 * xx * xx * (1.d0 / (cosh(sqrt(!pi^3./54.) * abs(xx*xx*xx - xxi*xxi*xxi)/ a / tau0)))
@@ -68,7 +69,7 @@ pro plot_slab_spectra
      print,total(j_x*4.*!pi*(xx[1]-xx[0]))
      
     ; legendold,[greek('tau')+'!d0!n = 10!u'+tau0_arr_st[i]+'!n'],textcolors=col[i],box=0,/right,charsize=1.6
-     legendold,['Hydrogen','T=10!u2!n K'],/center,/right,charthick=7,charsize=1.3,box=0,spacing=1.9
+   ;  legendold,['Hydrogen','T=10!u2!n K'],/center,/right,charthick=7,charsize=1.3,box=0,spacing=1.9
   endfor
 
   ;legendold,['Nxbin = 2000','Nxbin=500'],textcolors=col,box=0,/right,charsize=1.4
@@ -76,7 +77,7 @@ pro plot_slab_spectra
  ; legendold,[greek('tau')+'!d0!n = 10!u4!n',greek('tau')+'!d0!n = 10!u7!n'],textcolors=col,box=0,/right,charsize=1.4
 
   
-  legendold,[greek('tau')+'!d0!n = 10!u4!n',greek('tau')+'!d0!n = 10!u5!n',greek('tau')+'!d0!n = 10!u6!n',greek('tau')+'!d0!n = 10!u7!n',greek('tau')+'!d0!n = 10!u8!n'],textcolors=col,box=0,/right,charsize=1.4
+ ; legendold,[greek('tau')+'!d0!n = 10!u4!n',greek('tau')+'!d0!n = 10!u5!n',greek('tau')+'!d0!n = 10!u6!n',greek('tau')+'!d0!n = 10!u7!n',greek('tau')+'!d0!n = 10!u8!n'],textcolors=col,box=0,/right,charsize=1.4
   
   PS_End, /PDF, /Delete_PS
   
