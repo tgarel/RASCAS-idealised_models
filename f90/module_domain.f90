@@ -519,9 +519,29 @@ contains
     type(domain),intent(in)              :: dom
     real(kind=8)                         :: domain_distance_to_border_along_k, rr, ddx, ddy, ddz
 
+    ! variables for the spherical case
+    real(kind=8) :: b, c, delta, t1, t2, dx, dy, dz 
+    
     select case(dom%type)
-
-
+       
+    case('sphere')
+       dx = x(1) - dom%sp%center(1)
+       dy = x(2) - dom%sp%center(2)
+       dz = x(3) - dom%sp%center(3)
+       b = -2.d0 * ( k(1)*dx + k(2)*dy +  k(3)*dz )
+       c = dx*dx + dy*dy + dz*dz - dom%sp%radius*dom%sp%radius
+       delta = b*b - 4.0d0*c
+       if (delta <= 0) then
+          print*,'WTF?!' ! This can only mean that x is out of the domain ... 
+          stop
+       end if
+       domain_distance_to_border_along_k = (-b + sqrt(delta))/2.0d0 ! select the only positive solution
+#ifdef DEBUG
+       if (domain_distance_to_border_along_k <= 0) then
+          print *,'WARNING: domain_distance_to_border_along_k <= 0 : ',domain_distance_to_border_along_k
+       end if
+#endif
+       
     case('slab')
        if(k(3)<0.)then
           domain_distance_to_border_along_k = (dom%sl%zc-dom%sl%thickness/2.-x(3))/k(3)
@@ -537,8 +557,6 @@ contains
        print *,'ERROR: type not defined',dom%type
        stop
        
-    end select
-
     return
   end function domain_distance_to_border_along_k
   
