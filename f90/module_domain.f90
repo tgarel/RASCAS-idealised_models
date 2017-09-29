@@ -400,30 +400,38 @@ contains
     real(kind=8),intent(in)              :: dx
     logical                              :: domain_contains_cell
     real(kind=8)                         :: rr
-
+    real(kind=8),parameter :: sqrt3over2 = sqrt(3.0d0)*0.5d0
+    
     domain_contains_cell=.false.
 
     select case(dom%type)
 
     case('sphere')
+       
        rr = sqrt((x(1)-dom%sp%center(1))**2 + (x(2)-dom%sp%center(2))**2 + (x(3)-dom%sp%center(3))**2)
-       if((rr+dx/sqrt(2.))<=dom%sp%radius)domain_contains_cell=.true.
-
+       rr = rr + dx*sqrt3over2
+       if (rr < dom%sp%radius) domain_contains_cell=.true.
+      
     case('shell')
+       
        rr = sqrt((x(1)-dom%sh%center(1))**2 + (x(2)-dom%sh%center(2))**2 + (x(3)-dom%sh%center(3))**2)
-       if(((rr-dx/sqrt(2.))>=dom%sh%r_inbound).and.((rr+dx/sqrt(2.))<dom%sh%r_outbound))domain_contains_cell=.true.
+       if(( (rr-dx*sqrt3over2)>=dom%sh%r_inbound) .and. ((rr+dx*sqrt3over2)<dom%sh%r_outbound) ) then
+          domain_contains_cell=.true.
+       end if
 
     case('cube')
+       
        if((x(1)+dx/2. <= dom%cu%center(1)+dom%cu%size/2.).and. &
-          (x(1)-dx/2. <= dom%cu%center(1)-dom%cu%size/2.).and. &
+          (x(1)-dx/2. >= dom%cu%center(1)-dom%cu%size/2.).and. &
           (x(2)+dx/2. <= dom%cu%center(2)+dom%cu%size/2.).and. &
-          (x(2)-dx/2. <= dom%cu%center(2)-dom%cu%size/2.).and. &
+          (x(2)-dx/2. >= dom%cu%center(2)-dom%cu%size/2.).and. &
           (x(3)+dx/2. <= dom%cu%center(3)+dom%cu%size/2.).and. &
-          (x(3)-dx/2. <= dom%cu%center(3)-dom%cu%size/2.)) domain_contains_cell=.true.
+          (x(3)-dx/2. >= dom%cu%center(3)-dom%cu%size/2.)) domain_contains_cell=.true.
 
     case('slab')
+       
        if((x(3)+dx/2. <= dom%sl%zc+dom%sl%thickness/2.).and. &
-          (x(3)-dx/2. <= dom%sl%zc-dom%sl%thickness/2.)) domain_contains_cell=.true.
+          (x(3)-dx/2. >= dom%sl%zc-dom%sl%thickness/2.)) domain_contains_cell=.true.
 
     end select
 
@@ -514,17 +522,20 @@ contains
 
   function domain_distance_to_border_along_k(x,k,dom)
     ! return distance of point xyz to the closest border of domain dom along propagation vector k
-    ! convention: negative distance means outside domain
+    ! should return a positive distance in any case (no more convention on in/out side)
     real(kind=8),dimension(3),intent(in) :: x, k
     type(domain),intent(in)              :: dom
-    real(kind=8)                         :: domain_distance_to_border_along_k, rr, ddx, ddy, ddz
+    real(kind=8)                         :: domain_distance_to_border_along_k
 
     ! variables for the spherical case
-    real(kind=8) :: b, c, delta, t1, t2, dx, dy, dz 
+    real(kind=8) :: b, c, delta, dx, dy, dz 
+    ! variables for the shell case
+    real(kind=8) :: t1,t2,tin,tout
     
     select case(dom%type)
-
+       
     case('sphere')
+       
        dx = x(1) - dom%sp%center(1)
        dy = x(2) - dom%sp%center(2)
        dz = x(3) - dom%sp%center(3)
@@ -544,8 +555,57 @@ contains
           print *,'WARNING: domain_distance_to_border_along_k <= 0 : ',domain_distance_to_border_along_k
        end if
 #endif
-    end select
 
+    case('shell')
+
+       dx = x(1) - dom%sh%center(1)
+       dy = x(2) - dom%sh%center(2)
+       dz = x(3) - dom%sh%center(3)
+       ! inner shell intersection
+       b = -2.d0 * ( k(1)*dx + k(2)*dy +  k(3)*dz )
+       c = dx*dx + dy*dy + dz*dz - dom%sh%r_inbound*dom%sh%r_inbound
+       delta = b*b - 4.0d0*c
+       tin   = 2.0d0 ! larger than box size 
+       if (delta >= 0.0d0) then
+          t1 =  (-b + sqrt(delta))/2.0d0
+          t2 = (-b - sqrt(delta))/2.0d0
+          ! select smallest positive solution
+          if (t1 > 0 .and. t1 < tin) tin = t1
+          if (t2 > 0 .and. t2 < tin) tin = t2
+       end if
+       ! outer shell intersection
+       b = -2.d0 * ( k(1)*dx + k(2)*dy +  k(3)*dz )
+       c = dx*dx + dy*dy + dz*dz - dom%sh%r_outbound*dom%sh%r_outbound
+       delta = b*b - 4.0d0*c
+       tout  = 2.0d0 ! larger than box size 
+       if (delta >= 0.0d0) then
+          t1 =  (-b + sqrt(delta))/2.0d0
+          t2 = (-b - sqrt(delta))/2.0d0
+          ! select smallest positive solution
+          if (t1 > 0 .and. t1 < tout) tout = t1
+          if (t2 > 0 .and. t2 < tout) tout = t2
+       end if
+       ! Select smallest distance
+       domain_distance_to_border_along_k = min(tin,tout)
+       
+    case('slab')
+
+       if(k(3)<0.)then
+          domain_distance_to_border_along_k = (dom%sl%zc-dom%sl%thickness/2.-x(3))/k(3)
+       else
+          domain_distance_to_border_along_k = (dom%sl%zc+dom%sl%thickness/2.-x(3))/k(3)
+       endif
+       if (domain_distance_to_border_along_k < 0.)then
+          print *,'ERROR: pb with distance to border along k...'
+          stop
+       endif
+
+    case default
+       print *,'ERROR: type not defined',dom%type
+       stop
+
+    end select
+       
     return
   end function domain_distance_to_border_along_k
   
