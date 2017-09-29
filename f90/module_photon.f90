@@ -83,7 +83,7 @@ contains
     real(kind=8),dimension(3)            :: vgas, k, cell_corner, posoct, ppos_old
     logical                              :: cell_fully_in_domain, flagoutvol, in_domain
     real(kind=8)                         :: epsilon_cell
-    real(kind=8)                         :: dtime,dborder
+    real(kind=8)                         :: dborder,dborder_cm
     
     ! initialise working props of photon
     ppos    = p%xcurr        ! position within full simulation box, in box units.
@@ -173,6 +173,18 @@ contains
           distance_to_border    = path(ppos_cell,p%k)               ! in cell units
           distance_to_border_cm = distance_to_border * cell_size_cm ! cm
 
+          ! if cell not fully in domain, modify distance_to_border to "distance_to_domain_border" if relevant
+          if(.not.(cell_fully_in_domain))then
+             dborder = domain_distance_to_border_along_k(ppos,p%k,domaine_calcul)    ! in box units
+             dborder_cm = dborder * box_size_cm                                      ! from box units to cm
+
+             ! compare distance to cell border and distance to domain border and take the min
+             distance_to_border_cm = min(distance_to_border_cm,dborder_cm)
+             distance_to_border = distance_to_border_cm / cell_size_cm
+             
+          endif
+
+          
           ! check whether scattering occurs within cell (scatter_flag > 0) or not (scatter_flag==0)
           scatter_flag = gas_get_scatter_flag(cell_gas, distance_to_border_cm, nu_cell, tau_abs, iran)
 
@@ -213,9 +225,8 @@ contains
                 p%status       = 1
                 p%xcurr        = ppos
                 ! correct time
-                dborder = domain_distance_to_border(ppos,domaine_calcul)
-                dtime   = dborder*box_size_cm/clight ! should be negative
-                time    = time+dtime
+                !dborder = domain_distance_to_border(ppos,domaine_calcul)
+                time = time - epsilon*box_size_cm/clight
                 p%time         = time
                 p%tau_abs_curr = tau_abs
                 p%iran         = iran
@@ -289,25 +300,26 @@ contains
              ppos = ppos_cell * cell_size + cell_corner
 
              ! Check if photon is still in the computational domain
-             if(.not.(cell_fully_in_domain))then   ! this flag allows to not check at each scattering the new position 
-                                                   ! as long as the cell is fully contained in the computational domain
-                in_domain = domain_contains_point(ppos,domaine_calcul)
-                if(.not.(in_domain))then    ! photon done, nothing else to do
-                   p%status       = 1
-                   p%xcurr        = ppos
-                   ! correct time
-                   dborder = domain_distance_to_border(ppos,domaine_calcul)
-                   dtime   = dborder*box_size_cm/clight ! should be negative
-                   time    = time+dtime
-                   p%time         = time
-                   p%tau_abs_curr = tau_abs
-                   p%iran         = iran
-#ifdef DEBUG
-                   print*,'-exit propagation, photon escaped comp. domain'
-#endif
-                   exit photon_propagation
-                endif
-             endif
+             ! Now, we already know that photon is in domain, so skip this if loop
+!              if(.not.(cell_fully_in_domain))then   ! this flag allows to not check at each scattering the new position 
+!                                                    ! as long as the cell is fully contained in the computational domain
+!                 in_domain = domain_contains_point(ppos,domaine_calcul)
+!                 if(.not.(in_domain))then    ! photon done, nothing else to do
+!                    p%status       = 1
+!                    p%xcurr        = ppos
+!                    ! correct time
+!                    dborder = domain_distance_to_border(ppos,domaine_calcul)
+!                    dtime   = dborder*box_size_cm/clight ! should be negative
+!                    time    = time+dtime
+!                    p%time         = time
+!                    p%tau_abs_curr = tau_abs
+!                    p%iran         = iran
+! #ifdef DEBUG
+!                    print*,'-exit propagation, photon escaped comp. domain'
+! #endif
+!                    exit photon_propagation
+!                 endif
+!              endif
 
              !------------
              ! scattering
