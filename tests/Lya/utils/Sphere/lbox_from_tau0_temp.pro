@@ -3,7 +3,7 @@ pro lbox_from_tau0_temp
   tau0          = 1.d4
   temp          = 1.d2          ; K
 
-  radius_sphere = 0.4
+  radius_sphere = 0.001
   nh            = 1.d0 ; cm^-3
   
   fix_box_size_cm = 1.d20 * tau0 * (temp/1.d4)^0.5 / (5.898d6 * nh * radius_sphere) ; cm
