@@ -514,10 +514,10 @@ contains
 
   function domain_distance_to_border_along_k(x,k,dom)
     ! return distance of point xyz to the closest border of domain dom along propagation vector k
-    ! convention: negative distance means outside domain
+    ! should return a positive distance in any case (no more convention on in/out side)
     real(kind=8),dimension(3),intent(in) :: x, k
     type(domain),intent(in)              :: dom
-    real(kind=8)                         :: domain_distance_to_border_along_k, rr, ddx, ddy, ddz
+    real(kind=8)                         :: domain_distance_to_border_along_k
 
     ! variables for the spherical case
     real(kind=8) :: b, c, delta, dx, dy, dz 
@@ -525,7 +525,7 @@ contains
     real(kind=8) :: t1,t2,tin
     
     select case(dom%type)
-
+       
     case('sphere')
        
        dx = x(1) - dom%sp%center(1)
@@ -577,8 +577,22 @@ contains
        ! Select smallest distance
        domain_distance_to_border_along_k = min(tin,tout)
        
-    end select
+    case('slab')
 
+       if(k(3)<0.)then
+          domain_distance_to_border_along_k = (dom%sl%zc-dom%sl%thickness/2.-x(3))/k(3)
+       else
+          domain_distance_to_border_along_k = (dom%sl%zc+dom%sl%thickness/2.-x(3))/k(3)
+       endif
+       if (domain_distance_to_border_along_k < 0.)then
+          print *,'ERROR: pb with distance to border along k...'
+          stop
+       endif
+
+    case default
+       print *,'ERROR: type not defined',dom%type
+       stop
+       
     return
   end function domain_distance_to_border_along_k
   

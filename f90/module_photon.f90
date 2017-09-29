@@ -225,8 +225,9 @@ contains
                 p%status       = 1
                 p%xcurr        = ppos
                 ! correct time
+                ! not needed anymore the update of travel time done before is exactly the time to border
                 !dborder = domain_distance_to_border(ppos,domaine_calcul)
-                time = time - epsilon*box_size_cm/clight
+                !time = time - epsilon_cell*box_size_cm/clight
                 p%time         = time
                 p%tau_abs_curr = tau_abs
                 p%iran         = iran
