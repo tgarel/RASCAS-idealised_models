@@ -522,7 +522,7 @@ contains
     ! variables for the spherical case
     real(kind=8) :: b, c, delta, dx, dy, dz 
     ! variables for the shell case
-    real(kind=8) :: t1,t2,tin
+    real(kind=8) :: t1,t2,tin,tout
     
     select case(dom%type)
        
@@ -592,6 +592,8 @@ contains
     case default
        print *,'ERROR: type not defined',dom%type
        stop
+
+    end select
        
     return
   end function domain_distance_to_border_along_k
