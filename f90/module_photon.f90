@@ -80,7 +80,7 @@ contains
     real(kind=8)                         :: distance_to_border,distance_to_border_cm, d
     real(kind=8)                         :: time
     integer(kind=4)                      :: scatter_flag, i, icellnew, iran
-    real(kind=8),dimension(3)            :: vgas, k, cell_corner, posoct, ppos_old
+    real(kind=8),dimension(3)            :: vgas, k, cell_corner, posoct, ppos_old, pcell
     logical                              :: cell_fully_in_domain, flagoutvol, in_domain
     real(kind=8)                         :: epsilon_cell
     real(kind=8)                         :: dborder,dborder_cm
@@ -145,7 +145,8 @@ contains
        ! to be improved later...
 
        ! define/update flag_cell_fully_in_comp_dom to avoid various tests in the following
-       cell_fully_in_domain =  domain_contains_cell(ppos,cell_size,domaine_calcul)
+       pcell = cell_corner + 0.5d0*cell_size
+       cell_fully_in_domain =  domain_contains_cell(pcell,cell_size,domaine_calcul)
 
 
 #ifdef DEBUG

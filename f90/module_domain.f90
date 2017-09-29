@@ -400,30 +400,38 @@ contains
     real(kind=8),intent(in)              :: dx
     logical                              :: domain_contains_cell
     real(kind=8)                         :: rr
-
+    real(kind=8),parameter :: sqrt3over2 = sqrt(3.0d0)*0.5d0
+    
     domain_contains_cell=.false.
 
     select case(dom%type)
 
     case('sphere')
+       
        rr = sqrt((x(1)-dom%sp%center(1))**2 + (x(2)-dom%sp%center(2))**2 + (x(3)-dom%sp%center(3))**2)
-       if((rr+dx/sqrt(2.))<=dom%sp%radius)domain_contains_cell=.true.
-
+       rr = rr + dx*sqrt3over2
+       if (rr < dom%sp%radius) domain_contains_cell=.true.
+      
     case('shell')
+       
        rr = sqrt((x(1)-dom%sh%center(1))**2 + (x(2)-dom%sh%center(2))**2 + (x(3)-dom%sh%center(3))**2)
-       if(((rr-dx/sqrt(2.))>=dom%sh%r_inbound).and.((rr+dx/sqrt(2.))<dom%sh%r_outbound))domain_contains_cell=.true.
+       if(( (rr-dx*sqrt3over2)>=dom%sh%r_inbound) .and. ((rr+dx*sqrt3over2)<dom%sh%r_outbound) ) then
+          domain_contains_cell=.true.
+       end if
 
     case('cube')
+       
        if((x(1)+dx/2. <= dom%cu%center(1)+dom%cu%size/2.).and. &
-          (x(1)-dx/2. <= dom%cu%center(1)-dom%cu%size/2.).and. &
+          (x(1)-dx/2. >= dom%cu%center(1)-dom%cu%size/2.).and. &
           (x(2)+dx/2. <= dom%cu%center(2)+dom%cu%size/2.).and. &
-          (x(2)-dx/2. <= dom%cu%center(2)-dom%cu%size/2.).and. &
+          (x(2)-dx/2. >= dom%cu%center(2)-dom%cu%size/2.).and. &
           (x(3)+dx/2. <= dom%cu%center(3)+dom%cu%size/2.).and. &
-          (x(3)-dx/2. <= dom%cu%center(3)-dom%cu%size/2.)) domain_contains_cell=.true.
+          (x(3)-dx/2. >= dom%cu%center(3)-dom%cu%size/2.)) domain_contains_cell=.true.
 
     case('slab')
+       
        if((x(3)+dx/2. <= dom%sl%zc+dom%sl%thickness/2.).and. &
-          (x(3)-dx/2. <= dom%sl%zc-dom%sl%thickness/2.)) domain_contains_cell=.true.
+          (x(3)-dx/2. >= dom%sl%zc-dom%sl%thickness/2.)) domain_contains_cell=.true.
 
     end select
 
@@ -592,6 +600,7 @@ contains
     case default
        print *,'ERROR: type not defined',dom%type
        stop
+
        
     return
   end function domain_distance_to_border_along_k
