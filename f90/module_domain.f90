@@ -376,17 +376,17 @@ contains
     domain_contains_point=.false.
     select case(dom%type)
     case('sphere')
-       rr = sqrt((x(1)-dom%sp%center(1))**2 + (x(2)-dom%sp%center(2))**2 + (x(3)-dom%sp%center(3))**2)
-       if(rr<=dom%sp%radius)domain_contains_point=.true.
+       rr = (x(1)-dom%sp%center(1))**2 + (x(2)-dom%sp%center(2))**2 + (x(3)-dom%sp%center(3))**2
+       if(rr<dom%sp%radius*dom%sp%radius)domain_contains_point=.true.
     case('shell')
-       rr = sqrt((x(1)-dom%sh%center(1))**2 + (x(2)-dom%sh%center(2))**2 + (x(3)-dom%sh%center(3))**2)
-       if((rr>=dom%sh%r_inbound).and.(rr<dom%sh%r_outbound))domain_contains_point=.true.
+       rr = (x(1)-dom%sh%center(1))**2 + (x(2)-dom%sh%center(2))**2 + (x(3)-dom%sh%center(3))**2
+       if((rr>dom%sh%r_inbound*dom%sh%r_inbound).and.(rr<dom%sh%r_outbound*dom%sh%r_outbound))domain_contains_point=.true.
     case('cube')
-       if((abs(x(1)-dom%cu%center(1)) <= dom%cu%size/2.).and. & 
-            (abs(x(2)-dom%cu%center(2)) <= dom%cu%size/2.).and. &
-            (abs(x(3)-dom%cu%center(3)) <= dom%cu%size/2.))domain_contains_point=.true.
+       if((abs(x(1)-dom%cu%center(1)) < dom%cu%size/2.).and. & 
+            (abs(x(2)-dom%cu%center(2)) < dom%cu%size/2.).and. &
+            (abs(x(3)-dom%cu%center(3)) < dom%cu%size/2.))domain_contains_point=.true.
     case('slab')
-       if(abs(x(3)-dom%sl%zc) <= dom%sl%thickness/2.)domain_contains_point=.true.
+       if(abs(x(3)-dom%sl%zc) < dom%sl%thickness/2.)domain_contains_point=.true.
     end select
     return
   end function domain_contains_point
