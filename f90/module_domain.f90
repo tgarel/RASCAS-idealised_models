@@ -510,4 +510,24 @@ contains
     return
   end function domain_distance_to_border
 
+
+
+  function domain_distance_to_border_along_k(x,k,dom)
+    ! return distance of point xyz to the closest border of domain dom along propagation vector k
+    ! convention: negative distance means outside domain
+    real(kind=8),dimension(3),intent(in) :: x, k
+    type(domain),intent(in)              :: dom
+    real(kind=8)                         :: domain_distance_to_border_along_k, rr, ddx, ddy, ddz
+
+    select case(dom%type)
+
+    case('sphere')
+
+
+    end select
+
+    return
+  end function domain_distance_to_border_along_k
+  
 end module module_domain
+
