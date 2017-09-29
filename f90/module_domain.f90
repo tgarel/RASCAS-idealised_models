@@ -520,11 +520,14 @@ contains
     real(kind=8)                         :: domain_distance_to_border_along_k, rr, ddx, ddy, ddz
 
     ! variables for the spherical case
-    real(kind=8) :: b, c, delta, t1, t2, dx, dy, dz 
+    real(kind=8) :: b, c, delta, dx, dy, dz 
+    ! variables for the shell case
+    real(kind=8) :: t1,t2,tin
     
     select case(dom%type)
 
     case('sphere')
+       
        dx = x(1) - dom%sp%center(1)
        dy = x(2) - dom%sp%center(2)
        dz = x(3) - dom%sp%center(3)
@@ -541,6 +544,39 @@ contains
           print *,'WARNING: domain_distance_to_border_along_k <= 0 : ',domain_distance_to_border_along_k
        end if
 #endif
+
+    case('shell')
+
+       dx = x(1) - dom%sh%center(1)
+       dy = x(2) - dom%sh%center(2)
+       dz = x(3) - dom%sh%center(3)
+       ! inner shell intersection
+       b = -2.d0 * ( k(1)*dx + k(2)*dy +  k(3)*dz )
+       c = dx*dx + dy*dy + dz*dz - dom%sh%r_inbound*dom%sh%r_inbound
+       delta = b*b - 4.0d0*c
+       tin   = 2.0d0 ! larger than box size 
+       if (delta >= 0.0d0) then
+          t1 =  (-b + sqrt(delta))/2.0d0
+          t2 = (-b - sqrt(delta))/2.0d0
+          ! select smallest positive solution
+          if (t1 > 0 .and. t1 < tin) tin = t1
+          if (t2 > 0 .and. t2 < tin) tin = t2
+       end if
+       ! outer shell intersection
+       b = -2.d0 * ( k(1)*dx + k(2)*dy +  k(3)*dz )
+       c = dx*dx + dy*dy + dz*dz - dom%sh%r_outbound*dom%sh%r_outbound
+       delta = b*b - 4.0d0*c
+       tout  = 2.0d0 ! larger than box size 
+       if (delta >= 0.0d0) then
+          t1 =  (-b + sqrt(delta))/2.0d0
+          t2 = (-b - sqrt(delta))/2.0d0
+          ! select smallest positive solution
+          if (t1 > 0 .and. t1 < tout) tout = t1
+          if (t2 > 0 .and. t2 < tout) tout = t2
+       end if
+       ! Select smallest distance
+       domain_distance_to_border_along_k = min(tin,tout)
+       
     end select
 
     return
