@@ -1,6 +1,6 @@
 !--------------------------------------------------------------------------------
 [PhotonsFromSourceModel]
-  outputfile              = /scratch/garel/Rascas/output/Lya_tests/slab/first_run/ICs_photons.dat
+  outputfile              = /scratch/garel/Rascas/output/Lya_tests/slab/tauH4_temp1d2_xin0_leocorr/ICs_photons.dat
   source_pos              = 0.00195312, 0.00195312, 0.00195312
   source_type             = pointlike
   ranseed                 = -100
@@ -17,7 +17,7 @@
 !--------------------------------------------------------------------------------
 [CreateDomDump]
 # input outputs:
-  DataDir    = /scratch/garel/Rascas/output/Lya_tests/slab/first_run/
+  DataDir    = /scratch/garel/Rascas/output/Lya_tests/slab/tauH4_temp1d2_xin0_leocorr/
   repository = /scratch/dansac/Grid_for_RT/
   snapnum    = 00001
 
@@ -42,10 +42,10 @@
 
 !--------------------------------------------------------------------------------
 [RASCAS]
-  DataDir      = /scratch/garel/Rascas/output/Lya_tests/slab/first_run/
+  DataDir      = /scratch/garel/Rascas/output/Lya_tests/slab/tauH4_temp1d2_xin0_leocorr/
   DomDumpFile  = domain_decomposition_params.dat
   PhotonICFile = ICs_photons.dat
-  fileout      = /scratch/garel/Rascas/output/Lya_tests/slab/first_run/photons_out.dat
+  fileout      = /scratch/garel/Rascas/output/Lya_tests/slab/tauH4_temp1d2_xin0_leocorr/photons_out.dat
   nbuffer      = 10
   verbose      = T
   
@@ -84,3 +84,20 @@
   g_dust       = 0.73
   dust_model   = SMC
 !--------------------------------------------------------------------------------
+
+[worker]
+  verbose        = t
+
+[ramses]
+  self_shielding = F
+  ramses_rt      = F
+  verbose        = F
+
+[master]
+  verbose        = T
+  restart        = F
+  PhotonBakFile  = backup_photons.dat
+  dt_backup      = 1000000000000000.000
+ 
+[mesh]
+  verbose    = T

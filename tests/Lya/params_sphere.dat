@@ -1,6 +1,6 @@
 !--------------------------------------------------------------------------------
 [PhotonsFromSourceModel]
-  outputfile              = /scratch/garel/Rascas/output/Lya_tests/sphere/first_run/ICs_photons.dat
+  outputfile              = /scratch/garel/Rascas/output/Lya_tests/sphere/tauH4_temp1d2_xin0_hotfix_rs1d-3/ICs_photons.dat
   source_pos              = 0.00195312, 0.00195312, 0.00195312
   source_type             = pointlike
   ranseed                 = -100
@@ -17,7 +17,7 @@
 !--------------------------------------------------------------------------------
 [CreateDomDump]
 # input outputs:
-  DataDir    = /scratch/garel/Rascas/output/Lya_tests/sphere/first_run/
+  DataDir    = /scratch/garel/Rascas/output/Lya_tests/sphere/tauH4_temp1d2_xin0_hotfix_rs1d-3/
   repository = /scratch/dansac/Grid_for_RT/
   snapnum    = 00001
 
@@ -27,20 +27,20 @@
   comput_dom_rsp       =  0.00100000
 
 # domain decomposition parameters
-  decomp_dom_type      =  cube
+  decomp_dom_type      =  sphere
   decomp_dom_ndomain   =  1
-  decomp_dom_xc        =  0.5
-  decomp_dom_yc        =  0.5
-  decomp_dom_zc        =  0.5
-  decomp_dom_size      =  1.0 ! full cube size by convention		
+  decomp_dom_xc        =  0.00195312
+  decomp_dom_yc        =  0.00195312
+  decomp_dom_zc        =  0.00195312
+  decomp_dom_rsp       =  0.0015! full cube size by convention		
   verbose              =  T
   
 !--------------------------------------------------------------------------------
 [RASCAS]
-  DataDir      = /scratch/garel/Rascas/output/Lya_tests/sphere/first_run/
+  DataDir      = /scratch/garel/Rascas/output/Lya_tests/sphere/tauH4_temp1d2_xin0_hotfix_rs1d-3/
   DomDumpFile  = domain_decomposition_params.dat
   PhotonICFile = ICs_photons.dat
-  fileout      = /scratch/garel/Rascas/output/Lya_tests/sphere/first_run/photons_out.dat
+  fileout      = /scratch/garel/Rascas/output/Lya_tests/sphere/tauH4_temp1d2_xin0_hotfix_rs1d-3/photons_out.dat
   nbuffer      = 10
   verbose      = T
   
@@ -79,3 +79,21 @@
   g_dust       = 0.73
   dust_model   = SMC
 !--------------------------------------------------------------------------------
+
+
+[worker]
+  verbose        = t
+
+[ramses]
+  self_shielding = F
+  ramses_rt      = F
+  verbose        = F
+
+[master]
+  verbose        = T
+  restart        = F
+  PhotonBakFile  = backup_photons.dat
+  dt_backup      = 1000000000000000.000
+
+[mesh]
+  verbose    = T
