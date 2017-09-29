@@ -517,7 +517,7 @@ contains
     ! should return a positive distance in any case (no more convention on in/out side)
     real(kind=8),dimension(3),intent(in) :: x, k
     type(domain),intent(in)              :: dom
-    real(kind=8)                         :: domain_distance_to_border_along_k, rr, ddx, ddy, ddz
+    real(kind=8)                         :: domain_distance_to_border_along_k
 
     ! variables for the spherical case
     real(kind=8) :: b, c, delta, t1, t2, dx, dy, dz 
