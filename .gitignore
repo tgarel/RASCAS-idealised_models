@@ -28,6 +28,7 @@ plots/
 output/
 idl/
 py/
+tests/
 LyaTests_output_data/
 hummer_old/
 
