@@ -226,7 +226,7 @@ contains
                 p%xcurr        = ppos
                 ! correct time
                 !dborder = domain_distance_to_border(ppos,domaine_calcul)
-                time = time - epsilon*box_size_cm/clight
+                time = time - epsilon_cell*box_size_cm/clight
                 p%time         = time
                 p%tau_abs_curr = tau_abs
                 p%iran         = iran

@@ -1,0 +1,45 @@
+#PBS -S /bin/bash
+#PBS -N rascas
+#PBS -j oe
+#PBS -l select=16:ncpus=16:mpiprocs=16
+#PBS -l place=scatter:excl
+#PBS -l walltime=96:00:00
+#PBS -q longq
+
+cd $PBS_O_WORKDIR
+
+param_file=../tests/Lya/params_slab.dat
+echo $param_file
+
+exec_path=rascas
+echo $exec_path
+
+outputdir=$(awk 'prev=="[RASCAS]" {print $NF} {prev=$0}' $param_file)
+echo $outputdir
+
+# Copy important files to Output directory:                                                                                                  
+
+backup_dir=backup/
+echo $backup_dir
+backup_path=$outputdir$backup_dir
+echo $backup_path
+
+rm -rf $backup_path
+mkdir $backup_path
+cp *f90 Makefile $exec_path $param_file $backup_path
+
+
+source /usr/share/modules/init/bash
+module avail
+module load intel-icc-14/14.0.3.174
+module load intel-ifc-14/14.0.3.174
+module load intel-mkl-11/11.1.3
+module load mpt/2.09
+module list
+
+set -x
+
+time mpiexec_mpt -np 256 dplace -s1 -c0-15 $exec_path $param_file > run.log
+
+cd $PBS_O_WORKDIR
+cp run.log $backup_path

@@ -533,6 +533,9 @@ contains
        delta = b*b - 4.0d0*c
        if (delta <= 0) then
           print*,'WTF?!' ! This can only mean that x is out of the domain ... 
+          print*,delta,b,c
+          print*,x
+          print*,sqrt(dx**2+dy**2+dz**2),dom%sp%radius
           stop
        end if
        domain_distance_to_border_along_k = (-b + sqrt(delta))/2.0d0 ! select the only positive solution
