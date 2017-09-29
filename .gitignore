@@ -29,6 +29,10 @@ output/
 idl/
 py/
 tests/
+tests/Lya/
+tests/Lya/utils/
+tests/Lya/utils/Sphere/
+tests/Lya/utils/Slab/
 LyaTests_output_data/
 hummer_old/
 
