@@ -185,8 +185,7 @@ contains
              
           endif
 
-          
-          ! check whether scattering occurs within cell (scatter_flag > 0) or not (scatter_flag==0)
+          ! check whether scattering occurs within cell or domain (scatter_flag > 0) or not (scatter_flag==0)
           scatter_flag = gas_get_scatter_flag(cell_gas, distance_to_border_cm, nu_cell, tau_abs, iran)
 
 #ifdef DEBUG
@@ -199,7 +198,7 @@ contains
 #endif
 
           if (scatter_flag == 0) then
-             ! next scattering event will not occur in the cell, then move photon to next cell
+             ! next scattering event will not occur in the cell or in the domain -> move photon to next cell or exit
 
              ! update ppos_cell with distance_to_border (distance_to_border_cm has not been modified if flag==0)
              ! also add epsilon to ensure finding next cell
@@ -287,12 +286,12 @@ contains
              exit propag_in_cell
 
           else
-             ! Next event happens inside this cell
+             ! Next event happens inside this cell and in the domain.
 
              ! length and time travelled by the photon before event
              d    = distance_to_border_cm   ! NB: at this point, distance_to_border became "distance_to_interaction" in gas_get_scatter_flag
              time = time + d/clight
-             d    = d / cell_size_cm        ! in box units
+             d    = d / cell_size_cm        ! in cell units
 
              ! update ppos_cell
              do i=1,3
@@ -305,9 +304,16 @@ contains
              ! Now, we already know that photon is in domain, so skip this if loop
 !              if(.not.(cell_fully_in_domain))then   ! this flag allows to not check at each scattering the new position 
 !                                                    ! as long as the cell is fully contained in the computational domain
-!                 in_domain = domain_contains_point(ppos,domaine_calcul)
-!                 if(.not.(in_domain))then    ! photon done, nothing else to do
-!                    p%status       = 1
+                 in_domain = domain_contains_point(ppos,domaine_calcul)
+                 if(.not.(in_domain))then    ! photon done, nothing else to do
+                    print *,'OH NOOOO! '
+                    print*,ppos
+                    print*,ppos_cell
+                    print*,d,distance_to_border_cm,distance_to_border
+                    stop
+                 end if
+
+                    !                    p%status       = 1
 !                    p%xcurr        = ppos
 !                    ! correct time
 !                    dborder = domain_distance_to_border(ppos,domaine_calcul)
