@@ -83,7 +83,7 @@ contains
     real(kind=8),dimension(3)            :: vgas, k, cell_corner, posoct, ppos_old
     logical                              :: cell_fully_in_domain, flagoutvol, in_domain
     real(kind=8)                         :: epsilon_cell
-    real(kind=8)                         :: dtime,dborder
+    real(kind=8)                         :: dborder,dborder_cm
     
     ! initialise working props of photon
     ppos    = p%xcurr        ! position within full simulation box, in box units.
@@ -175,8 +175,8 @@ contains
 
           ! if cell not fully in domain, modify distance_to_border to "distance_to_domain_border" if relevant
           if(.not.(cell_fully_in_domain))then
-             dborder_cm = domain_distance_to_border_along_k(ppos,p%k,domaine_calcul)
-             ! Be careful with units (box or cell units ?!!!) 
+             dborder = domain_distance_to_border_along_k(ppos,p%k,domaine_calcul)    ! in box units
+             dborder_cm = dborder * box_size_cm                                      ! from box units to cm
 
              ! compare distance to cell border and distance to domain border and take the min
              distance_to_border_cm = min(distance_to_border_cm,dborder_cm)
