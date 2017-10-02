@@ -394,7 +394,7 @@ contains
   
 
   function domain_contains_cell(x,dx,dom)
-    ! -> returns T/F if the full cell at xyz, of size dx, is in domain dom.
+    ! -> returns T/F if the full cell at x, of size dx, is in domain dom.
     type(domain),intent(in)              :: dom
     real(kind=8),dimension(3),intent(in) :: x
     real(kind=8),intent(in)              :: dx
@@ -521,7 +521,7 @@ contains
 
 
   function domain_distance_to_border_along_k(x,k,dom)
-    ! return distance of point xyz to the closest border of domain dom along propagation vector k
+    ! return distance of point x to the closest border of domain dom along propagation vector k
     ! should return a positive distance in any case (no more convention on in/out side)
     real(kind=8),dimension(3),intent(in) :: x, k
     type(domain),intent(in)              :: dom
@@ -539,7 +539,7 @@ contains
        dx = x(1) - dom%sp%center(1)
        dy = x(2) - dom%sp%center(2)
        dz = x(3) - dom%sp%center(3)
-       b = -2.d0 * ( k(1)*dx + k(2)*dy +  k(3)*dz )
+       b = 2.d0 * ( k(1)*dx + k(2)*dy +  k(3)*dz )
        c = dx*dx + dy*dy + dz*dz - dom%sp%radius*dom%sp%radius
        delta = b*b - 4.0d0*c
        if (delta <= 0) then
@@ -559,7 +559,7 @@ contains
        dy = x(2) - dom%sh%center(2)
        dz = x(3) - dom%sh%center(3)
        ! inner shell intersection
-       b = -2.d0 * ( k(1)*dx + k(2)*dy +  k(3)*dz )
+       b = 2.d0 * ( k(1)*dx + k(2)*dy +  k(3)*dz )
        c = dx*dx + dy*dy + dz*dz - dom%sh%r_inbound*dom%sh%r_inbound
        delta = b*b - 4.0d0*c
        tin   = 2.0d0 ! larger than box size 
@@ -571,7 +571,7 @@ contains
           if (t2 > 0 .and. t2 < tin) tin = t2
        end if
        ! outer shell intersection
-       b = -2.d0 * ( k(1)*dx + k(2)*dy +  k(3)*dz )
+       b = 2.d0 * ( k(1)*dx + k(2)*dy +  k(3)*dz )
        c = dx*dx + dy*dy + dz*dz - dom%sh%r_outbound*dom%sh%r_outbound
        delta = b*b - 4.0d0*c
        tout  = 2.0d0 ! larger than box size 
