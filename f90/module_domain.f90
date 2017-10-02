@@ -599,9 +599,12 @@ contains
           stop
        endif
 
-    case('cube')
-
-       domain_distance_to_border_along_k = path(x,k)
+    !case('cube')
+    !
+    !   domain_distance_to_border_along_k = path(x,k)
+    !
+    ! Leo: no, no, no, doing that you get the distance to the box limit, not the domain...
+       
        
     case default
        print *,'ERROR: domain type not defined',dom%type
