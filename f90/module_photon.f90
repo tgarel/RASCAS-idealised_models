@@ -5,6 +5,7 @@ module module_photon
   use module_constants
   use module_random
   use module_domain
+  use module_utils, only: path 
 
   implicit none
 
@@ -38,7 +39,6 @@ module module_photon
 
 
   public  :: MCRT, propagate, init_photons_from_file, dump_photons
-  private :: path
 
 contains
 
