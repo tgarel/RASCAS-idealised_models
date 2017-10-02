@@ -286,5 +286,36 @@ contains
   end subroutine locatedb
 
 
+  function path(pos,dir)
+
+    ! compute distance to border of a cube (of side 1), from position
+    ! pos (in cube units, i.e. [0,1]) and in direction dir (normalized). 
+    
+    implicit none
+
+    real(kind=8),intent(in) :: pos(3)   ! position of photon in cell units
+    real(kind=8),intent(in) :: dir(3)   ! propagation direction of photon
+    integer(kind=4)         :: i
+    real(kind=8)            :: dx(3)
+    real(kind=8)            :: path     ! distance from pos to exit point
+
+    do i = 1,3
+       if(dir(i) < 0.) then
+          dx(i) = -pos(i) / dir(i)
+       else if (dir(i) > 0.) then
+          dx(i) = (1.0d0 - pos(i)) / dir(i)
+       else ! dir(i) == 0
+          dx(i) = 10.  ! larger than maximum extent of cell (sqrt(3)) in cell units
+       end if
+    end do
+    path = minval(dx)
+
+    return
+    
+  end function path
+
+
+  
+
 
 end module module_utils

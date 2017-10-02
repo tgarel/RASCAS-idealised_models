@@ -391,38 +391,6 @@ contains
   
 
 
-
-
-  function path(pos,dir)
-
-    ! compute distance to border of a cell (in cell units), from position
-    ! pos (in cell units) and in direction dir. 
-    
-    implicit none
-
-    real(kind=8),intent(in) :: pos(3)   ! position of photon in cell units
-    real(kind=8),intent(in) :: dir(3)   ! propagation direction of photon
-    integer(kind=4)         :: i
-    real(kind=8)            :: dx(3)
-    real(kind=8)            :: path     ! distance from pos to exit point
-
-    do i = 1,3
-       if(dir(i) < 0.) then
-          dx(i) = -pos(i) / dir(i)
-       else if (dir(i) > 0.) then
-          dx(i) = (1.0d0 - pos(i)) / dir(i)
-       else ! dir(i) == 0
-          dx(i) = 10.  ! larger than maximum extent of cell (sqrt(3)) in cell units
-       end if
-    end do
-    path = minval(dx)
-
-    return
-    
-  end function path
-
-
-
   subroutine init_photons_from_file(file,pgrid)
 
     character(2000),intent(in)                                 :: file

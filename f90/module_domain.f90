@@ -1,5 +1,7 @@
 module module_domain
 
+  use module_utils, only: path
+  
   implicit none
 
   public
@@ -415,23 +417,23 @@ contains
     case('shell')
        
        rr = sqrt((x(1)-dom%sh%center(1))**2 + (x(2)-dom%sh%center(2))**2 + (x(3)-dom%sh%center(3))**2)
-       if(( (rr-dx*sqrt3over2)>=dom%sh%r_inbound) .and. ((rr+dx*sqrt3over2)<dom%sh%r_outbound) ) then
+       if(( (rr-dx*sqrt3over2)>dom%sh%r_inbound) .and. ((rr+dx*sqrt3over2)<dom%sh%r_outbound) ) then
           domain_contains_cell=.true.
        end if
 
     case('cube')
        
-       if((x(1)+dx/2. <= dom%cu%center(1)+dom%cu%size/2.).and. &
-          (x(1)-dx/2. >= dom%cu%center(1)-dom%cu%size/2.).and. &
-          (x(2)+dx/2. <= dom%cu%center(2)+dom%cu%size/2.).and. &
-          (x(2)-dx/2. >= dom%cu%center(2)-dom%cu%size/2.).and. &
-          (x(3)+dx/2. <= dom%cu%center(3)+dom%cu%size/2.).and. &
-          (x(3)-dx/2. >= dom%cu%center(3)-dom%cu%size/2.)) domain_contains_cell=.true.
+       if((x(1)+dx/2. < dom%cu%center(1)+dom%cu%size/2.).and. &
+          (x(1)-dx/2. > dom%cu%center(1)-dom%cu%size/2.).and. &
+          (x(2)+dx/2. < dom%cu%center(2)+dom%cu%size/2.).and. &
+          (x(2)-dx/2. > dom%cu%center(2)-dom%cu%size/2.).and. &
+          (x(3)+dx/2. < dom%cu%center(3)+dom%cu%size/2.).and. &
+          (x(3)-dx/2. > dom%cu%center(3)-dom%cu%size/2.)) domain_contains_cell=.true.
 
     case('slab')
        
-       if((x(3)+dx/2. <= dom%sl%zc+dom%sl%thickness/2.).and. &
-          (x(3)-dx/2. >= dom%sl%zc-dom%sl%thickness/2.)) domain_contains_cell=.true.
+       if((x(3)+dx/2. < dom%sl%zc+dom%sl%thickness/2.).and. &
+          (x(3)-dx/2. > dom%sl%zc-dom%sl%thickness/2.)) domain_contains_cell=.true.
 
     end select
 
@@ -441,7 +443,7 @@ contains
 
 
   function get_my_new_domain(x,liste_domaines)
-    !-> given position xyz of a point, returns the dom where the point is
+    !-> given position x of a point, returns the dom where the point is
     ! in case of overlapping domains, should use domain_distance_to_border to choose
     ! how to do that efficiently?
     ! scan each domain and test using domain_contains_point ?
@@ -462,7 +464,7 @@ contains
           get_my_new_domain = i
        endif
     enddo
-    if((count_dom > 2).or.(count_dom==0))then
+    if((count_dom > 2).or.(count_dom==0))then  !JB: why not allow more than two domains ? 
        print *,'ERROR: problem with get_my_new_domain'
        stop
     endif
@@ -482,7 +484,7 @@ contains
 
   
   function domain_distance_to_border(x,dom)
-    ! return distance of point xyz to the closest border of domain dom
+    ! return distance of point x to the closest border of domain dom
     ! convention: negative distance means outside domain
     real(kind=8),dimension(3),intent(in) :: x
     type(domain),intent(in)              :: dom
@@ -507,7 +509,7 @@ contains
           domain_distance_to_border = min(ddx,ddy,ddz)
        else
           ! outside domain
-          domain_distance_to_border = sqrt((min(0.,ddx))**2 + (min(0.,ddy))**2 + (min(0.,ddz))**2)
+          domain_distance_to_border = sqrt((min(0.,ddx))**2 + (min(0.,ddy))**2 + (min(0.,ddz))**2)  
        endif
 
     case('slab')
@@ -521,8 +523,13 @@ contains
 
 
   function domain_distance_to_border_along_k(x,k,dom)
-    ! return distance of point x to the closest border of domain dom along propagation vector k
-    ! should return a positive distance in any case (no more convention on in/out side)
+
+    ! return the distance of point x to the closest border of domain dom along propagation vector k.
+    ! inputs:
+    ! - x : position vector, in simulation-box units
+    ! - k : direction vector, normalized
+    ! - dom : a domain
+    
     real(kind=8),dimension(3),intent(in) :: x, k
     type(domain),intent(in)              :: dom
     real(kind=8)                         :: domain_distance_to_border_along_k
@@ -547,11 +554,6 @@ contains
           stop
        end if
        domain_distance_to_border_along_k = (-b + sqrt(delta))/2.0d0 ! select the only positive solution
-#ifdef DEBUG
-       if (domain_distance_to_border_along_k <= 0) then
-          print *,'WARNING: domain_distance_to_border_along_k <= 0 : ',domain_distance_to_border_along_k
-       end if
-#endif
 
     case('shell')
 
@@ -597,14 +599,20 @@ contains
           stop
        endif
 
+    case('cube')
+
+       domain_distance_to_border_along_k = path(x,k)
+       
     case default
-       print *,'ERROR: type not defined',dom%type
+       print *,'ERROR: domain type not defined',dom%type
        stop
 
     end select
        
     return
+    
   end function domain_distance_to_border_along_k
+
   
 end module module_domain
 
