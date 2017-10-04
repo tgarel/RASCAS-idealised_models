@@ -195,9 +195,9 @@ contains
        indsel=0
        ii=0
        do i=1,n
-          if((abs(xp(i,1)-dom%cu%center(1)) <= dom%cu%size/2.).and. & 
-             (abs(xp(i,2)-dom%cu%center(2)) <= dom%cu%size/2.).and. &
-             (abs(xp(i,3)-dom%cu%center(3)) <= dom%cu%size/2.))then
+          if((abs(xp(i,1)-dom%cu%center(1)) <= dom%cu%size/2.0d0).and. & 
+             (abs(xp(i,2)-dom%cu%center(2)) <= dom%cu%size/2.0d0).and. &
+             (abs(xp(i,3)-dom%cu%center(3)) <= dom%cu%size/2.0d0))then
              ii=ii+1
              indsel(ii)=i
           endif
@@ -216,7 +216,7 @@ contains
        indsel=0
        ii=0
        do i=1,n
-          if(abs(xp(i,3)-dom%sl%zc) <= dom%sl%thickness/2.)then
+          if(abs(xp(i,3)-dom%sl%zc) <= dom%sl%thickness/2.0d0)then
              ii=ii+1
              indsel(ii)=i
           endif
@@ -384,11 +384,11 @@ contains
        rr = (x(1)-dom%sh%center(1))**2 + (x(2)-dom%sh%center(2))**2 + (x(3)-dom%sh%center(3))**2
        if((rr>dom%sh%r_inbound*dom%sh%r_inbound).and.(rr<dom%sh%r_outbound*dom%sh%r_outbound))domain_contains_point=.true.
     case('cube')
-       if((abs(x(1)-dom%cu%center(1)) < dom%cu%size/2.).and. & 
-            (abs(x(2)-dom%cu%center(2)) < dom%cu%size/2.).and. &
-            (abs(x(3)-dom%cu%center(3)) < dom%cu%size/2.))domain_contains_point=.true.
+       if((abs(x(1)-dom%cu%center(1)) < dom%cu%size/2.0d0).and. & 
+            (abs(x(2)-dom%cu%center(2)) < dom%cu%size/2.0d0).and. &
+            (abs(x(3)-dom%cu%center(3)) < dom%cu%size/2.0d0))domain_contains_point=.true.
     case('slab')
-       if(abs(x(3)-dom%sl%zc) < dom%sl%thickness/2.)domain_contains_point=.true.
+       if(abs(x(3)-dom%sl%zc) < dom%sl%thickness/2.0d0)domain_contains_point=.true.
     end select
     return
   end function domain_contains_point
@@ -423,17 +423,17 @@ contains
 
     case('cube')
        
-       if((x(1)+dx/2. < dom%cu%center(1)+dom%cu%size/2.).and. &
-          (x(1)-dx/2. > dom%cu%center(1)-dom%cu%size/2.).and. &
-          (x(2)+dx/2. < dom%cu%center(2)+dom%cu%size/2.).and. &
-          (x(2)-dx/2. > dom%cu%center(2)-dom%cu%size/2.).and. &
-          (x(3)+dx/2. < dom%cu%center(3)+dom%cu%size/2.).and. &
-          (x(3)-dx/2. > dom%cu%center(3)-dom%cu%size/2.)) domain_contains_cell=.true.
+       if((x(1)+dx/2.0d0 < dom%cu%center(1)+dom%cu%size/2.0d0).and. &
+          (x(1)-dx/2.0d0 > dom%cu%center(1)-dom%cu%size/2.0d0).and. &
+          (x(2)+dx/2.0d0 < dom%cu%center(2)+dom%cu%size/2.0d0).and. &
+          (x(2)-dx/2.0d0 > dom%cu%center(2)-dom%cu%size/2.0d0).and. &
+          (x(3)+dx/2.0d0 < dom%cu%center(3)+dom%cu%size/2.0d0).and. &
+          (x(3)-dx/2.0d0 > dom%cu%center(3)-dom%cu%size/2.0d0)) domain_contains_cell=.true.
 
     case('slab')
        
-       if((x(3)+dx/2. < dom%sl%zc+dom%sl%thickness/2.).and. &
-          (x(3)-dx/2. > dom%sl%zc-dom%sl%thickness/2.)) domain_contains_cell=.true.
+       if((x(3)+dx/2.0d0 < dom%sl%zc+dom%sl%thickness/2.0d0).and. &
+          (x(3)-dx/2.0d0 > dom%sl%zc-dom%sl%thickness/2.0d0)) domain_contains_cell=.true.
 
     end select
 
@@ -501,19 +501,19 @@ contains
        domain_distance_to_border = min((rr-dom%sh%r_inbound),(dom%sh%r_outbound-rr))
 
     case('cube')
-       ddx = min((dom%cu%center(1)+dom%cu%size/2.-x(1)), (x(1)-dom%cu%center(1)+dom%cu%size/2.))
-       ddy = min((dom%cu%center(2)+dom%cu%size/2.-x(2)), (x(2)-dom%cu%center(2)+dom%cu%size/2.))
-       ddz = min((dom%cu%center(3)+dom%cu%size/2.-x(3)), (x(3)-dom%cu%center(3)+dom%cu%size/2.))
-       if((ddx>=0.).and.(ddy>=0.).and.(ddz>=0.))then
+       ddx = min((dom%cu%center(1)+dom%cu%size/2.0d0-x(1)), (x(1)-dom%cu%center(1)+dom%cu%size/2.0d0))
+       ddy = min((dom%cu%center(2)+dom%cu%size/2.0d0-x(2)), (x(2)-dom%cu%center(2)+dom%cu%size/2.0d0))
+       ddz = min((dom%cu%center(3)+dom%cu%size/2.0d0-x(3)), (x(3)-dom%cu%center(3)+dom%cu%size/2.0d0))
+       if((ddx>=0.0d0).and.(ddy>=0.0d0).and.(ddz>=0.0d0))then
           ! inside domain
           domain_distance_to_border = min(ddx,ddy,ddz)
        else
           ! outside domain
-          domain_distance_to_border = sqrt((min(0.,ddx))**2 + (min(0.,ddy))**2 + (min(0.,ddz))**2)  
+          domain_distance_to_border = sqrt((min(0.0d0,ddx))**2 + (min(0.0d0,ddy))**2 + (min(0.0d0,ddz))**2)  
        endif
 
     case('slab')
-       domain_distance_to_border = min((dom%sl%zc+dom%sl%thickness/2.-x(3)), (x(3)-dom%sl%zc+dom%sl%thickness/2.)) 
+       domain_distance_to_border = min((dom%sl%zc+dom%sl%thickness/2.0d0-x(3)), (x(3)-dom%sl%zc+dom%sl%thickness/2.0d0)) 
 
     end select
 
@@ -549,7 +549,7 @@ contains
        b = 2.d0 * ( k(1)*dx + k(2)*dy +  k(3)*dz )
        c = dx*dx + dy*dy + dz*dz - dom%sp%radius*dom%sp%radius
        delta = b*b - 4.0d0*c
-       if (delta <= 0) then
+       if (delta <= 0.0d0) then
           print*,'WTF?!' ! This can only mean that x is out of the domain ... 
           stop
        end if
@@ -561,7 +561,7 @@ contains
        dy = x(2) - dom%sh%center(2)
        dz = x(3) - dom%sh%center(3)
        ! inner shell intersection
-       b = 2.d0 * ( k(1)*dx + k(2)*dy +  k(3)*dz )
+       b = 2.0d0 * ( k(1)*dx + k(2)*dy +  k(3)*dz )
        c = dx*dx + dy*dy + dz*dz - dom%sh%r_inbound*dom%sh%r_inbound
        delta = b*b - 4.0d0*c
        tin   = 2.0d0 ! larger than box size 
@@ -573,7 +573,7 @@ contains
           if (t2 > 0 .and. t2 < tin) tin = t2
        end if
        ! outer shell intersection
-       b = 2.d0 * ( k(1)*dx + k(2)*dy +  k(3)*dz )
+       b = 2.0d0 * ( k(1)*dx + k(2)*dy +  k(3)*dz )
        c = dx*dx + dy*dy + dz*dz - dom%sh%r_outbound*dom%sh%r_outbound
        delta = b*b - 4.0d0*c
        tout  = 2.0d0 ! larger than box size 
@@ -590,11 +590,11 @@ contains
     case('slab')
 
        if(k(3)<0.)then
-          domain_distance_to_border_along_k = (dom%sl%zc-dom%sl%thickness/2.-x(3))/k(3)
+          domain_distance_to_border_along_k = (dom%sl%zc-dom%sl%thickness/2.0d0-x(3))/k(3)
        else
-          domain_distance_to_border_along_k = (dom%sl%zc+dom%sl%thickness/2.-x(3))/k(3)
+          domain_distance_to_border_along_k = (dom%sl%zc+dom%sl%thickness/2.0d0-x(3))/k(3)
        endif
-       if (domain_distance_to_border_along_k < 0.)then
+       if (domain_distance_to_border_along_k < 0.0d0)then
           print *,'ERROR: pb with distance to border along k...'
           stop
        endif

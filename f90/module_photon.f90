@@ -9,7 +9,7 @@ module module_photon
 
   implicit none
 
-  real(kind=8),parameter :: accuracy=1.d-15
+  real(kind=8),parameter :: accuracy=1.0d-15
 
   ! 2 types for photons, one for the initial properties is called photon_init
   ! and one for the properties that evolve during the RT called photon_current
@@ -137,10 +137,10 @@ contains
        vgas         = get_gas_velocity(cell_gas)
        ! compute photon's frequency in cell's moving frame
        scalar       = p%k(1) * vgas(1) + p%k(2) * vgas(2) + p%k(3) * vgas(3)
-       nu_cell      = (1.d0 - scalar/clight) * p%nu_ext  
+       nu_cell      = (1.0d0 - scalar/clight) * p%nu_ext  
 
        ! define epsilon according to cell size & numerical accuracy
-       epsilon_cell = 2.d0*accuracy/cell_size * 1.d5
+       epsilon_cell = 2.0d0*accuracy/cell_size * 1.0d5
        ! we want epsilon_box > tiny -> epsilon_cell > tiny/cell_size
        ! to be improved later...
 
@@ -167,7 +167,7 @@ contains
           ! generate the opt depth where the photon is scattered/absorbed
           if (tau_abs <= 0.0d0) then
              rtau    = ran3(iran)
-             tau_abs = -log(1.0d0-rtau+1.d-30)
+             tau_abs = -log(1.0d0-rtau+1.0d-30)
           end if
 
           ! compute distance of photon to border of cell along propagation direction
@@ -212,8 +212,8 @@ contains
 #endif
              ! correct for periodicity
              do i=1,3
-                if (ppos(i) < 0.d0) ppos(i)=ppos(i)+1.d0
-                if (ppos(i) > 1.d0) ppos(i)=ppos(i)-1.d0
+                if (ppos(i) < 0.0d0) ppos(i)=ppos(i)+1.0d0
+                if (ppos(i) > 1.0d0) ppos(i)=ppos(i)-1.0d0
              enddo
 
              ! update travel time
@@ -422,7 +422,7 @@ contains
        pgrid(i)%nu_ext       = pgridinit(i)%nu_em
        pgrid(i)%k            = pgridinit(i)%k_em
        pgrid(i)%nb_abs       = 0
-       pgrid(i)%time         = 0.d0
+       pgrid(i)%time         = 0.0d0
        pgrid(i)%tau_abs_curr = -1.0d0
        pgrid(i)%iran         = pgridinit(i)%iran
     enddo
