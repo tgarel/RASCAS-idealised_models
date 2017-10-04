@@ -589,7 +589,7 @@ contains
        
     case('slab')
 
-       if(k(3)<0.)then
+       if(k(3)<0.0d0)then
           domain_distance_to_border_along_k = (dom%sl%zc-dom%sl%thickness/2.0d0-x(3))/k(3)
        else
           domain_distance_to_border_along_k = (dom%sl%zc+dom%sl%thickness/2.0d0-x(3))/k(3)
