@@ -538,6 +538,8 @@ contains
     real(kind=8) :: b, c, delta, dx, dy, dz 
     ! variables for the shell case
     real(kind=8) :: t1,t2,tin,tout
+    ! variables for the cube case
+    real(kind=8),dimension(3) :: x_dom
     
     select case(dom%type)
        
@@ -595,16 +597,22 @@ contains
           domain_distance_to_border_along_k = (dom%sl%zc+dom%sl%thickness/2.0d0-x(3))/k(3)
        endif
        if (domain_distance_to_border_along_k < 0.0d0)then
-          print *,'ERROR: pb with distance to border along k...'
+          print *,'ERROR: pb with distance to border along k, slab case, point outside domain...'
           stop
        endif
 
-    !case('cube')
-    !
-    !   domain_distance_to_border_along_k = path(x,k)
-    !
-    ! Leo: no, no, no, doing that you get the distance to the box limit, not the domain...
+    case('cube')
        
+       ! get position relative to the domain
+       x_dom = (x - dom%cu%center)/dom%cu%size + 0.5d0
+       if((x_dom(1) < 0.0d0).or.(x_dom(1)>1.0d0).or.&
+            (x_dom(2) < 0.0d0).or.(x_dom(2)>1.0d0).or.&
+            (x_dom(3) < 0.0d0).or.(x_dom(3)>1.0d0))then
+          ! x is outside the domain
+          print *,'ERROR: pb with distance to border along k, cube case, point outside domain...'
+          stop
+       endif
+       domain_distance_to_border_along_k = path(x_dom,k)
        
     case default
        print *,'ERROR: domain type not defined',dom%type
