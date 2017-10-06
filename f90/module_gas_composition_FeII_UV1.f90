@@ -23,10 +23,6 @@ module module_gas_composition
      ! -> density is computed as 2.8d-5 * nHI * metallicity / solar_metallicity
      real(kind=8) :: nFeII     ! numerical density of FeII  [#/cm3]
      real(kind=8) :: dopwidth  ! Doppler width [cm/s]
-     ! DUST -> model of Laursen, Sommer-Larsen and Andersen 2009.
-     ! ->  ndust = (nHI + f_ion nHII)*Z/Zref
-     ! f_ion and Zref are two free parameters . 
-     real(kind=8) :: ndust     ! pseudo-numerical density of dust particles [#/cm3]
   end type gas
   real(kind=8),public :: box_size_cm   ! size of simulation box in cm. 
 

@@ -26,7 +26,7 @@ module module_FeII_2587_model ! Fe_II UV1
   real(kind=8),parameter :: nu14           = clight / lambda14_cm     ! [Hz]
   real(kind=8),parameter :: f14            = 7.17d-2                  ! oscillator strength
   real(kind=8),parameter :: sigma14_factor = pi*e_ch**2*f14/me/clight ! multiply by Voigt(x,a)/nu_D to get sigma.
-  real(kind=8),parameter :: A41            = 8.61d7 ! 8.94d7                   ! spontaneous decay [/s]
+  real(kind=8),parameter :: A41            = 8.94d7                   ! spontaneous decay [/s]   ! Prochaska+11 give A41=8.61d7
 
   ! transition between levels 4 and 2
   real(kind=8),parameter :: lambda24       = 2612.654d0 ! 2612.65d0                ! transition wavelength [A]
@@ -135,7 +135,7 @@ contains
     proba42 = proba41 + A42/Atot
     if (r2 <= proba41) then
        ! photon goes down to level 1 -> resonant scattering
-       nu_atom = nu_cell - nu_ext * upar/clight ! incoming frequency in atom's frame = outcoming freq in same frame     
+       nu_atom = nu_cell - nu_ext * upar/clight ! incoming frequency in atom's frame = outcoming freq in same frame
     else if (r2 <= proba42) then
        ! photons goes down to level 2 ... -> fluorecent 2
        nu_atom = nu24

@@ -39,7 +39,6 @@ module module_FeII_2344_model ! Fe_II UV3
   real(kind=8),parameter :: lambda34_cm    = lambda34 / cmtoA         ! [cm]
   real(kind=8),parameter :: nu34           = clight / lambda34_cm     ! [Hz]
   real(kind=8),parameter :: A43            = 3.1d7                   ! spontaneous decay [/s]
-
   real(kind=8),parameter :: Atot = A41+A42+A43
   
   public :: get_tau_FeII_2344, scatter_FeII_2344
