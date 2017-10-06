@@ -105,7 +105,7 @@ endif
 COMPOBJS =  module_FeII_2587_model.o module_FeII_2600_model.o module_idealised_models.o module_gas_composition_FeII_UV1.o
 
 
-GASOBJS = module_domain.o module_constants.o module_ramses.o module_random.o module_utils.o module_uparallel.o $(COMPOBJS)
+GASOBJS = module_constants.o module_random.o module_utils.o module_domain.o module_ramses.o module_uparallel.o $(COMPOBJS)
 
 OBJSDOM = $(GASOBJS) module_select.o module_mesh.o
 
@@ -142,6 +142,8 @@ rascas-serial: $(OBJSPHO) rascas-serial.o
 rascas: $(OBJSMPI) rascas.o
 	$(F90) $(FFLAGS) $(LDFLAGS) -o $@ $(OBJSMPI) rascas.o
 
+test_domain: module_constants.o module_random.o module_domain.o module_utils.o test_domain.o
+	$(F90) $(FFLAGS) $(LDFLAGS) -o $@ module_constants.o module_random.o module_domain.o module_utils.o test_domain.o
 clean:
 	rm -f $(OBJSDOM) $(OBJSPHO) $(OBJSMPI) *.o *.mod
 #############################################################################

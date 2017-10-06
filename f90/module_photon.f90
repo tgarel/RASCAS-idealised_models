@@ -5,10 +5,11 @@ module module_photon
   use module_constants
   use module_random
   use module_domain
+  use module_utils, only: path 
 
   implicit none
 
-  real(kind=8),parameter :: accuracy=1.d-15
+  real(kind=8),parameter :: accuracy=1.0d-15
 
   ! 2 types for photons, one for the initial properties is called photon_init
   ! and one for the properties that evolve during the RT called photon_current
@@ -38,7 +39,6 @@ module module_photon
 
 
   public  :: MCRT, propagate, init_photons_from_file, dump_photons
-  private :: path
 
 contains
 
@@ -80,10 +80,10 @@ contains
     real(kind=8)                         :: distance_to_border,distance_to_border_cm, d
     real(kind=8)                         :: time
     integer(kind=4)                      :: scatter_flag, i, icellnew, iran
-    real(kind=8),dimension(3)            :: vgas, k, cell_corner, posoct, ppos_old
+    real(kind=8),dimension(3)            :: vgas, k, cell_corner, posoct, ppos_old, pcell
     logical                              :: cell_fully_in_domain, flagoutvol, in_domain
     real(kind=8)                         :: epsilon_cell
-    real(kind=8)                         :: dtime,dborder
+    real(kind=8)                         :: dborder,dborder_cm
     
     ! initialise working props of photon
     ppos    = p%xcurr        ! position within full simulation box, in box units.
@@ -137,15 +137,16 @@ contains
        vgas         = get_gas_velocity(cell_gas)
        ! compute photon's frequency in cell's moving frame
        scalar       = p%k(1) * vgas(1) + p%k(2) * vgas(2) + p%k(3) * vgas(3)
-       nu_cell      = (1.d0 - scalar/clight) * p%nu_ext  
+       nu_cell      = (1.0d0 - scalar/clight) * p%nu_ext  
 
        ! define epsilon according to cell size & numerical accuracy
-       epsilon_cell = 2.d0*accuracy/cell_size * 1.d5
+       epsilon_cell = 2.0d0*accuracy/cell_size * 1.0d5
        ! we want epsilon_box > tiny -> epsilon_cell > tiny/cell_size
        ! to be improved later...
 
        ! define/update flag_cell_fully_in_comp_dom to avoid various tests in the following
-       cell_fully_in_domain =  domain_contains_cell(ppos,cell_size,domaine_calcul)
+       pcell = cell_corner + 0.5d0*cell_size
+       cell_fully_in_domain =  domain_contains_cell(pcell,cell_size,domaine_calcul)
 
 
 #ifdef DEBUG
@@ -166,14 +167,25 @@ contains
           ! generate the opt depth where the photon is scattered/absorbed
           if (tau_abs <= 0.0d0) then
              rtau    = ran3(iran)
-             tau_abs = -log(1.0d0-rtau+1.d-30)
+             tau_abs = -log(1.0d0-rtau+1.0d-30)
           end if
 
           ! compute distance of photon to border of cell along propagation direction
           distance_to_border    = path(ppos_cell,p%k)               ! in cell units
           distance_to_border_cm = distance_to_border * cell_size_cm ! cm
 
-          ! check whether scattering occurs within cell (scatter_flag > 0) or not (scatter_flag==0)
+          ! if cell not fully in domain, modify distance_to_border to "distance_to_domain_border" if relevant
+          if(.not.(cell_fully_in_domain))then
+             dborder = domain_distance_to_border_along_k(ppos,p%k,domaine_calcul)    ! in box units
+             dborder_cm = dborder * box_size_cm                                      ! from box units to cm
+
+             ! compare distance to cell border and distance to domain border and take the min
+             distance_to_border_cm = min(distance_to_border_cm,dborder_cm)
+             distance_to_border = distance_to_border_cm / cell_size_cm
+             
+          endif
+
+          ! check whether scattering occurs within cell or domain (scatter_flag > 0) or not (scatter_flag==0)
           scatter_flag = gas_get_scatter_flag(cell_gas, distance_to_border_cm, nu_cell, tau_abs, iran)
 
 #ifdef DEBUG
@@ -186,7 +198,7 @@ contains
 #endif
 
           if (scatter_flag == 0) then
-             ! next scattering event will not occur in the cell, then move photon to next cell
+             ! next scattering event will not occur in the cell or in the domain -> move photon to next cell or exit
 
              ! update ppos_cell with distance_to_border (distance_to_border_cm has not been modified if flag==0)
              ! also add epsilon to ensure finding next cell
@@ -200,8 +212,8 @@ contains
 #endif
              ! correct for periodicity
              do i=1,3
-                if (ppos(i) < 0.d0) ppos(i)=ppos(i)+1.d0
-                if (ppos(i) > 1.d0) ppos(i)=ppos(i)-1.d0
+                if (ppos(i) < 0.0d0) ppos(i)=ppos(i)+1.0d0
+                if (ppos(i) > 1.0d0) ppos(i)=ppos(i)-1.0d0
              enddo
 
              ! update travel time
@@ -213,9 +225,9 @@ contains
                 p%status       = 1
                 p%xcurr        = ppos
                 ! correct time
-                dborder = domain_distance_to_border(ppos,domaine_calcul)
-                dtime   = dborder*box_size_cm/clight ! should be negative
-                time    = time+dtime
+                ! not needed anymore the update of travel time done before is exactly the time to border
+                !dborder = domain_distance_to_border(ppos,domaine_calcul)
+                !time = time - epsilon_cell*box_size_cm/clight
                 p%time         = time
                 p%tau_abs_curr = tau_abs
                 p%iran         = iran
@@ -274,12 +286,12 @@ contains
              exit propag_in_cell
 
           else
-             ! Next event happens inside this cell
+             ! Next event happens inside this cell and in the domain.
 
              ! length and time travelled by the photon before event
              d    = distance_to_border_cm   ! NB: at this point, distance_to_border became "distance_to_interaction" in gas_get_scatter_flag
              time = time + d/clight
-             d    = d / cell_size_cm        ! in box units
+             d    = d / cell_size_cm        ! in cell units
 
              ! update ppos_cell
              do i=1,3
@@ -289,25 +301,33 @@ contains
              ppos = ppos_cell * cell_size + cell_corner
 
              ! Check if photon is still in the computational domain
-             if(.not.(cell_fully_in_domain))then   ! this flag allows to not check at each scattering the new position 
-                                                   ! as long as the cell is fully contained in the computational domain
-                in_domain = domain_contains_point(ppos,domaine_calcul)
-                if(.not.(in_domain))then    ! photon done, nothing else to do
-                   p%status       = 1
-                   p%xcurr        = ppos
-                   ! correct time
-                   dborder = domain_distance_to_border(ppos,domaine_calcul)
-                   dtime   = dborder*box_size_cm/clight ! should be negative
-                   time    = time+dtime
-                   p%time         = time
-                   p%tau_abs_curr = tau_abs
-                   p%iran         = iran
-#ifdef DEBUG
-                   print*,'-exit propagation, photon escaped comp. domain'
-#endif
-                   exit photon_propagation
-                endif
-             endif
+             ! Now, we already know that photon is in domain, so skip this if loop
+!              if(.not.(cell_fully_in_domain))then   ! this flag allows to not check at each scattering the new position 
+!                                                    ! as long as the cell is fully contained in the computational domain
+                 in_domain = domain_contains_point(ppos,domaine_calcul)
+                 if(.not.(in_domain))then    ! photon done, nothing else to do
+                    print *,'OH NOOOO! '
+                    print*,ppos
+                    print*,ppos_cell
+                    print*,d,distance_to_border_cm,distance_to_border
+                    stop
+                 end if
+
+                    !                    p%status       = 1
+!                    p%xcurr        = ppos
+!                    ! correct time
+!                    dborder = domain_distance_to_border(ppos,domaine_calcul)
+!                    dtime   = dborder*box_size_cm/clight ! should be negative
+!                    time    = time+dtime
+!                    p%time         = time
+!                    p%tau_abs_curr = tau_abs
+!                    p%iran         = iran
+! #ifdef DEBUG
+!                    print*,'-exit propagation, photon escaped comp. domain'
+! #endif
+!                    exit photon_propagation
+!                 endif
+!              endif
 
              !------------
              ! scattering
@@ -371,38 +391,6 @@ contains
   
 
 
-
-
-  function path(pos,dir)
-
-    ! compute distance to border of a cell (in cell units), from position
-    ! pos (in cell units) and in direction dir. 
-    
-    implicit none
-
-    real(kind=8),intent(in) :: pos(3)   ! position of photon in cell units
-    real(kind=8),intent(in) :: dir(3)   ! propagation direction of photon
-    integer(kind=4)         :: i
-    real(kind=8)            :: dx(3)
-    real(kind=8)            :: path     ! distance from pos to exit point
-
-    do i = 1,3
-       if(dir(i) < 0.) then
-          dx(i) = -pos(i) / dir(i)
-       else if (dir(i) > 0.) then
-          dx(i) = (1.0d0 - pos(i)) / dir(i)
-       else ! dir(i) == 0
-          dx(i) = 10.  ! larger than maximum extent of cell (sqrt(3)) in cell units
-       end if
-    end do
-    path = minval(dx)
-
-    return
-    
-  end function path
-
-
-
   subroutine init_photons_from_file(file,pgrid)
 
     character(2000),intent(in)                                 :: file
@@ -434,7 +422,7 @@ contains
        pgrid(i)%nu_ext       = pgridinit(i)%nu_em
        pgrid(i)%k            = pgridinit(i)%k_em
        pgrid(i)%nb_abs       = 0
-       pgrid(i)%time         = 0.d0
+       pgrid(i)%time         = 0.0d0
        pgrid(i)%tau_abs_curr = -1.0d0
        pgrid(i)%iran         = pgridinit(i)%iran
     enddo

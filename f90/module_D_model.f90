@@ -13,7 +13,7 @@ module module_D_model
   real(kind=8),parameter   :: mdeut        = 2.d0 * mp           ! Deuterium atom's mass [ g ]
   real(kind=8),parameter   :: lambda_0     = 1215.34d0           ! wavelength of Lya of Deuterium [ A ]
   real(kind=8),parameter   :: gamma        = 6.265d8             ! Einstein coeff. [ s^-1 ]
-  real(kind=8),parameter   :: f12          = 0.416               ! Oscillator strength for Deuterium Lya.
+  real(kind=8),parameter   :: f12          = 0.416d0             ! Oscillator strength for Deuterium Lya.
   ! useful pre-computed quantities
   real(kind=8),parameter   :: lambda_0_cm = lambda_0 / cmtoA              ! cm
   real(kind=8),parameter   :: nu_0 = clight / lambda_0_cm                 ! Hz
@@ -133,7 +133,7 @@ contains
        bu = sqrt(1.0d0 - mu*mu)
     else
        x_atom  = (nu_atom -nu_0) / delta_nu_doppler
-       if (abs(x_atom) < 0.2) then ! core scattering 
+       if (abs(x_atom) < 0.2d0) then ! core scattering 
           call anisotropic_direction_HIcore(k,knew,mu,bu,iran)
        else ! wing scattering 
           call anisotropic_direction_Rayleigh(k,knew,mu,bu,iran)
@@ -142,13 +142,13 @@ contains
 
     ! 5/ recoil effect 
     if (recoil) then 
-       nu_atom = nu_atom / (1.d0 + ((planck*nu_atom)/(mdeut*clight*clight))*(1.-mu))
+       nu_atom = nu_atom / (1.0d0 + ((planck*nu_atom)/(mdeut*clight*clight))*(1.0d0-mu))
     end if
 
     ! 6/ compute atom freq. in external frame, after scattering
     scalar = knew(1) * vcell(1) + knew(2) * vcell(2) + knew(3)* vcell(3)
     nu_ext = nu_atom * (1.0d0 + scalar/clight + (upar*mu + bu*uper)/clight)
-    nu_cell = (1.d0 - scalar/clight) * nu_ext 
+    nu_cell = (1.0d0 - scalar/clight) * nu_ext 
     k = knew
 
   end subroutine scatter_D

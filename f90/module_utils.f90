@@ -28,7 +28,7 @@ contains
     
     x2 = x**2
     z  = (x2 - 0.855d0) / (x2 + 3.42d0)
-    if (z > 0) then 
+    if (z > 0.0d0) then 
        q = z * (1.0d0 + 21.0d0/x2) * a / pi / (x2 + 1.0d0)
        q = q * (((5.674d0*z - 9.207d0)*z + 4.421d0)*z + 0.1117)
     else
@@ -107,16 +107,16 @@ contains
     
     phi = twopi * ran3(iran)
     x   = ran3(iran)
-    mu = ((-0.703204*x + 1.054807)* x + 1.643182) * x - 0.997392  
+    mu = ((-0.703204d0*x + 1.054807d0)* x + 1.643182d0) * x - 0.997392d0  
     ! angular description of kin in external frame (box coordinates)
     cti = kin(3)
-    sti = sqrt(1.d0 - cti**2)  ! sin(theta) is positive for theta in [0,pi]. 
+    sti = sqrt(1.0d0 - cti**2)  ! sin(theta) is positive for theta in [0,pi]. 
     if (sti > 0) then 
        cpi = kin(1)/sti
        spi = kin(2)/sti
     else
-       cpi = 1.
-       spi = 0.
+       cpi = 1.0d0
+       spi = 0.0d0
     end if
     ! angular description of kout (relative to k)
     ct1 = mu
@@ -169,16 +169,16 @@ contains
 
     phi = twopi * ran3(iran)
     x   = ran3(iran)
-    mu = ((((((-24.901267*x + 87.154434)*x -114.220525)*x + 67.665227)*x -18.389694)*x + 3.496531)*x + 1.191722)*x -0.998214
+    mu = ((((((-24.901267d0*x + 87.154434d0)*x -114.220525d0)*x + 67.665227d0)*x -18.389694d0)*x + 3.496531d0)*x + 1.191722d0)*x -0.998214d0
     ! angular description of kin in external frame (box coordinates)
     cti = kin(3)
-    sti = sqrt(1.d0 - cti**2)  ! sin(theta) is positive for theta in [0,pi]. 
+    sti = sqrt(1.0d0 - cti**2)  ! sin(theta) is positive for theta in [0,pi]. 
     if (sti > 0) then 
        cpi = kin(1)/sti
        spi = kin(2)/sti
     else
-       cpi = 1.
-       spi = 0.
+       cpi = 1.0d0
+       spi = 0.0d0
     end if
     ! angular description of kout (relative to k)
     ct1 = mu
@@ -221,7 +221,7 @@ contains
     !! determine scattering angle (in atom's frame)
     ! use White 79 approximation for the "reciprocal" of cumulative Henyey-Greenstein phase fct:
     ra=ran3(iran) 
-    mu = (1.+g_dust*g_dust-((1.-g_dust*g_dust)/(1.-g_dust+2.*g_dust*ra))**2)/(2.*g_dust)
+    mu = (1.0d0+g_dust*g_dust-((1.0d0-g_dust*g_dust)/(1.0d0-g_dust+2.0d0*g_dust*ra))**2)/(2.0d0*g_dust)
 
     !! angular description of kin in external frame (box coordinates)
     ! ---------------------------------------------------------------------------------
@@ -231,13 +231,13 @@ contains
     ! cti, sti, cpi, spi correspond to kin
     ! ---------------------------------------------------------------------------------
     cti = kin(3)              
-    sti = sqrt(1.d0 - cti**2)  ! sin(theta) is positive for theta in [0,pi]. 
+    sti = sqrt(1.0d0 - cti**2)  ! sin(theta) is positive for theta in [0,pi]. 
     if (sti > 0) then 
        cpi = kin(1)/sti       
        spi = kin(2)/sti       
     else
-       cpi = 1.
-       spi = 0.
+       cpi = 1.0d0
+       spi = 0.0d0
     end if
     
     !! angular description of kout (relative to kin)
@@ -285,6 +285,37 @@ contains
     
   end subroutine locatedb
 
+
+  function path(pos,dir)
+
+    ! compute distance to border of a cube (of side 1), from position
+    ! pos (in cube units, i.e. [0,1]) and in direction dir (normalized). 
+    
+    implicit none
+
+    real(kind=8),intent(in) :: pos(3)   ! position of photon in cell units
+    real(kind=8),intent(in) :: dir(3)   ! propagation direction of photon
+    integer(kind=4)         :: i
+    real(kind=8)            :: dx(3)
+    real(kind=8)            :: path     ! distance from pos to exit point
+
+    do i = 1,3
+       if(dir(i) < 0.0d0) then
+          dx(i) = -pos(i) / dir(i)
+       else if (dir(i) > 0.0d0) then
+          dx(i) = (1.0d0 - pos(i)) / dir(i)
+       else ! dir(i) == 0
+          dx(i) = 10.0d0  ! larger than maximum extent of cell (sqrt(3)) in cell units
+       end if
+    end do
+    path = minval(dx)
+
+    return
+    
+  end function path
+
+
+  
 
 
 end module module_utils
