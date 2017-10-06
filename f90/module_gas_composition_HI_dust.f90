@@ -136,7 +136,7 @@ contains
   end subroutine gas_from_ramses_leaves
 
 
-   ! move to idealised_models ?
+  ! move to idealised_models ?
   subroutine overwrite_gas(g,x_leaf,leaf_level,nleaf)
     
     type(gas),dimension(:),intent(inout) :: g
@@ -158,12 +158,14 @@ contains
        g(:)%v(3)     = fix_vel
        g(:)%nHI      = fix_nhi
        g(:)%dopwidth = fix_vth     
-       
+       g(:)%ndust    = fix_ndust
+
 #ifdef DEBUG
        print*,'in overwrite_gas: allocated g?',shape(g)
        print*,'in overwrite_gas: ',minval(g%nhi),maxval(g%nhi)
        print*,'in overwrite_gas: ',minval(g%dopwidth),maxval(g%dopwidth)
        print*,'in overwrite_gas: ',minval(g%v),maxval(g%v)
+       print*,'in overwrite_gas: ',minval(g%ndust),maxval(g%ndust)
        print*,'in overwrite_gas: ',box_size_cm
 #endif
     case('sphere_homogen_velfix')      
