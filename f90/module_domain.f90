@@ -443,41 +443,30 @@ contains
 
 
   function get_my_new_domain(x,liste_domaines)
-    !-> given position x of a point, returns the dom where the point is
-    ! in case of overlapping domains, should use domain_distance_to_border to choose
-    ! how to do that efficiently?
-    ! scan each domain and test using domain_contains_point ?
+    ! Return the domain from list of domains “liste_domaines” in which point x is most deeply embedded. 
+    ! (i.e. such that the distance of x to domain border is the largest). 
     type(domain),intent(in),dimension(:) :: liste_domaines
     real(kind=8),dimension(3),intent(in) :: x
-    integer(kind=4)                      :: get_my_new_domain, ndom, count_dom, first_dom, i
-    logical                              :: x_in_i
-    real(kind=8)                         :: d1,d2
+    integer(kind=4)                      :: get_my_new_domain, ndom, i, imax
+    real(kind=8)                         :: dmax
 
     ndom = size(liste_domaines)
-    count_dom = 0
-    first_dom = -1
+    dmax = 0.0d0
+    imax = 0
     do i=1,ndom
-       x_in_i = domain_contains_point(x,liste_domaines(i))
-       if(x_in_i)then
-          count_dom         = count_dom + 1
-          if(count_dom>1) first_dom = get_my_new_domain
-          get_my_new_domain = i
+       db = domain_distance_to_border(x,liste_domaines(i))
+       ! if db < 0 point outside domain
+       if (db>dmax)then
+          imax = i
+          dmax = db
        endif
     enddo
-    if((count_dom > 2).or.(count_dom==0))then  !JB: why not allow more than two domains ? 
+    if(dmax<=0.0d0 .or. imax==0)then
        print *,'ERROR: problem with get_my_new_domain'
        stop
     endif
-    if(count_dom>1)then
-       ! point belongs to 2 domains, choose the one for which distance to border is maximum
-       d1 = domain_distance_to_border(x,liste_domaines(first_dom))
-       d2 = domain_distance_to_border(x,liste_domaines(get_my_new_domain))
-       if(d2<d1)then
-          get_my_new_domain = first_dom
-       endif
-       ! else (d2>=d1) then get_my_new_domain is ok
-    endif
-    
+    get_my_new_domain = imax
+
     return
   end function get_my_new_domain
 
@@ -523,7 +512,6 @@ contains
 
 
   function domain_distance_to_border_along_k(x,k,dom)
-
     ! return the distance of point x to the closest border of domain dom along propagation vector k.
     ! inputs:
     ! - x : position vector, in simulation-box units
