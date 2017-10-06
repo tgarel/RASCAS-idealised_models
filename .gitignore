@@ -34,6 +34,7 @@ py/
 # File 
 ###################
 run.log
+backup_photons*
 
 # OS generated files #
 ######################
