@@ -505,7 +505,7 @@ contains
     do
        read (10,'(a)',iostat=err) line
        if(err/=0) exit
-       if (line(1:8) == '[master]') then
+       if (line(1:80) == '[master]') then
           section_present = .true.
           exit
        end if

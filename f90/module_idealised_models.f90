@@ -504,7 +504,7 @@ contains
     ! in log10
     log_mtot = log10(fix_mtot_hi) + log10(msun_to_gram) - log10(gram_to_atoms)    ! Msun -> g -> atoms
    
-    dz          = dx_cell                        ! thickness of disc = size of cell
+    dz          = dx_cell / 2.0d0                ! thickness of disc/2 = size of cell / 2
     rdisc_max   = 0.45d0                         ! rdisc_max*fix_box_size_cm should be equal to the HI radius measured for LARS object
     max_dist    = rdisc_max
     vx_mc       = 0.0d0
@@ -518,9 +518,10 @@ contains
     logSigma0  = log_mtot - log10(2.d0) - log10(pi) - 2.d0 * log10(fix_rd_disc * fix_box_size_cm)
     Sigma0    = 10.d0**logSigma0
         
+    dist_cell = -888.0d0
+    
     ! Select only cells which are exactly in the z=0 plane. Others cells have nh_ideal=0.d0 (from initialization)
-    if (abs(zcell_ideal-0.5d0) .lt. 0.5*dz) then !  if (abs(zcell_ideal-0.5d0) .eq. 0.d0) should also work
-       
+    if (zcell_ideal .le. (0.5+dz) .and. zcell_ideal .ge. (0.5-dz)) then
        ! Then, I should now have only cells with (zcell_ideal-0.5d0)=0
        dist2 = 0.0d0
        dist2 = (xcell_ideal-0.5d0)**2 + (ycell_ideal-0.5d0)**2 ! squared distance of cell from center in xy plane
@@ -603,6 +604,8 @@ contains
     ! Give all cells shell_temp (cells not in sphere won't matter for RT as dnh = 0...)
     dopwidth_ideal = sqrt((2.0d0*kb/mp)*fix_temp) 
 
+    !print*,nh_ideal,dist_cell
+
 !!$    if (xcell_ideal < 0.5 .and. ycell_ideal < 0.5 .and. nh_ideal > 0.d0) then
 !!$       print*,'XY = ',xcell_ideal,ycell_ideal,sqrt((xcell_ideal-0.5d0)**2 + (ycell_ideal-0.5d0)**2)-dx_cell / sqrt(2.0d0),nh_ideal
 !!$    end if
@@ -630,7 +633,7 @@ contains
     real(kind=8)                   :: max_dist, dist_cell_mc
     real(kind=8),parameter         :: msun_to_gram  = 1.9891d33 ! g
     real(kind=8),parameter         :: gram_to_atoms = 1.673534d-24 ! Hydrogen mass in g
-    real(kind=8)                   :: Sigma0, dz, rdisc_max , logSigma0, log_mtot, cosphi2
+    real(kind=8)                   :: Sigma0, dz, rdisc_max , logSigma0, log_mtot, cosphi, sinphi
 
 
     ! fix_mtot_hi = fix_mtot_hi * msun_to_gram
@@ -638,7 +641,7 @@ contains
     ! in log10
     log_mtot = log10(fix_mtot_hi) + log10(msun_to_gram) - log10(gram_to_atoms)    ! Msun -> g -> atoms
    
-    dz          = dx_cell                        ! thickness of disc = size of cell
+    dz          = dx_cell / 2.0d0                ! thickness of disc = size of cell
     rdisc_max   = 0.45d0                         ! rdisc_max*fix_box_size_cm should be equal to the HI radius measured for LARS object
     max_dist    = rdisc_max
     vx_mc       = 0.0d0
@@ -651,9 +654,11 @@ contains
     !! in log10
     logSigma0  = log_mtot - log10(2.d0) - log10(pi) - 2.d0 * log10(fix_rd_disc * fix_box_size_cm)
     Sigma0    = 10.d0**logSigma0
-        
-    ! Select only cells which are exactly in the z=0 plane. Others cells have nh_ideal=0.d0 (from initialization)
-    if (abs(zcell_ideal-0.5d0) .lt. 0.5*dz) then !  if (abs(zcell_ideal-0.5d0) .eq. 0.d0) should also work
+    
+    dist_cell = -888.0d0
+    
+    ! Select only cells which are exactly in the z=0 plane. Others cells have nh_ideal=0.d0 (from initialization)                 
+    if (zcell_ideal .le. (0.5d0+dz) .and. zcell_ideal .ge. 0.5d0) then
        
        ! Then, I should now have only cells with (zcell_ideal-0.5d0)=0
        dist2 = 0.0d0
@@ -693,13 +698,17 @@ contains
              dist_mc2 = 0.0d0
              dist_mc2 = (xmc-0.5d0)**2 + (ymc-0.5d0)**2 + (zmc-0.5d0)**2
              dist_mc  = sqrt(dist_mc2)
-             cosphi2  = 0.0d0
+             cosphi  = 0.0d0
+             sinphi  = 0.0d0
              if (dist_mc < max_dist) then ! point within sphere
                 volfrac = volfrac + 1.0d0
-                cosphi2 = xmc*xmc / (xmc*xmc + ymc*ymc)
-                vx_mc = vx_mc - fix_vel * sqrt(1.0d0 - cosphi2) 
-                vy_mc = vy_mc + fix_vel * sqrt(cosphi2)
-               ! vz_mc = vz_mc + fix_vel * (zmc - 0.5d0) / dist_mc ! no z vel 
+                !cosphi = (xmc-0.5d0) / sqrt((xmc-0.5d0)*(xmc-0.5d0) + (ymc-0.5d0)*(ymc-0.5d0))
+                !phi_angle = atan((ymc-0.5d0)/(xmc-0.5d0)) !acos(cosphi)
+                cosphi    = (xmc-0.5d0) / sqrt(1.0d0-(zmc-0.5d0)**2.) ! sintheta = sqrt(1.0d0-(xmc-0.5d0)**2.)
+                sinphi    = (ymc-0.5d0) / sqrt(1.0d0-(zmc-0.5d0)**2.) ! sintheta = sqrt(1.0d0-(xmc-0.5d0)**2.)
+                vx_mc = vx_mc - fix_vel * sinphi
+                vy_mc = vy_mc + fix_vel * cosphi
+                ! vz_mc = vz_mc + fix_vel * (zmc - 0.5d0) / dist_mc ! no z vel 
                 dist_cell_mc = dist_cell_mc + dist_mc
              end if
              nMC = nMC + 1
@@ -715,6 +724,12 @@ contains
              ! redefine dist_cell as mean of dist_mc
              dist_cell = dist_cell_mc / volfrac
           end if
+
+          !!! test
+          cosphi    = (xcell_ideal-0.5d0) / dist_cell !/ sqrt(1.0d0-(zcell_ideal-0.5d0)**2.) ! sintheta = sqrt(1.0d0-(xmc-0.5d0)**2.)
+          sinphi    = (ycell_ideal-0.5d0) / dist_cell !/ sqrt(1.0d0-(zcell_ideal-0.5d0)**2.)
+          vx_ideal  = -1.0d0 * fix_vel * sinphi
+          vy_ideal  = fix_vel * cosphi
 
           vz_ideal = 0.0d0 ! no z vel 
           
@@ -736,6 +751,8 @@ contains
     ! Give all cells shell_temp (cells not in sphere won't matter for RT as dnh = 0...)
     dopwidth_ideal = sqrt((2.0d0*kb/mp)*fix_temp) 
     
+    !print*,vx_ideal
+
     return
     
   end subroutine disc_thin_vcirc
