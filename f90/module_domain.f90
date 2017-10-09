@@ -53,7 +53,7 @@ contains
     type(domain),intent(out)         :: dom
     logical                          :: ok
 
-    select case(type)
+    select case(trim(type))
 
     case('sphere')
        ! check if optional argument required for sphere are present
@@ -108,7 +108,7 @@ contains
        dom%sl%thickness=thickness
 
     case default
-       print *,'ERROR: type not defined',type
+       print *,'ERROR: type not defined',trim(type)
        stop
     end select
 
@@ -149,7 +149,7 @@ contains
     integer(kind=4),dimension(:),allocatable             :: tmpi
     real(kind=8)                                         :: dd
     
-    select case(dom%type)
+    select case(trim(dom%type))
     
     case('sphere')
        allocate(indsel(1:n))
@@ -245,7 +245,7 @@ contains
     type(domain),intent(out)    :: dom 
 
     read(unit,*) dom%type
-    select case(dom%type)
+    select case(trim(dom%type))
     case('sphere')
        read(unit,*) dom%sp%center(:)
        read(unit,*) dom%sp%radius
@@ -274,7 +274,7 @@ contains
     type(domain),intent(out)    :: dom 
 
     read(unit) dom%type
-    select case(dom%type)
+    select case(trim(dom%type))
     case('sphere')
        read(unit) dom%sp%center(:)
        read(unit) dom%sp%radius
@@ -303,7 +303,7 @@ contains
     type(domain),intent(in)    :: dom 
 
     write(unit) dom%type
-    select case(dom%type)
+    select case(trim(dom%type))
     case('sphere')
        write(unit) dom%sp%center(:)
        write(unit) dom%sp%radius
@@ -332,7 +332,7 @@ contains
     type(domain),intent(in)    :: dom 
 
     write(unit,'(a)') trim(dom%type)
-    select case(dom%type)
+    select case(trim(dom%type))
     case('sphere')
        write(unit,'(3(f14.10))') dom%sp%center(:)
        write(unit,'(f14.10)') dom%sp%radius
@@ -376,7 +376,7 @@ contains
     logical                              :: domain_contains_point
     real(kind=8)                         :: rr
     domain_contains_point=.false.
-    select case(dom%type)
+    select case(trim(dom%type))
     case('sphere')
        rr = (x(1)-dom%sp%center(1))**2 + (x(2)-dom%sp%center(2))**2 + (x(3)-dom%sp%center(3))**2
        if(rr<dom%sp%radius*dom%sp%radius)domain_contains_point=.true.
@@ -406,7 +406,7 @@ contains
     
     domain_contains_cell=.false.
 
-    select case(dom%type)
+    select case(trim(dom%type))
 
     case('sphere')
        
@@ -448,7 +448,7 @@ contains
     type(domain),intent(in),dimension(:) :: liste_domaines
     real(kind=8),dimension(3),intent(in) :: x
     integer(kind=4)                      :: get_my_new_domain, ndom, i, imax
-    real(kind=8)                         :: dmax
+    real(kind=8)                         :: dmax,db
 
     ndom = size(liste_domaines)
     dmax = 0.0d0
@@ -479,7 +479,7 @@ contains
     type(domain),intent(in)              :: dom
     real(kind=8)                         :: domain_distance_to_border, rr, ddx, ddy, ddz
 
-    select case(dom%type)
+    select case(trim(dom%type))
 
     case('sphere')
        rr = sqrt((x(1)-dom%sp%center(1))**2 + (x(2)-dom%sp%center(2))**2 + (x(3)-dom%sp%center(3))**2)
@@ -529,7 +529,7 @@ contains
     ! variables for the cube case
     real(kind=8),dimension(3) :: x_dom
     
-    select case(dom%type)
+    select case(trim(dom%type))
        
     case('sphere')
        
@@ -589,8 +589,8 @@ contains
           stop
        endif
 
-    case('cube')
-       
+    case('cube')  
+
        ! get position relative to the domain
        x_dom = (x - dom%cu%center)/dom%cu%size + 0.5d0
        if((x_dom(1) < 0.0d0).or.(x_dom(1)>1.0d0).or.&
@@ -600,7 +600,7 @@ contains
           print *,'ERROR: pb with distance to border along k, cube case, point outside domain...'
           stop
        endif
-       domain_distance_to_border_along_k = path(x_dom,k)
+       domain_distance_to_border_along_k = path(x_dom,k) * dom%cu%size
        
     case default
        print *,'ERROR: domain type not defined',dom%type
