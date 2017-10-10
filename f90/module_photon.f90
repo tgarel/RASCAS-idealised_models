@@ -9,8 +9,6 @@ module module_photon
 
   implicit none
 
-  real(kind=8),parameter :: accuracy=1.0d-15
-
   ! 2 types for photons, one for the initial properties is called photon_init
   ! and one for the properties that evolve during the RT called photon_current
 
@@ -79,12 +77,10 @@ contains
     real(kind=8),dimension(3)            :: ppos,ppos_cell             ! working coordinates of photon (in box and in cell units)
     real(kind=8)                         :: distance_to_border,distance_to_border_cm, d,distance_to_border_box_units
     real(kind=8)                         :: time
-    integer(kind=4)                      :: scatter_flag, i, icellnew, iran
-    real(kind=8),dimension(3)            :: vgas, k, cell_corner, posoct, ppos_old, pcell
-    logical                              :: cell_fully_in_domain, flagoutvol, in_domain
-    real(kind=8)                         :: dborder,dborder_cm
-    logical                              :: OutOfDomainBeforeCell
-    integer(kind=4)                      :: npush
+    integer(kind=4)                      :: scatter_flag, i, icellnew, iran, npush
+    real(kind=8),dimension(3)            :: vgas, k, cell_corner, posoct, pcell
+    logical                              :: cell_fully_in_domain, flagoutvol, in_domain, OutOfDomainBeforeCell
+    real(kind=8)                         :: dborder, dborder_cm, error
     
     ! initialise working props of photon
     ppos    = p%xcurr        ! position within full simulation box, in box units.
@@ -142,7 +138,7 @@ contains
 
        ! define/update flag_cell_fully_in_comp_dom to avoid various tests in the following
        pcell = cell_corner + 0.5d0*cell_size
-       cell_fully_in_domain =  domain_contains_cell(pcell,cell_size,domaine_calcul)
+       cell_fully_in_domain = domain_contains_cell(pcell,cell_size,domaine_calcul)
 
        propag_in_cell : do
           
@@ -153,20 +149,20 @@ contains
           end if
 
           ! compute distance of photon to border of cell along propagation direction
-          distance_to_border    = path(ppos_cell,p%k)                   ! in cell units
-          distance_to_border_cm = distance_to_border * cell_size_cm     ! cm
-          distance_to_border_box_units = distance_to_border * cell_size ! in box units
+          distance_to_border           = path(ppos_cell,p%k)                   ! in cell units
+          distance_to_border_cm        = distance_to_border * cell_size_cm     ! cm
+          distance_to_border_box_units = distance_to_border * cell_size        ! in box units
           ! if cell not fully in domain, modify distance_to_border to "distance_to_domain_border" if relevant
           OutOfDomainBeforeCell = .False.
           if(.not.(cell_fully_in_domain))then
-             dborder = domain_distance_to_border_along_k(ppos,p%k,domaine_calcul)    ! in box units
-             dborder_cm = dborder * box_size_cm                                      ! from box units to cm
+             dborder    = domain_distance_to_border_along_k(ppos,p%k,domaine_calcul)  ! in box units
+             dborder_cm = dborder * box_size_cm                                       ! from box units to cm
              ! compare distance to cell border and distance to domain border and take the min
              if (dborder_cm < distance_to_border_cm) then
-                OutOfDomainBeforeCell = .True.
-                distance_to_border_cm = dborder_cm
+                OutOfDomainBeforeCell        = .True.
+                distance_to_border_cm        = dborder_cm
                 distance_to_border_box_units = dborder
-                distance_to_border    = distance_to_border_cm / cell_size_cm
+                distance_to_border           = distance_to_border_cm / cell_size_cm
              end if
           endif
 
@@ -187,12 +183,13 @@ contains
 
              if (OutOfDomainBeforeCell) then ! photon exits computational domain and is done 
                 ! it may happen due to numerical precision that the photon is still in the domain despite epsilon above.
-                ! -> check and issue warning if it is the case. The error should not be larger than a few times epsion. 
+                ! -> check and issue warning if it is the case. The error should not be larger than a few times epsilon. 
                 in_domain = domain_contains_point(ppos,domaine_calcul)
                 if (in_domain) then
                    if (domain_distance_to_border_along_k(ppos,p%k,domaine_calcul)>3.d0*epsilon(distance_to_border)) then  
                       print*,'WARNING : photon still in domain when it should not ... '
-                      print*,'          (error ~ ',nint(domain_distance_to_border_along_k(ppos,p%k,domaine_calcul)/epsilon(distance_to_border)),' times num. prec.) '
+                      error = nint(domain_distance_to_border_along_k(ppos,p%k,domaine_calcul)/epsilon(distance_to_border))
+                      print*,'          (error ~ ',error,' times num. prec.) '
                    end if
                 end if
                 p%status       = 1
@@ -286,7 +283,7 @@ contains
              k = p%k
              call gas_scatter(scatter_flag, cell_gas, nu_cell, k, nu_ext, iran)    ! NB: nu_cell, k, nu_ext, and iran en inout
              p%nu_ext = nu_ext
-             ! for TEST case, to have photons propagating straight on, comment the following line
+             ! NB: for TEST case, to have photons propagating straight on, comment the following line
              p%k = k
              ! there has been an interaction -> reset tau_abs
              tau_abs = -1.0d0
@@ -322,7 +319,7 @@ contains
     
     ! some simple sanity checks
     if(.not.(flagoutvol).and.(p%status==0))then
-       print *,'ERROR: problem 1 with photon propagation in module_photon.f90!',flagoutvol,p%status
+       print*,'ERROR: problem 1 with photon propagation in module_photon.f90!',flagoutvol,p%status
        stop
     endif
 
@@ -365,8 +362,8 @@ contains
        pgrid(i)%xcurr        = pgridinit(i)%x_em
        pgrid(i)%nu_ext       = pgridinit(i)%nu_em
        ! make sure k is normalised
-       knorm = sqrt(pgridinit(i)%k_em(1)*pgridinit(i)%k_em(1)+pgridinit(i)%k_em(2)*pgridinit(i)%k_em(2)+pgridinit(i)%k_em(3)*pgridinit(i)%k_em(3))
-       pgrid(i)%k  = pgridinit(i)%k_em / knorm
+       knorm                 = sqrt(pgridinit(i)%k_em(1)**2 + pgridinit(i)%k_em(2)**2 + pgridinit(i)%k_em(3)**2)
+       pgrid(i)%k            = pgridinit(i)%k_em / knorm
        pgrid(i)%nb_abs       = 0
        pgrid(i)%time         = 0.0d0
        pgrid(i)%tau_abs_curr = -1.0d0
