@@ -227,6 +227,12 @@ contains
           dx_cell = 0.5d0**leaf_level(ileaf)
           call sphere_prochaska11(g(ileaf)%v(1),g(ileaf)%v(2),g(ileaf)%v(3),g(ileaf)%nHI,g(ileaf)%dopwidth,x_leaf(ileaf,1),x_leaf(ileaf,2),x_leaf(ileaf,3),dx_cell,g(ileaf)%ndust)
        end do
+
+    case('slab_plus_sphere')      
+       do ileaf=1,nleaf
+          dx_cell = 0.5d0**leaf_level(ileaf)
+          call slab_plus_sphere(g(ileaf)%v(1),g(ileaf)%v(2),g(ileaf)%v(3),g(ileaf)%nHI,g(ileaf)%dopwidth,x_leaf(ileaf,1),x_leaf(ileaf,2),x_leaf(ileaf,3),dx_cell,g(ileaf)%ndust)
+       end do
        
     case('disc_thin')      
        do ileaf=1,nleaf

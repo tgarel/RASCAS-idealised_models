@@ -39,7 +39,7 @@ module module_gas_composition
   real(kind=8)             :: Zref            = 0.005  ! reference metallicity. Should be ~ 0.005 for SMC and ~ 0.01 for LMC. 
   ! possibility to overwrite ramses values with an ad-hoc model 
   logical                  :: gas_overwrite       = .false. ! if true, define cell values from following parameters 
-  real(kind=8)             :: fix_nFeII           = 0.0d0   ! ad-hoc HI density (H/cm3)
+  real(kind=8)             :: fix_ndens           = 0.0d0   ! ad-hoc HI density (H/cm3)
   real(kind=8)             :: fix_vth             = 1.0d5   ! ad-hoc thermal velocity (cm/s)
   real(kind=8)             :: fix_vel             = 0.0d0   ! ad-hoc cell velocity (cm/s) -> NEED BETTER PARAMETERIZATION for more than static... 
   real(kind=8)             :: fix_ndust           = 0.0d0
@@ -70,7 +70,7 @@ contains
     character(2000)                                :: file,datadir_path
     real(kind=8),intent(in),dimension(nleaf,3)     :: x_leaf
     integer(kind=4),intent(in),dimension(nleaf)    :: leaf_level
-    character(200)                                 :: modelprops_file
+    character(2000)                                :: modelprops_file
     
     ! allocate gas-element array
     allocate(g(nleaf))
@@ -80,13 +80,13 @@ contains
        ! Dump idealised model (nh, temp, pos...)
        call read_datadir(datadir_path)
        modelprops_file = 'modelprops_file'
-!!$       file = trim(datadir_path)//trim(modelprops_file)
-!!$       open(unit=15, file=trim(file), status='unknown', form='unformatted', action='write')
-!!$       write(15) nleaf
-!!$       do ileaf = 1,nleaf
-!!$          write(15) x_leaf(ileaf,1),x_leaf(ileaf,2),x_leaf(ileaf,3),g(ileaf)%v(1),g(ileaf)%v(2),g(ileaf)%v(3),g(ileaf)%dopwidth,g(ileaf)%nFeII
-!!$       end do
-!!$       close(15)
+       file = trim(datadir_path)//trim(modelprops_file)
+       open(unit=15, file=trim(file), status='unknown', form='unformatted', action='write')
+       write(15) nleaf
+       do ileaf = 1,nleaf
+          write(15) x_leaf(ileaf,1),x_leaf(ileaf,2),x_leaf(ileaf,3),g(ileaf)%v(1),g(ileaf)%v(2),g(ileaf)%v(3),g(ileaf)%dopwidth,g(ileaf)%nFeII
+       end do
+       close(15)
     else
        
        box_size_cm = ramses_get_box_size_cm(repository,snapnum)
@@ -153,7 +153,7 @@ contains
        g(:)%v(1)     = fix_vel
        g(:)%v(2)     = fix_vel
        g(:)%v(3)     = fix_vel
-       g(:)%nFeII    = fix_nFeII
+       g(:)%nFeII    = fix_ndens
        g(:)%dopwidth = fix_vth     
        g(:)%ndust    = fix_ndust
 
@@ -229,6 +229,12 @@ contains
        do ileaf=1,nleaf
           dx_cell = 0.5d0**leaf_level(ileaf)
           call sphere_prochaska11(g(ileaf)%v(1),g(ileaf)%v(2),g(ileaf)%v(3),g(ileaf)%nFeII,g(ileaf)%dopwidth,x_leaf(ileaf,1),x_leaf(ileaf,2),x_leaf(ileaf,3),dx_cell,g(ileaf)%ndust)
+       end do
+
+    case('slab_plus_sphere')      
+       do ileaf=1,nleaf
+          dx_cell = 0.5d0**leaf_level(ileaf)
+          call slab_plus_sphere(g(ileaf)%v(1),g(ileaf)%v(2),g(ileaf)%v(3),g(ileaf)%nFeII,g(ileaf)%dopwidth,x_leaf(ileaf,1),x_leaf(ileaf,2),x_leaf(ileaf,3),dx_cell,g(ileaf)%ndust)
        end do
        
     case('disc_thin')      
@@ -441,8 +447,8 @@ contains
              read(value,*) Zref
           case ('gas_overwrite')
              read(value,*) gas_overwrite
-          case ('fix_nFeII')
-             read(value,*) fix_nFeII
+          case ('fix_ndens')
+             read(value,*) fix_ndens
           case ('fix_vth')
              read(value,*) fix_vth
           case ('fix_vel')
@@ -481,7 +487,7 @@ contains
        write(unit,'(a,ES10.3)') '  Zref                 = ',Zref
        write(unit,'(a)')        '# overwrite parameters'
        write(unit,'(a,L1)')     '  gas_overwrite        = ',gas_overwrite
-       write(unit,'(a,ES10.3)') '  fix_nFeII            = ',fix_nFeII
+       write(unit,'(a,ES10.3)') '  fix_ndens            = ',fix_ndens
        write(unit,'(a,ES10.3)') '  fix_vth              = ',fix_vth
        write(unit,'(a,ES10.3)') '  fix_vel              = ',fix_vel
        write(unit,'(a,ES10.3)') '  fix_ndust            = ',fix_ndust
@@ -498,7 +504,7 @@ contains
        write(*,'(a,ES10.3)') '  Zref                 = ',Zref
        write(*,'(a)')        '# overwrite parameters'
        write(*,'(a,L1)')     '  gas_overwrite        = ',gas_overwrite
-       write(*,'(a,ES10.3)') '  fix_nFeII            = ',fix_nFeII
+       write(*,'(a,ES10.3)') '  fix_ndens            = ',fix_ndens
        write(*,'(a,ES10.3)') '  fix_vth              = ',fix_vth
        write(*,'(a,ES10.3)') '  fix_vel              = ',fix_vel
        write(*,'(a,ES10.3)') '  fix_ndust            = ',fix_ndust
@@ -529,7 +535,7 @@ contains
     do
        read (10,'(a)',iostat=err) line
        if(err/=0) exit
-       if (line(1:70) == '[RASCAS]') then
+       if (line(1:70) == '[RASCAS-serial]') then
           section_present = .true.
           exit
        end if
