@@ -51,7 +51,7 @@ contains
     integer(kind=4),save          :: k
     
     if(idum <=0 .or. iy_ran < 0) then
-       am_ran=nearest(1.0d0,-1.0d0)/im_ran
+       am_ran=nearest(1.0,-1.0)/im_ran
        iy_ran=ior(ieor(888889999,abs(idum)),1)
        ix_ran=ieor(777755555,abs(idum))
        idum=abs(idum)+1
