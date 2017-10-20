@@ -65,7 +65,7 @@ module module_uparallel
 
   logical :: tables_initialized = .false.
   
-  public :: get_uparallel
+  public :: get_uparallel, prob_func
   
 contains
 
@@ -394,6 +394,112 @@ contains
     
   end function upar_from_gaussian
 
+
+  SUBROUTINE PROB_FUNC(y,a,u,iran)
+    !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+    ! Draw a realisation from the probability function p(u)=exp(-u*u)/((x-u)**2+a**2)`
+    ! From Benoit Semelin
+    ! oct 2017
+    !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+    implicit none
+    real(KIND=8), intent(IN) :: y,a
+    integer(KIND=4), intent(INOUT) :: iran
+    real(KIND=8), intent(OUT) :: u
+    real(KIND=8) :: coeff,u_0,signe,x,norm
+    real(KIND=8), parameter :: cutoff=3.
+    real(KIND=4) :: r,p,theta1
+    LOGICAL :: success
+    real(KIND=8), parameter :: pi2=pi/2.
+    integer :: ctloc
+    !integer :: iseed
+
+    if(a < 1.d-6) then
+       print*,'Error using PROB_FUNC: a too small'
+       STOP
+    endif
+    ctloc=0
+    success=.FALSE.
+    !
+    ! u_0: parameter used to minize the rejection fraction (Zheng et Miralda-escude (2002))
+    ! Empirical fit okay for 0.0001 < a < 0.1 and x > 4
+    !
+    signe=sign(dble(1),y)
+    x=y*signe
+
+    if( x < 8 ) then
+       ! method 1 (Zheng et Miralda-escude (2002)
+       if( x > 3.) then
+          u_0=1.85-log(a)/6.73+log(log(x))
+       else
+          u_0=0.
+       endif
+       ! print*,'u0',u_0
+       coeff=exp(-u_0*u_0)
+       theta1=atan((u_0-x)/a)
+       p=(theta1+pi2)/((1.-coeff)*theta1+(1+coeff)*pi2)
+
+       do while(.not.success)
+          !  call random_number(r)
+          ! r=rando(iseed)
+          r = ran3(iran)
+          if(r<p) then
+             !    call random_number(r)
+             !r=rando(iseed)
+             r = ran3(iran)
+             r=r*(theta1+pi2)-pi2
+             u=a*tan(r)+x
+             !    call random_number(r)
+             !r=rando(iseed)
+             r = ran3(iran)
+             if(r < exp(real(-u*u)) ) then
+                success=.TRUE.
+             endif
+          else
+             !    call random_number(r)
+             r = ran3(iran)
+             !r=rando(iseed)
+             r=r*(-theta1+pi2)+theta1
+             u=a*tan(r)+x
+             !    call random_number(r)
+             !r=rando(iseed)
+             r = ran3(iran)
+             if(r < exp(real(-u*u+u_0*u_0)) ) then
+                success=.TRUE.
+             endif
+          endif
+          ctloc=ctloc+1
+          if(mod(ctloc,10000000)==0) print*,'rrr upar...',ctloc,r,u,u_0,a,x
+       enddo
+    else
+       !methode 2
+       norm= atan( (cutoff-x)/a)  - atan( (-cutoff-x)/a )
+       coeff=a*a+x*(cutoff+x)
+
+       do while(.not.success)
+
+          !  call random_number(p)
+          !p=rando(iseed)
+          p = ran3(iran)
+
+          r=tan(norm*p)
+
+          u= ( r* coeff -cutoff*a ) / (r* (cutoff+x) +a )
+
+          !  call random_number(p)
+          !p=rando(iseed)
+          p = ran3(iran)
+
+          success=(p < exp(-u*u) )
+          ctloc=ctloc+1
+          if(mod(ctloc,1000000)==0) print*,'lll upar...',ctloc,y,a,u
+       enddo
+
+
+    endif
+    u=u*signe
+
+  END SUBROUTINE PROB_FUNC
+  
   
 end module module_uparallel
 

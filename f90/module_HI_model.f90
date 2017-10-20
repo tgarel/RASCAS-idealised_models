@@ -110,6 +110,8 @@ contains
     blah = ran3(iran)
 #ifdef SWITCH_OFF_UPARALLEL
     upar = 0.5
+    ! rejection method by Benoit Semelin
+    call PROB_FUNC(x_cell,a,upar,iran)
 #else
     upar = get_uparallel(a,x_cell,blah)
 #endif
