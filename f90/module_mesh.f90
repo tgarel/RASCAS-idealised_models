@@ -20,8 +20,8 @@ module module_mesh
        reshape( (/1,3,5, 2,3,5, 1,4,5, 2,4,5, 1,3,6, 2,3,6, 1,4,6, 2,4,6/), (/3,8/) )  
 
   real(kind=8), dimension(1:3,1:8), parameter :: offset = &
-       reshape((/-.5,-.5,-.5, +.5,-.5,-.5, -.5,+.5,-.5, +.5,+.5,-.5, &
-                 -.5,-.5,+.5, +.5,-.5,+.5, -.5,+.5,+.5, +.5,+.5,+.5/), (/3,8/))
+       reshape((/-.5d0,-.5d0,-.5d0, +.5d0,-.5d0,-.5d0, -.5d0,+.5d0,-.5d0, +.5d0,+.5d0,-.5d0, &
+                 -.5d0,-.5d0,+.5d0, +.5d0,-.5d0,+.5d0, -.5d0,+.5d0,+.5d0, +.5d0,+.5d0,+.5d0/), (/3,8/))
 
   ! TODO: change shape of xoct,xleaf,nbor to optimize access xoct(1:noct,1:3) => xoct(1:3,1:noct)
 
@@ -124,7 +124,7 @@ module module_mesh
 
       ! first pass in the coarse cell
       ilastoct=0
-      xnew=(/0.5,0.5,0.5/)
+      xnew=(/0.5d0,0.5d0,0.5d0/)
       lfather=0
       ifathercell=1
       do i=1,nLeaf
