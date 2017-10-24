@@ -48,7 +48,6 @@ F90         = gfortran-mp-6 -ffree-line-length-none -ffree-form  ###-fopenmp
 #FFLAGS      = -g -fcheck=all -ftrapv -fbacktrace -Wall -fbounds-check
 FFLAGS      = -O2
 FFLAGS += $(OPTIONS)
-###FFLAGS      = -O3
 LDFLAGS     = 
 endif
 
@@ -89,6 +88,8 @@ endif
 #COMPOBJS = module_dust_model.o module_SiII_1190_model.o module_SiII_1193_model.o module_gas_composition_SiII_dust.o
 # 7/ FeII UV1
 COMPOBJS = module_FeII_2587_model.o module_FeII_2600_model.o module_gas_composition_FeII_UV1.o
+# 8/ FeII UV1 and dust
+COMPOBJS = module_dust_model.o module_FeII_2587_model.o module_FeII_2600_model.o module_gas_composition_FeII_UV1_dust.o
 
 
 GASOBJS = module_domain.o module_constants.o module_ramses.o module_random.o module_utils.o module_uparallel.o $(COMPOBJS)
