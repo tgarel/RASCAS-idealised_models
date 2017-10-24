@@ -174,7 +174,7 @@ contains
     if (tau_abs > tau_cell) then  ! photon is due for absorption outside the cell 
        gas_get_scatter_flag = 0
        tau_abs = tau_abs - tau_cell
-       if (tau_abs.lt.0.d0) then
+       if (tau_abs.lt.0.0d0) then
           print*, 'tau_abs est negatif'
           stop
        endif

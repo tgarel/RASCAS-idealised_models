@@ -123,7 +123,7 @@ contains
     ! 5/ compute atom freq. in external frame, after scattering
     scalar = knew(1) * vcell(1) + knew(2) * vcell(2) + knew(3)* vcell(3)
     nu_ext = nu_atom * (1.0d0 + scalar/clight + (upar*mu + bu*uper)/clight)
-    nu_cell = (1.d0 - scalar/clight) * nu_ext 
+    nu_cell = (1.0d0 - scalar/clight) * nu_ext 
     k = knew
 
   end subroutine scatter_MgII_2796
