@@ -336,6 +336,8 @@ contains
 
     call read_ramses_params(pfile)
     call read_dust_params(pfile)
+    call read_SiII_1190_params(pfile)
+    call read_SiII_1193_params(pfile)
 
     return
 
@@ -368,6 +370,8 @@ contains
        call print_ramses_params(unit)
        write(unit,'(a)')             ' '
        call print_dust_params
+       call print_SiII_1190_params(unit)
+       call print_SiII_1193_params(unit)
     else
        write(*,'(a,a,a)') '[gas_composition]'
        write(*,'(a,ES10.3)') '  f_ion                = ',f_ion
@@ -384,6 +388,8 @@ contains
        call print_ramses_params
        write(*,'(a)')             ' '
        call print_dust_params
+       call print_SiII_1190_params
+       call print_SiII_1193_params
     end if
 
     return
