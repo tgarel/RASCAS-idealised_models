@@ -48,7 +48,6 @@ F90         = gfortran-mp-6 -ffree-line-length-none -ffree-form  ###-fopenmp
 FFLAGS      = -g -fcheck=all -ftrapv -fbacktrace -Wall -fbounds-check
 #FFLAGS      = -O2
 FFLAGS += $(OPTIONS)
-###FFLAGS      = -O3
 LDFLAGS     = 
 endif
 
@@ -147,8 +146,6 @@ rascas-serial: $(OBJSPHO) rascas-serial.o
 rascas: $(OBJSMPI) rascas.o
 	$(F90) $(FFLAGS) $(LDFLAGS) -o $@ $(OBJSMPI) rascas.o
 
-test_domain: module_constants.o module_random.o module_domain.o module_utils.o test_domain.o
-	$(F90) $(FFLAGS) $(LDFLAGS) -o $@ module_constants.o module_random.o module_domain.o module_utils.o test_domain.o
 clean:
 	rm -f $(OBJSDOM) $(OBJSPHO) $(OBJSMPI) *.o *.mod
 #############################################################################

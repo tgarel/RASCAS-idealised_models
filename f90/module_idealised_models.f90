@@ -2,14 +2,12 @@ module module_idealised_models
 
   use module_random
   use module_constants, only : kb, mp, pi
-  !use module_gas_composition
   
   implicit none
 
   ! In this module, the species is unknown
 
   private
-! public !!!
   real(kind=8)             :: ngas_norm           = -999.0d0         ! Gas density profile normalisation [cm-3]
   real(kind=8)             :: ngas_slope          = -999.0d0         ! slope of the density profile
   real(kind=8)             :: Vgas_norm           = -999.0d0         ! V0, Vmax, Vcirc etc [cm/s]

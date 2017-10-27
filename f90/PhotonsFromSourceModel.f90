@@ -274,30 +274,30 @@ contains
     integer(kind=4),optional,intent(in) :: unit
 
     if (present(unit)) then 
-       write(unit,'(a,a,a)')         '[PhotonsFromSourceModel]'
-       write(unit,'(a)')             '# input / output parameters'
-       write(unit,'(a,a)')           '  outputfile      = ',trim(outputfile)
-       write(unit,'(a)')             '# source type parameters'
-       write(unit,'(a,a)')           '  source_type     = ',trim(source_type)
-       write(unit,'(a,3(ES9.3,1x))') '  source_pos      = ',source_pos(1),source_pos(2),source_pos(3)
-       write(unit,'(a)')             '# how source shines'
-       write(unit,'(a,i8)')          '  nphot           = ',nphot
-       write(unit,'(a,a)')           '  spec_type       = ',trim(spec_type)
+       write(unit,'(a,a,a)')          '[PhotonsFromSourceModel]'
+       write(unit,'(a)')              '# input / output parameters'
+       write(unit,'(a,a)')            '  outputfile      = ',trim(outputfile)
+       write(unit,'(a)')              '# source type parameters'
+       write(unit,'(a,a)')            '  source_type     = ',trim(source_type)
+       write(unit,'(a,3(ES10.3,1x))') '  source_pos      = ',source_pos(1),source_pos(2),source_pos(3)
+       write(unit,'(a)')              '# how source shines'
+       write(unit,'(a,i8)')           '  nphot           = ',nphot
+       write(unit,'(a,a)')            '  spec_type       = ',trim(spec_type)
        select case(trim(spec_type))
        case('Mono')
-          write(unit,'(a,es9.3,a)')     '  spec_mono_l0_Ang     = ',spec_mono_l0_Ang, ' ! [A]'
+          write(unit,'(a,es10.3,a)')     '  spec_mono_l0_Ang     = ',spec_mono_l0_Ang, ' ! [A]'
        case('Gauss')
-          write(unit,'(a,es9.3,a)')     '  spec_gauss_l0_Ang    = ',spec_gauss_l0_Ang, ' ! [A]'
-          write(unit,'(a,es9.3,a)')     '  spec_gauss_sigma_kms = ',spec_gauss_sigma_kms, ' ! [km/s]'
+          write(unit,'(a,es10.3,a)')     '  spec_gauss_l0_Ang    = ',spec_gauss_l0_Ang, ' ! [A]'
+          write(unit,'(a,es10.3,a)')     '  spec_gauss_sigma_kms = ',spec_gauss_sigma_kms, ' ! [km/s]'
        case('PowLaw')
-          write(unit,'(a,es9.3,a)')     '  spec_powlaw_lmin_Ang = ',spec_powlaw_lmin_Ang, ' ! [A]'
-          write(unit,'(a,es9.3,a)')     '  spec_powlaw_lmax_Ang = ',spec_powlaw_lmax_Ang, ' ! [A]'
-          write(unit,'(a,es9.3,a)')     '  spec_powlaw_l0_Ang   = ',spec_powlaw_l0_Ang, ' ! [A]'
-          write(unit,'(a,es10.3)')      '  spec_powlaw_beta     = ',spec_powlaw_beta
+          write(unit,'(a,es10.3,a)')     '  spec_powlaw_lmin_Ang = ',spec_powlaw_lmin_Ang, ' ! [A]'
+          write(unit,'(a,es10.3,a)')     '  spec_powlaw_lmax_Ang = ',spec_powlaw_lmax_Ang, ' ! [A]'
+          write(unit,'(a,es10.3,a)')     '  spec_powlaw_l0_Ang   = ',spec_powlaw_l0_Ang, ' ! [A]'
+          write(unit,'(a,es10.3)')       '  spec_powlaw_beta     = ',spec_powlaw_beta
        case('Table')
-          write(unit,'(a,a)')           '  spec_table_file      = ',trim(spec_table_file)
-          write(unit,'(a,es9.3,a)')     '  spec_table_age       = ',spec_table_age, ' ! [Myr]'
-          write(unit,'(a,es9.3)')       '  spec_table_met       = ',spec_table_met
+          write(unit,'(a,a)')            '  spec_table_file      = ',trim(spec_table_file)
+          write(unit,'(a,es10.3,a)')     '  spec_table_age       = ',spec_table_age, ' ! [Myr]'
+          write(unit,'(a,es10.3)')       '  spec_table_met       = ',spec_table_met
        case default
           print*,'ERROR: unknown spec_type :',trim(spec_type)
        end select
@@ -306,30 +306,30 @@ contains
        write(unit,'(a,L1)')          '  verbose         = ',verbose
        write(unit,'(a)')             ' '
     else
-       write(*,'(a,a,a)')         '[PhotonsFromSourceModel]'
-       write(*,'(a)')             '# input / output parameters'
-       write(*,'(a,a)')           '  outputfile    = ',trim(outputfile)
-       write(*,'(a)')             '# source type parameters'
-       write(*,'(a,a)')           '  source_type   = ',trim(source_type)
-       write(*,'(a,3(ES9.3,1x))') '  source_pos    = ',source_pos(1),source_pos(2),source_pos(3)
-       write(*,'(a)')             '# how source shines'
-       write(*,'(a,i8)')          '  nphot         = ',nphot
-       write(*,'(a,a)')           '  spec_type     = ',trim(spec_type)
+       write(*,'(a,a,a)')          '[PhotonsFromSourceModel]'
+       write(*,'(a)')              '# input / output parameters'
+       write(*,'(a,a)')            '  outputfile    = ',trim(outputfile)
+       write(*,'(a)')              '# source type parameters'
+       write(*,'(a,a)')            '  source_type   = ',trim(source_type)
+       write(*,'(a,3(ES10.3,1x))') '  source_pos    = ',source_pos(1),source_pos(2),source_pos(3)
+       write(*,'(a)')              '# how source shines'
+       write(*,'(a,i8)')           '  nphot         = ',nphot
+       write(*,'(a,a)')            '  spec_type     = ',trim(spec_type)
        select case(trim(spec_type))
        case('Mono')
-          write(*,'(a,es9.3,a)')     '  spec_mono_l0_Ang     = ',spec_mono_l0_Ang, ' ! [A]'
+          write(*,'(a,es10.3,a)')     '  spec_mono_l0_Ang     = ',spec_mono_l0_Ang, ' ! [A]'
        case('Gauss')
-          write(*,'(a,es9.3,a)')     '  spec_gauss_l0_Ang    = ',spec_gauss_l0_Ang, ' ! [A]'
-          write(*,'(a,es9.3,a)')     '  spec_gauss_sigma_kms = ',spec_gauss_sigma_kms, ' ! [km/s]'
+          write(*,'(a,es10.3,a)')     '  spec_gauss_l0_Ang    = ',spec_gauss_l0_Ang, ' ! [A]'
+          write(*,'(a,es10.3,a)')     '  spec_gauss_sigma_kms = ',spec_gauss_sigma_kms, ' ! [km/s]'
        case('PowLaw')
-          write(*,'(a,es9.3,a)')     '  spec_powlaw_lmin_Ang = ',spec_powlaw_lmin_Ang, ' ! [A]'
-          write(*,'(a,es9.3,a)')     '  spec_powlaw_lmax_Ang = ',spec_powlaw_lmax_Ang, ' ! [A]'
-          write(*,'(a,es9.3,a)')     '  spec_powlaw_l0_Ang   = ',spec_powlaw_l0_Ang, ' ! [A]'
-          write(*,'(a,es10.3)')      '  spec_powlaw_beta     = ',spec_powlaw_beta
+          write(*,'(a,es10.3,a)')     '  spec_powlaw_lmin_Ang = ',spec_powlaw_lmin_Ang, ' ! [A]'
+          write(*,'(a,es10.3,a)')     '  spec_powlaw_lmax_Ang = ',spec_powlaw_lmax_Ang, ' ! [A]'
+          write(*,'(a,es10.3,a)')     '  spec_powlaw_l0_Ang   = ',spec_powlaw_l0_Ang, ' ! [A]'
+          write(*,'(a,es10.3)')       '  spec_powlaw_beta     = ',spec_powlaw_beta
        case('Table')
-          write(*,'(a,a)')           '  spec_table_file      = ',trim(spec_table_file)
-          write(*,'(a,es9.3,a)')     '  spec_table_age       = ',spec_table_age, ' ! [Myr]'
-          write(*,'(a,es9.3)')       '  spec_table_met       = ',spec_table_met
+          write(*,'(a,a)')            '  spec_table_file      = ',trim(spec_table_file)
+          write(*,'(a,es10.3,a)')     '  spec_table_age       = ',spec_table_age, ' ! [Myr]'
+          write(*,'(a,es10.3)')       '  spec_table_met       = ',spec_table_met
        case default
           print*,'ERROR: unknown spec_type :',trim(spec_type)
        end select
