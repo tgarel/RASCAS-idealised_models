@@ -1,15 +1,15 @@
 pro plot_sphere_spectra
 
-  tau0_arr_st = ['4','5','6','7','8']
-  tau0_arr    = [1.d4,1.d5,1.d6,1.d7,1.d8]
+  ;; tau0_arr_st = ['4','5','6','7','8']
+  ;; tau0_arr    = [1.d4,1.d5,1.d6,1.d7,1.d8]
 
-  ;; tau0_arr_st = ['4','5']      ;,'8']
-  ;; tau0_arr    = [1.d4,1.d5]  ;,1.d8]
+  tau0_arr_st = ['6']      ;,'8']
+  tau0_arr    = [1.d6]  ;,1.d8]
 
   
-  vth         = 128500.0d0      ; cm/s
+  vth         = 40635.269d0      ; cm/s
 
-  PS_Start, File='plots/tauH4-8_temp1d2_xin0_oneCell.ps',nomatch=1,font=0
+  PS_Start, File='plots/tauH6_temp1d1_xin0_hotfix_rs1d-3.ps',nomatch=1,font=0
 
   device, helvetica=1,/bold
   device, isolatin1=1,/bold
@@ -32,7 +32,7 @@ pro plot_sphere_spectra
     
   for i=0,n_elements(tau0_arr)-1 do begin
 
-     myfile = '/Users/tgarel/Rascas/output/Lya_tests/sphere/tauH'+tau0_arr_st[i]+'_temp1d2_xin0/photons_out.dat'
+     myfile = '/Users/tgarel/Rascas/output/Lya_tests/sphere/tauH'+tau0_arr_st[i]+'_temp1d1_xin0_hotfix_rs1d-3/photons_out.dat'
      print,myfile
      tau0 = tau0_arr[i]
  
@@ -52,22 +52,29 @@ pro plot_sphere_spectra
      histo,x_out,-250.,250.,750,h
 
      if i eq 0 then begin
-        plot,h.x,h.dn/h.dx/total(h.dn),xtitle='x',ytitle='J(x,'+greek('tau')+'!d0!n)',charthick=5,xr=[-140.,140.],/xs,thick=8,yr=[0.0001,max(h.dn/h.dx/total(h.dn))*1.2],/nodata ;,/ylog
+        plot,h.x,h.dn/h.dx/total(h.dn),xtitle='x',ytitle='J(x,'+greek('tau')+'!d0!n)',charthick=5,xr=[-60.,60.],/xs,thick=8,yr=[0.000001,max(h.dn/h.dx/total(h.dn))*1.2],/nodata ;,/ylog
       ;  plot,h.x,h.dn/h.dx/total(h.dn),xtitle='x',ytitle='J(x,'+greek('tau')+'!d0!n)',charthick=5,xr=[-80.,80.],/xs,thick=8,yr=[0.0001,max(h.dn/h.dx/total(h.dn))*1.2],/nodata ,/ylog
        ; legendold,['R!dsphere!n within 1 cell'],box=0,/left,charsize=1.3,spacing=2.1
      endif
-
      oplot,h.x,h.dn/h.dx/total(h.dn),thick=6,color=col[i],psym=10 ;,linestyle=i
 
+       
      ;; Exact Eq. 9 from Dijkstra06 - his tau0 is same as us
      j_x = sqrt(!pi) / sqrt(24.) / a / tau0 * xx * xx * (1.d0 / (1. + cosh(sqrt(2.*!pi^3./27.) * abs(xx*xx*xx)/ a / tau0)))
      x_peak = 0.92 * (a * tau0)^(1./3.)
      oplot,xx,j_x*2.*!pi,color=0,linestyle=2,thick=3 ;,psym=10
      ;; plots,[-1.*x_peak,-1.*x_peak],[0.,1.*max(j_x*2.*!pi)],linestyle=2.,color=254
      ;; plots,[1.*x_peak,1.*x_peak],[0.,1.*max(j_x*2.*!pi)],linestyle=2,color=254
-
-
      print,total(j_x*2.*!pi*(xx[1]-xx[0]))
+     
+     
+     ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+     if i eq 0 then begin
+        plot,h.x,h.dn/h.dx/total(h.dn),xtitle='x',ytitle='J(x,'+greek('tau')+'!d0!n)',charthick=5,xr=[-60.,60.],/xs,thick=8,yr=[0.000001,max(h.dn/h.dx/total(h.dn))*3.],/nodata ,/ylog
+     endif
+     oplot,h.x,h.dn/h.dx/total(h.dn),thick=6,color=col[i],psym=10 ;,linestyle=i
+     ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
      
      
      ;; Velocity

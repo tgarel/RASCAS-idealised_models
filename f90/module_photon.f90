@@ -148,7 +148,6 @@ contains
        pcell = cell_corner + 0.5d0*cell_size
        cell_fully_in_domain =  domain_contains_cell(pcell,cell_size,domaine_calcul)
 
-
 #ifdef DEBUG
        print *,'--> cell properties',cell_level,cell_size,cell_size_cm
        print *,'        cell_gas  =',cell_gas
