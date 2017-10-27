@@ -119,7 +119,6 @@ program main
      print *,'# of photons             =',size(photgrid(:)%status)
      print *,'# of status=1 (escaped)  =',count(mask=(photgrid(:)%status==1))
      print *,'# of status=2 (absorbed) =',count(mask=(photgrid(:)%status==2))
-     print *,'# of status=3 (crap, pb with precision/in_cell_finder) =',count(mask=(photgrid(:)%status==3))
      print *,' '
      print *,'--> Some diagnostics...'
      print *,'min max status      =',minval(photgrid%status),maxval(photgrid%status)
