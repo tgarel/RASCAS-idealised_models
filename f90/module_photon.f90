@@ -161,7 +161,7 @@ contains
        print *,'          pos oct =',posoct
        print *,'--> current photon position',ppos
 #endif
-
+       
        propag_in_cell : do
           
           ! generate the opt depth where the photon is scattered/absorbed
@@ -184,7 +184,7 @@ contains
              distance_to_border = distance_to_border_cm / cell_size_cm
              
           endif
-
+          
           ! check whether scattering occurs within cell or domain (scatter_flag > 0) or not (scatter_flag==0)
           scatter_flag = gas_get_scatter_flag(cell_gas, distance_to_border_cm, nu_cell, tau_abs, iran)
 

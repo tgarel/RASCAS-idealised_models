@@ -1053,11 +1053,19 @@ module module_mesh
        write(unit,'(a,L1)')  '  verbose    = ',verbose
        write(unit,'(a)')             ' '
        call print_gas_composition_params(unit)
+       ! TIBO
+!!$       write(unit,'(a)')             ' '
+!!$       call print_IdealisedModels_params(unit)
+       ! OBIT
     else
        write(*,'(a,a,a)') '[mesh]'
        write(*,'(a,L1)')  '  verbose    = ',verbose
        write(*,'(a)')             ' '
        call print_gas_composition_params
+       ! TIBO
+!!$       write(*,'(a)')             ' '
+!!$       call print_IdealisedModels_params
+       ! OBIT
     end if
        
     return

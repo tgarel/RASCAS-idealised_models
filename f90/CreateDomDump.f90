@@ -5,7 +5,8 @@ program CreateDomDump
   use module_mesh
   use module_gas_composition
   use module_select
-
+  use module_idealised_models
+  
   implicit none
 
   type(domain)                             :: domaine_de_calcul
@@ -50,6 +51,9 @@ program CreateDomDump
   real(kind=8),allocatable  :: decomp_dom_thickness(:)                 ! thickness of slab [code units]
   ! --- miscelaneous
   logical                   :: verbose = .false.
+  ! TIBO
+  logical                   :: idealised_models = .false.
+  ! OBIT
   ! --------------------------------------------------------------------------
 
 
@@ -62,7 +66,9 @@ program CreateDomDump
      stop
   end if
   call get_command_argument(1, parameter_file)
+  
   call read_CreateDomDump_params(parameter_file)
+ 
   if (verbose) call print_CreateDomDump_params
   ! ------------------------------------------------------------
 
@@ -93,10 +99,14 @@ program CreateDomDump
   nOctSnap = get_nGridTot(repository,snapnum)
 
   ! Extract and convert properties of cells into gas mix properties
+  !! call gas_from_ramses_leaves(repository,snapnum,nleaftot,nvar,ramses_var, gas_leaves)
   ! TIBO
-  !call gas_from_ramses_leaves(repository,snapnum,nleaftot,nvar,ramses_var, gas_leaves)
-  !! Add x_leaf and leaf_level to the arguments
-  call gas_from_ramses_leaves(repository,snapnum,nleaftot,nvar,ramses_var, gas_leaves, x_leaf, leaf_level)
+  if (idealised_models) then
+     !! Add x_leaf and leaf_level to the arguments
+     call gas_from_idealised_models(DataDir, nleaftot, gas_leaves, x_leaf, leaf_level)
+  else
+     call gas_from_ramses_leaves(repository,snapnum,nleaftot,nvar,ramses_var, gas_leaves)
+  end if
   ! OBIT
   
   ! domain decomposition 
@@ -259,6 +269,10 @@ contains
              read(value,*) decomp_dom_size(:)
           case ('decomp_dom_thickness')
              read(value,*) decomp_dom_thickness(:)
+          !! TIBO
+          case ('idealised_models')
+             read(value,*) idealised_models
+          !! OBIT
           end select
        end do
     end if
@@ -277,7 +291,13 @@ contains
     DataDir = trim(datadir)//"/"
     
     call read_mesh_params(pfile)
-    
+
+    ! TIBO
+    if (idealised_models) then
+       call read_IdealisedModels_params(parameter_file)
+    end if
+    ! OBIT
+  
     return
 
   end subroutine read_CreateDomDump_params
@@ -333,6 +353,9 @@ contains
        end select
        write(unit,'(a)')             '# miscelaneous parameters'
        write(unit,'(a,L1)')          '  verbose         = ',verbose
+       !! TIBO
+       write(unit,'(a,L1)')          ' idealised_models = ',idealised_models
+       !! OBIT
        write(unit,'(a)')             ' '
        call print_mesh_params(unit)
     else
@@ -377,6 +400,9 @@ contains
        end select
        write(*,'(a)')             '# miscelaneous parameters'
        write(*,'(a,L1)')          '  verbose         = ',verbose
+       ! TIBO
+       write(*,'(a,L1)')          ' idealised_models = ',idealised_models
+       ! OBIT
        write(*,'(a)')             ' '
        call print_mesh_params
        write(*,'(a)')             ' '
