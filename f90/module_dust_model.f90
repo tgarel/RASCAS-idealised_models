@@ -39,9 +39,18 @@ contains
     
     real(kind=8),intent(in) :: ndust,distance,nu
     real(kind=8)            :: get_tau_dust,lbda_A
+    !! TIBO
+    real(kind=8)            :: sigma_dust_im
+    real(kind=8),parameter  :: rd= 1.d-5       ! radius of dust grain [cm] - Inoue12
+    !! OBIT
     
     lbda_A = clight/nu*1d8
-    get_tau_dust = sigma_d(lbda_A,dust_model) * ndust * distance
+    ! get_tau_dust = sigma_d(lbda_A,dust_model) * ndust * distance
+    !! TIBO
+    !! use simpler tau_dust for idealised_models (a la MCLya: sigmad = grain's area / (1-A))
+    sigma_dust_im = (pi * rd**2)/(1.-albedo)
+    get_tau_dust  = sigma_dust_im * ndust * distance
+    !! OBIT
     
     return
 

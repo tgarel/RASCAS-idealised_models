@@ -78,7 +78,9 @@ contains
     real(kind=8)                          :: volfrac2
     real(kind=8)                          :: dist_cell,dist2,dist_cell_min,dist_cell_max
     integer(kind=4)                       :: missed_cell
+    real(kind=8)                          :: n0
 
+    
     vx_ideal    = 0.0d0
     vy_ideal    = 0.0d0
     vz_ideal    = 0.0d0
@@ -90,6 +92,9 @@ contains
     ! xcell, ycell and zcell are in frame with origin at bottom-left corner of box
     dist2 = (xcell_ideal-0.5d0)**2 + (ycell_ideal-0.5d0)**2 + (zcell_ideal-0.5d0)**2  ! in frame with origin at center of box
     dist_cell = sqrt(dist2)
+
+    !! ngas_norm parameter is actually a column density => convert to density n0
+    n0 = ngas_norm / (r_min * box_size_IM_cm * (1.0d0 - r_min / r_max))  ! cm-3
 
     if (MCsampling) then
        dist_cell_max = dist_cell + dx_cell * sqrt(3.0d0) / 2.0d0 ! dx_cell * sqrt(3.0) / 2. is half the longest length in a cube
@@ -104,8 +109,8 @@ contains
           missed_cell = 0
        end if
        
-       ngas_ideal  = ngas_norm *  (r_min / dist_cell)**(ngas_slope) * volfrac2 ! ngas_slope  = +2 for P+11 fiducial model
-       ndust_ideal = ndust_norm * ngas_ideal / ngas_norm
+       ngas_ideal  = n0 *  (r_min / dist_cell)**(ngas_slope) * volfrac2 ! ngas_slope  = +2 for P+11 fiducial model
+       ndust_ideal = ndust_norm * ngas_ideal / n0
 
        vx_ideal = Vgas_norm / r_max**(Vgas_slope) * dist_cell**(Vgas_slope-1.0) * (xcell_ideal - 0.5d0)
        vy_ideal = Vgas_norm / r_max**(Vgas_slope) * dist_cell**(Vgas_slope-1.0) * (ycell_ideal - 0.5d0)
@@ -129,8 +134,8 @@ contains
           vy_ideal    = Vgas_norm / r_max**(Vgas_slope) * dist_cell**(Vgas_slope-1.0) * (ycell_ideal - 0.5d0)
           vz_ideal    = Vgas_norm / r_max**(Vgas_slope) * dist_cell**(Vgas_slope-1.0) * (zcell_ideal - 0.5d0)
           
-          ngas_ideal  = ngas_norm *  (r_min / dist_cell)**(ngas_slope) ! ngas_slope  = +2 for P+11 fiducial model
-          ndust_ideal = ndust_norm * ngas_ideal / ngas_norm
+          ngas_ideal  = n0 *  (r_min / dist_cell)**(ngas_slope) ! ngas_slope  = +2 for P+11 fiducial model
+          ndust_ideal = ndust_norm * ngas_ideal / n0
           missed_cell = 0
        else                                                ! cell completely out of sphere or completely within r_min               
           vx_ideal    = 0.0d0
@@ -212,9 +217,8 @@ contains
     
   end function mc_sampling_shell
 
-
-
-
+  
+  
   function rho_sphere_from_tau0_T_rs_Lbox(tauH,temp,rs)
     
     implicit none 
