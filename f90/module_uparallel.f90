@@ -211,11 +211,11 @@ contains
        write(unit,'(a,ES10.3)') '  xForGaussian = ',xForGaussian
        write(unit,'(a)') ''
     else
-       write(unit,*) ''
+       write(*,*) ''
        write(*,'(a,a,a)')    '[uparallel]'
        write(*,'(a,a)')      '  method       = ',method
        write(*,'(a,ES10.3)') '  xForGaussian = ',xForGaussian
-       write(unit,*) ''
+       write(*,*) ''
     end if
 
     isPrinted = .True.
