@@ -81,10 +81,11 @@ module module_ramses
   ! miscelaneous
   logical                  :: verbose        = .false. ! display some run-time info on this module
   ! RT variable indices, should become user params
-  integer(kind=4),parameter :: imetal = 6
-  integer(kind=4),parameter :: ihii   = 7
-  integer(kind=4),parameter :: iheii  = 8
-  integer(kind=4),parameter :: iheiii = 9
+  integer(kind=4) :: itemp  = 5
+  integer(kind=4) :: imetal = 6
+  integer(kind=4) :: ihii   = 7
+  integer(kind=4) :: iheii  = 8
+  integer(kind=4) :: iheiii = 9
   ! Solar abundance ratio
   ! Si
   ! abundance_Si_mass == abundance_Si_number * 28.085
@@ -130,6 +131,8 @@ contains
        print *,' '
        print *,'...reading RAMSES cells...'
     endif
+
+    call read_ramses_itemp(repository,snapnum)
 
     nleaftot = get_nleaf(repository,snapnum)  ! sets ncpu too 
     nvar     = get_nvar(repository,snapnum)
@@ -233,7 +236,7 @@ contains
        allocate(mu(1:nleaf))
        nhi  = ramses_var(1,:) * dp_scale_nh  * (1.d0 - ramses_var(ihii,:))   ! nb of H atoms per cm^3
        mu   = 1.d0 / (XH * (1.d0*ramses_var(ihii,:) + 0.25d0*(1.d0-XH)*(1.d0 + ramses_var(iheii,:) + 2.d0*ramses_var(iheiii,:)))) ! assumes no metals
-       temp = ramses_var(5,:) / ramses_var(1,:) * dp_scale_T2                ! T/mu [ K ]
+       temp = ramses_var(itemp,:) / ramses_var(1,:) * dp_scale_T2                ! T/mu [ K ]
        temp = temp * mu                                                      ! This is now T (in K) with no bloody mu ... 
        deallocate(mu)
     else
@@ -245,7 +248,7 @@ contains
        end if
 
        nhi  = ramses_var(1,:) * dp_scale_nh  ! nb of H atoms per cm^3
-       temp = ramses_var(5,:) / ramses_var(1,:) * dp_scale_T2  ! T/mu [ K ]
+       temp = ramses_var(itemp,:) / ramses_var(1,:) * dp_scale_T2  ! T/mu [ K ]
 
        allocate(boost(nleaf))
        if (self_shielding) then
@@ -410,7 +413,7 @@ contains
        ! ramses RT
        allocate(mu(1:nleaf))
        mu   = 1.d0 / (XH * (1.d0*ramses_var(ihii,:) + 0.25d0*(1.d0-XH)*(1.d0 + ramses_var(iheii,:) + 2.d0*ramses_var(iheiii,:)))) ! assumes no metals
-       temp = ramses_var(5,:) / ramses_var(1,:) * dp_scale_T2                ! T/mu [ K ]
+       temp = ramses_var(itemp,:) / ramses_var(1,:) * dp_scale_T2                ! T/mu [ K ]
        temp = temp * mu                                                      ! This is now T (in K) with no bloody mu ... 
        deallocate(mu)
     else
@@ -421,7 +424,7 @@ contains
        end if
        allocate(nh(nleaf))
        nh   = ramses_var(1,:) * dp_scale_nh  ! nb of H atoms per cm^3
-       temp = ramses_var(5,:) / ramses_var(1,:) * dp_scale_T2  ! T/mu [ K ]
+       temp = ramses_var(itemp,:) / ramses_var(1,:) * dp_scale_T2  ! T/mu [ K ]
        allocate(boost(nleaf))
        if (self_shielding) then
           do i=1,nleaf
@@ -525,7 +528,7 @@ contains
        ! ramses RT
        allocate(mu(1:nleaf))
        mu   = 1.d0 / (XH * (1.d0*ramses_var(ihii,:) + 0.25d0*(1.d0-XH)*(1.d0 + ramses_var(iheii,:) + 2.d0*ramses_var(iheiii,:)))) ! assumes no metals
-       temp = ramses_var(5,:) / ramses_var(1,:) * dp_scale_T2                ! T/mu [ K ]
+       temp = ramses_var(itemp,:) / ramses_var(1,:) * dp_scale_T2                ! T/mu [ K ]
        temp = temp * mu                                                      ! This is now T (in K) with no bloody mu ... 
        deallocate(mu)
     else
@@ -536,7 +539,7 @@ contains
        end if
        allocate(nh(nleaf))
        nh   = ramses_var(1,:) * dp_scale_nh  ! nb of H atoms per cm^3
-       temp = ramses_var(5,:) / ramses_var(1,:) * dp_scale_T2  ! T/mu [ K ]
+       temp = ramses_var(itemp,:) / ramses_var(1,:) * dp_scale_T2  ! T/mu [ K ]
        allocate(boost(nleaf))
        if (self_shielding) then
           do i=1,nleaf
@@ -1248,7 +1251,7 @@ contains
     call clear_cooling
 
     ! read cooling variables from cooling.out file
-    write(filename,'(a,a,i5.5,a,i5.5,a)') trim(repository),'/output_',snapnum,"/cooling_",snapnum,".out"
+    write(filename,'(a,a,i5.5,a,i5.5,a)') trim(repository),'/output_',snapnum,"/cooling_",snapnum,".out" 
     open(unit=44,file=filename,form='unformatted')
     read(44) n1,n2
     cooling%n11 = n1
@@ -1799,6 +1802,37 @@ contains
   end subroutine print_ramses_params
 
 
+
+  subroutine read_ramses_itemp(repository,snapnum) 
+    integer(kind=4),intent(in)  :: snapnum
+    character(1000),intent(in)  :: repository
+    character(1000)             :: nomfich
+    integer :: nvarh2, i, idum 
+    character(LEN=13) :: chardum
+    character(LEN=80) :: varname
+    logical :: ok
+ 
+    write(nomfich,'(a,a,i5.5,a)') trim(repository),'/output_',snapnum,'/hydro_file_descriptor.txt'
+
+    inquire(file=nomfich, exist=ok) ! verify input file 
+    if (ok) then 
+       open(unit=20,file=nomfich,status='old',form='formatted')
+       read(20,'(A13,I11)')chardum,nvarh2
+       do i=1,nvarh2
+          read(20,'(A10,I2,A)')chardum,idum,varname
+          if(trim(varname)==': thermal_pressure') then 
+             itemp=i
+             continue
+          endif
+       enddo
+       close(20)
+    endif
+    imetal = itemp + 1
+    if(verbose)then
+       print *, '>> itemp  =', itemp   
+       print *, '>> imetal =', imetal
+    endif
+  end subroutine read_ramses_itemp
 
 
 end module module_ramses
