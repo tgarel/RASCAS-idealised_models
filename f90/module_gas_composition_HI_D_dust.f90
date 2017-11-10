@@ -54,7 +54,7 @@ module module_gas_composition
   ! public functions:
   public :: gas_from_ramses_leaves,get_gas_velocity,gas_get_scatter_flag,gas_scatter,dump_gas
   public :: read_gas,gas_destructor,read_gas_composition_params,print_gas_composition_params
-  
+  public :: gas_from_ramses_leaves_simple 
 contains
 
   
@@ -114,6 +114,71 @@ contains
 
   end subroutine gas_from_ramses_leaves
 
+  subroutine gas_from_ramses_leaves_simple(repository,snapnum,nleaf,nvar,ramses_var, g)
+
+    ! define gas contents from ramses raw data
+
+    character(2000),intent(in)                     :: repository 
+    integer(kind=4),intent(in)                     :: snapnum
+    integer(kind=4),intent(in)                     :: nleaf,nvar
+    real(kind=8),intent(in),dimension(nvar,nleaf)  :: ramses_var
+    type(gas),dimension(:),allocatable,intent(out) :: g
+    integer(kind=4)                                :: ileaf
+    real(kind=8),dimension(:),allocatable          :: T, nhi, metallicity, nhii, nee, emiss
+    real(kind=8),dimension(:,:),allocatable        :: v
+
+    ! allocate gas-element array
+    allocate(g(nleaf))
+
+    if (gas_overwrite) then
+       call overwrite_gas(g)
+    else
+    
+       box_size_cm = ramses_get_box_size_cm(repository,snapnum)
+
+       ! compute velocities in cm / s
+       if (verbose) write(*,*) '-- module_gas_composition_HI_D_dust : extracting velocities from ramses '
+       do ileaf = 1,nleaf
+          g(ileaf)%v = ramses_var(2:4,ileaf)
+       end do
+
+       ! get nHI and temperature from ramses
+       if (verbose) write(*,*) '-- module_gas_composition_HI_D_dust : extracting nHI and T from ramses '
+       allocate(T(nleaf),nhi(nleaf))
+       allocate(metallicity(nleaf),nhii(nleaf))
+       T=0.0;nhi=0.0;nhii=0.0;metallicity=0.0
+       !allocate(nee(nleaf),emiss(nleaf))
+       !emiss=0.0;nee=0.0
+
+       T(:)           = ramses_var(5,:)
+       metallicity(:) = ramses_var(6,:)
+       nhi(:)         = ramses_var(7,:)
+       nhii(:)        = ramses_var(8,:)
+       !nee(:)         = ramses_var(9,:)
+
+       g(:)%nHI       = nhi(:)
+
+       ! compute thermal velocity 
+       ! ++++++ TURBULENT VELOCITY >>>>> parameter to add and use here
+       g(:)%dopwidth = sqrt((2.0d0*kb/mp)*T) ! [ cm/s ]
+
+
+       !call get_emissivity_case_B(T,nee,nhii,nleaf,emiss)
+       !g(:)%emiss = emiss
+
+       ! get ndust (pseudo dust density from Laursen, Sommer-Larsen, Andersen 2009)
+       if (verbose) write(*,*) '-- module_gas_composition_HI_D_dust : extracting ndust from ramses '
+       do ileaf = 1,nleaf
+          g(ileaf)%ndust = metallicity(ileaf) / Zref * ( nhi(ileaf) + f_ion*nhii(ileaf) )   ! [ /cm3 ]
+       end do
+       deallocate(metallicity,T,nhi,nhii)
+       !deallocate(emiss,nee)
+
+    end if
+
+    return
+
+  end subroutine gas_from_ramses_leaves_simple
 
   
   subroutine overwrite_gas(g)

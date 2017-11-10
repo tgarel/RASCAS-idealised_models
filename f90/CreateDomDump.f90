@@ -87,13 +87,25 @@ program CreateDomDump
      computdom_max = comput_dom_thickness
   end select
 
-  
-  ! Read all the leaf cells
-  call read_leaf_cells(repository, snapnum, nleaftot, nvar, x_leaf, ramses_var, leaf_level)
-  nOctSnap = get_nGridTot(repository,snapnum)
+ 
+  if(ramses_simple_binary) then !Taysun
 
-  ! Extract and convert properties of cells into gas mix properties
-  call gas_from_ramses_leaves(repository,snapnum,nleaftot,nvar,ramses_var, gas_leaves)
+    ! Read all the leaf cells 
+    call read_leaf_cells_from_simple(repository, snapnum, nleaftot, nvar, x_leaf, ramses_var, leaf_level)
+    nOctSnap = nleaftot/2 ! lucky guess
+ 
+    ! Extract and convert properties of cells into gas mix properties
+    call gas_from_ramses_leaves_simple(repository,snapnum,nleaftot,nvar,ramses_var, gas_leaves)
+  else
+ 
+     ! Read all the leaf cells
+     call read_leaf_cells(repository, snapnum, nleaftot, nvar, x_leaf, ramses_var, leaf_level)
+     nOctSnap = get_nGridTot(repository,snapnum)
+
+     ! Extract and convert properties of cells into gas mix properties
+     call gas_from_ramses_leaves(repository,snapnum,nleaftot,nvar,ramses_var, gas_leaves)
+  endif
+
 
   ! domain decomposition 
   if (verbose)then
@@ -329,6 +341,7 @@ contains
        end select
        write(unit,'(a)')             '# miscelaneous parameters'
        write(unit,'(a,L1)')          '  verbose         = ',verbose
+       write(unit,'(a,L1)')          '  ramses_simple_binary = ',ramses_simple_binary
        write(unit,'(a)')             ' '
        call print_mesh_params(unit)
     else
@@ -373,6 +386,7 @@ contains
        end select
        write(*,'(a)')             '# miscelaneous parameters'
        write(*,'(a,L1)')          '  verbose         = ',verbose
+       write(*,'(a,L1)')          '  ramses_simple_binary = ',ramses_simple_binary
        write(*,'(a)')             ' '
        call print_mesh_params
        write(*,'(a)')             ' '

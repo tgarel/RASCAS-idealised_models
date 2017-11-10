@@ -244,7 +244,7 @@ program PhotonsFromStars
   ! check that we dont loose significant flux by sampling only particles with sweight > minflux
   check_flux = 0.0d0
   do i=1,nstars
-     if (sweight(i)>minflux) check_flux = check_flux+sweight(i)
+     if (sweight(i).ge.minflux) check_flux = check_flux+sweight(i)  !Taysun .ge.
   end do
   if (verbose) write(*,*) '> We sample this fraction of total flux: ',check_flux / total_flux
   if ((total_flux - check_flux) / total_flux > 0.001) then
@@ -255,13 +255,13 @@ program PhotonsFromStars
   allocate(cum_flux_prob(int(3*total_flux / minflux,kind=8)))
   ilast = 1
   do i=1,nstars
-     if (sweight(i) > minflux) then 
+     if (sweight(i) .ge. minflux) then        !Taysun: .ge.
         n = int(3*sweight(i)/minflux,kind=8)
-        cum_flux_prob(ilast:ilast+n) = i
+        cum_flux_prob(ilast:ilast+n-1) = i    !Taysun: -1
         ilast = ilast + n
      end if
   end do
-  nflux = ilast
+  nflux = ilast - 1 ! Taysun: -1
   print*,'> nflux, size(cum_flux_prob):', nflux, size(cum_flux_prob)
   ! --------------------------------------------------------------------------------------
 
@@ -444,6 +444,8 @@ contains
              read(value,*) verbose
           case ('cosmo')
              read(value,*) cosmo
+          case ('ramses_simple_binary')
+             read(value,*) ramses_simple_binary
           case default
              write(*,'(a,a,a)') '> WARNING: parameter ',trim(name),' unknown '
           end select
@@ -548,6 +550,7 @@ contains
        write(*,'(a,i8)')          '  ranseed         = ',ranseed
        write(*,'(a,L1)')          '  verbose         = ',verbose
        write(*,'(a,L1)')          '  cosmo           = ',cosmo
+       write(*,'(a,L1)')          '  ramses_simple_binary = ',ramses_simple_binary
        write(*,'(a)')             ' '
 
     end if

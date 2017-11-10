@@ -93,12 +93,13 @@ module module_ramses
   ! Mg
   ! abundance_Mg_mass == abundance_Mg_number * 24.305
   real(kind=8),parameter    :: abundance_Mg_mass = 8.24d-4 ! From Scarlata (private comm.): abundance_Mg_number = 3.39d-5
+  ! read fortran binary created by Taysun
+  logical,public :: ramses_simple_binary = .false.       
   ! --------------------------------------------------------------------------
-
-  
 
   public  :: read_leaf_cells, get_ngridtot, ramses_get_velocity_cgs, ramses_get_T_nhi_cgs, ramses_get_metallicity, ramses_get_box_size_cm, ramses_get_nh_cgs
   public  :: ramses_read_stars_in_domain, read_ramses_params, print_ramses_params, dump_ramses_info, ramses_get_T_nSiII_cgs, ramses_get_T_nMgII_cgs
+  public  :: read_leaf_cells_from_simple !Taysun
   ! default is private now ... !! private :: read_hydro, read_amr, get_nleaf, get_nvar, clear_amr, get_ncpu, get_param_real
 
   !==================================================================================
@@ -1133,6 +1134,9 @@ contains
 
     not_ok = .true.
     write(nomfich,'(a,a,i5.5,a,i5.5,a)') trim(repository),'/output_',snapnum,'/info_',snapnum,'.txt'
+    if(ramses_simple_binary)then
+       write(nomfich,'(a,a,i5.5,a)') trim(repository),'/info_',snapnum,'.txt'
+    endif
     open(unit=param_unit,file=nomfich,status='old',form='formatted')
     do 
        read(param_unit,'(a)',end=2) line
@@ -1340,7 +1344,10 @@ contains
     real(kind=8),allocatable    :: age(:),m(:),x(:,:),v(:,:),mets(:)
     logical, intent(in)         :: cosmo
     real(kind=8)                :: temp(3)
-    
+    ! for ramses_simple_binary by Taysun
+    logical                     :: ok_exist
+    real(kind=8),allocatable    :: dd(:)
+    integer                     :: idim,initial_mass 
     
     ! get cosmological parameters to convert conformal time into ages
     call read_cosmo_params(repository,snapnum,omega_0,lambda_0,little_h)
@@ -1362,6 +1369,40 @@ contains
        write(*,*)'Time simu [Myr] =',time_cu, time_cu*dp_scale_t/(365.*24.*3600.*1d6)
        boxsize = get_param_real(repository,snapnum,'boxlen') !!!* dp_scale_l  ! [ cm ]
        write(*,*)'boxlen =',boxsize
+    endif
+
+    if(ramses_simple_binary)then !Taysun
+       write(filename,'(a,a,i5.5,a)') trim(repository),'/star_',snapnum,'.bin'
+       inquire(file=trim(filename),exist=ok_exist)
+       if(.not.ok_exist)then
+          write(*,*) 'no such file as '//trim(filename)
+          stop 
+       endif
+
+       ! read the leaf info
+       open(unit=11,file=trim(filename),form='unformatted',status='old',action='read')
+       read(11) nstars,initial_mass
+       allocate(star_pos(3,nstars),star_age(nstars),star_mass(nstars),star_vel(3,nstars),star_met(nstars))
+       allocate(dd(nstars),id(nstars))
+       do idim=1,3 
+          read(11)dd
+          star_pos(idim,:)=dd ! [code: 0-1]
+       end do
+       do idim=1,3 
+          read(11)dd
+          star_vel(idim,:)=dd ! [cm/s]
+       end do
+       read(11)id
+       read(11)star_mass      ! [g]
+       read(11)star_age       ! [Myr]
+       read(11)star_met       ! [Z]
+       if(initial_mass==1)then
+          read(11)star_mass   ! [g]
+       endif
+       close(11)
+
+       deallocate(dd,id)
+       return
     endif
 
     ! read stars 
@@ -1766,6 +1807,8 @@ contains
              read(value,*) ramses_rt
           case ('verbose')
              read(value,*) verbose
+          case ('ramses_simple_binary')
+             read(value,*) ramses_simple_binary
           end select
        end do
     end if
@@ -1790,11 +1833,13 @@ contains
        write(unit,'(a,L1)') '  self_shielding = ',self_shielding
        write(unit,'(a,L1)') '  ramses_rt      = ',ramses_rt
        write(unit,'(a,L1)') '  verbose        = ',verbose
+       write(unit,'(a,L1)') '  ramses_simple_binary = ',ramses_simple_binary
     else
        write(*,'(a,a,a)') '[ramses]'
        write(*,'(a,L1)') '  self_shielding = ',self_shielding
        write(*,'(a,L1)') '  ramses_rt      = ',ramses_rt
        write(*,'(a,L1)') '  verbose        = ',verbose
+       write(*,'(a,L1)') '  ramses_simple_binary = ',ramses_simple_binary
     end if
 
     return
@@ -1833,6 +1878,67 @@ contains
        print *, '>> imetal =', imetal
     endif
   end subroutine read_ramses_itemp
+
+
+  subroutine read_leaf_cells_from_simple (repository, snapnum, nleaftot, nvar, &
+       & xleaf, ramses_var, leaf_level)
+
+    ! read all leaf cell from RECREATED binary files. Return standard 
+    ! ramses ramses variables through ramses_var(nvar,nleaftot) and
+    ! positions (xleaf(3,nleaftot)) and levels (leaf_level).
+
+    implicit none
+
+    character(2000),intent(in)                :: repository
+    integer(kind=4),intent(in)                :: snapnum
+    integer(kind=4),intent(inout)             :: nleaftot, nvar
+    real(kind=8),allocatable, intent(inout)   :: ramses_var(:,:)
+    real(kind=8),allocatable,intent(inout)    :: xleaf(:,:)
+    integer(kind=4),allocatable,intent(inout) :: leaf_level(:)
+    real(kind=8),allocatable                  :: dd(:)
+
+    logical                                   :: ok
+    integer(kind=4)                           :: icpu, ileaf, icell, ivar, idim
+    character(1000)                           :: nomfich
+
+
+
+    if(verbose)then
+       print *,' '
+       print *,'...reading RAMSES simple leaf cells...'
+    endif
+
+    write(nomfich,'(a,a,i5.5,a)') trim(repository),'/cell_',snapnum,'.bin'
+    inquire(file=trim(nomfich),exist=ok)
+    if(.not.ok)then
+       write(*,*) 'no such file as '//trim(nomfich)
+       stop
+    endif
+
+    ! read the leaf info
+    open(unit=10,file=trim(nomfich),form='unformatted',status='old',action='read')
+    read(10) nleaftot, nvar
+    write(*,*) '>>NOTE: nleaftot, nvar =', nleaftot, nvar
+    allocate(ramses_var(nvar,nleaftot), xleaf(nleaftot,3), leaf_level(nleaftot))
+    allocate(dd(1:nleaftot))
+
+    do idim=1,3
+       read(10)dd
+       xleaf(1:nleaftot,idim)=dd
+    end do
+
+    read(10)dd
+    leaf_level(1:nleaftot) = nint(-log(dd)/log(2.0)) ! level
+
+    do idim=1,nvar
+       read(10)dd
+       ramses_var(idim,1:nleaftot)=dd
+    end do
+    close(10)
+
+    deallocate(dd)
+
+  end subroutine read_leaf_cells_from_simple
 
 
 end module module_ramses
