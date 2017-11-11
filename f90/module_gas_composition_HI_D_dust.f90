@@ -30,6 +30,7 @@ module module_gas_composition
      ! ->  ndust = (nHI + f_ion nHII)*Z/Zref
      ! f_ion and Zref are two free parameters . 
      real(kind=8) :: ndust     ! pseudo-numerical density of dust particles [#/cm3]
+     real(kind=8) :: emiss     ! recombination emissivity [erg/cm3/s]
   end type gas
   real(kind=8),public :: box_size_cm   ! size of simulation box in cm. 
   
@@ -47,6 +48,7 @@ module module_gas_composition
   real(kind=8)             :: fix_ndust           = 0.0d0   ! ad-hoc dust number density (/cm3)
   real(kind=8)             :: fix_vel             = 0.0d0   ! ad-hoc cell velocity (cm/s) -> NEED BETTER PARAMETERIZATION for more than static... 
   real(kind=8)             :: fix_box_size_cm     = 1.0d8   ! ad-hoc box size in cm. 
+  real(kind=8)             :: fix_emiss           = 1.0d20  ! ad-hoc emissivity [erg/cm3/s]
   ! miscelaneous
   logical                  :: verbose             = .false. ! display some run-time info on this module
   ! --------------------------------------------------------------------------
@@ -123,9 +125,8 @@ contains
     integer(kind=4),intent(in)                     :: nleaf,nvar
     real(kind=8),intent(in),dimension(nvar,nleaf)  :: ramses_var
     type(gas),dimension(:),allocatable,intent(out) :: g
-    integer(kind=4)                                :: ileaf
+    integer(kind=4)                                :: ileaf,nvarh
     real(kind=8),dimension(:),allocatable          :: T, nhi, metallicity, nhii, nee, emiss
-    real(kind=8),dimension(:,:),allocatable        :: v
 
     ! allocate gas-element array
     allocate(g(nleaf))
@@ -133,7 +134,9 @@ contains
     if (gas_overwrite) then
        call overwrite_gas(g)
     else
-    
+   
+       nvarh = size(ramses_var(:,1))
+ 
        box_size_cm = ramses_get_box_size_cm(repository,snapnum)
 
        ! compute velocities in cm / s
@@ -147,14 +150,16 @@ contains
        allocate(T(nleaf),nhi(nleaf))
        allocate(metallicity(nleaf),nhii(nleaf))
        T=0.0;nhi=0.0;nhii=0.0;metallicity=0.0
-       !allocate(nee(nleaf),emiss(nleaf))
-       !emiss=0.0;nee=0.0
+       allocate(nee(nleaf),emiss(nleaf))
+       emiss=0.0;nee=0.0
 
        T(:)           = ramses_var(5,:)
        metallicity(:) = ramses_var(6,:)
        nhi(:)         = ramses_var(7,:)
        nhii(:)        = ramses_var(8,:)
-       !nee(:)         = ramses_var(9,:)
+       if(nvarh.ge.9)then
+          nee(:)      = ramses_var(9,:)
+       endif
 
        g(:)%nHI       = nhi(:)
 
@@ -162,9 +167,10 @@ contains
        ! ++++++ TURBULENT VELOCITY >>>>> parameter to add and use here
        g(:)%dopwidth = sqrt((2.0d0*kb/mp)*T) ! [ cm/s ]
 
-
-       !call get_emissivity_case_B(T,nee,nhii,nleaf,emiss)
-       !g(:)%emiss = emiss
+       if(nvarh.ge.9)then
+          call get_emissivity_case_B(T,nee,nhii,nleaf,emiss)
+          g(:)%emiss = emiss
+       endif
 
        ! get ndust (pseudo dust density from Laursen, Sommer-Larsen, Andersen 2009)
        if (verbose) write(*,*) '-- module_gas_composition_HI_D_dust : extracting ndust from ramses '
@@ -172,13 +178,38 @@ contains
           g(ileaf)%ndust = metallicity(ileaf) / Zref * ( nhi(ileaf) + f_ion*nhii(ileaf) )   ! [ /cm3 ]
        end do
        deallocate(metallicity,T,nhi,nhii)
-       !deallocate(emiss,nee)
+       deallocate(emiss,nee)
 
     end if
 
     return
 
   end subroutine gas_from_ramses_leaves_simple
+
+
+  subroutine get_emissivity_case_B (T, nee, nhii,nleaf,emiss) 
+    implicit none
+    integer(kind=4),intent(in) :: nleaf
+    real(kind=8),intent(in),dimension(nleaf)::T,nee,nhii
+    real(kind=8),intent(inout),dimension(nleaf)::emiss
+    integer(kind=4)::j
+    real(kind=8)::Ta,prob_case_B,alpha_B,lambda,e_lya
+
+    e_lya = 10.16 * 1.60218d-12 ! [erg]
+
+    do j=1,nleaf
+       Ta = max(T(j),100.0) ! no extrapolation..
+
+       ! Cantalupo+(08)
+       prob_case_B = 0.686 - 0.106*log10(Ta/1e4) - 0.009*(Ta/1e4)**(-0.44)
+
+       ! Hui & Gnedin (1997)
+       lambda = 315614./T(j)
+       alpha_B = 2.753d-14*(lambda**(1.5))/(1+(lambda/2.74)**0.407)**(2.242) ![cm3/s]
+       emiss(j) = prob_case_B * alpha_B * nee(j) * nhii(j) * e_lya ! [erg/cm3/s]
+    end do
+    return 
+  end subroutine get_emissivity_case_B
 
   
   subroutine overwrite_gas(g)
@@ -194,6 +225,7 @@ contains
     g(:)%nHI      = fix_nhi
     g(:)%dopwidth = fix_vth
     g(:)%ndust    = fix_ndust
+    g(:)%emiss    = fix_emiss
        
 #ifdef DEBUG
     print*,'in overwrite_gas: allocated g?',shape(g)
@@ -310,6 +342,7 @@ contains
     write(unit) (g(i)%dopwidth, i=1,nleaf)
     write(unit) (g(i)%ndust, i=1,nleaf)
     write(unit) box_size_cm 
+    write(unit) (g(i)%emiss, i=1,nleaf)
   end subroutine dump_gas
 
 
@@ -327,6 +360,7 @@ contains
        read(unit) (g(i)%dopwidth,i=1,n)
        read(unit) (g(i)%ndust,i=1,n)
        read(unit) box_size_cm 
+       read(unit) (g(i)%emiss,i=1,n)
     end if
   end subroutine read_gas
 

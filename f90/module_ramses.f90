@@ -1898,7 +1898,7 @@ contains
     real(kind=8),allocatable                  :: dd(:)
 
     logical                                   :: ok
-    integer(kind=4)                           :: icpu, ileaf, icell, ivar, idim
+    integer(kind=4)                           :: idim
     character(1000)                           :: nomfich
 
 
