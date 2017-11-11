@@ -281,7 +281,7 @@ program PhotonsFromGas
         r1 = ran3(iran)
         r2 = ran3(iran)
         nu = sqrt(-2.*log(r1)) * cos(2.0d0*pi*r2)
-        nu = (spec_gauss_sigma_kms * 1d5 * spec_gauss_nu0 / clight) * nu + spec_gauss_nu0
+        nu = (sigma_kms * 1d5 * spec_gauss_nu0 / clight) * nu + spec_gauss_nu0
      case('Mono')
         nu = spec_mono_nu0
      end select
