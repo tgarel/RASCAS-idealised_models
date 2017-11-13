@@ -74,6 +74,7 @@ program PhotonsFromGas
   ! --------------------------------------------------------------------------
   type(mesh)                :: meshdom
   real(kind=8)              :: sigma_kms = -1.0   ! line width in velocity [km/s]  
+  logical                   :: is_inside=.false.  !
   ! --------------------------------------------------------------------------
 
   eLya_erg=10.16 * 1.60218d-12
@@ -160,9 +161,16 @@ program PhotonsFromGas
         cell_pos     = posoct(:) + 0.5*cell_size
         cell_vol     = (cell_size*box_size_cm)**3.0
 
-        emiss = meshdom%gas(-ileaf)%emiss ! [erg/cm^3/s]
-        emiss = emiss * cell_vol / eLya_erg ! [erg/s] -> [#/s]
-        total_flux   = total_flux + emiss 
+        ! check if the point is inside the domain we want
+        is_inside = domain_contains_point(cell_pos,emission_domain)
+
+        if(is_inside)then
+           emiss = meshdom%gas(-ileaf)%emiss ! [erg/cm^3/s]
+           emiss = emiss * cell_vol / eLya_erg ! [erg/s] -> [#/s]
+           total_flux   = total_flux + emiss
+        else
+           emiss = 0.0
+        endif
 
         if(emiss.lt.minflux.and.emiss.gt.0)minflux=emiss
 
@@ -199,9 +207,15 @@ program PhotonsFromGas
 
         cell_pos    = posoct(:) + 0.5*cell_size
         cell_vol    = (cell_size*box_size_cm)**3.0
+        ! check if the point is inside the domain we want
+        is_inside = domain_contains_point(cell_pos,emission_domain)
 
-        emiss       = meshdom%gas(-ileaf)%emiss ! [erg/cm^3/s]
-        emiss       = emiss * cell_vol / eLya_erg ! [erg/s] -> [#/s]
+        if(is_inside)then
+           emiss = meshdom%gas(-ileaf)%emiss ! [erg/cm^3/s]
+           emiss = emiss * cell_vol / eLya_erg ! [erg/s] -> [#/s]
+        else 
+           emiss = 0.0
+        endif
 
         if(emiss.ge.minflux)  check_flux=check_flux+emiss
      endif
@@ -231,8 +245,15 @@ program PhotonsFromGas
         cell_pos    = posoct(:) + 0.5*cell_size
         cell_vol    = (cell_size*box_size_cm)**3.0
 
-        emiss       = meshdom%gas(-ileaf)%emiss ! [erg/cm^3/s]
-        emiss       = emiss * cell_vol / eLya_erg ! [#/s]
+        ! check if the point is inside the domain we want
+        is_inside = domain_contains_point(cell_pos,emission_domain)
+
+        if(is_inside)then
+           emiss = meshdom%gas(-ileaf)%emiss ! [erg/cm^3/s]
+           emiss = emiss * cell_vol / eLya_erg ! [erg/s] -> [#/s]
+        else 
+           emiss = 0.0
+        endif
 
         if(emiss.ge.minflux)then
            n = int(3*emiss/minflux,kind=8)
