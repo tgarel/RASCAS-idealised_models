@@ -8,6 +8,7 @@ module module_ray
   use module_constants
   use module_random
   use module_domain
+  use module_utils, only: path 
 
   implicit none
 
@@ -57,7 +58,7 @@ contains
     real(kind=8),dimension(3)      :: ppos,ppos_cell ! working coordinates of photon (in box and in cell units)
     real(kind=8)                   :: distance_to_border,distance_to_border_cm
     real(kind=8)                   :: dist, tau_cell, tau, dborder
-    integer(kind=4)                :: i, icellnew
+    integer(kind=4)                :: i, icellnew, npush
     real(kind=8),dimension(3)      :: vgas, kray, cell_corner, posoct
     logical                        :: flagoutvol, in_domain
     real(kind=8)                   :: epsilon_cell
@@ -90,9 +91,10 @@ contains
        ! compute position of photon in current-cell units
        posoct(:)    = domesh%xoct(ioct,:)
        cell_corner  = get_cell_corner(posoct,ind,cell_level)   ! position of cell corner, in box units.
-       ppos_cell    = (ppos - cell_corner) / cell_size       ! position of photon in cell units (x,y,z in [0,1] within cell)
-       if((ppos_cell(1)>1.).or.(ppos_cell(2)>1.).or.(ppos_cell(3)>1.))then
-          print*,"--> Problem in computing ppos_cell"
+       ppos_cell    = (ppos - cell_corner) / cell_size         ! position of photon in cell units (x,y,z in [0,1] within cell)
+       if((ppos_cell(1)>1.0d0).or.(ppos_cell(2)>1.0d0).or.(ppos_cell(3)>1.0d0).or. &
+            (ppos_cell(1)<0.0d0).or.(ppos_cell(2)<0.0d0).or.(ppos_cell(3)<0.0d0))then
+          print*,"ERROR: problem in computing ppos_cell"
           stop
        endif
        
@@ -102,29 +104,21 @@ contains
        scalar       = kray(1) * vgas(1) + kray(2) * vgas(2) + kray(3) * vgas(3)
        nu_cell      = (1.d0 - scalar/clight) * ray%nu_ext  
 
-       ! define epsilon according to cell size & numerical accuracy, a creuser plus tard et tester
-       epsilon_cell = 2.d0*accuracy/cell_size * 1.d5
-       ! /cell_size car 
-       ! on veut epsilon_box > tiny
-       ! => epsilon_cell > tiny/cell_size
-
-       ! compute distance of photon to border of cell along propagation direction
-       distance_to_border    = path(ppos_cell,kray)             ! in cell units
-       distance_to_border_cm = distance_to_border * cell_size_cm ! cm
+       ! compute distance of photon to border of cell or domain along propagation direction
+       distance_to_border    = path(ppos_cell,kray) / cell_size            ! in box units
+       distance_to_border    = min(distance_to_border, &
+            & domain_distance_to_border_along_k(ppos,kray,domaine_calcul)) ! in box units
+       distance_to_border_cm = distance_to_border * box_size_cm ! cm
        
        ! compute (total) optical depth along ray in cell 
        tau_cell = gas_get_tau(cell_gas, distance_to_border_cm, nu_cell)
        
-       ! update ppos_cell with distance_to_border (distance_to_border_cm has not been modified if flag==0)
-       ! also add epsilon to ensure finding next cell
-       ppos_cell = ppos_cell + kray * (distance_to_border + epsilon_cell)
-       
-       ! update ppos (in box units)
-       ppos = ppos_cell * cell_size + cell_corner
+       ! update head of ray position
+       ppos = ppos + kray * distance_to_border *(1.0d0 + epsilon(1.0d0))
        ! correct for periodicity
        do i=1,3
-          if (ppos(i) < 0.d0) ppos(i)=ppos(i)+1.d0
-          if (ppos(i) > 1.d0) ppos(i)=ppos(i)-1.d0
+          if (ppos(i) < 0.0d0) ppos(i)=ppos(i)+1.0d0
+          if (ppos(i) > 1.0d0) ppos(i)=ppos(i)-1.0d0
        enddo
        
        ! update traveled distance and optical depth
@@ -133,14 +127,8 @@ contains
        
        ! check if photon still in computational domain
        in_domain = domain_contains_point(ppos,domaine_calcul)
-       if(.not.(in_domain))then     ! => ray is done
-          ! correct traveled distance and optical depth in case ray went beyond domain border
-          dborder  = domain_distance_to_border(ppos,domaine_calcul) * box_size_cm ! should be negative
-          ray%dist = dist + dborder 
-          ray%tau  = tau  + (dborder/distance_to_border_cm)*tau_cell  ! subtract excess tau too. 
-          exit ray_propagation
-       endif
-
+       if (.not.(in_domain)) exit ray_propagation  ! ray is done 
+       ! check if we reached tau or distance limits
        if (dist > maxdist_cm .and. tau > maxtau) then ! dist or tau exceeding boundary -> correct excess and exit. 
           if (maxdist_cm > 0) then
              dborder  = maxdist_cm - dist
@@ -154,17 +142,28 @@ contains
           exit ray_propagation
        end if
        
+       ! Ray moves to next cell : find it
        call whereIsPhotonGoing(domesh,icell,ppos,icellnew,flagoutvol)
-       ! check result (in case ray is found in cell where it comes from)
-       if(icell==icellnew)then
-          print*,'Problem with routine WhereIsPhotonGoing'
-          print*,'epsilon    =',accuracy, epsilon_cell, distance_to_border
-          print*,'ppos_cell  =',ppos_cell
-          print*,'delta_ppos =', kray * (distance_to_border + epsilon_cell)
-          print*,'ppos       =',ppos
-          print*,'cell_size  =',cell_size
-          stop
-       endif
+       ! It may happen due to numerical precision that the photon is still in the current cell (i.e. icell == icellnew).
+       ! -> give it an extra push untill it is out. 
+       npush = 0
+       do while (icell==icellnew)
+          npush = npush + 1
+          ppos(1) = ppos(1) + merge(-1.0d0,1.0d0,kray(1)<0.0d0) * epsilon(ppos(1))
+          ppos(2) = ppos(2) + merge(-1.0d0,1.0d0,kray(2)<0.0d0) * epsilon(ppos(2))
+          ppos(3) = ppos(3) + merge(-1.0d0,1.0d0,kray(3)<0.0d0) * epsilon(ppos(3))
+          call whereIsPhotonGoing(domesh,icell,ppos,icellnew,flagoutvol)
+       end do
+       if (npush > 1) print*,'WARNING : npush > 1 needed in module_photon:propagate.'
+       ! test whether photon was pushed out of domain with the extra pushes
+       ! (and in that case, call it done). 
+       if (npush > 0) then 
+          in_domain = domain_contains_point(ppos,domaine_calcul)
+          if (.not. in_domain) then
+             print*,'WARNING: pushed photon outside domain ... '
+             exit ray_propagation
+          end if
+       end if
        
        ! check if photon outside of cpu domain (flagoutvol)
        if(flagoutvol)then
@@ -189,35 +188,6 @@ contains
 
   end subroutine ray_advance
   
-
-  function path(pos,dir)
-
-    ! compute distance to border of a cell (in cell units), from position
-    ! pos (in cell units) and in direction dir. 
-    
-    implicit none
-
-    real(kind=8),intent(in) :: pos(3)   ! position of photon in cell units
-    real(kind=8),intent(in) :: dir(3)   ! propagation direction of photon
-    integer(kind=4)         :: i
-    real(kind=8)            :: dx(3)
-    real(kind=8)            :: path     ! distance from pos to exit point
-
-    do i = 1,3
-       if(dir(i) < 0.) then
-          dx(i) = -pos(i) / dir(i)
-       else if (dir(i) > 0.) then
-          dx(i) = (1.0d0 - pos(i)) / dir(i)
-       else ! dir(i) == 0
-          dx(i) = 10.  ! larger than maximum extent of cell (sqrt(3)) in cell units
-       end if
-    end do
-    path = minval(dx)
-
-    return
-    
-  end function path
-
 
   subroutine init_rays_from_file(file,rays)
 

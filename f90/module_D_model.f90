@@ -184,7 +184,7 @@ contains
     real(kind=8),intent(in)                 :: vth
     integer(kind=4),intent(inout)           :: iran
     real(kind=8)                            :: D_peeloff_weight
-    real(kind=8)                            :: delta_nu_doppler, a, x_cell, blah, upar, ruper
+    real(kind=8)                            :: delta_nu_doppler, a, x_cell, upar, ruper
     real(kind=8)                            :: r2, uper, nu_atom, mu, bu, scalar
     real(kind=8)                            :: x_atom,nu_cell
 
@@ -199,11 +199,10 @@ contains
 
     ! 1/ component parallel to photon's propagation
     ! -> get velocity of interacting atom parallel to propagation
-    blah = ran3(iran)
 #ifdef SWITCH_OFF_UPARALLEL
     upar = 0.5
 #else
-    upar = get_uparallel(a,x_cell,blah)
+    upar = get_uparallel(a,x_cell,iran)
 #endif
     upar = upar * vth    ! upar is an x -> convert to a velocity 
 
