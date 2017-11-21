@@ -97,7 +97,7 @@ contains
     real(kind=8),dimension(3),intent(in)    :: vcell
     real(kind=8),intent(in)                 :: vth
     integer(kind=4),intent(inout)           :: iran
-    real(kind=8)                            :: delta_nu_doppler, a, x_cell, blah, upar, ruper
+    real(kind=8)                            :: delta_nu_doppler, a, x_cell, upar, ruper
     real(kind=8)                            :: r2, uper, nu_atom, mu, bu, scalar
     real(kind=8)                            :: x_atom
     real(kind=8),dimension(3)               :: knew
@@ -109,11 +109,10 @@ contains
 
     ! 1/ component parallel to photon's propagation
     ! -> get velocity of interacting atom parallel to propagation
-    blah = ran3(iran)
 #ifdef SWITCH_OFF_UPARALLEL
-    upar = 0.5  !!!!!todo get_uparallel(a,x_cell,blah)
+    upar = 0.5 
 #else
-    upar = get_uparallel(a,x_cell,blah)
+    upar = get_uparallel(x_cell,a,iran)
 #endif
     upar = upar * vth    ! upar is an x -> convert to a velocity 
 
@@ -289,6 +288,7 @@ contains
        end do
     end if
     close(10)
+    call read_uparallel_params(pfile)
     return
 
   end subroutine read_D_params
@@ -308,10 +308,12 @@ contains
        write(unit,'(a,a,a)') '[Deuterium]'
        write(unit,'(a,L1)') '  recoil    = ',recoil
        write(unit,'(a,L1)') '  isotropic = ',isotropic
+       call print_uparallel_params(unit)
     else
        write(*,'(a,a,a)') '[Deuterium]'
        write(*,'(a,L1)') '  recoil    = ',recoil
        write(*,'(a,L1)') '  isotropic = ',isotropic
+       call print_uparallel_params()
     end if
 
     return
