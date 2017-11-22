@@ -3,9 +3,8 @@ module module_gas_composition
   ! mix of HI, HeI, HeII
   ! NB: no lines here, this is for escape fraction computations ... -> this module will not work for regular rascas runs
   !
-  ! WARNING : no velocity here ... 
+  ! WARNING : no velocity here ... no frequencies ... 
 
-  use module_HI_model
   use module_random
   use module_ramses
   use module_constants
@@ -25,12 +24,16 @@ module module_gas_composition
   ! --------------------------------------------------------------------------
   ! user-defined parameters - read from section [gas_composition] of the parameter file
   ! --------------------------------------------------------------------------
+  ! grey cross sections
+  real(kind=8)             :: sigma_HI
+  real(kind=8)             :: sigma_HeI
+  real(kind=8)             :: sigma_HeII
   ! miscelaneous
   logical                  :: verbose             = .false. ! display some run-time info on this module
   ! --------------------------------------------------------------------------
 
   ! public functions:
-  public :: gas_from_ramses_leaves,get_gas_velocity,gas_get_scatter_flag,gas_scatter,dump_gas,gas_get_tau
+  public :: gas_from_ramses_leaves,dump_gas,gas_get_tau
   public :: read_gas,gas_destructor,read_gas_composition_params,print_gas_composition_params
 
 contains
@@ -46,8 +49,7 @@ contains
     real(kind=8),intent(in),dimension(nvar,nleaf)  :: ramses_var
     type(gas),dimension(:),allocatable,intent(out) :: g
     integer(kind=4)                                :: ileaf
-    real(kind=8),dimension(:),allocatable          :: T, nhi
-    real(kind=8),dimension(:,:),allocatable        :: v
+    real(kind=8),dimension(:),allocatable          :: nhi, nhei, nheii
 
     ! allocate gas-element array
     allocate(g(nleaf))
@@ -67,65 +69,65 @@ contains
   end subroutine gas_from_ramses_leaves
 
   
-  function  gas_get_tau(cell_gas, distance_cm, nu_cell)
+  function  gas_get_tau(cell_gas, distance_cm)
 
     ! --------------------------------------------------------------------------
-    ! compute total opacity of gas accross distance_cm at freq. nu_cell
+    ! compute total opacity of gas accross distance_cm 
     ! --------------------------------------------------------------------------
     ! INPUTS:
-    ! - cell_gas : just HI
+    ! - cell_gas : HI, HeI, HeII
     ! - distance_cm : the distance along which to compute tau [cm]
-    ! - nu_cell : photon frequency in cell's frame [ Hz ]
     ! OUTPUTS:
     ! - gas_get_tau : the total optical depth
     ! --------------------------------------------------------------------------
 
     type(gas),intent(in)    :: cell_gas
     real(kind=8),intent(in) :: distance_cm
-    real(kind=8),intent(in) :: nu_cell
     integer(kind=4)         :: gas_get_tau
-    real(kind=8)            :: tau_HI
+    real(kind=8)            :: tau_HI, tau_HeI, tau_HeII
 
     ! compute optical depths for different components of the gas.
-    tau_HI   = get_tau_HI(cell_gas%nHI, cell_gas%dopwidth, distance_cm, nu_cell)
-    gas_get_tau = tau_HI
+    tau_HI = cell_gas%nHI * distance_cm * sigma_HI
+    tau_HeI = cell_gas%nHeI * distance_cm * sigma_HeI
+    tau_HeII = cell_gas%nHeII * distance_cm * sigma_HeII
+    gas_get_tau = tau_HI + tau_HeI + tau_HeII
 
     return
     
   end function gas_get_tau
   ! --------------------------------------------------------------------------
 
-  function  gas_get_scatter_flag(cell_gas, distance_to_border_cm, nu_cell, tau_abs,iran)
-
-    type(gas),intent(in)                  :: cell_gas
-    real(kind=8),intent(inout)            :: distance_to_border_cm
-    real(kind=8),intent(in)               :: nu_cell
-    real(kind=8),intent(inout)            :: tau_abs                ! tau at which scattering is set to occur.
-    integer(kind=4),intent(inout)         :: iran 
-
-    print*,'ERROR: function module_gas_composition_HI_HeI_HeII.f90:gas_get_scatter_flag should not be called.'
-    stop
-    
-    return
-
-  end function gas_get_scatter_flag
-
-
-
-  subroutine gas_scatter(flag,cell_gas,nu_cell,k,nu_ext,iran)
-
-    integer(kind=4),intent(inout)            :: flag
-    type(gas),intent(in)                     :: cell_gas
-    real(kind=8),intent(inout)               :: nu_cell, nu_ext
-    real(kind=8),dimension(3), intent(inout) :: k
-    integer(kind=4),intent(inout)            :: iran
-
-    print*,'ERROR: function module_gas_composition_HI_HeI_HeII.f90:gas_get_scatter_flag should not be called.'
-    stop
-
-    return
-    
-  end subroutine gas_scatter
+!!$  function  gas_get_scatter_flag(cell_gas, distance_to_border_cm, nu_cell, tau_abs,iran)
+!!$
+!!$    type(gas),intent(in)                  :: cell_gas
+!!$    real(kind=8),intent(inout)            :: distance_to_border_cm
+!!$    real(kind=8),intent(in)               :: nu_cell
+!!$    real(kind=8),intent(inout)            :: tau_abs                ! tau at which scattering is set to occur.
+!!$    integer(kind=4),intent(inout)         :: iran 
+!!$
+!!$    print*,'ERROR: function module_gas_composition_HI_HeI_HeII.f90:gas_get_scatter_flag should not be called.'
+!!$    stop
+!!$    
+!!$    return
+!!$
+!!$  end function gas_get_scatter_flag
+!!$
+!!$
+!!$
+!!$  subroutine gas_scatter(flag,cell_gas,nu_cell,k,nu_ext,iran)
+!!$
+!!$    integer(kind=4),intent(inout)            :: flag
+!!$    type(gas),intent(in)                     :: cell_gas
+!!$    real(kind=8),intent(inout)               :: nu_cell, nu_ext
+!!$    real(kind=8),dimension(3), intent(inout) :: k
+!!$    integer(kind=4),intent(inout)            :: iran
+!!$
+!!$    print*,'ERROR: function module_gas_composition_HI_HeI_HeII.f90:gas_get_scatter_flag should not be called.'
+!!$    stop
+!!$
+!!$    return
+!!$    
+!!$  end subroutine gas_scatter
 
 
 
@@ -199,6 +201,12 @@ contains
           i = scan(value,'!')
           if (i /= 0) value = trim(adjustl(value(:i-1)))
           select case (trim(name))
+          case ('sigma_HI')
+             read(value,*) sigma_HI
+          case ('sigma_HeI')
+             read(value,*) sigma_HeI
+          case ('sigma_HeII')
+             read(value,*) sigma_HeII
           case ('verbose')
              read(value,*) verbose
           end select
@@ -207,7 +215,6 @@ contains
     close(10)
 
     call read_ramses_params(pfile)
-    call read_HI_params(pfile)
 
     return
 
@@ -225,27 +232,32 @@ contains
     integer(kind=4),optional,intent(in) :: unit
 
     if (present(unit)) then 
-       write(unit,'(a,a,a)') '[gas_composition]'
-       write(unit,'(a)')       '# miscelaneous parameters'
-       write(unit,'(a,L1)')    '  verbose             = ',verbose
+       write(unit,'(a,a,a)')    '[gas_composition]'
+       write(unit,'(a)')        '# cross sections '
+       write(unit,'(a,ES10.3)') '  sigma_HI            = ',sigma_HI
+       write(unit,'(a,ES10.3)') '  sigma_HeI           = ',sigma_HeI
+       write(unit,'(a,ES10.3)') '  sigma_HeII          = ',sigma_HeII
+       write(unit,'(a)')        '# miscelaneous parameters'
+       write(unit,'(a,L1)')     '  verbose             = ',verbose
        write(unit,'(a)')             ' '
        call print_ramses_params(unit)
        write(unit,'(a)')             ' '
-       call print_HI_params(unit)
     else
        write(*,'(a,a,a)') '[gas_composition]'
+       write(*,'(a)')        '# cross sections '
+       write(*,'(a,ES10.3)') '  sigma_HI            = ',sigma_HI
+       write(*,'(a,ES10.3)') '  sigma_HeI           = ',sigma_HeI
+       write(*,'(a,ES10.3)') '  sigma_HeII          = ',sigma_HeII
        write(*,'(a)')       '# miscelaneous parameters'
        write(*,'(a,L1)')    '  verbose             = ',verbose
        write(*,'(a)')             ' '
        call print_ramses_params
        write(*,'(a)')             ' '
-       call print_HI_params
     end if
 
     return
 
   end subroutine print_gas_composition_params
-
 
 
 end module module_gas_composition

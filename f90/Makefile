@@ -75,7 +75,7 @@ endif
 
 # choose the gas mix you want to use
 # 1/ HI, D, and dust
-COMPOBJS = module_dust_model.o module_D_model.o module_HI_model.o module_gas_composition_HI_D_dust.o
+#COMPOBJS = module_dust_model.o module_D_model.o module_HI_model.o module_gas_composition_HI_D_dust.o
 # 2/ HI and dust
 #COMPOBJS = module_dust_model.o module_HI_model.o module_gas_composition_HI_dust.o
 # 3/ pure HI
@@ -90,6 +90,8 @@ COMPOBJS = module_dust_model.o module_D_model.o module_HI_model.o module_gas_com
 #COMPOBJS = module_MgII_2796_model.o module_MgII_2804_model.o module_gas_composition_MgII.o
 # 8/ MgII and dust
 #COMPOBJS = module_dust_model.o module_MgII_2796_model.o module_MgII_2804_model.o module_gas_composition_MgII.o
+# 9/ HI, HeI, HeII -> WARNING, this is for fesc measurements only ! 
+COMPOBJS = module_gas_composition_HI_HeI_HeII.o
 
 
 GASOBJS = module_constants.o module_random.o module_utils.o module_domain.o module_ramses.o module_uparallel.o $(COMPOBJS)
@@ -102,7 +104,7 @@ OBJSMPI = $(OBJSPHO) module_parallel_mpi.o module_worker.o module_master.o
 
 COLDENS = $(GASOBJS) module_mesh.o module_ray.o
 PEELING = $(GASOBJS) module_mesh.o module_ray.o module_photon.o 
-
+FESC	= $(GASOBJS) module_mesh.o module_gray_ray.o
 
 #############################################################################
 #.SUFFIXES: .o .f90
