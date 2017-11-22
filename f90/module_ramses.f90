@@ -97,7 +97,7 @@ module module_ramses
   ! --------------------------------------------------------------------------
 
   
-  public  :: ramses_get_nhi_nhei_nehii_cgs
+  public  :: ramses_get_nhi_nhei_nehii_cgs, read_leaf_cells_in_domain
   public  :: read_leaf_cells, get_ngridtot, ramses_get_velocity_cgs, ramses_get_T_nhi_cgs, ramses_get_metallicity, ramses_get_box_size_cm, ramses_get_nh_cgs
   public  :: ramses_read_stars_in_domain, read_ramses_params, print_ramses_params, dump_ramses_info, ramses_get_T_nSiII_cgs, ramses_get_T_nMgII_cgs
   ! default is private now ... !! private :: read_hydro, read_amr, get_nleaf, get_nvar, clear_amr, get_ncpu, get_param_real
