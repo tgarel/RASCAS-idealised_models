@@ -193,15 +193,16 @@ contains
        print *,'...reading RAMSES cells...'
     endif
 
-    nleaftot = get_nleaf(repository,snapnum)  ! sets ncpu too 
+    !nleaftot = get_nleaf(repository,snapnum)  ! sets ncpu too 
     nvar     = get_nvar(repository,snapnum)
     ncpu = get_ncpu(repository,snapnum)
 
-    if(verbose)print *,'--> nleaftot, nvar, ncpu =',nleaftot,nvar,ncpu
+    !if(verbose)print *,'--> nleaftot, nvar, ncpu =',nleaftot,nvar,ncpu
 
     ! first cout leaf cells in domain...
     do_allocs = .true.
     ileaf = 0
+    nleaftot = 0
     do icpu = 1,ncpu
        call read_amr(repository,snapnum,icpu,do_allocs)
        call read_hydro(repository,snapnum,icpu,do_allocs)
@@ -210,6 +211,7 @@ contains
        do icell = 1,ncell
           if (son(icell)==0 .and. cpu_map(icell) == icpu) then
              temp(:) = (/cell_x(icell), cell_y(icell), cell_z(icell)/)
+             nleaftot = nleaftot+1
              if (domain_contains_point(temp,selection_domain)) then
                 ileaf = ileaf + 1
              end if
@@ -218,7 +220,7 @@ contains
     end do
     nleaf_in_domain = ileaf
 
-    if(verbose)print *,'--> nleaf_in_domain, nvar, ncpu =',nleaf_in_domain,nvar,ncpu
+    if(verbose)print *,'--> nleaftot, nleaf_in_domain, nvar, ncpu =',nleaftot, nleaf_in_domain,nvar,ncpu
     
     allocate(ramses_var(nvar,nleaf_in_domain), xleaf(nleaf_in_domain,3), leaf_level(nleaf_in_domain))
     
