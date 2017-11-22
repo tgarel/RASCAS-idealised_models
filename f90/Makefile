@@ -138,6 +138,9 @@ rascas: $(OBJSMPI) rascas.o
 ColumnDensity: $(COLDENS) ColumnDensity.o
 	$(F90) $(FFLAGS) $(LDFLAGS) -o $@ $(COLDENS) ColumnDensity.o
 
+FescFromStars: $(FESC) FescFromStars.o
+	$(F90) $(FFLAGS) $(LDFLAGS) -o $@ $(FESC) FescFromStars.o
+
 RaysFromSourceModel: $(COLDENS) RaysFromSourceModel.o
 	$(F90) $(FFLAGS) $(LDFLAGS) -o $@ $(COLDENS) RaysFromSourceModel.o
 

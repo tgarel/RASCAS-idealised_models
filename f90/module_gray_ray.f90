@@ -10,12 +10,14 @@ module module_gray_ray
   use module_constants
   use module_random
   use module_domain
-  use module_utils, only: path 
+  use module_utils, only: path, isotropic_direction
 
   implicit none
 
   ! todonext define accuracy
   real(kind=8),parameter :: accuracy=1.d-15
+  integer(kind=4),parameter :: ndirections=10
+  integer(kind=4) :: iran = -10
 
   type ray_type
      integer                   :: ID       ! a positive unique ID 
@@ -23,27 +25,36 @@ module module_gray_ray
      real(kind=8)              :: tau      ! integrated opacity along ray
      real(kind=8),dimension(3) :: x_em     ! emission location (box units)
      real(kind=8),dimension(3) :: k_em     ! emission direction == propagation direction (normalised vector)
+     real(kind=8)              :: fesc     ! escape fraction 
   end type ray_type
 
-  public  :: RayTracing, ray_advance, init_rays_from_file, dump_rays
+  public  :: ComputeFesc, ray_advance, init_rays_from_file, dump_rays
   private :: path
 
 contains
 
-  subroutine RayTracing(nrays,rays,mesh_dom,compute_dom,maxdist,maxtau)
+  subroutine ComputeFesc(nrays,rays,mesh_dom,compute_dom,maxdist,maxtau)
 
     integer, intent(in)                             :: nrays
     type(ray_type), dimension(nrays), intent(inout) :: rays
     type(mesh), intent(in)                          :: mesh_dom
     type(domain), intent(in)                        :: compute_dom
     real(kind=8),intent(in)                         :: maxdist,maxtau
-    integer                                         :: i
-
-    do i=1,nrays
-       call ray_advance(rays(i),mesh_dom,compute_dom,maxdist,maxtau)
+    integer(kind=4)                                 :: i,idir
+    real(kind=8)                                    :: fesc
+    
+    
+    do i=1,nrays  ! these are actually star particle positions
+       fesc = 0.0d0
+       do idir = 1,ndirections
+          call isotropic_direction(rays(i)%k_em,iran)
+          call ray_advance(rays(i),mesh_dom,compute_dom,maxdist,maxtau)
+          fesc = fesc + exp(-rays(i)%tau)
+       end do
+       rays(i)%fesc = fesc / real(ndirections,8)
     enddo
 
-  end subroutine RayTracing
+  end subroutine ComputeFesc
 
 
 
@@ -196,7 +207,6 @@ contains
     allocate(rays(n_rays))
     read(14) (rays(i)%ID,i=1,n_rays)
     read(14) (rays(i)%x_em(:),i=1,n_rays)
-    read(14) (rays(i)%k_em(:),i=1,n_rays)
     close(14)
     ! initialise other properties. 
     do i=1,n_rays
@@ -217,10 +227,9 @@ contains
     open(unit=14, file=trim(file), status='unknown', form='unformatted', action='write')
     write(14) np
     write(14) (rays(i)%ID,i=1,np)
-    write(14) (rays(i)%dist,i=1,np)
-    write(14) (rays(i)%tau,i=1,np)
+    write(14) (rays(i)%fesc,i=1,np)
     close(14)
 
   end subroutine dump_rays
 
-end module module_ray
+end module module_gray_ray
