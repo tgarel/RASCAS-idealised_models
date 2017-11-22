@@ -29,7 +29,7 @@ program main
   ! --- outputs
   character(2000)           :: fileout = 'fescs.dat'   ! output file ... 
   ! --- parameters
-  real(kind=8)              :: maxdist = -1 ! stop rays after this distance [box units] (negative => ignored)
+  real(kind=8)              :: maxdist = -1 ! stop rays after this distance [cm] negative => ignored)
   real(kind=8)              :: maxtau  = -1  ! stop rays after this tau (overrides maxdist) (negative => ignored)
   ! --- miscelaneous
   logical                   :: verbose = .false.

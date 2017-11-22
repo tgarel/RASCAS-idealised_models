@@ -82,7 +82,7 @@ contains
     kray  = ray%k_em   ! propagation direction
     dist  = 0.0d0      ! distance covered
     tau   = 0.0d0      ! corresponding optical depth
-    maxdist_cm = maxdist * box_size_cm 
+    maxdist_cm = maxdist ! maxdist is now provided in cm ... 
     
     ! find the (leaf) cell in which the photon is, and define all its indices
     icell = in_cell_finder(domesh,ppos)
