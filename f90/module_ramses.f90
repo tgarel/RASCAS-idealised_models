@@ -167,6 +167,91 @@ contains
   end subroutine read_leaf_cells
 
 
+  subroutine read_leaf_cells_in_domain(repository, snapnum, selection_domain, &
+       & nleaftot, nvar, xleaf, ramses_var, leaf_level)
+
+    ! read all leaf cell from a simulation snapshot. Return standard 
+    ! ramses ramses variables through ramses_var(nvar,nleaftot) and
+    ! positions (xleaf(3,nleaftot)) and levels (leaf_level).
+
+    implicit none 
+
+    character(2000),intent(in)                :: repository
+    integer(kind=4),intent(in)                :: snapnum
+    type(domain),intent(in)                   :: selection_domain
+    integer(kind=4),intent(inout)             :: nleaftot, nvar
+    real(kind=8),allocatable, intent(inout)   :: ramses_var(:,:)
+    real(kind=8),allocatable,intent(inout)    :: xleaf(:,:)
+    integer(kind=4),allocatable,intent(inout) :: leaf_level(:)
+
+    logical                                   :: do_allocs
+    integer(kind=4)                           :: icpu, ileaf, icell, ivar, nleaf_in_domain
+    real(kind=8),dimension(3)                 :: temp
+    
+    if(verbose)then
+       print *,' '
+       print *,'...reading RAMSES cells...'
+    endif
+
+    nleaftot = get_nleaf(repository,snapnum)  ! sets ncpu too 
+    nvar     = get_nvar(repository,snapnum)
+    ncpu = get_ncpu(repository,snapnum)
+
+    if(verbose)print *,'--> nleaftot, nvar, ncpu =',nleaftot,nvar,ncpu
+
+    ! first cout leaf cells in domain...
+    do_allocs = .true.
+    ileaf = 0
+    do icpu = 1,ncpu
+       call read_amr(repository,snapnum,icpu,do_allocs)
+       call read_hydro(repository,snapnum,icpu,do_allocs)
+       do_allocs = .false.
+       ! collect leaf cells
+       do icell = 1,ncell
+          if (son(icell)==0 .and. cpu_map(icell) == icpu) then
+             temp(:) = (/cell_x(icell), cell_y(icell), cell_z(icell)/)
+             if (domain_contains_point(temp,selection_domain)) then
+                ileaf = ileaf + 1
+             end if
+          end if
+       end do
+    end do
+    nleaf_in_domain = ileaf
+
+    if(verbose)print *,'--> nleaf_in_domain, nvar, ncpu =',nleaf_in_domain,nvar,ncpu
+    
+    allocate(ramses_var(nvar,nleaf_in_domain), xleaf(nleaf_in_domain,3), leaf_level(nleaf_in_domain))
+    
+    ileaf = 0
+    do icpu = 1,ncpu
+       call read_amr(repository,snapnum,icpu,do_allocs)
+       call read_hydro(repository,snapnum,icpu,do_allocs)
+       do_allocs = .false.
+       ! collect leaf cells
+       do icell = 1,ncell
+          if (son(icell)==0 .and. cpu_map(icell) == icpu) then
+             temp(:) = (/cell_x(icell), cell_y(icell), cell_z(icell)/)
+             if (domain_contains_point(temp,selection_domain)) then
+                ileaf = ileaf + 1
+                do ivar = 1,nvar
+                   ramses_var(ivar,ileaf) = var(icell,ivar)
+                end do
+                xleaf(ileaf,1)    = cell_x(icell)
+                xleaf(ileaf,2)    = cell_y(icell)
+                xleaf(ileaf,3)    = cell_z(icell)
+                leaf_level(ileaf) = cell_level(icell)
+             end if
+          end if
+       end do
+    end do
+    call clear_amr
+    nleaftot = nleaf_in_domain
+    
+    return
+
+  end subroutine read_leaf_cells_in_domain
+
+
   function get_nGridTot(repository,snapnum)
 
     ! get total number of grids in the simulation 
