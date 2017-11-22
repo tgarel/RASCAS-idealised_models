@@ -2,9 +2,9 @@
 # Fortran compiler options and directives
 
 #SYSTYPE="CCF"
-#SYSTYPE="lyocral"
+SYSTYPE="lyocral"
 #SYSTYPE="lyocralP"
-SYSTYPE="mac"
+#SYSTYPE="mac"
 #SYSTYPE="macP"
 #SYSTYPE="ccage"
 
@@ -16,11 +16,10 @@ OPTIONS = -cpp
 ifeq ($(SYSTYPE),"lyocral")
 F90         = ifort
 #FFLAGS      = -g -traceback -fpp -check all -debug -warn all -ftrapuv 
-##FFLAGS      = -O3 -fpp -ftz  -xavx -sox -ipo -fno-alias -fno-fnalias -no-prec-div -no-prec-sqrt -align all
 FFLAGS      = -O3 -fpp -ftz -ipo -fno-alias -fno-fnalias -no-prec-div -no-prec-sqrt -align all
 ##FFLAGS      = -p -g
 FFLAGS += $(OPTIONS)
-LDFLAGS     = -lmpi
+LDFLAGS     = #-lmpi
 endif
 
 ifeq ($(SYSTYPE),"lyocralP")

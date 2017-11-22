@@ -16,11 +16,11 @@ module module_gray_ray
 
   ! todonext define accuracy
   real(kind=8),parameter :: accuracy=1.d-15
-  integer(kind=4),parameter :: ndirections=10
+  integer(kind=4),parameter :: ndirections=100
   integer(kind=4) :: iran = -10
 
   type ray_type
-     integer                   :: ID       ! a positive unique ID 
+     integer(kind=4)           :: ID       ! a positive unique ID 
      real(kind=8)              :: dist     ! distance traveled along ray (box units)
      real(kind=8)              :: tau      ! integrated opacity along ray
      real(kind=8),dimension(3) :: x_em     ! emission location (box units)
@@ -35,7 +35,7 @@ contains
 
   subroutine ComputeFesc(nrays,rays,mesh_dom,compute_dom,maxdist,maxtau)
 
-    integer, intent(in)                             :: nrays
+    integer(kind=4), intent(in)                     :: nrays
     type(ray_type), dimension(nrays), intent(inout) :: rays
     type(mesh), intent(in)                          :: mesh_dom
     type(domain), intent(in)                        :: compute_dom
@@ -48,6 +48,8 @@ contains
        fesc = 0.0d0
        do idir = 1,ndirections
           call isotropic_direction(rays(i)%k_em,iran)
+          rays(i)%tau = 0.0d0 
+          rays(i)%dist = 0.0d0
           call ray_advance(rays(i),mesh_dom,compute_dom,maxdist,maxtau)
           fesc = fesc + exp(-rays(i)%tau)
        end do
@@ -94,7 +96,7 @@ contains
 
     ! advance ray until it escapes the computational domain ... 
     ray_propagation : do 
-
+       
        ! gather properties properties of current cell
        cell_level   = domesh%octlevel(ioct)      ! level of current cell
        cell_size    = 0.5d0**cell_level          ! size of current cell in box units
@@ -111,7 +113,7 @@ contains
        endif
        
        ! compute distance of photon to border of cell or domain along propagation direction
-       distance_to_border    = path(ppos_cell,kray) / cell_size            ! in box units
+       distance_to_border    = path(ppos_cell,kray) * cell_size            ! in box units
        distance_to_border    = min(distance_to_border, &
             & domain_distance_to_border_along_k(ppos,kray,domaine_calcul)) ! in box units
        distance_to_border_cm = distance_to_border * box_size_cm ! cm
@@ -206,13 +208,19 @@ contains
     read(14) n_rays
     allocate(rays(n_rays))
     read(14) (rays(i)%ID,i=1,n_rays)
-    read(14) (rays(i)%x_em(:),i=1,n_rays)
+    read(14) (rays(i)%x_em(1),i=1,n_rays)
+    read(14) (rays(i)%x_em(2),i=1,n_rays)
+    read(14) (rays(i)%x_em(3),i=1,n_rays)
     close(14)
     ! initialise other properties. 
     do i=1,n_rays
        rays(i)%tau  = 0.d0
        rays(i)%dist = 0.d0
     enddo
+
+    print*,minval(rays(:)%x_em(1)),maxval(rays(:)%x_em(1))
+    print*,minval(rays(:)%x_em(2)),maxval(rays(:)%x_em(2))
+    print*,minval(rays(:)%x_em(3)),maxval(rays(:)%x_em(3))
     
   end subroutine init_rays_from_file
 
@@ -226,7 +234,6 @@ contains
     np = size(rays)
     open(unit=14, file=trim(file), status='unknown', form='unformatted', action='write')
     write(14) np
-    write(14) (rays(i)%ID,i=1,np)
     write(14) (rays(i)%fesc,i=1,np)
     close(14)
 

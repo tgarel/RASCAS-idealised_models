@@ -83,13 +83,13 @@ contains
 
     type(gas),intent(in)    :: cell_gas
     real(kind=8),intent(in) :: distance_cm
-    integer(kind=4)         :: gas_get_tau
+    real(kind=8)            :: gas_get_tau
     real(kind=8)            :: tau_HI, tau_HeI, tau_HeII
 
     ! compute optical depths for different components of the gas.
     tau_HI = cell_gas%nHI * distance_cm * sigma_HI
     tau_HeI = cell_gas%nHeI * distance_cm * sigma_HeI
-    tau_HeII = cell_gas%nHeII * distance_cm * sigma_HeII
+    tau_HeII = cell_gas%nHeII * distance_cm * sigma_HeII    
     gas_get_tau = tau_HI + tau_HeI + tau_HeII
 
     return
@@ -153,6 +153,13 @@ contains
     read(unit) (g(i)%nHeI,i=1,n)
     read(unit) (g(i)%nHeII,i=1,n)
     read(unit) box_size_cm 
+
+    print*,'minmax densities : '
+    print*,minval(g(:)%nHI), maxval(g(:)%nHI)
+    print*,minval(g(:)%nHeI), maxval(g(:)%nHeI)
+    print*,minval(g(:)%nHeII), maxval(g(:)%nHeII)
+    
+
   end subroutine read_gas
 
   

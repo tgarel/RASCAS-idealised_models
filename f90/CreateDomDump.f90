@@ -133,7 +133,7 @@ program CreateDomDump
   ! The computational domain should be fully enclosed in the domain mesh.
   if (computdom_max >= decompdom_max) then
      print*,'ERROR: computational domain should be fully enclosed in the data domains.'
-     stop
+     !stop
   endif
 
   ! write master info

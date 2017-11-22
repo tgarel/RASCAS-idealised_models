@@ -134,7 +134,7 @@ contains
     type(gas),intent(in)    :: cell_gas
     real(kind=8),intent(in) :: distance_cm
     real(kind=8),intent(in) :: nu_cell
-    integer(kind=4)         :: gas_get_tau
+    real(kind=8)         :: gas_get_tau
     real(kind=8)            :: tau_HI
 
     ! compute optical depths for different components of the gas.
