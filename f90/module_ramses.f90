@@ -724,9 +724,9 @@ contains
        allocate(nHe(nleaf))
        nHe  = ramses_var(1,:) * dp_scale_nhe
        nhi  = ramses_var(1,:) * dp_scale_nh  &      ! nb of HI atoms per cm^3
-                              * (1.d0 - ramses_var(ihii,:))    
-       nhei = nHe * (1.d0 - ramses_var(iheii,:)  &
-                          - ramses_var(iheiii,:))   ! nb of HeI atoms per cm^3
+                              * max(0.d0,(1.d0 - ramses_var(ihii,:)))
+       nhei = nHe * max(0.0d0,(1.d0 - ramses_var(iheii,:)  &
+                          - ramses_var(iheiii,:)))   ! nb of HeI atoms per cm^3
        nheii  = nHe * (ramses_var(iheii,:))         ! nb of HeII atoms per cm^3
        deallocate(nHe)
     else

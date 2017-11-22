@@ -5,7 +5,6 @@ program main
   use module_gray_ray 
   use module_mesh
   use module_domain
-  use module_uparallel
   use module_constants
 
   implicit none
@@ -131,7 +130,7 @@ contains
     do
        read (10,'(a)',iostat=err) line
        if(err/=0) exit
-       if (line(1:15) == '[ColumnDensity]') then
+       if (line(1:15) == '[FescFromStars]') then
           section_present = .true.
           exit
        end if
@@ -194,7 +193,7 @@ contains
     integer(kind=4),optional,intent(in) :: unit
 
     if (present(unit)) then 
-       write(unit,'(a)')             '[ColumnDensity]'
+       write(unit,'(a)')             '[FescFromStars]'
        write(unit,'(a,a)')           '  DataDir     = ',trim(DataDir)
        write(unit,'(a,a)')           '  RaysICFile  = ',trim(RaysICFile)
        write(unit,'(a,a)')           '  DomDumpFile = ',trim(DomDumpFile)
@@ -207,7 +206,7 @@ contains
     else
        write(*,'(a)')             '--------------------------------------------------------------------------------'
        write(*,'(a)')             ''
-       write(*,'(a)')             '[ColumnDensity]'
+       write(*,'(a)')             '[FescFromStars]'
        write(*,'(a,a)')           '  DataDir     = ',trim(DataDir)
        write(*,'(a,a)')           '  RaysICFile  = ',trim(RaysICFile)
        write(*,'(a,a)')           '  DomDumpFile = ',trim(DomDumpFile)
