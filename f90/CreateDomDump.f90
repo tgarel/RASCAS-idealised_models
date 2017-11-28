@@ -20,7 +20,7 @@ program CreateDomDump
   integer :: noctsnap,nleaftot,nvar,nleaf_sel,i, narg
   character(2000) :: toto,meshroot,parameter_file,fichier, fichier2
   character(2000),dimension(:),allocatable :: domain_file_list, mesh_file_list
-  real(kind=8) :: computdom_max,decompdom_max, start, finish
+  real(kind=8) :: computdom_max,decompdom_max, start, finish, intermed
 
   ! --------------------------------------------------------------------------
   ! user-defined parameters - read from section [CreateDomDump] of the parameter file
@@ -29,6 +29,7 @@ program CreateDomDump
   character(2000)           :: DataDir = 'test/'      ! directory to which outputs will be written
   character(2000)           :: repository = './'      ! ramses run directory (where all output_xxxxx dirs are).
   integer(kind=4)           :: snapnum = 1            ! ramses output number to use
+  character(20)             :: reading_method = 'fullbox' ! strategy to read ramses data
   ! --- computational domain  
   character(10)             :: comput_dom_type      = 'sphere'         ! shape type of domain  // default is a shpere.
   real(kind=8),dimension(3) :: comput_dom_pos       = (/0.5,0.5,0.5/)  ! center of domain [code units]
@@ -51,8 +52,8 @@ program CreateDomDump
   ! --- miscelaneous
   logical                   :: verbose = .false.
   ! --------------------------------------------------------------------------
-
-
+  
+  call cpu_time(start)
   
   ! -------------------- read parameters --------------------
   narg = command_argument_count()
@@ -89,11 +90,21 @@ program CreateDomDump
 
   
   ! Read all the leaf cells
-  !call read_leaf_cells(repository, snapnum, nleaftot, nvar, x_leaf, ramses_var, leaf_level)
-  !nOctSnap = get_nGridTot(repository,snapnum)
-
-  ! Extract and convert properties of cells into gas mix properties
-  !call gas_from_ramses_leaves(repository,snapnum,nleaftot,nvar,ramses_var, gas_leaves)
+  nOctSnap = get_nGridTot(repository,snapnum)
+  if (reading_method == 'fullbox') then
+     call read_leaf_cells(repository, snapnum, nleaftot, nvar, x_leaf, ramses_var, leaf_level)
+     ! Extract and convert properties of cells into gas mix properties
+     call gas_from_ramses_leaves(repository,snapnum,nleaftot,nvar,ramses_var, gas_leaves)
+     call cpu_time(finish)
+     print '(" --> Time to read all leaves in fullbox = ",f12.3," seconds.")',finish-start
+  end if
+  if (reading_method == 'fullbox_omp') then
+     call read_leaf_cells_omp(repository, snapnum, nleaftot, nvar, x_leaf, ramses_var, leaf_level)
+     ! Extract and convert properties of cells into gas mix properties
+     call gas_from_ramses_leaves(repository,snapnum,nleaftot,nvar,ramses_var, gas_leaves)
+     call cpu_time(finish)
+     print '(" --> Time to read all leaves in fullbox_omp = ",f12.3," seconds.")',finish-start
+  end if
 
   ! domain decomposition 
   if (verbose)then
@@ -152,23 +163,19 @@ program CreateDomDump
   close(10)
 
   ! building of the meshes
-  call cpu_time(start)
-  nOctSnap = get_nGridTot(repository,snapnum)
-  call cpu_time(finish)
-  print '(" --> Time to get nGridTot = ",f12.3," seconds.")',finish-start
-  
   do i = 1,decomp_dom_ndomain
 
-     call cpu_time(start)
-     ! read leaf cells in domain on the fly...
-     call read_leaf_cells_in_domain(repository, snapnum, domain_list(i), nleaftot, nvar, x_leaf, ramses_var, leaf_level)
-     call cpu_time(finish)
-     print '(" --> Time to read leaves in domain = ",f12.3," seconds.")',finish-start
-
-     print*,nleaftot
-     ! Extract and convert properties of cells into gas mix properties
-     call gas_from_ramses_leaves(repository,snapnum,nleaftot,nvar,ramses_var, gas_leaves)
-
+     if (reading_method == 'hilbert') then
+        call cpu_time(intermed)
+        ! read leaf cells in domain on the fly...
+        call read_leaf_cells_in_domain(repository, snapnum, domain_list(i), nleaftot, nvar, x_leaf, ramses_var, leaf_level)
+        print*,nleaftot
+        ! Extract and convert properties of cells into gas mix properties
+        call gas_from_ramses_leaves(repository,snapnum,nleaftot,nvar,ramses_var, gas_leaves)
+        call cpu_time(finish)
+        print '(" --> Time to read leaves in domain = ",f12.3," seconds.")',finish-intermed
+     endif
+        
      call select_in_domain(domain_list(i), nleaftot, x_leaf, ind_sel)
      call select_from_domain(arr_in=x_leaf,     ind_sel=ind_sel, arr_out=xleaf_sel)
      call select_from_domain(arr_in=leaf_level, ind_sel=ind_sel, arr_out=leaflevel_sel)
@@ -182,7 +189,10 @@ program CreateDomDump
      call mesh_destructor(domain_mesh)
   enddo
 
-
+  call cpu_time(finish)
+  print '(" --> Time = ",f12.3," seconds.")',finish-start
+  print*,' '
+  
 contains
   
   subroutine read_CreateDomDump_params(pfile)
@@ -272,6 +282,8 @@ contains
              read(value,*) decomp_dom_size(:)
           case ('decomp_dom_thickness')
              read(value,*) decomp_dom_thickness(:)
+          case('reading_method')
+             write(reading_method,'(a)') trim(value)
           end select
        end do
     end if
@@ -312,6 +324,7 @@ contains
        write(unit,'(a,a)')           '  DataDir         = ',trim(DataDir)
        write(unit,'(a,a)')           '  repository      = ',trim(repository)
        write(unit,'(a,i5)')          '  snapnum         = ',snapnum
+       write(unit,'(a,a)')           '  reading_method  = ',trim(reading_method)
        write(unit,'(a)')             '# computational domain parameters'
        write(unit,'(a,a)')           '  comput_dom_type      = ',trim(comput_dom_type)
        write(unit,'(a,3(ES10.3,1x))')'  comput_dom_pos       = ',comput_dom_pos(1),comput_dom_pos(2),comput_dom_pos(3)
@@ -356,6 +369,7 @@ contains
        write(*,'(a,a)')           '  DataDir    = ',trim(DataDir)
        write(*,'(a,a)')           '  repository = ',trim(repository)
        write(*,'(a,i5)')          '  snapnum    = ',snapnum
+       write(*,'(a,a)')           '  reading_method  = ',trim(reading_method)
        write(*,'(a)')             '# computational domain parameters'
        write(*,'(a,a)')           '  comput_dom_type      = ',trim(comput_dom_type)
        write(*,'(a,3(ES10.3,1x))')'  comput_dom_pos       = ',comput_dom_pos(1),comput_dom_pos(2),comput_dom_pos(3)
