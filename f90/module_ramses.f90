@@ -213,18 +213,12 @@ contains
 !$OMP SHARED(iloop, ilast, xleaf_all, leaf_level_all, ramses_var_all, repository, snapnum, nvar, nleaftot, ncpu)
     do_allocs = .true.
     
-!$OMP DO
+!$OMP DO SCHEDULE(DYNAMIC,10)
     do icpu = 1, ncpu
-
-!$OMP CRITICAL
-       write (*, "(A, f5.2, A, A)", advance='no') &           ! Progress bar
-            ' Reading leaves ',dble(iloop) / ncpu * 100,' % ',char(13)
-       iloop=iloop+1
-!$OMP END CRITICAL
-
+       
        call read_amr_hydro(repository,snapnum,icpu,&
             & son,cpu_map,var,cell_x,cell_y,cell_z,cell_level,ncell)
-
+       
        if (do_allocs) allocate(ramses_var(nvar,ncell), xleaf(ncell,3), leaf_level(ncell))
        do_allocs = .false.
        ! collect leaf cells
@@ -243,6 +237,11 @@ contains
        end do
        
 !$OMP CRITICAL
+       ! only one CRITICAL zone
+       write (*, "(A, f5.2, A, A)", advance='no') &           ! Progress bar
+            ' Reading leaves ',dble(iloop) / ncpu * 100,' % ',char(13)
+       iloop=iloop+1
+
        ! ileaf is now the number of leaves on local cpu
        if(ileaf .gt. 0) then
           ! save leaf cells to return arrays
