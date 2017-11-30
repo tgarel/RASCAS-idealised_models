@@ -1460,7 +1460,6 @@ contains
     do_allocs = .true. 
 !$OMP DO SCHEDULE(DYNAMIC, 10) 
     do icpu = 1, ncpu
-
 !$OMP CRITICAL
        write (*, "(A, f5.2, A, A)", advance='no') &           ! Progress bar
             ' Reading nleaftot ',dble(iloop) / ncpu * 100,' % ',char(13)
