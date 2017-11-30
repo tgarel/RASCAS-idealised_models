@@ -173,7 +173,6 @@ contains
     ! read all leaf cell from a simulation snapshot. Return standard 
     ! ramses ramses variables through ramses_var(nvar,nleaftot) and
     ! positions (xleaf(3,nleaftot)) and levels (leaf_level).
-
     implicit none 
 
     character(2000),intent(in)                :: repository
@@ -212,8 +211,7 @@ contains
 !$OMP DEFAULT(private) &
 !$OMP SHARED(iloop, ilast, xleaf_all, leaf_level_all, ramses_var_all, repository, snapnum, nvar, nleaftot, ncpu)
     do_allocs = .true.
-    
-!$OMP DO
+!$OMP DO SCHEDULE(DYNAMIC, 100) 
     do icpu = 1, ncpu
 
 !$OMP CRITICAL
@@ -254,7 +252,7 @@ contains
 !$OMP END CRITICAL
     end do
 !$OMP END DO
-    deallocate(ramses_var,xleaf,leaf_level)
+    if(.not. do_allocs) deallocate(ramses_var,xleaf,leaf_level)
 !$OMP END PARALLEL
     if(verbose)then
        print*,' '
@@ -1461,7 +1459,7 @@ contains
 !$OMP DEFAULT(private) &
 !$OMP SHARED(iloop, nleaftot, ncpu, repository, snapnum, ndim, twondim, twotondim)
     do_allocs = .true. 
-!$OMP DO
+!$OMP DO SCHEDULE(DYNAMIC, 10) 
     do icpu = 1, ncpu
 
 !$OMP CRITICAL
@@ -1581,7 +1579,7 @@ contains
        nleaftot = nleaftot + nleaf
     end do
 !$OMP END DO
-    deallocate(son,cpu_map,numbl,numbb)
+    if(.not. do_allocs) deallocate(son,cpu_map,numbl,numbb)
 !$OMP END PARALLEL
 
     get_nleaf = nleaftot

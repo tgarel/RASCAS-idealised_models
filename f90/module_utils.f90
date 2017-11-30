@@ -42,7 +42,7 @@ contains
 
  
 
-  subroutine isotropic_direction(k,iran)
+  subroutine isotropic_direction(k,iran,ifixed_rand)
 
     ! ---------------------------------------------------------------------------------
     ! return k vector pointing to a random direction (uniform on the sphere)
@@ -59,9 +59,21 @@ contains
     real(kind=8),intent(out)      :: k(3)
     integer(kind=4),intent(inout) :: iran
     real(kind=8)                  :: cos_theta,sin_theta,phi,knorm
-    
-    phi   = twopi*ran3(iran)
-    cos_theta = 1.0d0 - 2.0d0 * ran3(iran)  ! in [-1,1]
+    integer,optional              :: ifixed_rand
+    real(kind=8)                  :: r
+
+    if(present(ifixed_rand)) then
+       r=rand1(ifixed_rand)
+    else
+       r=ran3(iran)
+    endif
+    phi   = twopi*r
+    if(present(ifixed_rand)) then
+       r=rand2(ifixed_rand)
+    else
+       r=ran3(iran)
+    endif
+    cos_theta = 1.0d0 - 2.0d0 * r  ! in [-1,1]
     sin_theta = sqrt(1.0d0 - cos_theta**2) ! in [0,1]
     k(1) = sin_theta * cos(phi)   !x
     k(2) = sin_theta * sin(phi)   !y
