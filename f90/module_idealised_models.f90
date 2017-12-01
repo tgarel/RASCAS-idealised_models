@@ -103,7 +103,6 @@ contains
     dist2 = (xcell_ideal-0.5d0)**2 + (ycell_ideal-0.5d0)**2 + (zcell_ideal-0.5d0)**2  ! in frame with origin at center of box
     dist_cell = sqrt(dist2)
 
-
     if (coldens_norm .gt. 1.0d0) then 
        ! if gas norm set as column density in param file.... OK for model with n~r^-2 ONLY !!!
        n0 = coldens_norm / (r_min * box_size_IM_cm * (1.0d0 - r_min / r_max))  ! cm-3
@@ -278,7 +277,8 @@ contains
     vz_ideal    = 0.0d0
     ngas_ideal  = 0.0d0
     ndust_ideal = 0.0d0
-       
+    volfrac2    = 1.0d0
+
     missed_cell = 1 ! =1 if cell doesn't satisfy and if statements... should not happen!
     
     ! xcell, ycell and zcell are in frame with origin at bottom-left corner of box
