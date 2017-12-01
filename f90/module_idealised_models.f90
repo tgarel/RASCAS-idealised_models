@@ -9,6 +9,7 @@ module module_idealised_models
 
   private
   real(kind=8)             :: ngas_norm           = -999.0d0         ! Gas density profile normalisation [cm-3]
+  real(kind=8)             :: coldens_norm        = -999.0d0         ! Gas COLUMN density [cm-2]
   real(kind=8)             :: ngas_slope          = -999.0d0         ! slope of the density profile
   real(kind=8)             :: Vgas_norm           = -999.0d0         ! V0, Vmax, Vcirc etc [cm/s]
   real(kind=8)             :: Vgas_slope          = -999.0d0         ! slope of the velocity profile
@@ -101,12 +102,15 @@ contains
     dist2 = (xcell_ideal-0.5d0)**2 + (ycell_ideal-0.5d0)**2 + (zcell_ideal-0.5d0)**2  ! in frame with origin at center of box
     dist_cell = sqrt(dist2)
 
-    !! ngas_norm parameter is actually a column density => convert to density n0
-    ! if ngas_norm is set as column density in param file....
-    n0 = ngas_norm / (r_min * box_size_IM_cm * (1.0d0 - r_min / r_max))  ! cm-3
-    ! if ngas_norm is true density
-    ! n0 = ngas_norm 
-    
+
+    if (coldens_norm .gt. 1.0d0) then 
+       ! if gas norm set as column density in param file.... OK for model with n~r^-2 ONLY !!!
+       n0 = coldens_norm / (r_min * box_size_IM_cm * (1.0d0 - r_min / r_max))  ! cm-3
+    else
+       ! I use the std density ngas_norm
+       n0 = ngas_norm 
+    end if
+   
     if (MCsampling) then
        dist_cell_max = dist_cell + dx_cell * sqrt(3.0d0) / 2.0d0 ! dx_cell * sqrt(3.0) / 2. is half the longest length in a cube
        dist_cell_min = dist_cell - dx_cell * sqrt(3.0d0) / 2.0d0 ! dx_cell * sqrt(3.0) / 2. is half the longest length in a cube
@@ -205,11 +209,15 @@ contains
     ! xcell, ycell and zcell are in frame with origin at bottom-left corner of box
     dist2 = (xcell_ideal-0.5d0)**2 + (ycell_ideal-0.5d0)**2 + (zcell_ideal-0.5d0)**2  ! in frame with origin at center of box
     dist_cell = sqrt(dist2)
-
-    !! ngas_norm parameter is actually a column density => convert to density n0
-    ! n0 = ngas_norm / (r_min * box_size_IM_cm * (1.0d0 - r_min / r_max))  ! cm-3
-    n0 = ngas_norm
-
+    
+    if (coldens_norm .gt. 1.0d0) then 
+       ! if gas norm set as column density in param file.... OK for model with n~r^-2 ONLY !!!
+       n0 = coldens_norm / (r_min * box_size_IM_cm * (1.0d0 - r_min / r_max))  ! cm-3
+    else
+       ! I use the std density ngas_norm
+       n0 = ngas_norm 
+    end if
+    
     theta_coord = (zcell_ideal-0.5d0) / dist_cell
     theta_coord = acos(theta_coord)
     
@@ -470,6 +478,8 @@ contains
              read(value,*) MCsampling
           case ('ngas_norm')
              read(value,*) ngas_norm
+          case ('coldens_norm')
+             read(value,*) coldens_norm            
           case ('ngas_slope')
              read(value,*) ngas_slope
           case ('Vgas_norm')
@@ -496,6 +506,7 @@ contains
     print*, ' idealmodel_type      = ',idealmodel_type
     print*, ' MCsampling           = ', MCsampling
     print*, ' ngas_norm            = ',ngas_norm
+    print*, ' coldens_norm         = ',coldens_norm
     print*, ' ngas_slope           = ',ngas_slope
     print*, ' Vgas_norm            = ',Vgas_norm
     print*, ' Vgas_slope           = ',Vgas_slope
@@ -521,6 +532,7 @@ contains
        write(unit,'(a,a)')      ' idealmodel_type       = ',idealmodel_type
        write(unit,'(a,a)')      ' MCsampling            = ', MCsampling
        write(unit,'(a,ES10.3)') '  ngas_norm            = ',ngas_norm
+       write(unit,'(a,ES10.3)') '  coldens_norm         = ',coldens_norm
        write(unit,'(a,ES10.3)') '  ngas_slope           = ',ngas_slope
        write(unit,'(a,ES10.3)') '  Vgas_norm            = ',Vgas_norm
        write(unit,'(a,ES10.3)') '  Vgas_slope           = ',Vgas_slope
@@ -534,6 +546,7 @@ contains
        write(*,'(a,a)')      ' idealmodel_type       = ',idealmodel_type
        write(*,'(a,a)')      ' MCsampling            = ', MCsampling
        write(*,'(a,ES10.3)') '  ngas_norm            = ',ngas_norm
+       write(*,'(a,ES10.3)') '  coldens_norm         = ',coldens_norm
        write(*,'(a,ES10.3)') '  ngas_slope           = ',ngas_slope
        write(*,'(a,ES10.3)') '  Vgas_norm            = ',Vgas_norm
        write(*,'(a,ES10.3)') '  Vgas_slope           = ',Vgas_slope
