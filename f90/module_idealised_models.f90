@@ -95,7 +95,8 @@ contains
     vz_ideal    = 0.0d0
     ngas_ideal  = 0.0d0
     ndust_ideal = 0.0d0
-       
+    volfrac2    = 1.0d0
+    
     missed_cell = 1 ! =1 if cell doesn't satisfy and if statements... should not happen!
     
     ! xcell, ycell and zcell are in frame with origin at bottom-left corner of box
@@ -189,7 +190,6 @@ contains
     real(kind=8),intent(inout)            :: ndust_ideal,ngas_ideal,bparam_ideal
     real(kind=8),intent(inout)            :: vx_ideal,vy_ideal,vz_ideal
     real(kind=8),intent(in)               :: xcell_ideal,ycell_ideal,zcell_ideal    
-    real(kind=8)                          :: volfrac2
     real(kind=8)                          :: dist_cell,dist2,dist_cell_min,dist_cell_max
     integer(kind=4)                       :: missed_cell
     real(kind=8)                          :: n0,theta_coord
