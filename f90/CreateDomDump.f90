@@ -21,7 +21,10 @@ program CreateDomDump
   character(2000) :: toto,meshroot,parameter_file,fichier, fichier2
   character(2000),dimension(:),allocatable :: domain_file_list, mesh_file_list
   real(kind=8) :: computdom_max,decompdom_max, start, finish, intermed
-
+  real(kind=8) :: xmin,xmax,ymin,ymax,zmin,zmax
+  integer(kind=4),dimension(:),allocatable :: cpu_list
+  integer(kind=4) :: ncpu_read
+  
   ! --------------------------------------------------------------------------
   ! user-defined parameters - read from section [CreateDomDump] of the parameter file
   ! --------------------------------------------------------------------------
@@ -168,7 +171,40 @@ program CreateDomDump
      if (reading_method == 'hilbert') then
         call cpu_time(intermed)
         ! read leaf cells in domain on the fly...
-        call read_leaf_cells_in_domain(repository, snapnum, domain_list(i), nleaftot, nvar, x_leaf, ramses_var, leaf_level)
+        ! define max extent of domain i
+        select case(decomp_dom_type)
+        case('sphere')
+           xmax = decomp_dom_xc(i) + decomp_dom_rsp(i)
+           xmin = decomp_dom_xc(i) - decomp_dom_rsp(i)
+           ymax = decomp_dom_yc(i) + decomp_dom_rsp(i)
+           ymin = decomp_dom_yc(i) - decomp_dom_rsp(i)
+           zmax = decomp_dom_zc(i) + decomp_dom_rsp(i)
+           zmin = decomp_dom_zc(i) - decomp_dom_rsp(i)
+        case('shell')
+           xmax = decomp_dom_xc(i) + decomp_dom_rout(i)
+           xmin = decomp_dom_xc(i) - decomp_dom_rout(i)
+           ymax = decomp_dom_yc(i) + decomp_dom_rout(i)
+           ymin = decomp_dom_yc(i) - decomp_dom_rout(i)
+           zmax = decomp_dom_zc(i) + decomp_dom_rout(i)
+           zmin = decomp_dom_zc(i) - decomp_dom_rout(i)
+        case('cube')
+           xmax = decomp_dom_xc(i) + decomp_dom_size(i)*0.5d0
+           xmin = decomp_dom_xc(i) - decomp_dom_size(i)*0.5d0
+           ymax = decomp_dom_yc(i) + decomp_dom_size(i)*0.5d0
+           ymin = decomp_dom_yc(i) - decomp_dom_size(i)*0.5d0
+           zmax = decomp_dom_zc(i) + decomp_dom_size(i)*0.5d0
+           zmin = decomp_dom_zc(i) - decomp_dom_size(i)*0.5d0
+        case('slab')
+           xmax = 1.0d0
+           xmin = 0.0d0
+           ymax = 1.0d0
+           ymin = 0.0d0
+           zmax = decomp_dom_zc(i) + decomp_dom_thickness(i)*0.5d0
+           zmin = decomp_dom_zc(i) - decomp_dom_thickness(i)*0.5d0
+        end select
+        call get_cpu_list(repository, snapnum, xmin,xmax,ymin,ymax,zmin,zmax, ncpu_read, cpu_list)
+        call read_leaf_cells_in_domain(repository, snapnum, domain_list(i), ncpu_read, cpu_list, &
+             & nleaftot, nvar, x_leaf, ramses_var, leaf_level)
         print*,nleaftot
         ! Extract and convert properties of cells into gas mix properties
         call gas_from_ramses_leaves(repository,snapnum,nleaftot,nvar,ramses_var, gas_leaves)
