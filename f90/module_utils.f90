@@ -86,7 +86,7 @@ contains
     ! - iran : state of random number generator
     ! OUTPUTS:
     ! - kout : normalized direction vector of scattered photon
-    ! - mu   : dod-product between kin and kout (i.e. cos(theta))
+    ! - mu   : dot-product between kin and kout (i.e. cos(theta))
     ! - bu   : sin(theta) (i.e. sqrt(1-mu**2))
     ! - iran : updated state of random number generator
     ! 
@@ -151,7 +151,7 @@ contains
     ! - iran : state of random number generator
     ! OUTPUTS:
     ! - kout : normalized direction vector of scattered photon
-    ! - mu   : dod-product between kin and kout (i.e. cos(theta))
+    ! - mu   : dot-product between kin and kout (i.e. cos(theta))
     ! - bu   : sin(theta) (i.e. sqrt(1-mu**2))
     ! - iran : updated state of random number generator
     ! 
@@ -209,11 +209,12 @@ contains
     ! Returns new direction vector kout as a function of incident direction kin, for a phase function
     ! given by Henyey-Greenstein.
     ! INPUTS:
-    ! - kin  : normalized direction vector of incident photon
-    ! - iran : state of random number generator
+    ! - kin    : normalized direction vector of incident photon
+    ! - iran   : state of random number generator
+    ! - g_dust : g parameter of the Henyey-Greenstein phase function for dust scattering
     ! OUTPUTS:
     ! - kout : normalized direction vector of scattered photon
-    ! - mu   : dod-product between kin and kout (i.e. cos(theta))
+    ! - mu   : dot-product between kin and kout (i.e. cos(theta))
     ! - iran : updated state of random number generator
     ! -------------------------------------------------------------------------------------------------
 
