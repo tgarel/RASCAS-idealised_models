@@ -42,7 +42,10 @@ program PhotonsFromSourceModel
   real(kind=8)              :: spec_powlaw_lmin_Ang = 1120.  ! min wavelength to sample (should be in the range where fit was made ...)
   real(kind=8)              :: spec_powlaw_lmax_Ang = 1320.  ! max ...
   real(kind=8)              :: spec_powlaw_l0_Ang   = 1200.  ! lambda_0 in the expression above [A]
-  real(kind=8)              :: spec_powlaw_beta     = -2.3   ! beta in the expression above. 
+  real(kind=8)              :: spec_powlaw_beta     = -2.3   ! beta in the expression above.
+  ! parameters for spec_type == 'FlatNphotDist' : a flat (in terms of Nphot, not F_lambda) wavelength distribution of photons 
+  real(kind=8)              :: spec_FlatNphotDist_lmin_Ang = 1120.  ! min wavelength to sample
+  real(kind=8)              :: spec_FlatNphotDist_lmax_Ang = 1320.  ! max ...
   ! parameters for spec_type == 'Table'
   character(2000)           :: spec_table_file  = 'F1600.txt' ! file containing tabulated data from SEDs
   real(kind=8)              :: spec_table_age   = 10.0        ! age of the stellar population to use [Myr]
@@ -134,6 +137,10 @@ program PhotonsFromSourceModel
            nu   = (spec_powlaw_lmin_Ang**betaplus2 + r1 * (spec_powlaw_lmax_Ang**betaplus2 - spec_powlaw_lmin_Ang**betaplus2))**(1./betaplus2) ! this is lbda [A]
            nu   = clight / (nu*1e-8) ! this is freq. [Hz]
         end if
+     case('FlatNphotDist')
+        r1 = ran3(iran)
+        nu = spec_FlatNphotDist_lmin_Ang + r1 * (spec_FlatNphotDist_lmax_Ang - spec_FlatNphotDist_lmin_Ang) ! this is lbda [A]
+        nu   = clight / (nu*1e-8) ! this is freq. [Hz]
      case('Table')
         x  = ran3(iran)
         dx = 1.0d0 / (spec_table_nbins-1)  ! there are nbins-1 bins (nbins values) ... 
