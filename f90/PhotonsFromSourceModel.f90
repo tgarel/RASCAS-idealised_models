@@ -254,9 +254,9 @@ contains
           case ('spec_powlaw_beta')
              read(value,*) spec_powlaw_beta
           case ('spec_FlatNphotDist_lmin_Ang')
-             read(value,*) spec_powlaw_lmin_Ang
+             read(value,*) spec_FlatNphotDist_lmin_Ang
           case ('spec_FlatNphotDist_lmax_Ang')
-             read(value,*) spec_powlaw_lmax_Ang
+             read(value,*) spec_FlatNphotDist_lmin_Ang
           case ('spec_table_file')
              write(spec_table_file,'(a)') trim(value)
           case ('spec_table_age')
