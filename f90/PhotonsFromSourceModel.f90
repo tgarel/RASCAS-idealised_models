@@ -30,7 +30,7 @@ program PhotonsFromSourceModel
   ! - spec_type=='Gauss'  : we sample a Gaussian distribution ...
   ! - spec_type=='PowLaw' : we sample a power-law continuum between two wavelengths.
   ! - spec_type=='Table'  : we sample a tabulated spectrum, e.g. from Bruzual and Charlot. 
-  character(30)             :: spec_type = 'Gauss'           ! May be 'Mono', 'Gauss', 'PowLaw', 'Table' 
+  character(30)             :: spec_type = 'Gauss'           ! May be 'Mono', 'Gauss', 'PowLaw', 'Table' , 'FlatNphotDist'
   ! parameters for spec_type == 'Mono'
   real(kind=8)              :: spec_mono_l0_Ang = 1215.67    ! emission wavelength [A] -> read from parameter file                    
   real(kind=8)              :: spec_mono_nu0                 ! emission frequency [Hz] -> computed from spec_mono_l0_Ang
@@ -253,6 +253,10 @@ contains
              read(value,*) spec_powlaw_l0_Ang
           case ('spec_powlaw_beta')
              read(value,*) spec_powlaw_beta
+          case ('spec_FlatNphotDist_lmin_Ang')
+             read(value,*) spec_powlaw_lmin_Ang
+          case ('spec_FlatNphotDist_lmax_Ang')
+             read(value,*) spec_powlaw_lmax_Ang
           case ('spec_table_file')
              write(spec_table_file,'(a)') trim(value)
           case ('spec_table_age')
@@ -301,6 +305,9 @@ contains
           write(unit,'(a,es10.3,a)')     '  spec_powlaw_lmax_Ang = ',spec_powlaw_lmax_Ang, ' ! [A]'
           write(unit,'(a,es10.3,a)')     '  spec_powlaw_l0_Ang   = ',spec_powlaw_l0_Ang, ' ! [A]'
           write(unit,'(a,es10.3)')       '  spec_powlaw_beta     = ',spec_powlaw_beta
+       case('FlatNphotDist')
+          write(unit,'(a,es10.3,a)')     '  spec_FlatNphotDist_lmin_Ang = ',spec_FlatNphotDist_lmin_Ang, ' ! [A]'
+          write(unit,'(a,es10.3,a)')     '  spec_FlatNphotDist_lmax_Ang = ',spec_FlatNphotDist_lmax_Ang, ' ! [A]'
        case('Table')
           write(unit,'(a,a)')            '  spec_table_file      = ',trim(spec_table_file)
           write(unit,'(a,es10.3,a)')     '  spec_table_age       = ',spec_table_age, ' ! [Myr]'
@@ -333,6 +340,9 @@ contains
           write(*,'(a,es10.3,a)')     '  spec_powlaw_lmax_Ang = ',spec_powlaw_lmax_Ang, ' ! [A]'
           write(*,'(a,es10.3,a)')     '  spec_powlaw_l0_Ang   = ',spec_powlaw_l0_Ang, ' ! [A]'
           write(*,'(a,es10.3)')       '  spec_powlaw_beta     = ',spec_powlaw_beta
+       case('FlatNphotDist')
+          write(*,'(a,es10.3,a)')     '  spec_FlatNphotDist_lmin_Ang = ',spec_FlatNphotDist_lmin_Ang, ' ! [A]'
+          write(*,'(a,es10.3,a)')     '  spec_FlatNphotDist_lmax_Ang = ',spec_FlatNphotDist_lmax_Ang, ' ! [A]'
        case('Table')
           write(*,'(a,a)')            '  spec_table_file      = ',trim(spec_table_file)
           write(*,'(a,es10.3,a)')     '  spec_table_age       = ',spec_table_age, ' ! [Myr]'
