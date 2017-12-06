@@ -256,7 +256,7 @@ contains
           case ('spec_FlatNphotDist_lmin_Ang')
              read(value,*) spec_FlatNphotDist_lmin_Ang
           case ('spec_FlatNphotDist_lmax_Ang')
-             read(value,*) spec_FlatNphotDist_lmin_Ang
+             read(value,*) spec_FlatNphotDist_lmax_Ang
           case ('spec_table_file')
              write(spec_table_file,'(a)') trim(value)
           case ('spec_table_age')
