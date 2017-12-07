@@ -1,6 +1,6 @@
 module module_ramses
 
-  use module_constants, only : kB, mp, XH, mSi, mMg
+  use module_constants, only : kB, mp, XH, mSi, mMg, planck, clight
   use module_domain
 
   implicit none
@@ -98,6 +98,7 @@ module module_ramses
 
   public  :: read_leaf_cells, get_ngridtot, ramses_get_velocity_cgs, ramses_get_T_nhi_cgs, ramses_get_metallicity, ramses_get_box_size_cm, ramses_get_nh_cgs
   public  :: ramses_read_stars_in_domain, read_ramses_params, print_ramses_params, dump_ramses_info, ramses_get_T_nSiII_cgs, ramses_get_T_nMgII_cgs
+  public :: ramses_get_LyaEmiss_HIDopwidth
   ! default is private now ... !! private :: read_hydro, read_amr, get_nleaf, get_nvar, clear_amr, get_ncpu, get_param_real
 
   !==================================================================================
@@ -382,6 +383,76 @@ contains
     return
 
   end subroutine ramses_get_metallicity
+
+
+  subroutine ramses_get_LyaEmiss_HIDopwidth(repository,snapnum,nleaf,nvar,var,recomb_em,coll_em,HIDopwidth,sample)
+
+    implicit none
+
+    character(1000),intent(in)  :: repository
+    integer(kind=4),intent(in)  :: snapnum
+    integer(kind=4),intent(in) :: nleaf,nvar
+    real(kind=8),intent(in)    :: var(nvar,nleaf)
+    real(kind=8),intent(inout) :: recomb_em(:),coll_em(:),HIDopwidth(:)
+    integer(kind=4),intent(in),optional :: sample(:)
+
+    integer(kind=4)            :: n,j,i
+    real(kind=8),parameter     :: e_lya = planck * clight / 1215.67d0 ! [erg] energy of a Lya photon (consistent with HI_model)
+    real(kind=8)               :: xhii,xheii,xheiii,nh,nhi,nhii,n_e,mu,TK,Ta,prob_case_B,alpha_B,collExrate_HI,lambda,nhe
+    logical                    :: subsample
+    
+    ! get conversion factors if necessary
+    if (.not. conversion_scales_are_known) then 
+       call read_conversion_scales(repository,snapnum)
+       conversion_scales_are_known = .True.
+    end if
+
+    if (present(sample)) then
+       n = size(sample)
+       subsample = .true.
+    else
+       n = nleaf
+       subsample = .false. 
+    end if
+    
+    
+    if(ramses_rt)then
+       do j=1,n
+
+          if (subsample) then
+             i = sample(j)
+          else
+             i = j
+          end if
+
+          xhii   = var(ihii,i)
+          xheii  = var(iheii,i)
+          xheiii = var(iheiii,i)
+          nh     = var(1,i) * dp_scale_nh
+          nhe    = 0.25*nh*(1.0d0-XH)/XH
+          nhii   = nh * xhii
+          nhi    = nh * (1.0d0 - xhii)
+          n_e    = nHII + nHe * (xHeII + 2.0d0*xHeIII)
+          mu     = 1./( XH*(1.+xHII) + 0.25*(1.0d0-XH)*(1.+xHeII+2.*xHeIII) )
+          TK     = var(5,i)/nh*dp_scale_nh*mu*dp_scale_T2
+          HIDopwidth(j) = sqrt((2.0d0*kb/mp)*TK)
+          ! Cantalupo+(08)
+          Ta = max(TK,100.0) ! no extrapolation..
+          prob_case_B = 0.686 - 0.106*log10(Ta/1e4) - 0.009*(Ta/1e4)**(-0.44)
+          ! Hui & Gnedin (1997)
+          lambda = 315614.d0/TK
+          alpha_B = 2.753d-14*(lambda**(1.5))/(1+(lambda/2.74)**0.407)**(2.242) ![cm3/s]
+          recomb_em(j) = prob_case_B * alpha_B * n_e * nhii * e_lya ! [erg/cm3/s]
+          ! collisional emission
+          collExrate_HI = 2.41d-6/sqrt(TK) * (TK/1.d4)**0.22 * exp(-1.63d-11/(kB*TK))
+          coll_em(j) = nHI * n_e * collExrate_HI * e_lya
+       end do
+    else
+       print*,'Not implemented ... '
+       stop
+    end if
+    
+  end subroutine ramses_get_LyaEmiss_HIDopwidth
 
   
   subroutine ramses_get_T_nSiII_cgs(repository,snapnum,nleaf,nvar,ramses_var,temp,nSiII)
@@ -763,10 +834,17 @@ contains
                       var(ind_grid(i)+iskip,ivar) = xx(i)
                    end do
                 end do
+                ! JB maybe split loop for faster mem access ? 
                 do i = 1,ncache
                    cell_x(ind_grid(i)+iskip) = xc(ind,1) + xg(ind_grid(i),1) -xbound(1)
+                end do
+                do i = 1,ncache
                    cell_y(ind_grid(i)+iskip) = xc(ind,2) + xg(ind_grid(i),2) -xbound(2)
+                end do
+                do i = 1,ncache
                    cell_z(ind_grid(i)+iskip) = xc(ind,3) + xg(ind_grid(i),3) -xbound(3)
+                end do
+                do i=1,ncache
                    cell_level(ind_grid(i)+iskip)      = ilevel
                 end do
              end do
@@ -1797,8 +1875,6 @@ contains
     return
     
   end subroutine print_ramses_params
-
-
 
 
 end module module_ramses
