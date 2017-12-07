@@ -45,8 +45,8 @@ endif
 ifeq ($(SYSTYPE),"mac")
 #F90         = gfortran-mp-4.7 -ffree-line-length-none -ffree-form  ###-fopenmp
 F90         = gfortran-mp-6 -ffree-line-length-none -ffree-form  ###-fopenmp
-FFLAGS      = -g -fcheck=all -ftrapv -fbacktrace -Wall -fbounds-check
-#FFLAGS      = -O2
+#FFLAGS      = -g -fcheck=all -ftrapv -fbacktrace -Wall -fbounds-check
+FFLAGS      = -O2
 FFLAGS += $(OPTIONS)
 LDFLAGS     = 
 endif
@@ -100,6 +100,8 @@ OBJSPHO = $(GASOBJS) module_mesh.o module_photon.o
 
 OBJSMPI = $(OBJSPHO) module_parallel_mpi.o module_worker.o module_master.o
 
+LYAFG = module_constants.o module_random.o module_utils.o module_domain.o module_ramses.o
+
 #############################################################################
 #.SUFFIXES: .o .f90
 #.f90.o:
@@ -116,6 +118,9 @@ PhotonsFromSourceModel: $(OBJSPHO) PhotonsFromSourceModel.o
 
 PhotonsFromStars: $(OBJSPHO) PhotonsFromStars.o
 	$(F90) $(FFLAGS) $(LDFLAGS) -o $@ $(OBJSPHO) PhotonsFromStars.o
+
+LyaPhotonsFromGas: $(LYAFG) LyaPhotonsFromGas.o
+	$(F90) $(FFLAGS) $(LDFLAGS) -o $@ $(LYAFG) LyaPhotonsFromGas.o
 
 CreateDomDump: $(OBJSDOM) CreateDomDump.o
 	$(F90) $(FFLAGS) $(LDFLAGS) -o $@ $(OBJSDOM) CreateDomDump.o
