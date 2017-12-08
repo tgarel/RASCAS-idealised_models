@@ -211,7 +211,7 @@ contains
 !$OMP DEFAULT(private) &
 !$OMP SHARED(iloop, ilast, xleaf_all, leaf_level_all, ramses_var_all, repository, snapnum, nvar, nleaftot, ncpu)
     do_allocs = .true.
-!$OMP DO SCHEDULE(DYNAMIC,10)
+!$OMP DO
     do icpu = 1, ncpu
        
        call read_amr_hydro(repository,snapnum,icpu,&

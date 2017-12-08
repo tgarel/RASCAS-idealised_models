@@ -114,7 +114,7 @@ contains
     ! find the (leaf) cell in which the photon is, and define all its indices
     icell = in_cell_finder(domesh,ppos)
     if(domesh%son(icell)>=0)then
-       print*,'ERROR: not a leaf cell'
+       print*,'ERROR: not a leaf cell ',ppos
        stop
     endif
     ileaf = - domesh%son(icell)
@@ -135,7 +135,7 @@ contains
        ppos_cell    = (ppos - cell_corner) / cell_size         ! position of photon in cell units (x,y,z in [0,1] within cell)
        if((ppos_cell(1)>1.0d0).or.(ppos_cell(2)>1.0d0).or.(ppos_cell(3)>1.0d0).or. &
             (ppos_cell(1)<0.0d0).or.(ppos_cell(2)<0.0d0).or.(ppos_cell(3)<0.0d0))then
-          print*,"ERROR: problem in computing ppos_cell"
+          print*,"ERROR: problem in computing ppos_cell ",ppos_cell(1),ppos_cell(2),ppos_cell(3)
           stop
        endif
        
@@ -184,9 +184,18 @@ contains
        npush = 0
        do while (icell==icellnew)
           npush = npush + 1
+          if (npush>10000) then
+             print*,'Too many pushes, npush>100 ',ppos(1),ppos(2),ppos(3)
+             stop
+          endif
           ppos(1) = ppos(1) + merge(-1.0d0,1.0d0,kray(1)<0.0d0) * epsilon(ppos(1))
           ppos(2) = ppos(2) + merge(-1.0d0,1.0d0,kray(2)<0.0d0) * epsilon(ppos(2))
           ppos(3) = ppos(3) + merge(-1.0d0,1.0d0,kray(3)<0.0d0) * epsilon(ppos(3))
+          ! correct for periodicity
+          do i=1,3
+             if (ppos(i) < 0.0d0) ppos(i)=ppos(i)+1.0d0
+             if (ppos(i) > 1.0d0) ppos(i)=ppos(i)-1.0d0
+          enddo
           call whereIsPhotonGoing(domesh,icell,ppos,icellnew,flagoutvol)
        end do
        if (npush > 1) print*,'WARNING : npush > 1 needed in module_photon:propagate.'
@@ -195,7 +204,7 @@ contains
        if (npush > 0) then 
           in_domain = domain_contains_point(ppos,domaine_calcul)
           if (.not. in_domain) then
-             print*,'WARNING: pushed photon outside domain ... '
+             print*,'WARNING: pushed photon outside domain ... ',ppos
              exit ray_propagation
           end if
        end if
@@ -262,6 +271,7 @@ contains
     open(unit=14, file=trim(file), status='unknown', form='unformatted', action='write')
     write(14) np
     write(14) (rays(i)%fesc,i=1,np)
+    write(14) (rays(i)%ID,i=1,np)
     close(14)
 
   end subroutine dump_rays
