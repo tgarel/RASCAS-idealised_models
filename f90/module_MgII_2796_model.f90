@@ -26,7 +26,7 @@ module module_MgII_2796_model
   real(kind=8),parameter :: sigma12_factor = pi*e_ch**2*f12/me/clight ! multiply by Voigt(x,a)/nu_D to get sigma.
   real(kind=8),parameter :: A21            = 2.60d8                   ! spontaneous decay [/s]
 
-  public :: get_tau_MgII_2796, scatter_MgII_2796
+  public :: get_tau_MgII_2796, scatter_MgII_2796, read_MgII_2796_params, print_MgII_2796_params
 
 contains
 
@@ -126,5 +126,46 @@ contains
     k = knew
 
   end subroutine scatter_MgII_2796
+
+
+
+  subroutine read_MgII_2796_params(pfile)
+    
+    ! ---------------------------------------------------------------------------------
+    ! subroutine which reads parameters of current module in the parameter file pfile
+    !
+    ! default parameter values are set at declaration (head of module)
+    ! ---------------------------------------------------------------------------------
+    
+    character(*),intent(in) :: pfile
+    
+    call read_uparallel_params(pfile)
+    
+    return
+    
+  end subroutine read_MgII_2796_params
+
+
+
+  subroutine print_MgII_2796_params(unit)
+    
+    ! ---------------------------------------------------------------------------------
+    ! write parameter values to std output or to an open file if argument unit is
+    ! present.
+    ! ---------------------------------------------------------------------------------
+    
+    integer(kind=4),optional,intent(in) :: unit
+    
+    if (present(unit)) then 
+       call print_uparallel_params(unit)
+    else
+       call print_uparallel_params()
+    end if
+    
+    return
+    
+  end subroutine print_MgII_2796_params
+
+
 
 end module module_MgII_2796_model
