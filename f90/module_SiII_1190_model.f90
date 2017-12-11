@@ -35,7 +35,7 @@ module module_SiII_1190_model
 
   real(kind=8),parameter :: A41_over_A41_plus_A42 = A41 / (A41+A42)
   
-  public :: get_tau_SiII_1190, scatter_SiII_1190
+  public :: get_tau_SiII_1190, scatter_SiII_1190, read_SiII_1190_params, print_SiII_1190_params
 
 contains
 

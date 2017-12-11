@@ -35,7 +35,7 @@ module module_SiII_1193_model
   
   real(kind=8),parameter :: A31_over_A31_plus_A32 = A31 / (A31+A32)
 
-  public :: get_tau_SiII_1193, scatter_SiII_1193
+  public :: get_tau_SiII_1193, scatter_SiII_1193, read_SiII_1193_params, print_SiII_1193_params
 
 contains
 
