@@ -109,11 +109,7 @@ contains
 
     ! 1/ component parallel to photon's propagation
     ! -> get velocity of interacting atom parallel to propagation
-#ifdef SWITCH_OFF_UPARALLEL
-    upar = 0.5 
-#else
     upar = get_uparallel(x_cell,a,iran)
-#endif
     upar = upar * vth    ! upar is an x -> convert to a velocity 
 
     ! 2/ component perpendicular to photon's propagation
