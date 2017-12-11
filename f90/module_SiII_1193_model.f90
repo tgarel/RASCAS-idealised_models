@@ -35,7 +35,7 @@ module module_SiII_1193_model
   
   real(kind=8),parameter :: A31_over_A31_plus_A32 = A31 / (A31+A32)
 
-  public :: get_tau_SiII_1193, scatter_SiII_1193
+  public :: get_tau_SiII_1193, scatter_SiII_1193, read_SiII_1193_params, print_SiII_1193_params
 
 contains
 
@@ -97,7 +97,7 @@ contains
     real(kind=8),dimension(3),intent(in)    :: vcell
     real(kind=8),intent(in)                 :: vth
     integer(kind=4),intent(inout)           :: iran
-    real(kind=8)                            :: delta_nu_doppler, a, x_cell, blah, upar, ruper
+    real(kind=8)                            :: delta_nu_doppler, a, x_cell, upar, ruper
     real(kind=8)                            :: r2, uper, nu_atom, mu, bu, scalar
     real(kind=8),dimension(3)               :: knew
 
@@ -108,12 +108,7 @@ contains
 
     ! 1/ component parallel to photon's propagation
     ! -> get velocity of interacting atom parallel to propagation
-    blah = ran3(iran)
-#ifdef SWITCH_OFF_UPARALLEL
-    upar = 0.
-#else
-    upar = get_uparallel(a,x_cell,blah)
-#endif
+    upar = get_uparallel(x_cell,a,iran)
     upar = upar * vth    ! upar is an x -> convert to a velocity 
 
     ! 2/ component perpendicular to photon's propagation
@@ -144,5 +139,43 @@ contains
     k = knew
 
   end subroutine scatter_SiII_1193
+
+  
+  subroutine read_SiII_1193_params(pfile)
+    
+    ! ---------------------------------------------------------------------------------
+    ! subroutine which reads parameters of current module in the parameter file pfile
+    !
+    ! default parameter values are set at declaration (head of module)
+    ! ---------------------------------------------------------------------------------
+
+    character(*),intent(in) :: pfile
+
+    call read_uparallel_params(pfile)
+
+    return
+
+  end subroutine read_SiII_1193_params
+
+
+    subroutine print_SiII_1193_params(unit)
+    
+    ! ---------------------------------------------------------------------------------
+    ! write parameter values to std output or to an open file if argument unit is
+    ! present.
+    ! ---------------------------------------------------------------------------------
+
+    integer(kind=4),optional,intent(in) :: unit
+
+    if (present(unit)) then 
+       call print_uparallel_params(unit)
+    else
+       call print_uparallel_params()
+    end if
+    
+    return
+    
+  end subroutine print_SiII_1193_params
+
 
 end module module_SiII_1193_model

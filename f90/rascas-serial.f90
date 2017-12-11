@@ -5,7 +5,6 @@ program main
   use module_photon
   use module_mesh
   use module_domain
-  use module_uparallel
   use module_constants
 
   implicit none

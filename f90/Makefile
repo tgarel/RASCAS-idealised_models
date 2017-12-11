@@ -9,7 +9,6 @@ SYSTYPE="mac"
 #SYSTYPE="ccage"
 
 OPTIONS = -cpp
-#OPTIONS += -DSWITCH_OFF_UPARALLEL
 #OPTIONS += -DDEBUG
 
 
@@ -89,7 +88,7 @@ COMPOBJS = module_dust_model.o module_D_model.o module_HI_model.o module_gas_com
 # 7/ MgII
 #COMPOBJS = module_MgII_2796_model.o module_MgII_2804_model.o module_gas_composition_MgII.o
 # 8/ MgII and dust
-#COMPOBJS = module_dust_model.o module_MgII_2796_model.o module_MgII_2804_model.o module_gas_composition_MgII.o
+#COMPOBJS = module_dust_model.o module_MgII_2796_model.o module_MgII_2804_model.o module_gas_composition_MgII_dust.o
 
 
 GASOBJS = module_constants.o module_random.o module_utils.o module_domain.o module_ramses.o module_uparallel.o $(COMPOBJS)
