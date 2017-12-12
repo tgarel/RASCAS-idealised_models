@@ -5,7 +5,8 @@ program LyaPhotonsFromGas
   use module_random
   use module_constants
   use module_utils
-    
+  use OMP_LIB
+  
   implicit none
 
   real(kind=8),parameter   :: lambda_0=1215.67d0                          ![A] Lya wavelength
@@ -19,7 +20,8 @@ program LyaPhotonsFromGas
   real(kind=8),allocatable     :: x_leaf(:,:),ramses_var(:,:),recomb_em(:),coll_em(:),v_leaf(:,:),HIDopWidth(:),cell_volume_vs_level(:)
   real(kind=8)                 :: r1, r2, dx, dv, nu, scalar, recomb_total,coll_total,k(3), boxsize,maxrec,maxcol
   real(kind=8)                 :: start_photpacket,end_photpacket
-
+  logical                      :: ok 
+  integer(kind=4),allocatable :: iseed_array(:)
   real(kind=8),allocatable :: nu_em(:),x_em(:,:),k_em(:,:),nu_cell(:)
   ! ---------------------------------------------------------------------------
   ! user-defined parameters - read from section [CreateDomDump] of the parameter file
@@ -54,10 +56,9 @@ program LyaPhotonsFromGas
   call get_command_argument(1, parameter_file)
   call read_LyaPhotonsFromGas_params(parameter_file)
   if (verbose) call print_LyaPhotonsFromGas_params
-  iseed = ranseed
   ! ----------------------------------------------------------------------------
 
-  
+
   ! ------- Define the emission domain (region from which cells emit). ---------
   select case(emission_dom_type)
   case('sphere')
@@ -119,36 +120,60 @@ program LyaPhotonsFromGas
   end if
   ! --------------------------------------------------------------------------------------
   allocate(nu_em(nphotons),x_em(3,nphotons),k_em(3,nphotons),nu_cell(nphotons))
-  iphot = 1
-  do while (iphot <= nphotons)
-     i = int(ran3(iseed) * nsel)+1
-     if (i > nsel) i = nsel
-     r1 = ran3(iseed)
-     if (i < 1 .or. i >nsel) print*,'ho nooo'
-     if (r1 <= recomb_em(i)) then
-        ! success : draw photon's ICs
-        j  = emitting_cells(i)
-        dx = 1.d0 / 2**leaf_level(j)
-        ! draw photon position in cell 
-        x_em(1,iphot)  = (ran3(iseed)-0.5d0) * dx + x_leaf(j,1)
-        x_em(2,iphot)  = (ran3(iseed)-0.5d0) * dx + x_leaf(j,2)
-        x_em(3,iphot)  = (ran3(iseed)-0.5d0) * dx + x_leaf(j,3)
-        ! draw propagation direction
-        call isotropic_direction(k,iseed)
-        k_em(:,iphot) = k
-        ! compute frequency in cell frame
-        r1 = ran3(iseed)
-        r2 = ran3(iseed)
-        nu = sqrt(-2.*log(r1)) * cos(2.0d0*pi*r2)
-        nu_cell(iphot) = (HIDopWidth(i) * nu_0 / clight) * nu + nu_0
-        ! compute frequency in exteral frame 
-        scalar = k(1)*v_leaf(1,j) + k(2)*v_leaf(2,j) + k(3)*v_leaf(3,j)
-        nu_em(iphot)  = nu_cell(iphot) / (1d0 - scalar/clight)
-        iphot = iphot + 1
-        if (verbose .and. (((iphot*100)/nphotons) * nphotons/100 == iphot-1))  &
-             write(*,'(a,f5.1,a,a)',advance='no') 'Drawing cells : ',real(iphot)/nphotons*100,'% ',char(13)
-     end if
+
+  !$OMP PARALLEL &
+  !$OMP DEFAULT(PRIVATE) &
+  !$OMP SHARED(recomb_em,emitting_cells,leaf_level,x_em,x_leaf,k_em,nu_cell,HIDopWidth,nu_em,v_leaf,iseed_array, &
+  !$OMP        ranseed,nphotons,nsel) 
+  !$OMP MASTER
+  allocate(iseed_array(0:OMP_get_num_threads()-1))
+  do i=0,OMP_get_num_threads()-1
+     iseed_array(i) = ranseed - i
   end do
+  write(*,*) 'iseed array : '
+  do i = 0,OMP_get_num_threads()-1
+     write(*,*) iseed_array(i),ranseed
+  end do
+  !$OMP END MASTER
+  !$OMP BARRIER
+  !$OMP DO SCHEDULE(DYNAMIC, 10)
+  do iphot = 1,nphotons
+     iseed = iseed_array(OMP_get_thread_num())
+     ok = .false.
+     do while (.not. ok) 
+        i = int(ran3(iseed) * nsel)+1
+        if (i > nsel) i = nsel
+        r1 = ran3(iseed)
+        if (r1 <= recomb_em(i)) then
+           ! success : draw photon's ICs
+           j  = emitting_cells(i)
+           dx = 1.d0 / 2**leaf_level(j)
+           ! draw photon position in cell 
+           x_em(1,iphot)  = (ran3(iseed)-0.5d0) * dx + x_leaf(j,1)
+           x_em(2,iphot)  = (ran3(iseed)-0.5d0) * dx + x_leaf(j,2)
+           x_em(3,iphot)  = (ran3(iseed)-0.5d0) * dx + x_leaf(j,3)
+           ! draw propagation direction
+           call isotropic_direction(k,iseed)
+           k_em(:,iphot) = k
+           ! compute frequency in cell frame
+           r1 = ran3(iseed)
+           r2 = ran3(iseed)
+           nu = sqrt(-2.*log(r1)) * cos(2.0d0*pi*r2)
+           nu_cell(iphot) = (HIDopWidth(i) * nu_0 / clight) * nu + nu_0
+           ! compute frequency in exteral frame 
+           scalar = k(1)*v_leaf(1,j) + k(2)*v_leaf(2,j) + k(3)*v_leaf(3,j)
+           nu_em(iphot)  = nu_cell(iphot) / (1d0 - scalar/clight)
+           ok = .true.
+        end if
+     end do
+     iseed_array(OMP_get_thread_num()) = iseed
+  end do
+  !$OMP END DO
+  !$OMP BARRIER
+  !$OMP MASTER
+  deallocate(iseed_array)
+  !$OMP END MASTER
+  !$OMP END PARALLEL
   ! --------------------------------------------------------------------------------------
   ! write ICs
   ! --------------------------------------------------------------------------------------
@@ -179,36 +204,59 @@ program LyaPhotonsFromGas
      call cpu_time(start_photpacket)
   end if
   ! --------------------------------------------------------------------------------------
-  iphot = 1
-  do while (iphot <= nphotons)
-     i = int(ran3(iseed) * nsel)+1
-     if (i > nsel) i = nsel
-     r1 = ran3(iseed)
-     if (i < 1 .or. i >nsel) print*,'ho nooo'
-     if (r1 <= coll_em(i)) then
-        ! success : draw photon's ICs
-        j  = emitting_cells(i)
-        dx = 1.d0 / 2**leaf_level(j)
-        ! draw photon position in cell 
-        x_em(1,iphot)  = (ran3(iseed)-0.5d0) * dx + x_leaf(j,1)
-        x_em(2,iphot)  = (ran3(iseed)-0.5d0) * dx + x_leaf(j,2)
-        x_em(3,iphot)  = (ran3(iseed)-0.5d0) * dx + x_leaf(j,3)
-        ! draw propagation direction
-        call isotropic_direction(k,iseed)
-        k_em(:,iphot) = k
-        ! compute frequency in cell frame
-        r1 = ran3(iseed)
-        r2 = ran3(iseed)
-        nu = sqrt(-2.*log(r1)) * cos(2.0d0*pi*r2)
-        nu_cell(iphot) = (HIDopWidth(i) * nu_0 / clight) * nu + nu_0
-        ! compute frequency in exteral frame 
-        scalar = k(1)*v_leaf(1,j) + k(2)*v_leaf(2,j) + k(3)*v_leaf(3,j)
-        nu_em(iphot)  = nu_cell(iphot) / (1d0 - scalar/clight)
-        iphot = iphot + 1
-        if (verbose .and. (((iphot*100)/nphotons) * nphotons/100 == iphot-1))  &
-             write(*,'(a,f5.1,a,a)',advance='no') 'Drawing cells : ',real(iphot)/nphotons*100,'% ',char(13)
-     end if
+  !$OMP PARALLEL &
+  !$OMP DEFAULT(PRIVATE) &
+  !$OMP SHARED(coll_em,emitting_cells,leaf_level,x_em,x_leaf,k_em,nu_cell,HIDopWidth,nu_em,v_leaf,iseed_array, &
+  !$OMP        ranseed,nphotons,nsel) 
+  !$OMP MASTER
+  allocate(iseed_array(0:OMP_get_num_threads()-1))
+  do i=0,OMP_get_num_threads()-1
+     iseed_array(i) = ranseed - i
   end do
+  write(*,*) 'iseed array : '
+  do i = 0,OMP_get_num_threads()-1
+     write(*,*) iseed_array(i),ranseed
+  end do
+  !$OMP END MASTER
+  !$OMP BARRIER
+  !$OMP DO SCHEDULE(DYNAMIC, 10)
+  do iphot = 1,nphotons
+     iseed = iseed_array(OMP_get_thread_num())
+     ok = .false.
+     do while (.not. ok) 
+        i = int(ran3(iseed) * nsel)+1
+        if (i > nsel) i = nsel
+        r1 = ran3(iseed)
+        if (r1 <= coll_em(i)) then
+           ! success : draw photon's ICs
+           j  = emitting_cells(i)
+           dx = 1.d0 / 2**leaf_level(j)
+           ! draw photon position in cell 
+           x_em(1,iphot)  = (ran3(iseed)-0.5d0) * dx + x_leaf(j,1)
+           x_em(2,iphot)  = (ran3(iseed)-0.5d0) * dx + x_leaf(j,2)
+           x_em(3,iphot)  = (ran3(iseed)-0.5d0) * dx + x_leaf(j,3)
+           ! draw propagation direction
+           call isotropic_direction(k,iseed)
+           k_em(:,iphot) = k
+           ! compute frequency in cell frame
+           r1 = ran3(iseed)
+           r2 = ran3(iseed)
+           nu = sqrt(-2.*log(r1)) * cos(2.0d0*pi*r2)
+           nu_cell(iphot) = (HIDopWidth(i) * nu_0 / clight) * nu + nu_0
+           ! compute frequency in exteral frame 
+           scalar = k(1)*v_leaf(1,j) + k(2)*v_leaf(2,j) + k(3)*v_leaf(3,j)
+           nu_em(iphot)  = nu_cell(iphot) / (1d0 - scalar/clight)
+           ok = .true.
+        end if
+     end do
+     iseed_array(OMP_get_thread_num()) = iseed
+  end do
+  !$OMP END DO
+  !$OMP BARRIER
+  !$OMP MASTER
+  deallocate(iseed_array)
+  !$OMP END MASTER
+  !$OMP END PARALLEL
   ! --------------------------------------------------------------------------------------
   ! write ICs
   ! --------------------------------------------------------------------------------------
@@ -227,7 +275,7 @@ program LyaPhotonsFromGas
   ! --------------------------------------------------------------------------------------
   if (verbose) then 
      call cpu_time(end_photpacket)
-     print*, 'time to draw recombinations = ',end_photpacket-start_photpacket,' seconds.'
+     print*, 'time to draw collisions = ',end_photpacket-start_photpacket,' seconds.'
   end if
   ! --------------------------------------------------------------------------------------
  

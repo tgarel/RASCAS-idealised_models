@@ -1,14 +1,14 @@
 #############################################################################
 # Fortran compiler options and directives
 
-#SYSTYPE="CCF"
+SYSTYPE="CCF"
 #SYSTYPE="lyocral"
 #SYSTYPE="lyocralP"
-SYSTYPE="mac"
+#SYSTYPE="mac"
 #SYSTYPE="macP"
 #SYSTYPE="ccage"
 
-OPTIONS = -cpp
+OPTIONS = -cpp 
 #OPTIONS += -DSWITCH_OFF_UPARALLEL
 #OPTIONS += -DDEBUG
 
@@ -36,7 +36,7 @@ ifeq ($(SYSTYPE),"CCF")
 F90         = ifort
 #FFLAGS      = -g -fpp -check all -debug -warn all -ftrapuv -traceback
 ##FFLAGS      = -O3 -fpp -ftz  -xavx -sox -ipo -fno-alias -fno-fnalias -no-prec-div -no-prec-sqrt -align all
-FFLAGS      = -O3 -fpp -ftz  -xavx -ipo -fno-alias -fno-fnalias -no-prec-div -no-prec-sqrt -align all
+FFLAGS      = -openmp -O3 -fpp -ftz  -xavx -ipo -fno-alias -fno-fnalias -no-prec-div -no-prec-sqrt -align all
 ##FFLAGS      = -p -g
 FFLAGS += $(OPTIONS)
 LDFLAGS     =  -lmpi
