@@ -1,6 +1,6 @@
 module module_ramses
 
-  use module_constants, only : kB, mp, XH, mSi, mMg, planck, clight
+  use module_constants, only : kB, mp, XH, mSi, mMg, planck, clight,cmtoA
   use module_domain
 
   implicit none
@@ -397,7 +397,7 @@ contains
     integer(kind=4),intent(in),optional :: sample(:)
 
     integer(kind=4)            :: n,j,i
-    real(kind=8),parameter     :: e_lya = planck * clight / 1215.67d0 ! [erg] energy of a Lya photon (consistent with HI_model)
+    real(kind=8),parameter     :: e_lya = planck * clight / (1215.67d0/cmtoA) ! [erg] energy of a Lya photon (consistent with HI_model)
     real(kind=8)               :: xhii,xheii,xheiii,nh,nhi,nhii,n_e,mu,TK,Ta,prob_case_B,alpha_B,collExrate_HI,lambda,nhe
     logical                    :: subsample
     

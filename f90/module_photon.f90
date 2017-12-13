@@ -88,6 +88,17 @@ contains
     tau_abs = p%tau_abs_curr
     iran    = p%iran
 
+    ! check that the photon is actually in the computational domain ...
+    ! JB-
+    in_domain = domain_contains_point(ppos,domaine_calcul)
+    if (.not. in_domain) then
+       print*,'Propagate called for photon outside domain ... '
+       stop
+    end if
+    ! -JB
+
+
+    
 #ifdef DEBUG
     print *,'--> propagating photon from',ppos, iran
     print *,'--> in mesh domain',domesh%nCoarse,domesh%nOct,domesh%nLeaf,domesh%nCell
@@ -115,7 +126,7 @@ contains
 
     ! propagate photon until escape or death ... 
     photon_propagation : do 
-
+       
        ! gather properties properties of current cell
        cell_level   = domesh%octlevel(ioct)      ! level of current cell
        cell_size    = 0.5d0**cell_level          ! size of current cell in box units
@@ -142,7 +153,7 @@ contains
        cell_fully_in_domain = domain_contains_cell(pcell,cell_size,domaine_calcul)
 
        propag_in_cell : do
-          
+
           ! generate the opt depth where the photon is scattered/absorbed
           if (tau_abs <= 0.0d0) then
              rtau    = ran3(iran)
