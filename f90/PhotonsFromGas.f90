@@ -158,7 +158,7 @@ program PhotonsFromGas
         cell_corner  = get_cell_corner(posoct,ind,cell_level)
         cell_size    = 0.5d0**cell_level 
 
-        cell_pos     = posoct(:) + 0.5*cell_size
+        cell_pos     = cell_corner + 0.5*cell_size
         cell_vol     = (cell_size*box_size_cm)**3.0
 
         ! check if the point is inside the domain we want
@@ -205,7 +205,7 @@ program PhotonsFromGas
         cell_corner = get_cell_corner(posoct,ind,cell_level)
         cell_size   = 0.5d0**cell_level 
 
-        cell_pos    = posoct(:) + 0.5*cell_size
+        cell_pos    = cell_corner + 0.5*cell_size
         cell_vol    = (cell_size*box_size_cm)**3.0
         ! check if the point is inside the domain we want
         is_inside = domain_contains_point(cell_pos,emission_domain)
@@ -242,7 +242,7 @@ program PhotonsFromGas
         cell_corner = get_cell_corner(posoct,ind,cell_level)
         cell_size   = 0.5d0**cell_level 
 
-        cell_pos    = posoct(:) + 0.5*cell_size
+        cell_pos    = cell_corner + 0.5*cell_size
         cell_vol    = (cell_size*box_size_cm)**3.0
 
         ! check if the point is inside the domain we want
@@ -288,7 +288,7 @@ program PhotonsFromGas
      cell_level   = meshdom%octlevel(ioct)
      cell_corner  = get_cell_corner(posoct,ind,cell_level)
      cell_size    = 0.5d0**cell_level 
-     cell_pos     = posoct(:) + 0.5*cell_size
+     cell_pos     = cell_corner + 0.5*cell_size
      photgrid(i)%x_em  = cell_pos
      photgrid(i)%iran  = -i 
      call isotropic_direction(photgrid(i)%k_em,iran)
