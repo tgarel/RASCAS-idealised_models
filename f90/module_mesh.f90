@@ -20,8 +20,8 @@ module module_mesh
        reshape( (/1,3,5, 2,3,5, 1,4,5, 2,4,5, 1,3,6, 2,3,6, 1,4,6, 2,4,6/), (/3,8/) )  
 
   real(kind=8), dimension(1:3,1:8), parameter :: offset = &
-       reshape((/-.5,-.5,-.5, +.5,-.5,-.5, -.5,+.5,-.5, +.5,+.5,-.5, &
-                 -.5,-.5,+.5, +.5,-.5,+.5, -.5,+.5,+.5, +.5,+.5,+.5/), (/3,8/))
+       reshape((/-.5d0,-.5d0,-.5d0, +.5d0,-.5d0,-.5d0, -.5d0,+.5d0,-.5d0, +.5d0,+.5d0,-.5d0, &
+                 -.5d0,-.5d0,+.5d0, +.5d0,-.5d0,+.5d0, -.5d0,+.5d0,+.5d0, +.5d0,+.5d0,+.5d0/), (/3,8/))
 
   ! TODO: change shape of xoct,xleaf,nbor to optimize access xoct(1:noct,1:3) => xoct(1:3,1:noct)
 
@@ -124,7 +124,7 @@ module module_mesh
 
       ! first pass in the coarse cell
       ilastoct=0
-      xnew=(/0.5,0.5,0.5/)
+      xnew=(/0.5d0,0.5d0,0.5d0/)
       lfather=0
       ifathercell=1
       do i=1,nLeaf
@@ -865,8 +865,8 @@ module module_mesh
          write(*,*)'min max father       ',minval(father(:)),maxval(father(:))
          write(*,*)'min max octlevel     ',minval(octlevel(:)),maxval(octlevel(:))
          write(*,*)'min max xoct         ',minval(xoct(:,1)),maxval(xoct(:,1))
-         write(*,*)'min max yoct         ',minval(xoct(:,2)),maxval(xoct(:,3))
-         write(*,*)'min max zoct         ',minval(xoct(:,3)),maxval(xoct(:,2))
+         write(*,*)'min max yoct         ',minval(xoct(:,2)),maxval(xoct(:,2))
+         write(*,*)'min max zoct         ',minval(xoct(:,3)),maxval(xoct(:,3))
          write(*,*)'min max octlevel (>0)',minval(octlevel, mask=(octlevel >= 0)), maxval(octlevel, mask=(octlevel >= 0))
          write(*,*)'min max xoct (>0)    ',minval(xoct(:,1), mask=(xoct(:,1)>=0)),maxval(xoct(:,1), mask=(xoct(:,1)>=0))
          write(*,*)'min max yoct (>0)    ',minval(xoct(:,2), mask=(xoct(:,2)>=0)),maxval(xoct(:,2), mask=(xoct(:,2)>=0))

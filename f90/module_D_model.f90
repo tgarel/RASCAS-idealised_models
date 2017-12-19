@@ -13,7 +13,7 @@ module module_D_model
   real(kind=8),parameter   :: mdeut        = 2.d0 * mp           ! Deuterium atom's mass [ g ]
   real(kind=8),parameter   :: lambda_0     = 1215.34d0           ! wavelength of Lya of Deuterium [ A ]
   real(kind=8),parameter   :: gamma        = 6.265d8             ! Einstein coeff. [ s^-1 ]
-  real(kind=8),parameter   :: f12          = 0.416               ! Oscillator strength for Deuterium Lya.
+  real(kind=8),parameter   :: f12          = 0.416d0             ! Oscillator strength for Deuterium Lya.
   ! useful pre-computed quantities
   real(kind=8),parameter   :: lambda_0_cm = lambda_0 / cmtoA              ! cm
   real(kind=8),parameter   :: nu_0 = clight / lambda_0_cm                 ! Hz
@@ -97,7 +97,7 @@ contains
     real(kind=8),dimension(3),intent(in)    :: vcell
     real(kind=8),intent(in)                 :: vth
     integer(kind=4),intent(inout)           :: iran
-    real(kind=8)                            :: delta_nu_doppler, a, x_cell, blah, upar, ruper
+    real(kind=8)                            :: delta_nu_doppler, a, x_cell, upar, ruper
     real(kind=8)                            :: r2, uper, nu_atom, mu, bu, scalar
     real(kind=8)                            :: x_atom
     real(kind=8),dimension(3)               :: knew
@@ -109,12 +109,7 @@ contains
 
     ! 1/ component parallel to photon's propagation
     ! -> get velocity of interacting atom parallel to propagation
-    blah = ran3(iran)
-#ifdef SWITCH_OFF_UPARALLEL
-    upar = 0.5  !!!!!todo get_uparallel(a,x_cell,blah)
-#else
-    upar = get_uparallel(a,x_cell,blah)
-#endif
+    upar = get_uparallel(x_cell,a,iran)
     upar = upar * vth    ! upar is an x -> convert to a velocity 
 
     ! 2/ component perpendicular to photon's propagation
@@ -133,7 +128,7 @@ contains
        bu = sqrt(1.0d0 - mu*mu)
     else
        x_atom  = (nu_atom -nu_0) / delta_nu_doppler
-       if (abs(x_atom) < 0.2) then ! core scattering 
+       if (abs(x_atom) < 0.2d0) then ! core scattering 
           call anisotropic_direction_HIcore(k,knew,mu,bu,iran)
        else ! wing scattering 
           call anisotropic_direction_Rayleigh(k,knew,mu,bu,iran)
@@ -142,13 +137,13 @@ contains
 
     ! 5/ recoil effect 
     if (recoil) then 
-       nu_atom = nu_atom / (1.d0 + ((planck*nu_atom)/(mdeut*clight*clight))*(1.-mu))
+       nu_atom = nu_atom / (1.0d0 + ((planck*nu_atom)/(mdeut*clight*clight))*(1.0d0-mu))
     end if
 
     ! 6/ compute atom freq. in external frame, after scattering
     scalar = knew(1) * vcell(1) + knew(2) * vcell(2) + knew(3)* vcell(3)
     nu_ext = nu_atom * (1.0d0 + scalar/clight + (upar*mu + bu*uper)/clight)
-    nu_cell = (1.d0 - scalar/clight) * nu_ext 
+    nu_cell = (1.0d0 - scalar/clight) * nu_ext 
     k = knew
 
   end subroutine scatter_D
@@ -200,6 +195,7 @@ contains
        end do
     end if
     close(10)
+    call read_uparallel_params(pfile)
     return
 
   end subroutine read_D_params
@@ -219,10 +215,12 @@ contains
        write(unit,'(a,a,a)') '[Deuterium]'
        write(unit,'(a,L1)') '  recoil    = ',recoil
        write(unit,'(a,L1)') '  isotropic = ',isotropic
+       call print_uparallel_params(unit)
     else
        write(*,'(a,a,a)') '[Deuterium]'
        write(*,'(a,L1)') '  recoil    = ',recoil
        write(*,'(a,L1)') '  isotropic = ',isotropic
+       call print_uparallel_params()
     end if
 
     return

@@ -89,7 +89,7 @@ contains
        ! compute atom freq. in external frame, after scattering
        scalar = knew(1) * v(1) + knew(2) * v(2) + knew(3)* v(3)
        ! nu_cell has not changed; we implicitly assume that the interacting dust grain is at rest in cell's frame
-       nu_ext = nu_cell/(1. - scalar/clight)
+       nu_ext = nu_cell/(1.0d0 - scalar/clight)
        k = knew
     end if
 
@@ -190,19 +190,19 @@ contains
     real(kind=8)             :: sigma_d,x
     integer(kind=4)          :: i
     ! SMC parameters
-    real(kind=8),parameter,dimension(7) :: smc_lbda = (/0.042d0,0.08d0,0.22d0,9.7d0,18.d0,25.d0,0.067d0/)*1d4   ! [A]  
-    real(kind=8),parameter,dimension(7) :: smc_a    = (/185d0,27d0,0.005d0,0.010d0,0.012d0,0.03d0,10d0/)
-    real(kind=8),parameter,dimension(7) :: smc_b    = (/90d0,15.5d0,-1.95d0,-1.95d0,-1.8d0,0d0,1.9d0/)
-    real(kind=8),parameter,dimension(7) :: smc_p    = (/2d0,4d0,2d0,2d0,2d0,2d0,4d0/)
-    real(kind=8),parameter,dimension(7) :: smc_q    = (/2d0,4d0,2d0,2d0,2d0,2d0,15d0/)
+    real(kind=8),parameter,dimension(7) :: smc_lbda = (/0.042d0,0.08d0,0.22d0,9.7d0,18.0d0,25.0d0,0.067d0/)*1.0d4   ! [A]  
+    real(kind=8),parameter,dimension(7) :: smc_a    = (/185.0d0,27.0d0,0.005d0,0.010d0,0.012d0,0.03d0,10.0d0/)
+    real(kind=8),parameter,dimension(7) :: smc_b    = (/90.0d0,15.5d0,-1.95d0,-1.95d0,-1.8d0,0.0d0,1.9d0/)
+    real(kind=8),parameter,dimension(7) :: smc_p    = (/2.0d0,4.0d0,2.0d0,2.0d0,2.0d0,2.0d0,4.0d0/)
+    real(kind=8),parameter,dimension(7) :: smc_q    = (/2.0d0,4.0d0,2.0d0,2.0d0,2.0d0,2.0d0,15.0d0/)
     real(kind=8),parameter              :: smc_sig0 = 1.0d-22  ! [cm^-2]
     ! LMC parameters
-    real(kind=8),parameter,dimension(7) :: lmc_lbda = (/0.046d0,0.08d0,0.22d0,9.7d0,18d0,25d0,0.067d0/)*1d4    ! [A]
-    real(kind=8),parameter,dimension(7) :: lmc_a    = (/90d0,19d0,0.023d0,0.005d0,0.006d0,0.02d0,10d0/)
-    real(kind=8),parameter,dimension(7) :: lmc_b    = (/90d0,21d0,-1.95d0,-1.95d0,-1.8d0,0d0,1.9d0/)
-    real(kind=8),parameter,dimension(7) :: lmc_p    = (/2d0,4.5d0,2d0,2d0,2d0,2d0,4d0/)
-    real(kind=8),parameter,dimension(7) :: lmc_q    = (/2d0,4.5d0,2d0,2d0,2d0,2d0,15d0/)
-    real(kind=8),parameter              :: lmc_sig0 = 3.d-22  ! [cm^-2]
+    real(kind=8),parameter,dimension(7) :: lmc_lbda = (/0.046d0,0.08d0,0.22d0,9.7d0,18.0d0,25.0d0,0.067d0/)*1.0d4    ! [A]
+    real(kind=8),parameter,dimension(7) :: lmc_a    = (/90.0d0,19.0d0,0.023d0,0.005d0,0.006d0,0.02d0,10.0d0/)
+    real(kind=8),parameter,dimension(7) :: lmc_b    = (/90.0d0,21.0d0,-1.95d0,-1.95d0,-1.8d0,0.0d0,1.9d0/)
+    real(kind=8),parameter,dimension(7) :: lmc_p    = (/2.0d0,4.5d0,2.0d0,2.0d0,2.0d0,2.0d0,4.0d0/)
+    real(kind=8),parameter,dimension(7) :: lmc_q    = (/2.0d0,4.5d0,2.0d0,2.0d0,2.0d0,2.0d0,15.0d0/)
+    real(kind=8),parameter              :: lmc_sig0 = 3.0d-22  ! [cm^-2]
 
     sigma_d = 0.0d0
     select case(trim(model))

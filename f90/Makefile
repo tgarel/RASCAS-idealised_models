@@ -9,7 +9,7 @@ SYSTYPE="mac"
 #SYSTYPE="ccage"
 
 OPTIONS = -cpp
-#OPTIONS += -DSWITCH_OFF_UPARALLEL
+#OPTIONS += -DDEBUG
 
 
 ifeq ($(SYSTYPE),"lyocral")
@@ -44,10 +44,9 @@ endif
 ifeq ($(SYSTYPE),"mac")
 #F90         = gfortran-mp-4.7 -ffree-line-length-none -ffree-form  ###-fopenmp
 F90         = gfortran-mp-6 -ffree-line-length-none -ffree-form  ###-fopenmp
-#FFLAGS      = -g -fcheck=all -ftrapv -fbacktrace -Wall -fbounds-check
-FFLAGS      = -O2
+FFLAGS      = -g -fcheck=all -ftrapv -fbacktrace -Wall -fbounds-check
+#FFLAGS      = -O2
 FFLAGS += $(OPTIONS)
-###FFLAGS      = -O3
 LDFLAGS     = 
 endif
 
@@ -86,9 +85,13 @@ COMPOBJS = module_dust_model.o module_D_model.o module_HI_model.o module_gas_com
 #COMPOBJS = module_SiII_1190_model.o module_SiII_1193_model.o module_gas_composition_SiII.o
 # 6/ SiII and dust
 #COMPOBJS = module_dust_model.o module_SiII_1190_model.o module_SiII_1193_model.o module_gas_composition_SiII_dust.o
+# 7/ MgII
+#COMPOBJS = module_MgII_2796_model.o module_MgII_2804_model.o module_gas_composition_MgII.o
+# 8/ MgII and dust
+#COMPOBJS = module_dust_model.o module_MgII_2796_model.o module_MgII_2804_model.o module_gas_composition_MgII_dust.o
 
 
-GASOBJS = module_domain.o module_constants.o module_ramses.o module_random.o module_utils.o module_uparallel.o $(COMPOBJS)
+GASOBJS = module_constants.o module_random.o module_utils.o module_domain.o module_ramses.o module_uparallel.o $(COMPOBJS)
 
 OBJSDOM = $(GASOBJS) module_select.o module_mesh.o
 
