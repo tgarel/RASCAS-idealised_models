@@ -16,7 +16,7 @@ module module_HI_model
   ! useful pre-computed quantities
   real(kind=8),parameter   :: lambda_0_cm = lambda_0 / cmtoA              ! cm
   real(kind=8),parameter   :: nu_0 = clight / lambda_0_cm                 ! Hz
-  real(kind=8),parameter   :: sigmaH_factor = pi*e_ch**2*f12/ me / clight ! H cross-section factor-> multiply by Voigt(x,a)/nu_D to get sigma.
+  real(kind=8),parameter   :: sigmaH_factor = pi*e_ch**2*f12/ me / clight ! H cross-section factor-> multiply by Voigt(x,a)/delta_nu_doppler to get sigma.
   real(kind=8),parameter   :: gamma_over_fourpi = gamma / fourpi
 
   ! --------------------------------------------------------------------------

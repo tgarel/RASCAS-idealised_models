@@ -24,7 +24,7 @@ module module_SiII_1193_model
   real(kind=8),parameter :: lambda13_cm    = lambda13 / cmtoA         ! [cm]
   real(kind=8),parameter :: nu13           = clight / lambda13_cm     ! [Hz]
   real(kind=8),parameter :: f13            = 0.575d0                  ! oscillator strength
-  real(kind=8),parameter :: sigma13_factor = pi*e_ch**2*f13/me/clight ! multiply by Voigt(x,a)/nu_D to get sigma.
+  real(kind=8),parameter :: sigma13_factor = pi*e_ch**2*f13/me/clight ! multiply by Voigt(x,a)/delta_nu_doppler to get sigma.
   real(kind=8),parameter :: A31            = 2.69d9                   ! spontaneous decay [/s]
 
   ! transition between levels 2 and 3
