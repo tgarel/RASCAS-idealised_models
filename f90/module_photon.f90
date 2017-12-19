@@ -221,9 +221,6 @@ contains
                    p%time         = time
                    p%tau_abs_curr = tau_abs
                    p%iran         = iran
-#ifdef DEBUG
-                   print*,'-exit propagation, photon escaped mesh domain'
-#endif
                    exit photon_propagation
                 endif
                 ! Finally, if we're here, the photon entered a cell within the current cpu domain so we go on. 
@@ -234,9 +231,6 @@ contains
 
                 ! there has been no interaction in the cell, tau_abs has been updated in gas_get_scatter_flag
                 ! -> move to next cell
-#ifdef DEBUG
-                print*,'--> exit cell, photon moves to cell',icellnew,ileaf,ind,ioct
-#endif
                 exit propag_in_cell
 
              end if
