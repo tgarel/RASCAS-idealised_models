@@ -185,7 +185,12 @@ contains
        do while (icell==icellnew)
           npush = npush + 1
           if (npush>10000) then
-             print*,'Too many pushes, npush>100 ',ppos(1),ppos(2),ppos(3)
+             print*,'Too many pushes, npush>10000 ',ppos(1),ppos(2),ppos(3)
+             print*,'k: ',kray(1), kray(2), kray(3)
+             print*,in_cell_finder(domesh,ppos),icell,icellnew
+             print*,'in_domain : ',domain_contains_point(ppos,domaine_calcul)
+             print*,'distance_to_border ',distance_to_border
+             print*,'cell_size : ',cell_size,cell_level
              stop
           endif
           ppos(1) = ppos(1) + merge(-1.0d0,1.0d0,kray(1)<0.0d0) * epsilon(ppos(1))

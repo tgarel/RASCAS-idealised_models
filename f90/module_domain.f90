@@ -195,32 +195,32 @@ contains
        indsel=0
        ii=0
        do i=1,n
-	 dx = xp(i,1)-dom%cu%center(1)
-	 if (dx > 0.5d0) then 
-		dx = dx -1.0d0 
-	 else if (dx < -0.5d0) then 
-		dx = dx + 1.0d0
-   	 end if 
-	 if (dx <= dom%cu%size*0.5d0) then 
-		dx = xp(i,2)-dom%cu%center(2)
-		 if (dx > 0.5d0) then 
-			dx = dx -1.0d0 
-		 else if (dx < -0.5d0) then 
-			dx = dx + 1.0d0
-	   	 end if 
-		 if (dx <= dom%cu%size*0.5d0) then 
-			dx = xp(i,3)-dom%cu%center(3)
-			 if (dx > 0.5d0) then 
-				dx = dx -1.0d0 
-			 else if (dx < -0.5d0) then 
-				dx = dx + 1.0d0
-   			 end if 
-			if (dx <= dom%cu%size*0.5d0) then
-				ii = ii + 1
-				indsel(ii) = I
-			endif
-		endif
-	 endif 
+          dx = xp(i,1)-dom%cu%center(1)
+          if (dx > 0.5d0) then 
+             dx = dx -1.0d0 
+          else if (dx < -0.5d0) then 
+             dx = dx + 1.0d0
+          end if
+          if (abs(dx) <= dom%cu%size*0.5d0) then 
+             dx = xp(i,2)-dom%cu%center(2)
+             if (dx > 0.5d0) then 
+                dx = dx -1.0d0 
+             else if (dx < -0.5d0) then 
+                dx = dx + 1.0d0
+             end if
+             if (abs(dx) <= dom%cu%size*0.5d0) then 
+                dx = xp(i,3)-dom%cu%center(3)
+                if (dx > 0.5d0) then 
+                   dx = dx -1.0d0 
+                else if (dx < -0.5d0) then 
+                   dx = dx + 1.0d0
+                end if
+                if (abs(dx) <= dom%cu%size*0.5d0) then
+                   ii = ii + 1
+                   indsel(ii) = I
+                endif
+             endif
+          endif
        enddo
        nsel=ii
        allocate(tmpi(1:nsel))
@@ -391,21 +391,21 @@ contains
        else if (dx < -0.5d0) then 
           dx = dx + 1.0d0
        end if
-       if (dx <= dom%cu%size*0.5d0) then 
+       if (abs(dx) <= dom%cu%size*0.5d0) then 
           dx = x(2)-dom%cu%center(2)
           if (dx > 0.5d0) then 
              dx = dx -1.0d0 
           else if (dx < -0.5d0) then 
              dx = dx + 1.0d0
           end if
-          if (dx <= dom%cu%size*0.5d0) then 
+          if (abs(dx) <= dom%cu%size*0.5d0) then 
              dx = x(3)-dom%cu%center(3)
              if (dx > 0.5d0) then 
                 dx = dx -1.0d0 
              else if (dx < -0.5d0) then 
                 dx = dx + 1.0d0
              end if
-             if (dx <= dom%cu%size*0.5d0) then
+             if (abs(dx) <= dom%cu%size*0.5d0) then
                 domain_contains_point=.true.
              end if
           end if
@@ -450,27 +450,27 @@ contains
        dd = x(1) - dom%cu%center(1)
        xc = x(1)
        if (dd > 0.5d0) then 
-          xc = x(1) -1.0d0 
+          xc = xc -1.0d0 
        else if (dd < -0.5d0) then 
-          xc = x(1) + 1.0d0
+          xc = xc + 1.0d0
        end if
        if ((xc+dx*0.5d0 < dom%cu%center(1)+dom%cu%size*0.5d0).and. &
             (xc-dx*0.5d0 > dom%cu%center(1)-dom%cu%size*0.5d0)) then
           dd = x(2) - dom%cu%center(2)
           xc = x(2)
           if (dd > 0.5d0) then 
-             xc = x(2) -1.0d0 
+             xc = xc -1.0d0 
           else if (dd < -0.5d0) then 
-             xc = x(2) + 1.0d0
+             xc = xc + 1.0d0
           end if
           if ((xc+dx*0.5d0 < dom%cu%center(2)+dom%cu%size*0.5d0).and. &
                (xc-dx*0.5d0 > dom%cu%center(2)-dom%cu%size*0.5d0)) then
              dd = x(3) - dom%cu%center(3)
              xc = x(3)
              if (dd > 0.5d0) then 
-                xc = x(3) -1.0d0 
+                xc = xc -1.0d0 
              else if (dd < -0.5d0) then 
-                xc = x(3) + 1.0d0
+                xc = xc + 1.0d0
              end if
              if ((xc+dx*0.5d0 < dom%cu%center(3)+dom%cu%size*0.5d0).and. &
                   (xc-dx*0.5d0 > dom%cu%center(3)-dom%cu%size*0.5d0)) then
