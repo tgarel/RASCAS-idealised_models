@@ -102,7 +102,7 @@ contains
     integer(kind=4)                :: i, icellnew, npush
     real(kind=8),dimension(3)      :: vgas, kray, cell_corner, posoct
     logical                        :: flagoutvol, in_domain
-    real(kind=8)                   :: epsilon_cell
+    real(kind=8)                   :: excess
     
     ! initialise ray tracing 
     ppos  = ray%x_em   ! emission position 
@@ -110,6 +110,13 @@ contains
     dist  = 0.0d0      ! distance covered
     tau   = 0.0d0      ! corresponding optical depth
     maxdist_cm = maxdist ! maxdist is now provided in cm ... 
+
+
+    ! check that the ray starts in the domain
+    if (.not. domain_contains_point(ppos,domaine_calcul)) then
+       print * ,'Ray outside domain at start '
+       stop
+    end if
     
     ! find the (leaf) cell in which the photon is, and define all its indices
     icell = in_cell_finder(domesh,ppos)
@@ -122,7 +129,7 @@ contains
     ioct  = icell - domesh%nCoarse - (ind - 1) * domesh%nOct
 
     ! advance ray until it escapes the computational domain ... 
-    ray_propagation : do 
+    ray_propagation : do
        
        ! gather properties properties of current cell
        cell_level   = domesh%octlevel(ioct)      ! level of current cell
@@ -147,7 +154,25 @@ contains
        
        ! compute (total) optical depth along ray in cell 
        tau_cell = gas_get_tau(cell_gas, distance_to_border_cm)
+
+       ! update traveled distance and optical depth
+       dist = dist + distance_to_border_cm
+       tau  = tau + tau_cell 
        
+       ! check if we reached tau or distance limits
+       if (dist > maxdist_cm .and. tau > maxtau) then ! dist or tau exceeding boundary -> correct excess and exit. 
+          if (maxdist_cm > 0) then
+             excess   = maxdist_cm - dist
+             ray%dist = maxdist_cm
+             ray%tau  = tau - (excess / distance_to_border_cm)*tau_cell
+          else
+             excess   = maxtau - tau
+             ray%dist = dist - (excess / tau_cell) * distance_to_border_cm 
+             ray%tau  = maxtau
+          end if
+          exit ray_propagation  ! no need to update other unused properties of ray. 
+       end if
+
        ! update head of ray position
        ppos = ppos + kray * distance_to_border *(1.0d0 + epsilon(1.0d0))
        ! correct for periodicity
@@ -156,27 +181,16 @@ contains
           if (ppos(i) > 1.0d0) ppos(i)=ppos(i)-1.0d0
        enddo
        
-       ! update traveled distance and optical depth
-       dist = dist + distance_to_border_cm
-       tau  = tau + tau_cell 
-       
-       ! check if photon still in computational domain
+       ! check if photon still in computational domain after position update
        in_domain = domain_contains_point(ppos,domaine_calcul)
-       if (.not.(in_domain)) exit ray_propagation  ! ray is done 
-       ! check if we reached tau or distance limits
-       if (dist > maxdist_cm .and. tau > maxtau) then ! dist or tau exceeding boundary -> correct excess and exit. 
-          if (maxdist_cm > 0) then
-             dborder  = maxdist_cm - dist
-             ray%dist = maxdist_cm
-             ray%tau  = tau + (dborder / distance_to_border_cm)*tau_cell
-          else
-             dborder  = maxtau - tau
-             ray%dist = dist + dborder / tau_cell * distance_to_border_cm 
-             ray%tau  = maxtau
-          end if
-          exit ray_propagation
+       if (.not.(in_domain)) then
+          ray%dist = dist
+          ray%tau  = tau
+          print*,'WARNING: escaping domain before maxdist or maxtau is reached... '
+          print*,'initial distance to border of domain [cm] : ',domain_distance_to_border(ray%x_em,domaine_calcul)*box_size_cm
+          print*,'maxdist [cm]                              : ',maxdist_cm
+          exit ray_propagation  ! ray is done 
        end if
-       
        ! Ray moves to next cell : find it
        call whereIsPhotonGoing(domesh,icell,ppos,icellnew,flagoutvol)
        ! It may happen due to numerical precision that the photon is still in the current cell (i.e. icell == icellnew).
@@ -184,13 +198,8 @@ contains
        npush = 0
        do while (icell==icellnew)
           npush = npush + 1
-          if (npush>10000) then
-             print*,'Too many pushes, npush>10000 ',ppos(1),ppos(2),ppos(3)
-             print*,'k: ',kray(1), kray(2), kray(3)
-             print*,in_cell_finder(domesh,ppos),icell,icellnew
-             print*,'in_domain : ',domain_contains_point(ppos,domaine_calcul)
-             print*,'distance_to_border ',distance_to_border
-             print*,'cell_size : ',cell_size,cell_level
+          if (npush>100) then
+             print*,'Too many pushes, npush>100 '
              stop
           endif
           ppos(1) = ppos(1) + merge(-1.0d0,1.0d0,kray(1)<0.0d0) * epsilon(ppos(1))
@@ -201,18 +210,19 @@ contains
              if (ppos(i) < 0.0d0) ppos(i)=ppos(i)+1.0d0
              if (ppos(i) > 1.0d0) ppos(i)=ppos(i)-1.0d0
           enddo
+          ! test that we are still in domain before calling WhereIsPhotonGoing... 
+          in_domain = domain_contains_point(ppos,domaine_calcul)
+          if (.not.(in_domain)) then
+             ray%dist = dist
+             ray%tau  = tau
+             print*,'WARNING: escaping domain before maxdist or maxtau is reached... '
+             print*,'initial distance to border of domain [cm] : ',domain_distance_to_border(ray%x_em,domaine_calcul)*box_size_cm
+             print*,'maxdist [cm]                              : ',maxdist_cm
+             exit ray_propagation  ! ray is done 
+          end if
           call whereIsPhotonGoing(domesh,icell,ppos,icellnew,flagoutvol)
        end do
-       if (npush > 1) print*,'WARNING : npush > 1 needed in module_photon:propagate.'
-       ! test whether photon was pushed out of domain with the extra pushes
-       ! (and in that case, call it done). 
-       if (npush > 0) then 
-          in_domain = domain_contains_point(ppos,domaine_calcul)
-          if (.not. in_domain) then
-             print*,'WARNING: pushed photon outside domain ... ',ppos
-             exit ray_propagation
-          end if
-       end if
+       if (npush > 1) print*,'WARNING : npush > 1 needed in module_gray_ray:propagate.'
        
        ! check if photon outside of cpu domain (flagoutvol)
        if(flagoutvol)then
