@@ -23,7 +23,7 @@ module module_MgII_2796_model
   real(kind=8),parameter :: lambda12_cm    = lambda12 / cmtoA         ! [cm]
   real(kind=8),parameter :: nu12           = clight / lambda12_cm     ! [Hz]
   real(kind=8),parameter :: f12            = 0.608d0                  ! oscillator strength
-  real(kind=8),parameter :: sigma12_factor = pi*e_ch**2*f12/me/clight ! multiply by Voigt(x,a)/nu_D to get sigma.
+  real(kind=8),parameter :: sigma12_factor = pi*e_ch**2*f12/me/clight ! multiply by Voigt(x,a)/delta_nu_doppler to get sigma.
   real(kind=8),parameter :: A21            = 2.60d8                   ! spontaneous decay [/s]
 
   public :: get_tau_MgII_2796, scatter_MgII_2796, read_MgII_2796_params, print_MgII_2796_params
@@ -45,16 +45,16 @@ contains
     ! --------------------------------------------------------------------------
     
     real(kind=8),intent(in) :: nMgII,vth,distance_to_border_cm,nu_cell
-    real(kind=8)            :: nu_D,x_cell,sigma,a,h,get_tau_MgII_2796
+    real(kind=8)            :: delta_nu_doppler,x_cell,sigma,a,h,get_tau_MgII_2796
 
     ! compute Doppler width and a-parameter
-    nu_D = vth / lambda12_cm
-    a    = A21 / (fourpi * nu_D)
+    delta_nu_doppler = vth / lambda12_cm
+    a = A21 / (fourpi * delta_nu_doppler)
 
     ! cross section of MgII-2796
-    x_cell = (nu_cell - nu12) / nu_D
+    x_cell = (nu_cell - nu12) / delta_nu_doppler
     h      = voigt_fit(x_cell,a)
-    sigma  = sigma12_factor / nu_D * h
+    sigma  = sigma12_factor / delta_nu_doppler * h
 
     get_tau_MgII_2796 = sigma * nMgII * distance_to_border_cm
    

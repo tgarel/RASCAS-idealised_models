@@ -9,7 +9,6 @@ SYSTYPE="mac"
 #SYSTYPE="ccage"
 
 OPTIONS = -cpp
-#OPTIONS += -DDEBUG
 
 
 ifeq ($(SYSTYPE),"lyocral")

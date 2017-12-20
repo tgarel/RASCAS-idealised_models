@@ -24,7 +24,7 @@ module module_SiII_1190_model
   real(kind=8),parameter :: lambda14_cm    = lambda14 / cmtoA         ! [cm]
   real(kind=8),parameter :: nu14           = clight / lambda14_cm     ! [Hz]
   real(kind=8),parameter :: f14            = 0.277d0                  ! oscillator strength
-  real(kind=8),parameter :: sigma14_factor = pi*e_ch**2*f14/me/clight ! multiply by Voigt(x,a)/nu_D to get sigma.
+  real(kind=8),parameter :: sigma14_factor = pi*e_ch**2*f14/me/clight ! multiply by Voigt(x,a)/delta_nu_doppler to get sigma.
   real(kind=8),parameter :: A41            = 6.53d8                   ! spontaneous decay [/s]
 
   ! transition between levels 2 and 4
@@ -54,16 +54,16 @@ contains
     ! --------------------------------------------------------------------------
     
     real(kind=8),intent(in) :: nSiII,vth,distance_to_border_cm,nu_cell
-    real(kind=8)            :: nu_D,x_cell,sigma,a,h,get_tau_SiII_1190
+    real(kind=8)            :: delta_nu_doppler,x_cell,sigma,a,h,get_tau_SiII_1190
 
     ! compute Doppler width and a-parameter
-    nu_D = vth / lambda14_cm
-    a    = A41 / (fourpi * nu_D)
+    delta_nu_doppler = vth / lambda14_cm
+    a    = A41 / (fourpi *  delta_nu_doppler)
 
     ! cross section of SiII-1193.28
-    x_cell = (nu_cell - nu14) / nu_D
+    x_cell = (nu_cell - nu14) / delta_nu_doppler
     h      = voigt_fit(x_cell,a)
-    sigma  = sigma14_factor / nu_D * h
+    sigma  = sigma14_factor / delta_nu_doppler * h
 
     get_tau_SiII_1190 = sigma * nSiII * distance_to_border_cm
    

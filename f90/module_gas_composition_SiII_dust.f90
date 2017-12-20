@@ -31,7 +31,7 @@ module module_gas_composition
   ! --------------------------------------------------------------------------
   ! user-defined parameters - read from section [gas_composition] of the parameter file
   ! --------------------------------------------------------------------------
-  ! mixture parameters 
+  ! mixture parameters
   real(kind=8)             :: f_ion           = 0.01   ! ndust = (n_HI + f_ion*n_HII) * Z/Zsun [Laursen+09]
   real(kind=8)             :: Zref            = 0.005  ! reference metallicity. Should be ~ 0.005 for SMC and ~ 0.01 for LMC. 
   ! possibility to overwrite ramses values with an ad-hoc model 
@@ -127,15 +127,7 @@ contains
     g(:)%nSiII    = fix_nSiII
     g(:)%dopwidth = fix_vth
     g(:)%ndust    = fix_ndust
-       
-#ifdef DEBUG
-    print*,'in overwrite_gas: allocated g?',shape(g)
-    print*,'in overwrite_gas: ',minval(g%nsiII),maxval(g%nsiII)
-    print*,'in overwrite_gas: ',minval(g%dopwidth),maxval(g%dopwidth)
-    print*,'in overwrite_gas: ',minval(g%v),maxval(g%v)
-    print*,'in overwrite_gas: ',box_size_cm
-#endif
-
+    
   end subroutine overwrite_gas
 
 
