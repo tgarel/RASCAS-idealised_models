@@ -22,9 +22,9 @@ class header(object):
         self.unit_t  = float(f.readline().split()[2])
         line         = f.readline()    # skip this line
         f.close()
-        print '   aexp & z                  =',self.aexp,(1./self.aexp)-1.
-        print '   scale_l, scale_d, scale_t =',self.unit_l,self.unit_d,self.unit_t
-        print '   simulation time [Myr]     =',self.time*self.unit_t/(365.*24.*3600.*1e6)
+        print('   aexp & z                  =',self.aexp,(1./self.aexp)-1.)
+        print('   scale_l, scale_d, scale_t =',self.unit_l,self.unit_d,self.unit_t)
+        print('   simulation time [Myr]     =',self.time*self.unit_t/(365.*24.*3600.*1e6))
     
 
 class stars(object):
@@ -36,10 +36,10 @@ class stars(object):
         self.units = 'pos in box units, vel in cm/s, mass in g, age in Myr, Z in absolute value'
 
     def load(self):
-        print "   Reading Subvol file: ", self.file
+        print("   Reading Subvol file: ", self.file)
         f = ff(self.file)
         [nstar] = f.read_ints()
-        print '   nstar =',nstar
+        print('   nstar =',nstar)
         xx = f.read_reals('d')
         #xx = xx.reshape((nstar,3),order='F')
         xx = xx.reshape((nstar,3))
@@ -81,5 +81,5 @@ class stars(object):
         self.vz *= scale_v
 
         self.units = 'pos in kpc, vel in km/s, mass in Msun, age in Myr, Z in absolute value'
-        print "   Units: pos in kpc, vel in km/s, masses in Msun"    
+        print("   Units: pos in kpc, vel in km/s, masses in Msun")
 

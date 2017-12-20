@@ -57,10 +57,10 @@ class sphere(domain):
         return 4./3.*np.pi*(self.radius)**3.
 
     def info(self):
-        print "domain INFO:"
-        print "|_shape  =",self.shape
-        print "|_radius =",self.radius
-        print "|_center =",self.center
+        print("domain INFO:")
+        print("|_shape  =",self.shape)
+        print("|_radius =",self.radius)
+        print("|_center =",self.center)
 
 
 class cube(domain):
@@ -77,10 +77,10 @@ class cube(domain):
         return (self.size)**3.
 
     def info(self):
-        print "domain INFO:"
-        print "|_shape  =",self.shape
-        print "|_size   =",self.radius
-        print "|_center =",self.center
+        print("domain INFO:")
+        print("|_shape  =",self.shape)
+        print("|_size   =",self.radius)
+        print("|_center =",self.center)
 
 class shell(domain):
 
@@ -97,11 +97,11 @@ class shell(domain):
         return 4./3.*np.pi*(self.rout**3.-self.rin**3.)
 
     def info(self):
-        print "domain INFO:"
-        print "|_shape  =",self.shape
-        print "|_center =",self.center
-        print "|_rin    =",self.rin
-        print "|_rout   =",self.rout
+        print("domain INFO:")
+        print("|_shape  =",self.shape)
+        print("|_center =",self.center)
+        print("|_rin    =",self.rin)
+        print("|_rout   =",self.rout)
 
         
 def overplot_limits(domain, color=None, linestyle=None, linewidth=None):
