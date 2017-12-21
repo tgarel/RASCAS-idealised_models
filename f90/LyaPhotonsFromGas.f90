@@ -19,7 +19,7 @@ program LyaPhotonsFromGas
   integer(kind=4), allocatable :: emitting_cells(:),leaf_level(:)
   real(kind=8),allocatable     :: x_leaf(:,:),ramses_var(:,:),recomb_em(:),coll_em(:),v_leaf(:,:),HIDopWidth(:),cell_volume_vs_level(:)
   real(kind=8)                 :: r1, r2, dx, dv, nu, scalar, recomb_total,coll_total,k(3), boxsize,maxrec,maxcol
-  real(kind=8)                 :: start_photpacket,end_photpacket
+  real(kind=8)                 :: start_photpacket,end_photpacket,x(3)
   logical                      :: ok 
   integer(kind=4),allocatable :: iseed_array(:)
   real(kind=8),allocatable :: nu_em(:),x_em(:,:),k_em(:,:),nu_cell(:)
@@ -83,6 +83,8 @@ program LyaPhotonsFromGas
   if (verbose) print*,'done reading'
   call select_in_domain(emission_domain,nleaftot,x_leaf,emitting_cells)
   nsel = size(emitting_cells)
+
+  
   if (verbose) print*,'done selecting cells in domain'
   allocate(recomb_em(nsel),coll_em(nsel),HIDopWidth(nsel))
   call ramses_get_LyaEmiss_HIDopwidth(repository,snapnum,nleaftot,nvar,ramses_var,recomb_em,coll_em,HIDopWidth,sample=emitting_cells)
@@ -103,8 +105,10 @@ program LyaPhotonsFromGas
      coll_em(i)   = coll_em(i) * dv
      if (coll_em(i) > maxcol) maxcol = coll_em(i) 
   end do
+  
   recomb_total = sum(recomb_em) / (planck*nu_0)  ! nb of photons per second
   coll_total   = sum(coll_em) / (planck*nu_0)  ! nb of photons per second
+
   recomb_em = recomb_em / maxrec
   coll_em   = coll_em / maxcol
   allocate(v_leaf(3,nleaftot))
@@ -148,22 +152,27 @@ program LyaPhotonsFromGas
            ! success : draw photon's ICs
            j  = emitting_cells(i)
            dx = 1.d0 / 2**leaf_level(j)
-           ! draw photon position in cell 
-           x_em(1,iphot)  = (ran3(iseed)-0.5d0) * dx + x_leaf(j,1)
-           x_em(2,iphot)  = (ran3(iseed)-0.5d0) * dx + x_leaf(j,2)
-           x_em(3,iphot)  = (ran3(iseed)-0.5d0) * dx + x_leaf(j,3)
-           ! draw propagation direction
-           call isotropic_direction(k,iseed)
-           k_em(:,iphot) = k
-           ! compute frequency in cell frame
-           r1 = ran3(iseed)
-           r2 = ran3(iseed)
-           nu = sqrt(-2.*log(r1)) * cos(2.0d0*pi*r2)
-           nu_cell(iphot) = (HIDopWidth(i) * nu_0 / clight) * nu + nu_0
-           ! compute frequency in exteral frame 
-           scalar = k(1)*v_leaf(1,j) + k(2)*v_leaf(2,j) + k(3)*v_leaf(3,j)
-           nu_em(iphot)  = nu_cell(iphot) / (1d0 - scalar/clight)
-           ok = .true.
+           ! draw photon position in cell
+           x(1)  = (ran3(iseed)-0.5d0) * dx + x_leaf(j,1)
+           x(2)  = (ran3(iseed)-0.5d0) * dx + x_leaf(j,2)
+           x(3)  = (ran3(iseed)-0.5d0) * dx + x_leaf(j,3)
+           ! check that photon is inside emission domain and if so keep it. 
+           ! (it may happen that a cell is only partly included ...)
+           if (domain_contains_point(x,emission_domain)) then 
+              x_em(:,iphot)  = x(:)
+              ! draw propagation direction
+              call isotropic_direction(k,iseed)
+              k_em(:,iphot) = k
+              ! compute frequency in cell frame
+              r1 = ran3(iseed)
+              r2 = ran3(iseed)
+              nu = sqrt(-2.*log(r1)) * cos(2.0d0*pi*r2)
+              nu_cell(iphot) = (HIDopWidth(i) * nu_0 / clight) * nu + nu_0
+              ! compute frequency in exteral frame 
+              scalar = k(1)*v_leaf(1,j) + k(2)*v_leaf(2,j) + k(3)*v_leaf(3,j)
+              nu_em(iphot)  = nu_cell(iphot) / (1d0 - scalar/clight)
+              ok = .true.
+           end if
         end if
      end do
      iseed_array(OMP_get_thread_num()) = iseed
@@ -232,21 +241,26 @@ program LyaPhotonsFromGas
            j  = emitting_cells(i)
            dx = 1.d0 / 2**leaf_level(j)
            ! draw photon position in cell 
-           x_em(1,iphot)  = (ran3(iseed)-0.5d0) * dx + x_leaf(j,1)
-           x_em(2,iphot)  = (ran3(iseed)-0.5d0) * dx + x_leaf(j,2)
-           x_em(3,iphot)  = (ran3(iseed)-0.5d0) * dx + x_leaf(j,3)
-           ! draw propagation direction
-           call isotropic_direction(k,iseed)
-           k_em(:,iphot) = k
-           ! compute frequency in cell frame
-           r1 = ran3(iseed)
-           r2 = ran3(iseed)
-           nu = sqrt(-2.*log(r1)) * cos(2.0d0*pi*r2)
-           nu_cell(iphot) = (HIDopWidth(i) * nu_0 / clight) * nu + nu_0
-           ! compute frequency in exteral frame 
-           scalar = k(1)*v_leaf(1,j) + k(2)*v_leaf(2,j) + k(3)*v_leaf(3,j)
-           nu_em(iphot)  = nu_cell(iphot) / (1d0 - scalar/clight)
-           ok = .true.
+           x(1)  = (ran3(iseed)-0.5d0) * dx + x_leaf(j,1)
+           x(2)  = (ran3(iseed)-0.5d0) * dx + x_leaf(j,2)
+           x(3)  = (ran3(iseed)-0.5d0) * dx + x_leaf(j,3)
+           ! check that photon is inside emission domain and if so keep it. 
+           ! (it may happen that a cell is only partly included ...)
+           if (domain_contains_point(x,emission_domain)) then 
+              x_em(:,iphot)  = x(:)
+              ! draw propagation direction
+              call isotropic_direction(k,iseed)
+              k_em(:,iphot) = k
+              ! compute frequency in cell frame
+              r1 = ran3(iseed)
+              r2 = ran3(iseed)
+              nu = sqrt(-2.*log(r1)) * cos(2.0d0*pi*r2)
+              nu_cell(iphot) = (HIDopWidth(i) * nu_0 / clight) * nu + nu_0
+              ! compute frequency in exteral frame 
+              scalar = k(1)*v_leaf(1,j) + k(2)*v_leaf(2,j) + k(3)*v_leaf(3,j)
+              nu_em(iphot)  = nu_cell(iphot) / (1d0 - scalar/clight)
+              ok = .true.
+           end if
         end if
      end do
      iseed_array(OMP_get_thread_num()) = iseed
