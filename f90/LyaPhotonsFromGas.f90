@@ -15,7 +15,7 @@ program LyaPhotonsFromGas
   
   character(2000)              :: parameter_file,filename
   type(domain)                 :: emission_domain
-  integer(kind=4)              :: nleaftot,nvar,narg,nsel,i,iphot,j,iseed,lmax
+  integer(kind=4)              :: nleaftot,nvar,narg,nsel,i,iphot,j,iseed,lmax,ii
   integer(kind=4), allocatable :: emitting_cells(:),leaf_level(:)
   real(kind=8),allocatable     :: x_leaf(:,:),ramses_var(:,:),recomb_em(:),coll_em(:),v_leaf(:,:),HIDopWidth(:),cell_volume_vs_level(:)
   real(kind=8)                 :: r1, r2, dx, dv, nu, scalar, recomb_total,coll_total,k(3), boxsize,maxrec,maxcol
@@ -84,7 +84,6 @@ program LyaPhotonsFromGas
   call select_in_domain(emission_domain,nleaftot,x_leaf,emitting_cells)
   nsel = size(emitting_cells)
 
-  
   if (verbose) print*,'done selecting cells in domain'
   allocate(recomb_em(nsel),coll_em(nsel),HIDopWidth(nsel))
   call ramses_get_LyaEmiss_HIDopwidth(repository,snapnum,nleaftot,nvar,ramses_var,recomb_em,coll_em,HIDopWidth,sample=emitting_cells)
@@ -128,7 +127,7 @@ program LyaPhotonsFromGas
   !$OMP PARALLEL &
   !$OMP DEFAULT(PRIVATE) &
   !$OMP SHARED(recomb_em,emitting_cells,leaf_level,x_em,x_leaf,k_em,nu_cell,HIDopWidth,nu_em,v_leaf,iseed_array, &
-  !$OMP        ranseed,nphotons,nsel) 
+  !$OMP        ranseed,nphotons,nsel,emission_domain) 
   !$OMP MASTER
   allocate(iseed_array(0:OMP_get_num_threads()-1))
   do i=0,OMP_get_num_threads()-1
@@ -216,7 +215,7 @@ program LyaPhotonsFromGas
   !$OMP PARALLEL &
   !$OMP DEFAULT(PRIVATE) &
   !$OMP SHARED(coll_em,emitting_cells,leaf_level,x_em,x_leaf,k_em,nu_cell,HIDopWidth,nu_em,v_leaf,iseed_array, &
-  !$OMP        ranseed,nphotons,nsel) 
+  !$OMP        ranseed,nphotons,nsel,emission_domain) 
   !$OMP MASTER
   allocate(iseed_array(0:OMP_get_num_threads()-1))
   do i=0,OMP_get_num_threads()-1
