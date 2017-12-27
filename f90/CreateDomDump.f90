@@ -102,7 +102,13 @@ program CreateDomDump
      print '(" --> Time to read all leaves in fullbox = ",f12.3," seconds.")',finish-start
   end if
   if (reading_method == 'fullbox_omp') then
-     call read_leaf_cells_omp(repository, snapnum, nleaftot, nvar, x_leaf, ramses_var, leaf_level)
+     ncpu_read = get_ncpu(repository,snapnum)
+     allocate(cpu_list(1:ncpu_read))
+     do i=1,ncpu_read
+        cpu_list(i)=i
+     end do
+
+     call read_leaf_cells_omp(repository, snapnum, ncpu_read, cpu_list, nleaftot, nvar, x_leaf, ramses_var, leaf_level)
      ! Extract and convert properties of cells into gas mix properties
      call gas_from_ramses_leaves(repository,snapnum,nleaftot,nvar,ramses_var, gas_leaves)
      call cpu_time(finish)
@@ -203,9 +209,9 @@ program CreateDomDump
            zmin = decomp_dom_zc(i) - decomp_dom_thickness(i)*0.5d0
         end select
         call get_cpu_list(repository, snapnum, xmin,xmax,ymin,ymax,zmin,zmax, ncpu_read, cpu_list)
-        call read_leaf_cells_in_domain(repository, snapnum, domain_list(i), ncpu_read, cpu_list, &
-             & nleaftot, nvar, x_leaf, ramses_var, leaf_level)
-        print*,nleaftot
+        !call read_leaf_cells_in_domain(repository, snapnum, domain_list(i), ncpu_read, cpu_list, &
+        !     & nleaftot, nvar, x_leaf, ramses_var, leaf_level)
+        call read_leaf_cells_omp(repository, snapnum, ncpu_read, cpu_list, nleaftot, nvar, x_leaf, ramses_var, leaf_level)
         ! Extract and convert properties of cells into gas mix properties
         call gas_from_ramses_leaves(repository,snapnum,nleaftot,nvar,ramses_var, gas_leaves)
         call cpu_time(finish)

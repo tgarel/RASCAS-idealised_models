@@ -97,11 +97,11 @@ module module_ramses
   ! --------------------------------------------------------------------------
 
   
-  public  :: get_cpu_list
+  public  :: get_cpu_list,get_ncpu
   public  :: ramses_get_nhi_nhei_nehii_cgs, read_leaf_cells_in_domain, read_leaf_cells_omp
   public  :: read_leaf_cells, get_ngridtot, ramses_get_velocity_cgs, ramses_get_T_nhi_cgs, ramses_get_metallicity, ramses_get_box_size_cm, ramses_get_nh_cgs
   public  :: ramses_read_stars_in_domain, read_ramses_params, print_ramses_params, dump_ramses_info, ramses_get_T_nSiII_cgs, ramses_get_T_nMgII_cgs
-  ! default is private now ... !! private :: read_hydro, read_amr, get_nleaf, get_nvar, clear_amr, get_ncpu, get_param_real
+  ! default is private now ... !! private :: read_hydro, read_amr, get_nleaf, get_nvar, clear_amr, get_param_real
 
   !==================================================================================
 contains
@@ -168,8 +168,8 @@ contains
   end subroutine read_leaf_cells
 
   
-  subroutine read_leaf_cells_omp(repository, snapnum, nleaftot, nvar, &
-       & xleaf_all, ramses_var_all, leaf_level_all)
+  subroutine read_leaf_cells_omp(repository, snapnum, ncpu_read, cpu_list &
+       , nleaftot, nvar, xleaf_all, ramses_var_all, leaf_level_all)
 
     ! read all leaf cell from a simulation snapshot. Return standard 
     ! ramses ramses variables through ramses_var(nvar,nleaftot) and
@@ -177,7 +177,8 @@ contains
     implicit none 
 
     character(2000),intent(in)                :: repository
-    integer(kind=4),intent(in)                :: snapnum
+    integer(kind=4),intent(in)                :: snapnum, ncpu_read
+    integer(kind=4),dimension(:),allocatable,intent(in) :: cpu_list
     integer(kind=4),intent(inout)             :: nleaftot, nvar
     real(kind=8),allocatable, intent(inout)   :: ramses_var_all(:,:)
     real(kind=8),allocatable,intent(inout)    :: xleaf_all(:,:)
@@ -185,7 +186,7 @@ contains
     real(kind=8),allocatable                  :: ramses_var(:,:)
     real(kind=8),allocatable                  :: xleaf(:,:)
     integer(kind=4),allocatable               :: leaf_level(:)
-    integer(kind=4)                           :: icpu, ileaf, icell, ivar, ilast, iloop
+    integer(kind=4)                           :: k, icpu, ileaf, icell, ivar, ilast, iloop
     logical                                   :: do_allocs
     
     if(verbose)then
@@ -197,11 +198,11 @@ contains
     nleaftot = get_nleaf(repository,snapnum)  ! sets ncpu too 
     nvar     = get_nvar(repository,snapnum)
     allocate(ramses_var_all(nvar,nleaftot), xleaf_all(nleaftot,3), leaf_level_all(nleaftot))
-    ncpu = get_ncpu(repository,snapnum)
+    !ncpu = get_ncpu(repository,snapnum)
 
     if(verbose) then
        print*,' '
-       print *,'--> nleaftot, nvar, ncpu =',nleaftot,nvar,ncpu
+       print *,'--> nleaftot, nvar, ncpu =',nleaftot,nvar,ncpu_read
        print*,' '
     end if
 
@@ -210,11 +211,12 @@ contains
     ilast = 1
 !$OMP PARALLEL &
 !$OMP DEFAULT(private) &
-!$OMP SHARED(iloop, ilast, xleaf_all, leaf_level_all, ramses_var_all, repository, snapnum, nvar, nleaftot, ncpu)
+!$OMP SHARED(iloop, ilast, xleaf_all, leaf_level_all, ramses_var_all, repository, snapnum, nvar, nleaftot, ncpu_read, cpu_list)
     do_allocs = .true.
 !$OMP DO
-    do icpu = 1, ncpu
-       
+    do k=1,ncpu_read
+    !do icpu = 1, ncpu
+       icpu=cpu_list(k)
        call read_amr_hydro(repository,snapnum,icpu,&
             & son,cpu_map,var,cell_x,cell_y,cell_z,cell_level,ncell)
        
@@ -237,9 +239,9 @@ contains
        
 !$OMP CRITICAL
        ! only one CRITICAL zone
-       write (*, "(A, f5.2, A, A)", advance='no') &           ! Progress bar
-            ' Reading leaves ',dble(iloop) / ncpu * 100,' % ',char(13)
-       iloop=iloop+1
+       !write (*, "(A, f5.2, A, A)", advance='no') &           ! Progress bar
+       !     ' Reading leaves ',dble(iloop) / ncpu_read * 100,' % ',char(13)
+       !iloop=iloop+1
 
        ! ileaf is now the number of leaves on local cpu
        if(ileaf .gt. 0) then
@@ -371,6 +373,8 @@ contains
     character(512)             :: line,name,value,orderingtype
     integer(kind=4)            :: i, impi
     integer(kind=4),parameter  :: param_unit = 13
+
+    print*,'trying to read hilbert key'
 
     not_ok = .true.
     write(nomfich,'(a,a,i5.5,a,i5.5,a)') trim(repository),'/output_',snapnum,'/info_',snapnum,'.txt'
@@ -1713,11 +1717,11 @@ contains
     do_allocs = .true. 
 !$OMP DO SCHEDULE(DYNAMIC, 10) 
     do icpu = 1, ncpu
-!$OMP CRITICAL
-       write (*, "(A, f5.2, A, A)", advance='no') &           ! Progress bar
-            ' Reading nleaftot ',dble(iloop) / ncpu * 100,' % ',char(13)
-       iloop=iloop+1
-!$OMP END CRITICAL
+!!!!$OMP CRITICAL
+!!!       write (*, "(A, f5.2, A, A)", advance='no') &           ! Progress bar
+!!!            ' Reading nleaftot ',dble(iloop) / ncpu * 100,' % ',char(13)
+!!!       iloop=iloop+1
+!!!!$OMP END CRITICAL
 
        iunit = icpu+10
        write(nomfich,'(a,a,i5.5,a,i5.5,a,i5.5)') trim(repository),'/output_',snapnum,'/amr_',snapnum,'.out',icpu
