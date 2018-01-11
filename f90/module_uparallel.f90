@@ -8,7 +8,7 @@ module module_uparallel
   character(20) :: method = 'RASCAS'   ! may be 'Smith', 'Semelin', or 'RASCAS'
   real(kind=8)  :: xForGaussian = 8.0  ! above this value, use a Gaussian to draw u_parallel
 
-  logical       :: isRead=.False., isPrinted=.False. ! to avaid multiple reads and prints when called from different modules
+  logical       :: isRead=.False., isPrinted=.False. ! to avoid multiple reads and prints when called from different modules
 
   public :: get_uparallel,read_uparallel_params,print_uparallel_params
 
@@ -33,7 +33,7 @@ contains
     real(kind=8),intent(in)       :: y,a
     integer(kind=4),intent(inout) :: iran
     real(kind=8)                  :: get_uparallel
-    real(kind=8)                  :: u,coeff,u_0, signe,x,norm,r,p,theta1,xcw,la,la2
+    real(kind=8)                  :: u,coeff,u_0, signe,x,r,p,theta1,xcw,la,la2
     logical                       :: success
     real(kind=8),parameter        :: pi2=pi/2.
     integer(kind=4)               :: ctloc
@@ -107,7 +107,7 @@ contains
 
     else  ! For large x's, simply draw from a Gaussian
 
-       u = upar_from_gaussian(a,x,iran)
+       u = upar_from_gaussian(x,iran)
 
     end if
 
@@ -119,11 +119,11 @@ contains
 
   
 
-  function upar_from_gaussian(a,xin,iran)
+  function upar_from_gaussian(xin,iran)
     
     implicit none
     
-    real(kind=8),intent(in)       :: a,xin
+    real(kind=8),intent(in)       :: xin
     integer(kind=4),intent(inout) :: iran
     real(kind=8)                  :: r1,r2
     real(kind=8)                  :: u_mean

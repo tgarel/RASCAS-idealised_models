@@ -17,7 +17,7 @@ module module_D_model
   ! useful pre-computed quantities
   real(kind=8),parameter   :: lambda_0_cm = lambda_0 / cmtoA              ! cm
   real(kind=8),parameter   :: nu_0 = clight / lambda_0_cm                 ! Hz
-  real(kind=8),parameter   :: sigma_factor = pi*e_ch**2*f12/ me / clight ! cross-section factor-> multiply by Voigt(x,a)/nu_D to get sigma.
+  real(kind=8),parameter   :: sigma_factor = pi*e_ch**2*f12/ me / clight ! cross-section factor-> multiply by Voigt(x,a)/delta_nu_doppler to get sigma.
   real(kind=8),parameter   :: gamma_over_fourpi = gamma / fourpi
 
   ! user-defined parameters - read from section [Deuterium] of the parameter file 
@@ -46,16 +46,16 @@ contains
 
     real(kind=8),intent(in) :: ndi,vth,distance_to_border_cm,nu_cell
     real(kind=8)            :: get_tau_D
-    real(kind=8)            :: delta_nu_D, a, x, h, s
+    real(kind=8)            :: delta_nu_doppler, a, x, h, s
 
     ! compute Doppler width and a-parameter
-    delta_nu_D = vth / lambda_0_cm 
-    a          = gamma_over_fourpi / delta_nu_D
+    delta_nu_doppler = vth / lambda_0_cm 
+    a = gamma_over_fourpi / delta_nu_doppler
 
     ! Cross section of Deuterium
-    x = (nu_cell - nu_0)/delta_nu_D
+    x = (nu_cell - nu_0)/delta_nu_doppler
     h = voigt_fit(x,a)
-    s = sigma_factor / delta_nu_D * h  
+    s = sigma_factor / delta_nu_doppler * h  
 
     ! optical depth 
     get_tau_D = s * ndi * distance_to_border_cm
@@ -109,11 +109,7 @@ contains
 
     ! 1/ component parallel to photon's propagation
     ! -> get velocity of interacting atom parallel to propagation
-#ifdef SWITCH_OFF_UPARALLEL
-    upar = 0.5 
-#else
     upar = get_uparallel(x_cell,a,iran)
-#endif
     upar = upar * vth    ! upar is an x -> convert to a velocity 
 
     ! 2/ component perpendicular to photon's propagation
