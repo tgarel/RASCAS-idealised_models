@@ -29,6 +29,7 @@ program PhotonsFromStars
   integer(kind=4),allocatable :: star_iage(:),star_imet(:)
   real(kind=8),allocatable    :: star_beta(:) 
   real(kind=8)                :: total_flux,minflux,check_flux,f0,beta,betaplus2,lambda,x,dx1,dx2,dx
+  real(kind=8) :: dxage1,dxmet1,w,dxage2,dxmet2
   
   ! --------------------------------------------------------------------------
   ! user-defined parameters - read from section [PhotonsFromStars] of the parameter file
@@ -182,11 +183,9 @@ program PhotonsFromStars
   if (trim(weight_type) == 'PowLaw') allocate(star_beta(nstars))
   if (trim(weight_type) == 'Table') allocate(star_iage(nstars),star_imet(nstars))
   do i = 1,nstars
-     ! pick SED with closest metallicity and age (no interpolation for now)
+     ! pick SED with closest metallicity and age
      call locatedb(sed_met,sed_nmet,star_met(i),imet)
-     if (imet < 1) imet = 1
      call locatedb(sed_age,sed_nage,star_age(i),iage)
-     if (iage < 1) iage = 1
      ! correct mass for feedback (we need mass of stars formed)
      sweight(i) = star_mass(i) / msun  ! M_sun
      if (sed_age(iage) < tdelay_SN) then ! SNs go off at 10Myr ... 
@@ -195,7 +194,34 @@ program PhotonsFromStars
      ! compute luminosity
      select case (trim(weight_type))
      case('Mono')
-        sweight(i) = sweight(i) * sed_nphot(iage,imet)  ! nb of photons per sec. 
+        if (iage == 0) then
+           iage = 1
+           print*,'Star younger than min age in library, correcting (',star_age(i),')'
+           star_age(i) = sed_age(1)
+        else if (iage == sed_nage) then
+           print*,'Star older than max age in library, correcting (',star_age(i),')'
+           iage = sed_nage - 1
+           star_age(i) = sed_age(sed_nage)
+        end if
+        if (imet == 0) then
+           imet = 1
+           print*,'Star with lower Z than min Z in library, correcting (',star_met(i),')'
+           star_met(i) = sed_met(1)
+        else if (imet == sed_nmet) then 
+           print*,'Star with higher Z than min Z in library, correcting (',star_met(i),')'
+           imet = sed_nmet - 1
+           star_met(i) = sed_met(sed_nmet)
+        end if
+        ! interpolate in age and Z
+        dxage1 = star_age(i) - sed_age(iage)
+        dxage2 = sed_age(iage+1) - star_age(i) 
+        dxmet1 = star_met(i) - sed_met(imet)
+        dxmet1 = sed_met(imet+1) - star_met(i)         
+        w     = sed_nphot(iage,imet) * dxage2 * dxmet2 + &
+             &  sed_nphot(iage+1,imet) * dxage1 * dxmet2 + &
+             & sed_nphot(iage,imet+1) * dxage2 * dxmet1 + & 
+             & sed_nphot(iage+1 ,imet+1) * dxage1 * dxmet1
+        sweight(i) = sweight(i) * w  ! nb of photons per sec. 
      case ('Table')
         sweight(i) = sweight(i) * sed_nphot(iage,imet)  ! nb of photons per sec.
         star_iage(i) = iage

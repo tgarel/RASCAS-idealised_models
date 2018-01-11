@@ -233,7 +233,8 @@ contains
        ! ramses RT
        allocate(mu(1:nleaf))
        nhi  = ramses_var(1,:) * dp_scale_nh  * (1.d0 - ramses_var(ihii,:))   ! nb of H atoms per cm^3
-       mu   = 1.d0 / (XH * (1.d0*ramses_var(ihii,:) + 0.25d0*(1.d0-XH)*(1.d0 + ramses_var(iheii,:) + 2.d0*ramses_var(iheiii,:)))) ! assumes no metals
+       mu   = XH * (1.d0+ramses_var(ihii,:)) + 0.25d0*(1.d0-XH)*(1.d0 + ramses_var(iheii,:) + 2.d0*ramses_var(iheiii,:)) ! assumes no metals
+       mu   = 1.0d0 / mu
        temp = ramses_var(5,:) / ramses_var(1,:) * dp_scale_T2                ! T/mu [ K ]
        temp = temp * mu                                                      ! This is now T (in K) with no bloody mu ... 
        deallocate(mu)
@@ -414,8 +415,7 @@ contains
        n = nleaf
        subsample = .false. 
     end if
-    
-    
+
     if(ramses_rt)then
        do j=1,n
 
@@ -433,8 +433,8 @@ contains
           nhii   = nh * xhii
           nhi    = nh * (1.0d0 - xhii)
           n_e    = nHII + nHe * (xHeII + 2.0d0*xHeIII)
-          mu     = 1./( XH*(1.+xHII) + 0.25*(1.0d0-XH)*(1.+xHeII+2.*xHeIII) )
-          TK     = var(5,i)/nh*dp_scale_nh*mu*dp_scale_T2
+          mu     = 1./( XH*(1.+xHII) + 0.25d0*(1.0d0-XH)*(1.+xHeII+2.*xHeIII) )
+          TK     = var(5,i)/var(1,i)*mu*dp_scale_T2
           HIDopwidth(j) = sqrt((2.0d0*kb/mp)*TK)
           ! Cantalupo+(08)
           Ta = max(TK,100.0) ! no extrapolation..
@@ -480,7 +480,8 @@ contains
     if(ramses_rt)then
        ! ramses RT
        allocate(mu(1:nleaf))
-       mu   = 1.d0 / (XH * (1.d0*ramses_var(ihii,:) + 0.25d0*(1.d0-XH)*(1.d0 + ramses_var(iheii,:) + 2.d0*ramses_var(iheiii,:)))) ! assumes no metals
+       mu   = XH * (1.d0+ramses_var(ihii,:)) + 0.25d0*(1.d0-XH)*(1.d0 + ramses_var(iheii,:) + 2.d0*ramses_var(iheiii,:)) ! assumes no metals
+       mu   = 1.0d0 / mu
        temp = ramses_var(5,:) / ramses_var(1,:) * dp_scale_T2                ! T/mu [ K ]
        temp = temp * mu                                                      ! This is now T (in K) with no bloody mu ... 
        deallocate(mu)
@@ -595,7 +596,8 @@ contains
     if(ramses_rt)then
        ! ramses RT
        allocate(mu(1:nleaf))
-       mu   = 1.d0 / (XH * (1.d0*ramses_var(ihii,:) + 0.25d0*(1.d0-XH)*(1.d0 + ramses_var(iheii,:) + 2.d0*ramses_var(iheiii,:)))) ! assumes no metals
+       mu   = XH * (1.d0+ramses_var(ihii,:)) + 0.25d0*(1.d0-XH)*(1.d0 + ramses_var(iheii,:) + 2.d0*ramses_var(iheiii,:)) ! assumes no metals
+       mu   = 1.0d0 / mu
        temp = ramses_var(5,:) / ramses_var(1,:) * dp_scale_T2                ! T/mu [ K ]
        temp = temp * mu                                                      ! This is now T (in K) with no bloody mu ... 
        deallocate(mu)
