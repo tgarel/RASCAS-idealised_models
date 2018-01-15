@@ -78,6 +78,9 @@ module module_ramses
   ! ramses options (not guessable from outputs)
   logical                  :: self_shielding = .true.  ! if true, reproduce self-shielding approx made in ramses to compute nHI. 
   logical                  :: ramses_rt      = .false. ! if true, read ramses-RT output and compute nHI and T accordingly.
+  logical                  :: cosmo            = .true.  ! if false, assume idealised simulation
+  logical                  :: use_initial_mass = .false. ! if true, use initial masses of star particles instead of mass at output time
+  logical                  :: use_proper_time  = .false. ! if true, use proper time instead of conformal time for cosmo runs. 
   ! miscelaneous
   logical                  :: verbose        = .false. ! display some run-time info on this module
   ! RT variable indices, should become user params
@@ -1397,7 +1400,7 @@ contains
   !==================================================================================
   ! STARS utilities 
 
-  subroutine ramses_read_stars_in_domain(repository,snapnum,selection_domain,star_pos,star_age,star_mass,star_vel,star_met,cosmo)
+  subroutine ramses_read_stars_in_domain(repository,snapnum,selection_domain,star_pos,star_age,star_mass,star_vel,star_met)
 
     implicit none
 
@@ -1411,8 +1414,7 @@ contains
     integer(kind=4)                        :: ncpu,ilast,icpu,npart,i,ifield,nfields
     character(1000)                        :: filename
     integer(kind=4),allocatable            :: id(:)
-    real(kind=8),allocatable               :: age(:),m(:),x(:,:),v(:,:),mets(:),skipy(:)
-    logical, intent(in)                    :: cosmo
+    real(kind=8),allocatable               :: age(:),m(:),x(:,:),v(:,:),mets(:),skipy(:),imass(:)
     real(kind=8)                           :: temp(3)
         
     ! get cosmological parameters to convert conformal time into ages
@@ -1423,6 +1425,7 @@ contains
     ! compute cosmic time of simulation output (Myr)
     aexp  = get_param_real(repository,snapnum,'aexp') ! exp. factor of output
     stime = ct_aexp2time(aexp) ! cosmic time
+ 
     ! read units
     if (.not. conversion_scales_are_known) then 
        call read_conversion_scales(repository,snapnum)
@@ -1460,7 +1463,7 @@ contains
        read(11)
        read(11)
        allocate(age(1:npart))
-       allocate(x(1:npart,1:ndim),m(npart))
+       allocate(x(1:npart,1:ndim),m(npart),imass(npart))
        allocate(id(1:npart))
        allocate(mets(1:npart))
        allocate(v(1:npart,1:ndim))
@@ -1485,6 +1488,8 @@ contains
              read(11) age(1:npart)
           case('metal')
              read(11) mets(1:npart)
+          case('imass')
+             read(11) imass(1:npart)
           case default
              ! Note: we presume here that the unknown field is an 1d array of size 1:npart
              read(11) skipy(1:npart)
@@ -1503,16 +1508,22 @@ contains
              temp(:) = x(i,:)
              if (domain_contains_point(temp,selection_domain)) then ! it is inside the domain
                 if(cosmo)then
-                   ! Convert from conformal time to age in Myr
-                   star_age(ilast)   = (stime - ct_conftime2time(age(i)))*1.d-6 ! Myr
+                   if (use_proper_time) then
+                      star_age(ilast) = (stime - ct_proptime2time(age(i),h0))*1.d-6 ! Myr
+                   else
+                      ! Convert from conformal time to age in Myr
+                      star_age(ilast)   = (stime - ct_conftime2time(age(i)))*1.d-6 ! Myr
+                   end if
                 else
                    ! convert from tborn to age in Myr
                    star_age(ilast)   = max(0.d0, (time_cu - age(i)) * dp_scale_t / (365.d0*24.d0*3600.d0*1.d6))
                 endif
-                star_mass(ilast)  = m(i)   * dp_scale_m ! [g]
-                ! LEO: positions are supposed to be in box unit...
-                !star_pos(:,ilast) = x(i,:) * dp_scale_l ! [cm]
-                star_pos(:,ilast) = x(i,:)
+                if (use_initial_mass) then 
+                   star_mass(ilast) = imass(i) * dp_scale_m ! [g]
+                else
+                   star_mass(ilast) = m(i)     * dp_scale_m ! [g]
+                end if
+                star_pos(:,ilast) = x(i,:)              ! [code units]
                 star_vel(:,ilast) = v(i,:) * dp_scale_v ! [cm/s]
                 star_met(ilast) = mets(i) 
                 ilast = ilast + 1
@@ -1520,7 +1531,7 @@ contains
           end if
        end do
           
-       deallocate(age,m,x,id,mets,v,skipy)
+       deallocate(age,m,x,id,mets,v,skipy,imass)
 
     end do
 
@@ -1619,6 +1630,21 @@ contains
 
   end function ct_conftime2time
 
+  function ct_proptime2time(tau,h0)
+
+    ! return look-back time in yr
+    
+    implicit none 
+    
+    real(kind=8),intent(in) :: tau,h0
+    real(kind=8)            :: ct_proptime2time
+    integer(kind=4)         :: i
+    
+    
+    ct_proptime2time = tau / (h0 / 3.08d19) / (365.25*24.*3600.)
+    return
+
+  end function ct_proptime2time
 
   function ct_aexp2time(aexp)
 
@@ -1838,6 +1864,12 @@ contains
              read(value,*) self_shielding
           case ('ramses_rt')
              read(value,*) ramses_rt
+          case ('cosmo')
+             read(value,*) cosmo
+          case ('use_initial_mass')
+             read(value,*) use_initial_mass
+          case ('use_proper_time')
+             read(value,*) use_proper_time
           case ('verbose')
              read(value,*) verbose
           end select
@@ -1845,7 +1877,7 @@ contains
     end if
     close(10)
     return
-    
+
   end subroutine read_ramses_params
 
 
@@ -1861,14 +1893,20 @@ contains
 
     if (present(unit)) then 
        write(unit,'(a,a,a)') '[ramses]'
-       write(unit,'(a,L1)') '  self_shielding = ',self_shielding
-       write(unit,'(a,L1)') '  ramses_rt      = ',ramses_rt
-       write(unit,'(a,L1)') '  verbose        = ',verbose
+       write(unit,'(a,L1)') '  self_shielding   = ',self_shielding
+       write(unit,'(a,L1)') '  ramses_rt        = ',ramses_rt
+       write(unit,'(a,L1)') '  cosmo            = ',cosmo
+       write(unit,'(a,L1)') '  use_initial_mass = ',use_initial_mass
+       write(unit,'(a,L1)') '  use_proper_time  = ',use_proper_time
+       write(unit,'(a,L1)') '  verbose          = ',verbose
     else
        write(*,'(a,a,a)') '[ramses]'
-       write(*,'(a,L1)') '  self_shielding = ',self_shielding
-       write(*,'(a,L1)') '  ramses_rt      = ',ramses_rt
-       write(*,'(a,L1)') '  verbose        = ',verbose
+       write(*,'(a,L1)') '  self_shielding   = ',self_shielding
+       write(*,'(a,L1)') '  ramses_rt        = ',ramses_rt
+       write(*,'(a,L1)') '  cosmo            = ',cosmo
+       write(*,'(a,L1)') '  use_initial_mass = ',use_initial_mass
+       write(*,'(a,L1)') '  use_proper_time  = ',use_proper_time
+       write(*,'(a,L1)') '  verbose          = ',verbose
     end if
 
     return

@@ -89,7 +89,6 @@ program PhotonsFromStars
   integer(kind=4)           :: nphot   = 1000000      ! number of photons to generate
   integer(kind=4)           :: ranseed = -100         ! seed for random generator
   logical                   :: verbose = .true.
-  logical                   :: cosmo   = .true.       ! cosmo flag
   ! --------------------------------------------------------------------------
 
 
@@ -132,7 +131,8 @@ program PhotonsFromStars
   ! read star particles within domain
   ! --------------------------------------------------------------------------------------
   if (verbose) write(*,*) '> reading star particles'
-  call ramses_read_stars_in_domain(repository,snapnum,emission_domain,star_pos,star_age,star_mass,star_vel,star_met,cosmo)
+  call ramses_read_stars_in_domain(repository,snapnum,emission_domain,star_pos,star_age,star_mass,star_vel,star_met)
+  ! NB: star_mass should be the mass of stars formed (-> set use_initial_mass=T in [ramses] if possible).
   ! --------------------------------------------------------------------------------------
 
 
@@ -186,11 +186,11 @@ program PhotonsFromStars
      ! pick SED with closest metallicity and age
      call locatedb(sed_met,sed_nmet,star_met(i),imet)
      call locatedb(sed_age,sed_nage,star_age(i),iage)
-     ! correct mass for feedback (we need mass of stars formed)
+     
      sweight(i) = star_mass(i) / msun  ! M_sun
-     if (sed_age(iage) < tdelay_SN) then ! SNs go off at 10Myr ... 
-        sweight(i) = sweight(i)/recyc_frac  !! correct for recycling ... we want the mass of stars formed ...
-     end if
+     !if (sed_age(iage) < tdelay_SN) then ! SNs go off at 10Myr ... 
+     !   sweight(i) = sweight(i)/recyc_frac  !! correct for recycling ... we want the mass of stars formed ...
+     !end if
      ! compute luminosity
      select case (trim(weight_type))
      case('Mono')
@@ -199,13 +199,13 @@ program PhotonsFromStars
            print*,'Star younger than min age in library, correcting (',star_age(i),')'
            star_age(i) = sed_age(1)
         else if (iage == sed_nage) then
-           print*,'Star older than max age in library, correcting (',star_age(i),')'
+           !print*,'Star older than max age in library, correcting (',star_age(i),')'
            iage = sed_nage - 1
            star_age(i) = sed_age(sed_nage)
         end if
         if (imet == 0) then
            imet = 1
-           print*,'Star with lower Z than min Z in library, correcting (',star_met(i),')'
+           !print*,'Star with lower Z than min Z in library, correcting (',star_met(i),')'
            star_met(i) = sed_met(1)
         else if (imet == sed_nmet) then 
            print*,'Star with higher Z than min Z in library, correcting (',star_met(i),')'
@@ -216,12 +216,12 @@ program PhotonsFromStars
         dxage1 = star_age(i) - sed_age(iage)
         dxage2 = sed_age(iage+1) - star_age(i) 
         dxmet1 = star_met(i) - sed_met(imet)
-        dxmet1 = sed_met(imet+1) - star_met(i)         
+        dxmet2 = sed_met(imet+1) - star_met(i)         
         w     = sed_nphot(iage,imet) * dxage2 * dxmet2 + &
              &  sed_nphot(iage+1,imet) * dxage1 * dxmet2 + &
              & sed_nphot(iage,imet+1) * dxage2 * dxmet1 + & 
              & sed_nphot(iage+1 ,imet+1) * dxage1 * dxmet1
-        sweight(i) = sweight(i) * w  ! nb of photons per sec. 
+        sweight(i) = sweight(i) * w / (dxage1+dxage2)/(dxmet1+dxmet2) ! nb of photons per sec. 
      case ('Table')
         sweight(i) = sweight(i) * sed_nphot(iage,imet)  ! nb of photons per sec.
         star_iage(i) = iage
@@ -468,8 +468,6 @@ contains
              read(value,*) ranseed
           case ('verbose')
              read(value,*) verbose
-          case ('cosmo')
-             read(value,*) cosmo
           case default
              write(*,'(a,a,a)') '> WARNING: parameter ',trim(name),' unknown '
           end select
@@ -484,6 +482,9 @@ contains
        write(*,'(a,a,a,a)') '> ERROR: incompatible options : weight_type==',trim(weight_type),' and spec_type==',trim(spec_type)
        stop
     end if
+
+    call read_ramses_params(pfile)
+
     
     return
 
@@ -535,8 +536,8 @@ contains
        write(unit,'(a,i8)')          '  nphot           = ',nphot
        write(unit,'(a,i8)')          '  ranseed         = ',ranseed
        write(unit,'(a,L1)')          '  verbose         = ',verbose
-       write(unit,'(a,L1)')          '  cosmo           = ',cosmo
        write(unit,'(a)')             ' '
+       call print_ramses_params(unit)
     else
        write(*,'(a,a,a)')         '[PhotonsFromStars]'
        write(*,'(a)')             '# input / output parameters'
@@ -573,9 +574,9 @@ contains
        write(*,'(a,i8)')          '  nphot           = ',nphot
        write(*,'(a,i8)')          '  ranseed         = ',ranseed
        write(*,'(a,L1)')          '  verbose         = ',verbose
-       write(*,'(a,L1)')          '  cosmo           = ',cosmo
        write(*,'(a)')             ' '
-
+       call print_ramses_params()
+       
     end if
 
     return
