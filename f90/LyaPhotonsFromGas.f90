@@ -18,6 +18,7 @@ program LyaPhotonsFromGas
   integer(kind=4)              :: nleaftot,nvar,narg,nsel,i,iphot,j,iseed,lmax,ii
   integer(kind=4), allocatable :: emitting_cells(:),leaf_level(:)
   real(kind=8),allocatable     :: x_leaf(:,:),ramses_var(:,:),recomb_em(:),coll_em(:),v_leaf(:,:),HIDopWidth(:),cell_volume_vs_level(:)
+  real(kind=8),allocatable     :: coolingTime(:)
   real(kind=8)                 :: r1, r2, dx, dv, nu, scalar, recomb_total,coll_total,k(3), boxsize,maxrec,maxcol
   real(kind=8)                 :: start_photpacket,end_photpacket,x(3)
   logical                      :: ok 
@@ -41,6 +42,8 @@ program LyaPhotonsFromGas
   ! --- parameters
   integer(kind=4)           :: nphotons = 10000
   integer(kind=4)           :: ranseed  = -100
+  logical                   :: doRecombs = .false.  ! set to true to sample emission from recombinations
+  logical                   :: doColls   = .false.  ! set to true to sample emission from coll. excitations. 
   ! --- miscelaneous
   logical                   :: verbose = .true.
   ! ---------------------------------------------------------------------------
@@ -58,6 +61,10 @@ program LyaPhotonsFromGas
   if (verbose) call print_LyaPhotonsFromGas_params
   ! ----------------------------------------------------------------------------
 
+  if (.not. doRecombs .and. .not. doColls) then
+     print*,'Nothing to do ... '
+     stop
+  end if
 
   ! ------- Define the emission domain (region from which cells emit). ---------
   select case(emission_dom_type)
@@ -88,6 +95,9 @@ program LyaPhotonsFromGas
   allocate(recomb_em(nsel),coll_em(nsel),HIDopWidth(nsel))
   call ramses_get_LyaEmiss_HIDopwidth(repository,snapnum,nleaftot,nvar,ramses_var,recomb_em,coll_em,HIDopWidth,sample=emitting_cells)
   if (verbose) print*,'done computing emissivities'
+  allocate(coolingTime(nsel))
+  call ramses_get_cooling_time(repository,snapnum,nleaftot,nvar,ramses_var,coolingTime,sample=emitting_cells)
+  if (verbose) print*,'done computing cooling times (min/max=',minval(coolingTime)/(365.25d0*24.*3600.),maxval(coolingTime)/(365.25d0*24.*3600.),' yr)'
   lmax = 30
   allocate(cell_volume_vs_level(lmax))
   boxsize = ramses_get_box_size_cm(repository,snapnum)
@@ -117,181 +127,185 @@ program LyaPhotonsFromGas
 
   
   ! --------------------------------------------------------------------------------------
-  if (verbose) then
-     write(*,*) "> Starting to sample recombination emissivity" 
-     call cpu_time(start_photpacket)
-  end if
-  ! --------------------------------------------------------------------------------------
-  allocate(nu_em(nphotons),x_em(3,nphotons),k_em(3,nphotons),nu_cell(nphotons))
+  if (doRecombs) then 
+     if (verbose) then
+        write(*,*) "> Starting to sample recombination emissivity" 
+        call cpu_time(start_photpacket)
+     end if
+     ! --------------------------------------------------------------------------------------
+     allocate(nu_em(nphotons),x_em(3,nphotons),k_em(3,nphotons),nu_cell(nphotons))
 
-  !$OMP PARALLEL &
-  !$OMP DEFAULT(PRIVATE) &
-  !$OMP SHARED(recomb_em,emitting_cells,leaf_level,x_em,x_leaf,k_em,nu_cell,HIDopWidth,nu_em,v_leaf,iseed_array, &
-  !$OMP        ranseed,nphotons,nsel,emission_domain) 
-  !$OMP MASTER
-  allocate(iseed_array(0:OMP_get_num_threads()-1))
-  do i=0,OMP_get_num_threads()-1
-     iseed_array(i) = ranseed - i
-  end do
-  write(*,*) 'iseed array : '
-  do i = 0,OMP_get_num_threads()-1
-     write(*,*) iseed_array(i),ranseed
-  end do
-  !$OMP END MASTER
-  !$OMP BARRIER
-  !$OMP DO SCHEDULE(DYNAMIC, 10)
-  do iphot = 1,nphotons
-     iseed = iseed_array(OMP_get_thread_num())
-     ok = .false.
-     do while (.not. ok) 
-        i = int(ran3(iseed) * nsel)+1
-        if (i > nsel) i = nsel
-        r1 = ran3(iseed)
-        if (r1 <= recomb_em(i)) then
-           ! success : draw photon's ICs
-           j  = emitting_cells(i)
-           dx = 1.d0 / 2**leaf_level(j)
-           ! draw photon position in cell
-           x(1)  = (ran3(iseed)-0.5d0) * dx + x_leaf(j,1)
-           x(2)  = (ran3(iseed)-0.5d0) * dx + x_leaf(j,2)
-           x(3)  = (ran3(iseed)-0.5d0) * dx + x_leaf(j,3)
-           ! check that photon is inside emission domain and if so keep it. 
-           ! (it may happen that a cell is only partly included ...)
-           if (domain_contains_point(x,emission_domain)) then 
-              x_em(:,iphot)  = x(:)
-              ! draw propagation direction
-              call isotropic_direction(k,iseed)
-              k_em(:,iphot) = k
-              ! compute frequency in cell frame
-              r1 = ran3(iseed)
-              r2 = ran3(iseed)
-              nu = sqrt(-2.*log(r1)) * cos(2.0d0*pi*r2)
-              nu_cell(iphot) = (HIDopWidth(i) * nu_0 / clight) * nu + nu_0
-              ! compute frequency in exteral frame 
-              scalar = k(1)*v_leaf(1,j) + k(2)*v_leaf(2,j) + k(3)*v_leaf(3,j)
-              nu_em(iphot)  = nu_cell(iphot) / (1d0 - scalar/clight)
-              ok = .true.
-           end if
-        end if
+     !$OMP PARALLEL &
+     !$OMP DEFAULT(PRIVATE) &
+     !$OMP SHARED(recomb_em,emitting_cells,leaf_level,x_em,x_leaf,k_em,nu_cell,HIDopWidth,nu_em,v_leaf,iseed_array, &
+     !$OMP        ranseed,nphotons,nsel,emission_domain) 
+     !$OMP MASTER
+     allocate(iseed_array(0:OMP_get_num_threads()-1))
+     do i=0,OMP_get_num_threads()-1
+        iseed_array(i) = ranseed - i
      end do
-     iseed_array(OMP_get_thread_num()) = iseed
-  end do
-  !$OMP END DO
-  !$OMP BARRIER
-  !$OMP MASTER
-  deallocate(iseed_array)
-  !$OMP END MASTER
-  !$OMP END PARALLEL
-  ! --------------------------------------------------------------------------------------
-  ! write ICs
-  ! --------------------------------------------------------------------------------------
-  write(filename,'(a,a)') trim(outputfile),'.recLya'
-  open(unit=14, file=filename, status='unknown', form='unformatted', action='write')
-  write(14) nphotons      ! nb of MC photons 
-  write(14) recomb_total  ! nb of real photons (per sec).
-  write(14) ranseed
-  write(14) (i,i=1,nphotons) ! ID
-  write(14) (nu_em(i),i=1,nphotons)
-  write(14) (x_em(:,i),i=1,nphotons)
-  write(14) (k_em(:,i),i=1,nphotons)
-  write(14) (-i,i=1,nphotons) ! seeds
-  write(14) (nu_cell(i),i=1,nphotons)
-  close(14)
-  ! --------------------------------------------------------------------------------------
-  if (verbose) then 
-     call cpu_time(end_photpacket)
-     print*, 'time to draw recombinations = ',end_photpacket-start_photpacket,' seconds.'
+     write(*,*) 'iseed array : '
+     do i = 0,OMP_get_num_threads()-1
+        write(*,*) iseed_array(i),ranseed
+     end do
+     !$OMP END MASTER
+     !$OMP BARRIER
+     !$OMP DO SCHEDULE(DYNAMIC, 10)
+     do iphot = 1,nphotons
+        iseed = iseed_array(OMP_get_thread_num())
+        ok = .false.
+        do while (.not. ok) 
+           i = int(ran3(iseed) * nsel)+1
+           if (i > nsel) i = nsel
+           r1 = ran3(iseed)
+           if (r1 <= recomb_em(i)) then
+              ! success : draw photon's ICs
+              j  = emitting_cells(i)
+              dx = 1.d0 / 2**leaf_level(j)
+              ! draw photon position in cell
+              x(1)  = (ran3(iseed)-0.5d0) * dx + x_leaf(j,1)
+              x(2)  = (ran3(iseed)-0.5d0) * dx + x_leaf(j,2)
+              x(3)  = (ran3(iseed)-0.5d0) * dx + x_leaf(j,3)
+              ! check that photon is inside emission domain and if so keep it. 
+              ! (it may happen that a cell is only partly included ...)
+              if (domain_contains_point(x,emission_domain)) then 
+                 x_em(:,iphot)  = x(:)
+                 ! draw propagation direction
+                 call isotropic_direction(k,iseed)
+                 k_em(:,iphot) = k
+                 ! compute frequency in cell frame
+                 r1 = ran3(iseed)
+                 r2 = ran3(iseed)
+                 nu = sqrt(-2.*log(r1)) * cos(2.0d0*pi*r2)
+                 nu_cell(iphot) = (HIDopWidth(i) * nu_0 / clight) * nu + nu_0
+                 ! compute frequency in exteral frame 
+                 scalar = k(1)*v_leaf(1,j) + k(2)*v_leaf(2,j) + k(3)*v_leaf(3,j)
+                 nu_em(iphot)  = nu_cell(iphot) / (1d0 - scalar/clight)
+                 ok = .true.
+              end if
+           end if
+        end do
+        iseed_array(OMP_get_thread_num()) = iseed
+     end do
+     !$OMP END DO
+     !$OMP BARRIER
+     !$OMP MASTER
+     deallocate(iseed_array)
+     !$OMP END MASTER
+     !$OMP END PARALLEL
+     ! --------------------------------------------------------------------------------------
+     ! write ICs
+     ! --------------------------------------------------------------------------------------
+     write(filename,'(a,a)') trim(outputfile),'.recLya'
+     open(unit=14, file=filename, status='unknown', form='unformatted', action='write')
+     write(14) nphotons      ! nb of MC photons 
+     write(14) recomb_total  ! nb of real photons (per sec).
+     write(14) ranseed
+     write(14) (i,i=1,nphotons) ! ID
+     write(14) (nu_em(i),i=1,nphotons)
+     write(14) (x_em(:,i),i=1,nphotons)
+     write(14) (k_em(:,i),i=1,nphotons)
+     write(14) (-i,i=1,nphotons) ! seeds
+     write(14) (nu_cell(i),i=1,nphotons)
+     close(14)
+     ! --------------------------------------------------------------------------------------
+     if (verbose) then 
+        call cpu_time(end_photpacket)
+        print*, 'time to draw recombinations = ',end_photpacket-start_photpacket,' seconds.'
+     end if
   end if
   ! --------------------------------------------------------------------------------------
 
   
-
+  
   ! --------------------------------------------------------------------------------------
-  if (verbose) then
-     write(*,*) "> Starting to sample collisional emissivity" 
-     call cpu_time(start_photpacket)
-  end if
-  ! --------------------------------------------------------------------------------------
-  !$OMP PARALLEL &
-  !$OMP DEFAULT(PRIVATE) &
-  !$OMP SHARED(coll_em,emitting_cells,leaf_level,x_em,x_leaf,k_em,nu_cell,HIDopWidth,nu_em,v_leaf,iseed_array, &
-  !$OMP        ranseed,nphotons,nsel,emission_domain) 
-  !$OMP MASTER
-  allocate(iseed_array(0:OMP_get_num_threads()-1))
-  do i=0,OMP_get_num_threads()-1
-     iseed_array(i) = ranseed - i
-  end do
-  write(*,*) 'iseed array : '
-  do i = 0,OMP_get_num_threads()-1
-     write(*,*) iseed_array(i),ranseed
-  end do
-  !$OMP END MASTER
-  !$OMP BARRIER
-  !$OMP DO SCHEDULE(DYNAMIC, 10)
-  do iphot = 1,nphotons
-     iseed = iseed_array(OMP_get_thread_num())
-     ok = .false.
-     do while (.not. ok) 
-        i = int(ran3(iseed) * nsel)+1
-        if (i > nsel) i = nsel
-        r1 = ran3(iseed)
-        if (r1 <= coll_em(i)) then
-           ! success : draw photon's ICs
-           j  = emitting_cells(i)
-           dx = 1.d0 / 2**leaf_level(j)
-           ! draw photon position in cell 
-           x(1)  = (ran3(iseed)-0.5d0) * dx + x_leaf(j,1)
-           x(2)  = (ran3(iseed)-0.5d0) * dx + x_leaf(j,2)
-           x(3)  = (ran3(iseed)-0.5d0) * dx + x_leaf(j,3)
-           ! check that photon is inside emission domain and if so keep it. 
-           ! (it may happen that a cell is only partly included ...)
-           if (domain_contains_point(x,emission_domain)) then 
-              x_em(:,iphot)  = x(:)
-              ! draw propagation direction
-              call isotropic_direction(k,iseed)
-              k_em(:,iphot) = k
-              ! compute frequency in cell frame
-              r1 = ran3(iseed)
-              r2 = ran3(iseed)
-              nu = sqrt(-2.*log(r1)) * cos(2.0d0*pi*r2)
-              nu_cell(iphot) = (HIDopWidth(i) * nu_0 / clight) * nu + nu_0
-              ! compute frequency in exteral frame 
-              scalar = k(1)*v_leaf(1,j) + k(2)*v_leaf(2,j) + k(3)*v_leaf(3,j)
-              nu_em(iphot)  = nu_cell(iphot) / (1d0 - scalar/clight)
-              ok = .true.
-           end if
-        end if
+  if (doColls) then 
+     if (verbose) then
+        write(*,*) "> Starting to sample collisional emissivity" 
+        call cpu_time(start_photpacket)
+     end if
+     ! --------------------------------------------------------------------------------------
+     !$OMP PARALLEL &
+     !$OMP DEFAULT(PRIVATE) &
+     !$OMP SHARED(coll_em,emitting_cells,leaf_level,x_em,x_leaf,k_em,nu_cell,HIDopWidth,nu_em,v_leaf,iseed_array, &
+     !$OMP        ranseed,nphotons,nsel,emission_domain) 
+     !$OMP MASTER
+     allocate(iseed_array(0:OMP_get_num_threads()-1))
+     do i=0,OMP_get_num_threads()-1
+        iseed_array(i) = ranseed - i
      end do
-     iseed_array(OMP_get_thread_num()) = iseed
-  end do
-  !$OMP END DO
-  !$OMP BARRIER
-  !$OMP MASTER
-  deallocate(iseed_array)
-  !$OMP END MASTER
-  !$OMP END PARALLEL
-  ! --------------------------------------------------------------------------------------
-  ! write ICs
-  ! --------------------------------------------------------------------------------------
-  write(filename,'(a,a)') trim(outputfile),'.colLya'
-  open(unit=14, file=filename, status='unknown', form='unformatted', action='write')
-  write(14) nphotons      ! nb of MC photons 
-  write(14) coll_total  ! nb of real photons (per sec).
-  write(14) ranseed
-  write(14) (i,i=1,nphotons) ! ID
-  write(14) (nu_em(i),i=1,nphotons)
-  write(14) (x_em(:,i),i=1,nphotons)
-  write(14) (k_em(:,i),i=1,nphotons)
-  write(14) (-i,i=1,nphotons) ! seeds
-  write(14) (nu_cell(i),i=1,nphotons)
-  close(14)
-  ! --------------------------------------------------------------------------------------
-  if (verbose) then 
-     call cpu_time(end_photpacket)
-     print*, 'time to draw collisions = ',end_photpacket-start_photpacket,' seconds.'
+     write(*,*) 'iseed array : '
+     do i = 0,OMP_get_num_threads()-1
+        write(*,*) iseed_array(i),ranseed
+     end do
+     !$OMP END MASTER
+     !$OMP BARRIER
+     !$OMP DO SCHEDULE(DYNAMIC, 10)
+     do iphot = 1,nphotons
+        iseed = iseed_array(OMP_get_thread_num())
+        ok = .false.
+        do while (.not. ok) 
+           i = int(ran3(iseed) * nsel)+1
+           if (i > nsel) i = nsel
+           r1 = ran3(iseed)
+           if (r1 <= coll_em(i)) then
+              ! success : draw photon's ICs
+              j  = emitting_cells(i)
+              dx = 1.d0 / 2**leaf_level(j)
+              ! draw photon position in cell 
+              x(1)  = (ran3(iseed)-0.5d0) * dx + x_leaf(j,1)
+              x(2)  = (ran3(iseed)-0.5d0) * dx + x_leaf(j,2)
+              x(3)  = (ran3(iseed)-0.5d0) * dx + x_leaf(j,3)
+              ! check that photon is inside emission domain and if so keep it. 
+              ! (it may happen that a cell is only partly included ...)
+              if (domain_contains_point(x,emission_domain)) then 
+                 x_em(:,iphot)  = x(:)
+                 ! draw propagation direction
+                 call isotropic_direction(k,iseed)
+                 k_em(:,iphot) = k
+                 ! compute frequency in cell frame
+                 r1 = ran3(iseed)
+                 r2 = ran3(iseed)
+                 nu = sqrt(-2.*log(r1)) * cos(2.0d0*pi*r2)
+                 nu_cell(iphot) = (HIDopWidth(i) * nu_0 / clight) * nu + nu_0
+                 ! compute frequency in exteral frame 
+                 scalar = k(1)*v_leaf(1,j) + k(2)*v_leaf(2,j) + k(3)*v_leaf(3,j)
+                 nu_em(iphot)  = nu_cell(iphot) / (1d0 - scalar/clight)
+                 ok = .true.
+              end if
+           end if
+        end do
+        iseed_array(OMP_get_thread_num()) = iseed
+     end do
+     !$OMP END DO
+     !$OMP BARRIER
+     !$OMP MASTER
+     deallocate(iseed_array)
+     !$OMP END MASTER
+     !$OMP END PARALLEL
+     ! --------------------------------------------------------------------------------------
+     ! write ICs
+     ! --------------------------------------------------------------------------------------
+     write(filename,'(a,a)') trim(outputfile),'.colLya'
+     open(unit=14, file=filename, status='unknown', form='unformatted', action='write')
+     write(14) nphotons      ! nb of MC photons 
+     write(14) coll_total  ! nb of real photons (per sec).
+     write(14) ranseed
+     write(14) (i,i=1,nphotons) ! ID
+     write(14) (nu_em(i),i=1,nphotons)
+     write(14) (x_em(:,i),i=1,nphotons)
+     write(14) (k_em(:,i),i=1,nphotons)
+     write(14) (-i,i=1,nphotons) ! seeds
+     write(14) (nu_cell(i),i=1,nphotons)
+     close(14)
+     ! --------------------------------------------------------------------------------------
+     if (verbose) then 
+        call cpu_time(end_photpacket)
+        print*, 'time to draw collisions = ',end_photpacket-start_photpacket,' seconds.'
+     end if
   end if
   ! --------------------------------------------------------------------------------------
- 
+
   
 contains
 
@@ -362,7 +376,11 @@ contains
              read(value,*) nphotons
           case('ranseed')
              read(value,*) ranseed 
-             
+          case('doRecombs')
+             read(value,*) doRecombs
+          case('doColls')
+             read(value,*) doColls
+
           case ('verbose')
              read(value,*) verbose
 
@@ -410,6 +428,8 @@ contains
        write(unit,'(a)')             '# parameters'
        write(unit,'(a,i10)')           '  nphotons      = ',nphotons
        write(unit,'(a,i10)')           '  ranseed       = ',ranseed
+       write(unit,'(a,L1)')            '  doRecombs     = ',doRecombs
+       write(unit,'(a,L1)')            '  doColls       = ',doColls
        write(unit,'(a)')             '# miscelaneous parameters'
        write(unit,'(a,L1)')          '  verbose         = ',verbose
        write(unit,'(a)')             ' '
@@ -440,6 +460,8 @@ contains
        write(*,'(a)')             '# parameters'
        write(*,'(a,i10)')           '  nphotons      = ',nphotons
        write(*,'(a,i10)')           '  ranseed       = ',ranseed
+       write(*,'(a,L1)')            '  doRecombs     = ',doRecombs
+       write(*,'(a,L1)')            '  doColls       = ',doColls
        write(*,'(a)')             '# miscelaneous parameters'
        write(*,'(a,L1)')          '  verbose         = ',verbose
        write(*,'(a)')             ' '

@@ -89,7 +89,7 @@ COMPOBJS = module_dust_model.o module_D_model.o module_HI_model.o module_gas_com
 #COMPOBJS = module_dust_model.o module_MgII_2796_model.o module_MgII_2804_model.o module_gas_composition_MgII_dust.o
 
 
-GASOBJS = module_constants.o module_random.o module_utils.o module_domain.o module_ramses.o module_uparallel.o $(COMPOBJS)
+GASOBJS = module_constants.o module_random.o module_utils.o module_domain.o coolrates_module.o module_ramses.o module_uparallel.o $(COMPOBJS)
 
 OBJSDOM = $(GASOBJS) module_select.o module_mesh.o
 
@@ -97,7 +97,7 @@ OBJSPHO = $(GASOBJS) module_mesh.o module_photon.o
 
 OBJSMPI = $(OBJSPHO) module_parallel_mpi.o module_worker.o module_master.o
 
-LYAFG = module_constants.o module_random.o module_utils.o module_domain.o module_ramses.o
+LYAFG = module_constants.o module_random.o module_utils.o module_domain.o coolrates_module.o module_ramses.o
 
 #############################################################################
 #.SUFFIXES: .o .f90
@@ -116,8 +116,8 @@ PhotonsFromSourceModel: $(OBJSPHO) PhotonsFromSourceModel.o
 PhotonsFromStars: $(OBJSPHO) PhotonsFromStars.o
 	$(F90) $(FFLAGS) $(LDFLAGS) -o $@ $(OBJSPHO) PhotonsFromStars.o
 
-LyaPhotonsFromGas: $(LYAFG) LyaPhotonsFromGas.o
-	$(F90) $(FFLAGS) $(LDFLAGS) -o $@ $(LYAFG) LyaPhotonsFromGas.o
+LyaPhotonsFromGas: $(LYAFG)  LyaPhotonsFromGas.o
+	$(F90) $(FFLAGS) $(LDFLAGS) -o $@ $(LYAFG)  LyaPhotonsFromGas.o
 
 CreateDomDump: $(OBJSDOM) CreateDomDump.o
 	$(F90) $(FFLAGS) $(LDFLAGS) -o $@ $(OBJSDOM) CreateDomDump.o
