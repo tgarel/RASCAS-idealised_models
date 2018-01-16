@@ -20,7 +20,7 @@ program LyaPhotonsFromGas
   real(kind=8),allocatable     :: x_leaf(:,:),ramses_var(:,:),recomb_em(:),coll_em(:),v_leaf(:,:),HIDopWidth(:),cell_volume_vs_level(:)
   real(kind=8),allocatable     :: coolingTime(:)
   real(kind=8)                 :: r1, r2, dx, dv, nu, scalar, recomb_total,coll_total,k(3), boxsize,maxrec,maxcol
-  real(kind=8)                 :: start_photpacket,end_photpacket,x(3)
+  real(kind=8)                 :: start_photpacket,end_photpacket,x(3),dt
   logical                      :: ok 
   integer(kind=4),allocatable :: iseed_array(:)
   real(kind=8),allocatable :: nu_em(:),x_em(:,:),k_em(:,:),nu_cell(:)
@@ -111,13 +111,22 @@ program LyaPhotonsFromGas
      dv = cell_volume_vs_level(leaf_level(j))
      recomb_em(i) = recomb_em(i) * dv   ! erg/s 
      if (recomb_em(i) > maxrec) maxrec = recomb_em(i)
-     coll_em(i)   = coll_em(i) * dv
+     ! if cooling time is not resolved, set collisional emission to zero
+     dt = (boxsize*0.5**leaf_level(j))/0.0125d0/clight/3.d0  ! courant condition
+     if (coolingTime(i) > 3.0d0 * dt) then 
+        coll_em(i)   = coll_em(i) * dv
+     else
+        coll_em(i) = 0.0d0
+     end if
      if (coll_em(i) > maxcol) maxcol = coll_em(i) 
   end do
   
   recomb_total = sum(recomb_em) / (planck*nu_0)  ! nb of photons per second
   coll_total   = sum(coll_em) / (planck*nu_0)  ! nb of photons per second
 
+  print*,'coll_total,recomb_total = ',coll_total,recomb_total
+  stop
+  
   recomb_em = recomb_em / maxrec
   coll_em   = coll_em / maxcol
   allocate(v_leaf(3,nleaftot))
@@ -126,6 +135,9 @@ program LyaPhotonsFromGas
   ! ----------------------------------------------------------------------------
 
   
+  
+  allocate(nu_em(nphotons),x_em(3,nphotons),k_em(3,nphotons),nu_cell(nphotons))
+
   ! --------------------------------------------------------------------------------------
   if (doRecombs) then 
      if (verbose) then
@@ -133,7 +145,7 @@ program LyaPhotonsFromGas
         call cpu_time(start_photpacket)
      end if
      ! --------------------------------------------------------------------------------------
-     allocate(nu_em(nphotons),x_em(3,nphotons),k_em(3,nphotons),nu_cell(nphotons))
+
 
      !$OMP PARALLEL &
      !$OMP DEFAULT(PRIVATE) &
@@ -306,6 +318,7 @@ program LyaPhotonsFromGas
   end if
   ! --------------------------------------------------------------------------------------
 
+  deallocate(nu_em,x_em,k_em,nu_cell)
   
 contains
 
