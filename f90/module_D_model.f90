@@ -17,7 +17,7 @@ module module_D_model
   ! useful pre-computed quantities
   real(kind=8),parameter   :: lambda_0_cm = lambda_0 / cmtoA              ! cm
   real(kind=8),parameter   :: nu_0 = clight / lambda_0_cm                 ! Hz
-  real(kind=8),parameter   :: sigma_factor = pi*e_ch**2*f12/ me / clight ! cross-section factor-> multiply by Voigt(x,a)/nu_D to get sigma.
+  real(kind=8),parameter   :: sigma_factor = pi*e_ch**2*f12/ me / clight ! cross-section factor-> multiply by Voigt(x,a)/delta_nu_doppler to get sigma.
   real(kind=8),parameter   :: gamma_over_fourpi = gamma / fourpi
 
   ! user-defined parameters - read from section [Deuterium] of the parameter file 
@@ -46,16 +46,16 @@ contains
 
     real(kind=8),intent(in) :: ndi,vth,distance_to_border_cm,nu_cell
     real(kind=8)            :: get_tau_D
-    real(kind=8)            :: delta_nu_D, a, x, h, s
+    real(kind=8)            :: delta_nu_doppler, a, x, h, s
 
     ! compute Doppler width and a-parameter
-    delta_nu_D = vth / lambda_0_cm 
-    a          = gamma_over_fourpi / delta_nu_D
+    delta_nu_doppler = vth / lambda_0_cm 
+    a = gamma_over_fourpi / delta_nu_doppler
 
     ! Cross section of Deuterium
-    x = (nu_cell - nu_0)/delta_nu_D
+    x = (nu_cell - nu_0)/delta_nu_doppler
     h = voigt_fit(x,a)
-    s = sigma_factor / delta_nu_D * h  
+    s = sigma_factor / delta_nu_doppler * h  
 
     ! optical depth 
     get_tau_D = s * ndi * distance_to_border_cm
@@ -97,7 +97,7 @@ contains
     real(kind=8),dimension(3),intent(in)    :: vcell
     real(kind=8),intent(in)                 :: vth
     integer(kind=4),intent(inout)           :: iran
-    real(kind=8)                            :: delta_nu_doppler, a, x_cell, blah, upar, ruper
+    real(kind=8)                            :: delta_nu_doppler, a, x_cell, upar, ruper
     real(kind=8)                            :: r2, uper, nu_atom, mu, bu, scalar
     real(kind=8)                            :: x_atom
     real(kind=8),dimension(3)               :: knew
@@ -109,12 +109,7 @@ contains
 
     ! 1/ component parallel to photon's propagation
     ! -> get velocity of interacting atom parallel to propagation
-    blah = ran3(iran)
-#ifdef SWITCH_OFF_UPARALLEL
-    upar = 0.5  !!!!!todo get_uparallel(a,x_cell,blah)
-#else
-    upar = get_uparallel(a,x_cell,blah)
-#endif
+    upar = get_uparallel(x_cell,a,iran)
     upar = upar * vth    ! upar is an x -> convert to a velocity 
 
     ! 2/ component perpendicular to photon's propagation
@@ -200,6 +195,7 @@ contains
        end do
     end if
     close(10)
+    call read_uparallel_params(pfile)
     return
 
   end subroutine read_D_params
@@ -219,10 +215,12 @@ contains
        write(unit,'(a,a,a)') '[Deuterium]'
        write(unit,'(a,L1)') '  recoil    = ',recoil
        write(unit,'(a,L1)') '  isotropic = ',isotropic
+       call print_uparallel_params(unit)
     else
        write(*,'(a,a,a)') '[Deuterium]'
        write(*,'(a,L1)') '  recoil    = ',recoil
        write(*,'(a,L1)') '  isotropic = ',isotropic
+       call print_uparallel_params()
     end if
 
     return

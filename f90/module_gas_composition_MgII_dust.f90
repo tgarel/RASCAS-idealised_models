@@ -395,6 +395,8 @@ contains
 
     call read_ramses_params(pfile)
     call read_dust_params(pfile)
+    call read_MgII_2796_params(pfile)
+    call read_MgII_2804_params(pfile)
 
     return
 
@@ -428,6 +430,8 @@ contains
        call print_ramses_params(unit)
        write(unit,'(a)')             ' '
        call print_dust_params
+       call print_MgII_2796_params(unit)
+       call print_MgII_2804_params(unit)
     else
        write(*,'(a,a,a)') '[gas_composition]'
        write(*,'(a,ES10.3)') '  f_ion                = ',f_ion
@@ -445,6 +449,8 @@ contains
        call print_ramses_params
        write(*,'(a)')             ' '
        call print_dust_params
+       call print_MgII_2796_params
+       call print_MgII_2804_params
     end if
 
     return

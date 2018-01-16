@@ -22,7 +22,9 @@ program ExtractSubvol
   integer(kind=4)                          :: noctsnap,nleaftot,nvar,nleaf_sel,i, narg
   character(2000)                          :: toto,meshroot,parameter_file,fichier, filedecomp
   character(2000),dimension(:),allocatable :: domain_file_list, mesh_file_list
-  !real(kind=8),allocatable                 :: star_pos(:,:),star_age(:),star_mass(:),star_vel(:,:),star_met(:)
+  real(kind=8),allocatable                 :: star_pos(:,:),star_age(:),star_mass(:),star_vel(:,:),star_met(:)
+  integer(kind=4)                          :: nstars
+  character(2000)                          :: charisnap,fileout
 
   ! --------------------------------------------------------------------------
   ! user-defined parameters - read from section [ExtractSubvol] of the parameter file
@@ -46,6 +48,7 @@ program ExtractSubvol
 
   ! --- miscelaneous
   logical                   :: verbose = .false.
+  logical                   :: cosmo   = .true.       ! cosmo flag
 
   ! --- also extract particles
   ! stars -> add linked list stars-cell? -> use function in_cell_finder
@@ -116,7 +119,7 @@ program ExtractSubvol
   ! write here the header info:
   ! -> ramses snapshot info
   write(10,*)' '
-  write(10,*)'RAMSES repository =',trim(repository)
+  write(10,*)'RAMSES repository = ',trim(repository)
   write(10,'(a,i5.5)') ' output number     = ',snapnum
   write(10,*)' '
   ! -> ramses info file -> scales, cosmo, etc. -> need for tunneling private stuff from module_ramses
@@ -152,13 +155,24 @@ program ExtractSubvol
 
      ! read star particles within domain if asked
      if (add_stars) then
-        print*,'not implemented yet'
-        !if (verbose) write(*,*) '> reading star particles'
-        !call ramses_read_stars_in_domain(repository,snapnum,domain_list(i),star_pos,star_age,star_mass,star_vel,star_met,cosmo)
+        !print*,'not implemented yet'
+        if (verbose) write(*,*) '...reading star particles...'
+        call ramses_read_stars_in_domain(repository,snapnum,domain_list(i),star_pos,star_age,star_mass,star_vel,star_met,cosmo)
+        nstars = size(star_age)
+        print*,'nstars = ',nstars
+        print*,'min max pos = ',minval(star_pos),maxval(star_pos)
+        print*,'min max age = ',minval(star_age),maxval(star_age)
+        print*,'min max vel = ',minval(star_vel),maxval(star_vel)
+        print*,'min max mass = ',minval(star_mass),maxval(star_mass)
+        print*,'min max met = ',minval(star_met),maxval(star_met)
         !call link_stars_to_leaves(domain_mesh,star_pos,ll)
         !! difficult to append the mesh file with particles... since file is not open/close here but in module_mesh.f90. 
         !! -> dump a new file "subvol_part.dat" ???
-        !call dump_stars(star_pos,star_age,star_mass,star_vel,star_met)
+        write(charisnap,'(i8)') i
+        write(charisnap,'(a)') adjustl(charisnap)  ! remove leading spaces
+        fileout = trim(datadir)//trim(meshroot)//"stars_"//trim(charisnap)//".dat"
+        if (verbose) write(*,*) '...writing stars in file: ',trim(fileout)
+        call dump_subvol_stars
      endif
 
      if (add_dm) then
@@ -173,6 +187,24 @@ program ExtractSubvol
 
 
 contains
+
+
+  subroutine dump_subvol_stars
+
+    open(unit=13, file=fileout, status='unknown', form='unformatted', action='write')
+
+    write(13) nstars
+    write(13) star_pos(1:3,1:nstars)  ! box unit
+    write(13) star_vel(1:3,1:nstars)  ! cgs
+    write(13) star_mass(1:nstars)     ! cgs
+    write(13) star_age(1:nstars)      ! Myr
+    write(13) star_met(1:nstars)      ! absolute value
+
+    close(13)
+
+  end subroutine dump_subvol_stars
+
+
 
   
   subroutine read_ExtractSubvol_params(pfile)
@@ -252,6 +284,8 @@ contains
              read(value,*) decomp_dom_size(:)
           case ('decomp_dom_thickness')
              read(value,*) decomp_dom_thickness(:)
+          case ('cosmo')
+             read(value,*) cosmo
           end select
        end do
     end if
@@ -314,6 +348,7 @@ contains
        write(unit,'(a,L1)')          '  verbose         = ',verbose
        write(unit,'(a,L1)')          '  add_stars       = ',add_stars
        write(unit,'(a,L1)')          '  add_dm          = ',add_dm
+       write(unit,'(a,L1)')          '  cosmo           = ',cosmo
        write(unit,'(a)')             ' '
        call print_mesh_params(unit)
     else
@@ -346,6 +381,7 @@ contains
        write(*,'(a,L1)')          '  verbose         = ',verbose
        write(*,'(a,L1)')          '  add_stars       = ',add_stars
        write(*,'(a,L1)')          '  add_dm          = ',add_dm
+       write(*,'(a,L1)')          '  cosmo           = ',cosmo
        write(*,'(a)')             ' '
        call print_mesh_params
        write(*,'(a)')             ' '

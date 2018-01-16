@@ -24,7 +24,7 @@ module module_SiII_1190_model
   real(kind=8),parameter :: lambda14_cm    = lambda14 / cmtoA         ! [cm]
   real(kind=8),parameter :: nu14           = clight / lambda14_cm     ! [Hz]
   real(kind=8),parameter :: f14            = 0.277d0                  ! oscillator strength
-  real(kind=8),parameter :: sigma14_factor = pi*e_ch**2*f14/me/clight ! multiply by Voigt(x,a)/nu_D to get sigma.
+  real(kind=8),parameter :: sigma14_factor = pi*e_ch**2*f14/me/clight ! multiply by Voigt(x,a)/delta_nu_doppler to get sigma.
   real(kind=8),parameter :: A41            = 6.53d8                   ! spontaneous decay [/s]
 
   ! transition between levels 2 and 4
@@ -35,7 +35,7 @@ module module_SiII_1190_model
 
   real(kind=8),parameter :: A41_over_A41_plus_A42 = A41 / (A41+A42)
   
-  public :: get_tau_SiII_1190, scatter_SiII_1190
+  public :: get_tau_SiII_1190, scatter_SiII_1190, read_SiII_1190_params, print_SiII_1190_params
 
 contains
 
@@ -54,16 +54,16 @@ contains
     ! --------------------------------------------------------------------------
     
     real(kind=8),intent(in) :: nSiII,vth,distance_to_border_cm,nu_cell
-    real(kind=8)            :: nu_D,x_cell,sigma,a,h,get_tau_SiII_1190
+    real(kind=8)            :: delta_nu_doppler,x_cell,sigma,a,h,get_tau_SiII_1190
 
     ! compute Doppler width and a-parameter
-    nu_D = vth / lambda14_cm
-    a    = A41 / (fourpi * nu_D)
+    delta_nu_doppler = vth / lambda14_cm
+    a    = A41 / (fourpi *  delta_nu_doppler)
 
     ! cross section of SiII-1193.28
-    x_cell = (nu_cell - nu14) / nu_D
+    x_cell = (nu_cell - nu14) / delta_nu_doppler
     h      = voigt_fit(x_cell,a)
-    sigma  = sigma14_factor / nu_D * h
+    sigma  = sigma14_factor / delta_nu_doppler * h
 
     get_tau_SiII_1190 = sigma * nSiII * distance_to_border_cm
    
@@ -97,7 +97,7 @@ contains
     real(kind=8),dimension(3),intent(in)    :: vcell
     real(kind=8),intent(in)                 :: vth
     integer(kind=4),intent(inout)           :: iran
-    real(kind=8)                            :: delta_nu_doppler, a, x_cell, blah, upar, ruper
+    real(kind=8)                            :: delta_nu_doppler, a, x_cell, upar, ruper
     real(kind=8)                            :: r2, uper, nu_atom, mu, bu, scalar
     real(kind=8),dimension(3)               :: knew
 
@@ -108,12 +108,7 @@ contains
 
     ! 1/ component parallel to photon's propagation
     ! -> get velocity of interacting atom parallel to propagation
-    blah = ran3(iran)
-#ifdef SWITCH_OFF_UPARALLEL
-    upar = 0.
-#else
-    upar = get_uparallel(a,x_cell,blah)
-#endif
+    upar = get_uparallel(x_cell,a,iran)
     upar = upar * vth    ! upar is an x -> convert to a velocity 
 
     ! 2/ component perpendicular to photon's propagation
@@ -144,5 +139,43 @@ contains
     k = knew
 
   end subroutine scatter_SiII_1190
+
+
+  subroutine read_SiII_1190_params(pfile)
+    
+    ! ---------------------------------------------------------------------------------
+    ! subroutine which reads parameters of current module in the parameter file pfile
+    !
+    ! default parameter values are set at declaration (head of module)
+    ! ---------------------------------------------------------------------------------
+
+    character(*),intent(in) :: pfile
+
+    call read_uparallel_params(pfile)
+
+    return
+
+  end subroutine read_SiII_1190_params
+
+
+    subroutine print_SiII_1190_params(unit)
+    
+    ! ---------------------------------------------------------------------------------
+    ! write parameter values to std output or to an open file if argument unit is
+    ! present.
+    ! ---------------------------------------------------------------------------------
+
+    integer(kind=4),optional,intent(in) :: unit
+
+    if (present(unit)) then 
+       call print_uparallel_params(unit)
+    else
+       call print_uparallel_params()
+    end if
+    
+    return
+    
+  end subroutine print_SiII_1190_params
+
 
 end module module_SiII_1190_model

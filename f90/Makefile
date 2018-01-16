@@ -9,8 +9,6 @@ SYSTYPE="mac"
 #SYSTYPE="ccage"
 
 OPTIONS = -cpp
-#OPTIONS += -DSWITCH_OFF_UPARALLEL
-#OPTIONS += -DDEBUG
 
 
 ifeq ($(SYSTYPE),"lyocral")

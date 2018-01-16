@@ -342,6 +342,8 @@ contains
     close(10)
 
     call read_ramses_params(pfile)
+    call read_MgII_2796_params(pfile)
+    call read_MgII_2804_params(pfile)
 
     return
 
@@ -370,6 +372,8 @@ contains
        write(unit,'(a,L1)')    '  verbose               = ',verbose
        write(unit,'(a)')             ' '
        call print_ramses_params(unit)
+       call print_MgII_2796_params(unit)
+       call print_MgII_2804_params(unit)
     else
        write(*,'(a,a,a)') '[gas_composition]'
        write(*,'(a)')       '# overwrite parameters'
@@ -382,6 +386,8 @@ contains
        write(*,'(a,L1)')    '  verbose               = ',verbose
        write(*,'(a)')             ' '
        call print_ramses_params
+       call print_MgII_2796_params
+       call print_MgII_2804_params
     end if
 
     return

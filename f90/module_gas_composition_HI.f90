@@ -156,15 +156,7 @@ contains
     g(:)%v(3)     = fix_vel
     g(:)%nHI      = fix_nhi
     g(:)%dopwidth = fix_vth
-       
-#ifdef DEBUG
-    print*,'in overwrite_gas: allocated g?',shape(g)
-    print*,'in overwrite_gas: ',minval(g%nhi),maxval(g%nhi)
-    print*,'in overwrite_gas: ',minval(g%dopwidth),maxval(g%dopwidth)
-    print*,'in overwrite_gas: ',minval(g%v),maxval(g%v)
-    print*,'in overwrite_gas: ',box_size_cm
-#endif
-
+    
   end subroutine overwrite_gas
 
 
