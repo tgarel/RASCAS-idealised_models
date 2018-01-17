@@ -1,0 +1,92 @@
+!--------------------------------------------------------------------------------
+[PhotonsFromSourceModel]
+  outputfile              = /scratch/garel/IdealisedModels_test/output/metals_grid_test/flatCont_FeII_Rmin1_Rmax20kpc/blah/ICs_photons.dat
+  source_pos              = 0.5 0.5 0.5
+  source_type             = pointlike
+  ranseed                 = -100
+  spec_type               = FlatNphotDist ! PowLaw 
+  spec_FlatNphotDist_lmin_Ang    = 2570.0  ! A 
+  spec_FlatNphotDist_lmax_Ang    = 2640.0  ! A 
+  nphot                    = 5000000
+
+!--------------------------------------------------------------------------------
+[CreateDomDump]
+# input outputs:
+  DataDir    = /scratch/garel/IdealisedModels_test/output/metals_grid_test/flatCont_FeII_Rmin1_Rmax20kpc/blah/
+  repository = /scratch/dansac/Grid_for_RT/
+  snapnum    = 00001
+# computational domain parameters
+  comput_dom_type      =  sphere
+  comput_dom_pos       =  0.5, 0.5, 0.5
+  comput_dom_rsp       =  0.49
+# domain decomposition parameters
+  decomp_dom_type      =  sphere
+  decomp_dom_ndomain   =  1
+  decomp_dom_xc        =  0.5!, 0.5
+  decomp_dom_yc        =  0.5!, 0.5
+  decomp_dom_zc        =  0.5!, 0.5
+  decomp_dom_rsp       =  0.495	       
+# miscelaneous :
+  verbose              = T
+  idealised_models     = T
+
+!--------------------------------------------------------------------------------
+[IdealisedModels]
+# type, geometry, MCsampling etc
+  idealmodel_type       = shell_V_rho_gradient_steady
+  MCsampling            = T
+# physical parameters
+  coldens_norm          = 1.0d13         ! This is a column density in cm-2
+  Vgas_norm             = 500.d5         ! cm/s 
+  Vgas_slope            = 1.0d0
+  Tgas_norm             = 1.0d4	         ! K
+  dust2gas_ratio        = 0.0d0          
+  box_size_IM_cm        = 1.2833334d23   ! cm ! matches R_max=20 kpc and r_max_box=0.48
+  r_min                 = 0.012          ! box units
+  r_max                 = 0.48           ! box units
+# miscelaneous :
+  verbose              = T
+  
+!--------------------------------------------------------------------------------
+[RASCAS]
+  DataDir      = /scratch/garel/IdealisedModels_test/output/metals_grid_test/flatCont_FeII_Rmin1_Rmax20kpc/blah/
+  DomDumpFile  = domain_decomposition_params.dat
+  PhotonICFile = ICs_photons.dat
+  fileout      = /scratch/garel/IdealisedModels_test/output/metals_grid_test/flatCont_FeII_Rmin1_Rmax20kpc/blah/photons_out.dat
+  nbuffer      = 10
+  verbose      = T
+
+!--------------------------------------------------------------------------------
+[worker]
+  verbose = T
+
+!--------------------------------------------------------------------------------
+[master]
+  verbose = T
+
+!--------------------------------------------------------------------------------
+[mesh]
+  verbose = F
+
+!--------------------------------------------------------------------------------
+[gas_composition] 
+# mixture parameters
+  deut2H_nb_ratio     = 0.0     ! 3.000E-05
+  Zref                = 0.005   ! OK for LMC dust model.
+# overwrite parameters: uniform slab, sphere and shell only
+  gas_overwrite       = F
+
+# miscelaneous parameters
+  verbose             = T
+
+!--------------------------------------------------------------------------------
+[HI]
+  recoil    = T
+  isotropic = F
+
+!--------------------------------------------------------------------------------
+[dust]
+  albedo       = 0.0 ! 0.32
+  g_dust       = 0.73
+  dust_model   = SMC
+!--------------------------------------------------------------------------------
