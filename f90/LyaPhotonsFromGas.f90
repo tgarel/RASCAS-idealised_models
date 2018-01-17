@@ -43,7 +43,8 @@ program LyaPhotonsFromGas
   integer(kind=4)           :: nphotons = 10000
   integer(kind=4)           :: ranseed  = -100
   logical                   :: doRecombs = .false.  ! set to true to sample emission from recombinations
-  logical                   :: doColls   = .false.  ! set to true to sample emission from coll. excitations. 
+  logical                   :: doColls   = .false.  ! set to true to sample emission from coll. excitations.
+  real(kind=8)              :: tcool_resolution = 3.0d0 ! ignore collisional emission from cells with Dt > tcool / tcool_resolution 
   ! --- miscelaneous
   logical                   :: verbose = .true.
   ! ---------------------------------------------------------------------------
@@ -125,7 +126,6 @@ program LyaPhotonsFromGas
   coll_total   = sum(coll_em) / (planck*nu_0)  ! nb of photons per second
 
   print*,'coll_total,recomb_total = ',coll_total,recomb_total
-  stop
   
   recomb_em = recomb_em / maxrec
   coll_em   = coll_em / maxcol
@@ -384,7 +384,6 @@ contains
              read(value,*) emission_dom_size
           case ('emission_dom_thickness')
              read(value,*) emission_dom_thickness
-
           case('nphotons')
              read(value,*) nphotons
           case('ranseed')
@@ -393,7 +392,8 @@ contains
              read(value,*) doRecombs
           case('doColls')
              read(value,*) doColls
-
+          case('tcool_resolution')
+             read(value,*) tcool_resolution
           case ('verbose')
              read(value,*) verbose
 
@@ -439,12 +439,13 @@ contains
           write(unit,'(a,ES10.3)')      '  emission_dom_thickness = ',emission_dom_thickness
        end select
        write(unit,'(a)')             '# parameters'
-       write(unit,'(a,i10)')           '  nphotons      = ',nphotons
-       write(unit,'(a,i10)')           '  ranseed       = ',ranseed
-       write(unit,'(a,L1)')            '  doRecombs     = ',doRecombs
-       write(unit,'(a,L1)')            '  doColls       = ',doColls
+       write(unit,'(a,i10)')           '  nphotons         = ',nphotons
+       write(unit,'(a,i10)')           '  ranseed          = ',ranseed
+       write(unit,'(a,L1)')            '  doRecombs        = ',doRecombs
+       write(unit,'(a,L1)')            '  doColls          = ',doColls  
+       write(unit,'(a,ES10.3)')        '  tcool_resolution = ',tcool_resolution
        write(unit,'(a)')             '# miscelaneous parameters'
-       write(unit,'(a,L1)')          '  verbose         = ',verbose
+       write(unit,'(a,L1)')          '  verbose            = ',verbose
        write(unit,'(a)')             ' '
        call print_ramses_params(unit)
 
@@ -475,6 +476,7 @@ contains
        write(*,'(a,i10)')           '  ranseed       = ',ranseed
        write(*,'(a,L1)')            '  doRecombs     = ',doRecombs
        write(*,'(a,L1)')            '  doColls       = ',doColls
+       write(*,'(a,ES10.3)')        '  tcool_resolution = ',tcool_resolution
        write(*,'(a)')             '# miscelaneous parameters'
        write(*,'(a,L1)')          '  verbose         = ',verbose
        write(*,'(a)')             ' '
