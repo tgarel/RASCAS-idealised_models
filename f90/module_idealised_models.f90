@@ -53,6 +53,10 @@ contains
        do ileaf=1,nleaf
           call shell_V_rho_gradient(n_dust(ileaf),n_gas(ileaf),b_param(ileaf),v_leaf(1,ileaf),v_leaf(2,ileaf),v_leaf(3,ileaf),x_leaf(ileaf,1),x_leaf(ileaf,2),x_leaf(ileaf,3),dx_cell)
        end do
+    case('shell_V_rho_gradient_steady')
+       do ileaf=1,nleaf
+          call shell_V_rho_gradient_steady(n_dust(ileaf),n_gas(ileaf),b_param(ileaf),v_leaf(1,ileaf),v_leaf(2,ileaf),v_leaf(3,ileaf),x_leaf(ileaf,1),x_leaf(ileaf,2),x_leaf(ileaf,3),dx_cell)
+       end do
     case('shellcone_V_rho_gradient')
        do ileaf=1,nleaf
           call shellcone_V_rho_gradient(n_dust(ileaf),n_gas(ileaf),b_param(ileaf),v_leaf(1,ileaf),v_leaf(2,ileaf),v_leaf(3,ileaf),x_leaf(ileaf,1),x_leaf(ileaf,2),x_leaf(ileaf,3),dx_cell)
