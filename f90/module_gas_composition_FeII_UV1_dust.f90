@@ -94,14 +94,14 @@ contains
     ! adapt n_species name to each module_gas_composition
     g(:)%nFeII    = ngas_temp(:)
     ! Deal with m_atom here: adapt m_species name to each module_gas_composition
-    g(:)%dopwidth = 10.0d0 ! dopwidth_temp(:) / sqrt(mFe)
+    g(:)%dopwidth = 10.0d5 ! dopwidth_temp(:) / sqrt(mFe)
     
     modelprops_file = 'modelprops_file'
     file = trim(outputdir)//trim(modelprops_file)
     open(unit=15, file=trim(file), status='unknown', form='unformatted', action='write')
     write(15) nleaf
     do ileaf = 1,nleaf
-       write(15) x_leaf(ileaf,1),x_leaf(ileaf,2),x_leaf(ileaf,3),g(ileaf)%v(1),g(ileaf)%v(2),g(ileaf)%v(3),g(ileaf)%dopwidth,g(ileaf)%nFeII
+       write(15) x_leaf(ileaf,1),x_leaf(ileaf,2),x_leaf(ileaf,3),g(ileaf)%v(1),g(ileaf)%v(2),g(ileaf)%v(3),g(ileaf)%dopwidth,g(ileaf)%nFeII,g(ileaf)%ndust
     end do
     close(15)
     
