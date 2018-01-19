@@ -36,11 +36,11 @@
   idealmodel_type       = shell_V_rho_gradient_steady
   MCsampling            = T
 # physical parameters
-  coldens_norm          = 1.0d13         ! This is a column density in cm-2
+  coldens_norm          = 1.0d16         ! This is a column density in cm-2
   Vgas_norm             = 500.d5         ! cm/s 
   Vgas_slope            = 1.0d0
   Tgas_norm             = 1.0d4	         ! K
-  dust2gas_ratio        = 0.0d0          
+  taudust_norm          = 1.0d0          
   box_size_IM_cm        = 1.2833334d23   ! cm ! matches R_max=20 kpc and r_max_box=0.48
   r_min                 = 0.012          ! box units
   r_max                 = 0.48           ! box units

@@ -48,8 +48,14 @@ contains
     ! get_tau_dust = sigma_d(lbda_A,dust_model) * ndust * distance
     !! TIBO
     !! use simpler tau_dust for idealised_models (a la MCLya: sigmad = grain's area / (1-A))
-    sigma_dust_im = (pi * rd**2)/(1.-albedo)
-    get_tau_dust  = sigma_dust_im * ndust * distance
+    !! model 1:
+    !! get_tau_dust is total tau_dust, so the parameter tau_dust is abs. tau_dust(=(pi * rd**2))
+!!$    sigma_dust_im = (pi * rd**2)/(1.-albedo)
+!!$    get_tau_dust  = sigma_dust_im * ndust * distance
+    !! model 2:
+    !! i use parameter tau_dust to compute ndust in module_idealised, and i set sigma_dust=1
+    !! ndust is in units of sigma_dust^-1, then here i do multiply by sigma_dust
+    get_tau_dust = ndust * distance
     !! OBIT
     
     return

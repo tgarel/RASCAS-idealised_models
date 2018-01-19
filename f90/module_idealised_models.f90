@@ -15,7 +15,7 @@ module module_idealised_models
   real(kind=8)             :: Vgas_slope          = -999.0d0         ! slope of the velocity profile
   real(kind=8)             :: Tgas_norm           = -999.0d0         ! Gas temperature [K]
   real(kind=8)             :: ndust_norm          = -999.0d0         ! Dust density profile normalisation [cm-3]
-  real(kind=8)             :: dust2gas_ratio      = -999.0d0         ! Dust to gas ratio
+  real(kind=8)             :: taudust_norm        = -999.0d0         ! (abs) dust opacity
   real(kind=8)             :: r_min               = -999.0d0         ! full box size [cm]
   real(kind=8)             :: r_max               = -999.0d0         ! full box size [cm]
   real(kind=8)             :: disc_rd             = -999.0d0         ! Disc radial scalelength
@@ -199,7 +199,7 @@ contains
     real(kind=8)                          :: volfrac2
     real(kind=8)                          :: dist_cell,dist2,dist_cell_min,dist_cell_max
     integer(kind=4)                       :: missed_cell
-    real(kind=8)                          :: n0
+    real(kind=8)                          :: n0, coldens_dust, ndust_0
 
     
     vx_ideal    = 0.0d0
@@ -222,7 +222,13 @@ contains
        ! I use the std density ngas_norm
        n0 = ngas_norm 
     end if
-   
+    if (taudust_norm .gt. 0.0d0) then
+       coldens_dust = taudust_norm ! assumes sigma_dust = 1 (should be taudust_norm/sigma_dust)
+       ndust_0      = coldens_dust * (Vgas_slope+1.0) / (r_min * box_size_IM_cm * (1.0d0 - (r_min / r_max)**(Vgas_slope+1.0)))
+    else
+       ndust_0      = 0.0d0
+    end if
+    
     if (MCsampling) then
        dist_cell_max = dist_cell + dx_cell * sqrt(3.0d0) / 2.0d0 ! dx_cell * sqrt(3.0) / 2. is half the longest length in a cube
        dist_cell_min = dist_cell - dx_cell * sqrt(3.0d0) / 2.0d0 ! dx_cell * sqrt(3.0) / 2. is half the longest length in a cube
@@ -237,7 +243,7 @@ contains
        end if
        
        ngas_ideal  = n0 *  (r_min / dist_cell)**(Vgas_slope+2.0) * volfrac2 
-       ndust_ideal = dust2gas_ratio * ngas_ideal
+       ndust_ideal = ndust_0 / n0 * ngas_ideal
 
        vx_ideal = Vgas_norm / r_max**(Vgas_slope) * dist_cell**(Vgas_slope-1.0) * (xcell_ideal - 0.5d0)
        vy_ideal = Vgas_norm / r_max**(Vgas_slope) * dist_cell**(Vgas_slope-1.0) * (ycell_ideal - 0.5d0)
@@ -262,7 +268,7 @@ contains
           vz_ideal    = Vgas_norm / r_max**(Vgas_slope) * dist_cell**(Vgas_slope-1.0) * (zcell_ideal - 0.5d0)
 
           ngas_ideal  = n0 *  (r_min / dist_cell)**(Vgas_slope+2.0) * volfrac2 
-          ndust_ideal = dust2gas_ratio * ngas_ideal
+          ndust_ideal = ndust_0 / n0 * ngas_ideal
           missed_cell = 0
        else                                                ! cell completely out of sphere or completely within r_min               
           vx_ideal    = 0.0d0
@@ -603,8 +609,8 @@ contains
              read(value,*) Tgas_norm
           case ('ndust_norm')
              read(value,*) ndust_norm
-          case ('dust2gas_ratio')
-             read(value,*) dust2gas_ratio
+          case ('taudust_norm')
+             read(value,*) taudust_norm
           case ('box_size_IM_cm')
              read(value,*) box_size_IM_cm
           case ('r_min')
@@ -627,7 +633,7 @@ contains
     print*, ' Vgas_slope           = ',Vgas_slope
     print*, ' Tgas_norm            = ',Tgas_norm
     print*, ' ndust_norm           = ',ndust_norm
-    print*, ' dust2gas_ratio       = ',dust2gas_ratio
+    print*, ' taudust_norm         = ',taudust_norm
     print*, ' box_size_IM_cm       = ',box_size_IM_cm
     print*, ' r_min                = ',r_min
     print*, ' r_max                = ',r_max
@@ -654,7 +660,7 @@ contains
        write(unit,'(a,ES10.3)') '  Vgas_slope           = ',Vgas_slope
        write(unit,'(a,ES10.3)') '  Tgas_norm            = ',Tgas_norm
        write(unit,'(a,ES10.3)') '  ndust_norm           = ',ndust_norm
-       write(unit,'(a,ES10.3)') '  dust2gas_ratio       = ',dust2gas_ratio
+       write(unit,'(a,ES10.3)') '  taudust_norm         = ',taudust_norm
        write(unit,'(a,ES10.3)') '  box_size_IM_cm       = ',box_size_IM_cm
        write(unit,'(a,ES10.3)') '  r_min                = ',r_min
        write(unit,'(a,ES10.3)') '  r_max                = ',r_max
@@ -669,7 +675,7 @@ contains
        write(*,'(a,ES10.3)') '  Vgas_slope           = ',Vgas_slope
        write(*,'(a,ES10.3)') '  Tgas_norm            = ',Tgas_norm
        write(*,'(a,ES10.3)') '  ndust_norm           = ',ndust_norm
-       write(*,'(a,ES10.3)') '  dust2gas_ratio       = ',dust2gas_ratio
+       write(*,'(a,ES10.3)') '  taudust_norm         = ',taudust_norm
        write(*,'(a,ES10.3)') '  box_size_IM_cm       = ',box_size_IM_cm
        write(*,'(a,ES10.3)') '  r_min                = ',r_min
        write(*,'(a,ES10.3)') '  r_max                = ',r_max
