@@ -1,6 +1,6 @@
 !--------------------------------------------------------------------------------
 [PhotonsFromSourceModel]
-  outputfile              = /scratch/garel/IdealisedModels_test/output/metals_grid_test/flatCont_FeII_Rmin1_Rmax20kpc/blah_taud1/ICs_photons.dat
+  outputfile              = /cral4/garel/IdealisedModels_test/output/metals_grid_test/flatCont_FeII_Rmin1_Rmax20kpc/blah_taud1/ICs_photons.dat
   source_pos              = 0.5 0.5 0.5
   source_type             = pointlike
   ranseed                 = -100
@@ -12,8 +12,8 @@
 !--------------------------------------------------------------------------------
 [CreateDomDump]
 # input outputs:
-  DataDir    = /scratch/garel/IdealisedModels_test/output/metals_grid_test/flatCont_FeII_Rmin1_Rmax20kpc/blah_taud1/
-  repository = /scratch/dansac/Grid_for_RT/
+  DataDir    = /cral4/garel/IdealisedModels_test/output/metals_grid_test/flatCont_FeII_Rmin1_Rmax20kpc/blah_taud1/
+  repository = /cral4/dansac/Grid_for_RT/
   snapnum    = 00001
 # computational domain parameters
   comput_dom_type      =  sphere
@@ -49,10 +49,10 @@
   
 !--------------------------------------------------------------------------------
 [RASCAS]
-  DataDir      = /scratch/garel/IdealisedModels_test/output/metals_grid_test/flatCont_FeII_Rmin1_Rmax20kpc/blah_taud1/
+  DataDir      = /cral4/garel/IdealisedModels_test/output/metals_grid_test/flatCont_FeII_Rmin1_Rmax20kpc/blah_taud1/
   DomDumpFile  = domain_decomposition_params.dat
   PhotonICFile = ICs_photons.dat
-  fileout      = /scratch/garel/IdealisedModels_test/output/metals_grid_test/flatCont_FeII_Rmin1_Rmax20kpc/blah_taud1/photons_out.dat
+  fileout      = /cral4/garel/IdealisedModels_test/output/metals_grid_test/flatCont_FeII_Rmin1_Rmax20kpc/blah_taud1/photons_out.dat
   nbuffer      = 10
   verbose      = T
 
@@ -83,10 +83,3 @@
 [HI]
   recoil    = T
   isotropic = F
-
-!--------------------------------------------------------------------------------
-[dust]
-  albedo       = 0.0 ! 0.32
-  g_dust       = 0.73
-  dust_model   = SMC
-!--------------------------------------------------------------------------------
