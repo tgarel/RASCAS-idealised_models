@@ -54,8 +54,8 @@ contains
 !!$    get_tau_dust  = sigma_dust_im * ndust * distance
     !! model 2:
     !! i use parameter tau_dust to compute ndust in module_idealised, and i set sigma_dust=1
-    !! ndust is in units of sigma_dust^-1, then here i do multiply by sigma_dust
-    get_tau_dust = ndust * distance
+    !! ndust is in units of sigma_dust^-1
+    get_tau_dust = ndust * distance / (1.-albedo) ! /(1.-albedo) such that Fesc = exp(-taudust_norm) since get_tau_dust is total tau_dust
     !! OBIT
     
     return
