@@ -394,7 +394,10 @@ contains
     close(10)
 
     call read_ramses_params(pfile)
-
+    call read_dust_params(pfile)
+    call read_FeII_2600_params(pfile)
+    call read_FeII_2587_params(pfile)
+    
     return
 
   end subroutine read_gas_composition_params
@@ -427,6 +430,8 @@ contains
        call print_ramses_params(unit)
        write(unit,'(a)')             ' '
        call print_dust_params
+       call print_FeII_2600_params(unit)
+       call print_FeII_2587_params(unit)
     else
        write(*,'(a,a,a)') '[gas_composition]'
        write(*,'(a,ES10.3)') '  f_ion                = ',f_ion
@@ -444,6 +449,8 @@ contains
        call print_ramses_params
        write(*,'(a)')             ' '
        call print_dust_params
+       call print_FeII_2600_params
+       call print_FeII_2587_params
     end if
 
     return
