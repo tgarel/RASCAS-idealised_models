@@ -356,7 +356,9 @@ contains
     close(10)
 
     call read_ramses_params(pfile)
-
+    call read_FeII_2600_params(pfile)
+    call read_FeII_2587_params(pfile)
+ 
     return
 
   end subroutine read_gas_composition_params
@@ -384,6 +386,8 @@ contains
        write(unit,'(a,L1)')    '  verbose               = ',verbose
        write(unit,'(a)')             ' '
        call print_ramses_params(unit)
+       call print_FeII_2600_params(unit)
+       call print_FeII_2587_params(unit)
     else
        write(*,'(a,a,a)') '[gas_composition]'
        write(*,'(a)')       '# overwrite parameters'
@@ -396,6 +400,8 @@ contains
        write(*,'(a,L1)')    '  verbose               = ',verbose
        write(*,'(a)')             ' '
        call print_ramses_params
+       call print_FeII_2600_params
+       call print_FeII_2587_params
     end if
 
     return
