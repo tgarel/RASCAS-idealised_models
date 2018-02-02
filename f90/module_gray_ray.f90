@@ -16,7 +16,6 @@ module module_gray_ray
 
   ! todonext define accuracy
   real(kind=8),parameter :: accuracy=1.d-15
-  integer(kind=4),parameter :: ndirections=500
   integer(kind=4) :: iran = -10
   logical::identical_ray_distribution=.false. ! Same ray directions for all sources?
 
@@ -35,16 +34,18 @@ module module_gray_ray
 
 contains
 
-  subroutine ComputeFesc(nrays,rays,mesh_dom,compute_dom,maxdist,maxtau)
+  subroutine ComputeFesc(nrays,rays,mesh_dom,compute_dom,maxdist,maxtau,ndirections)
 
     integer(kind=4), intent(in)                     :: nrays
     type(ray_type), dimension(nrays), intent(inout) :: rays
     type(mesh), intent(in)                          :: mesh_dom
     type(domain), intent(in)                        :: compute_dom
     real(kind=8),intent(in)                         :: maxdist,maxtau
+    integer(kind=4)                                 :: ndirections ! Number of directions from each source
     integer(kind=4)                                 :: i,idir,iloop
     real(kind=8)                                    :: fesc
 
+    print*,'Number of directions: ',ndirections
     if(identical_ray_distribution) then
        allocate(rand1(ndirections),rand2(ndirections))
        do idir=1,ndirections
@@ -58,11 +59,11 @@ contains
 !$OMP PRIVATE(i,iran,idir,fesc)
 !$OMP DO SCHEDULE(DYNAMIC, 100) 
     do i=1,nrays  ! these are actually star particle positions
-!$OMP CRITICAL
-       write (*, "(A, f5.2, A, A)", advance='no') &           ! Progress bar
-            ' Tracing rays ',dble(iloop) / nrays * 100,' % ',char(13)
-       iloop=iloop+1
-!$OMP END CRITICAL
+!!!!$OMP CRITICAL
+!!!       write (*, "(A, f5.2, A, A)", advance='no') &           ! Progress bar
+!!!            ' Tracing rays ',dble(iloop) / nrays * 100,' % ',char(13)
+!!!       iloop=iloop+1
+!!!!$OMP END CRITICAL
        fesc = 0.0d0
        do idir = 1,ndirections
           if(identical_ray_distribution) then

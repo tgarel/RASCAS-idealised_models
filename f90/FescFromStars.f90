@@ -29,6 +29,7 @@ program main
   ! --- outputs
   character(2000)           :: fileout = 'fescs.dat'   ! output file ... 
   ! --- parameters
+  integer(kind=4)           :: ndirections=500 ! Number of directions (rays) from each source
   real(kind=8)              :: maxdist = -1 ! stop rays after this distance [cm] negative => ignored)
   real(kind=8)              :: maxtau  = -1  ! stop rays after this tau (overrides maxdist) (negative => ignored)
   ! --- miscelaneous
@@ -95,7 +96,7 @@ program main
 
   if (verbose) print *,'--> starting RT...'
   ! do the RT stuff
-  call ComputeFesc(nrays,rays,meshdom,compute_dom,maxdist,maxtau)
+  call ComputeFesc(nrays,rays,meshdom,compute_dom,maxdist,maxtau,ndirections)
 
   if (verbose) print *,'--> RT done'
 
@@ -158,6 +159,8 @@ contains
              write(DomDumpFile,'(a)') trim(value)
           case ('fileout')
              write(fileout,'(a)') trim(value)
+          case ('ndirections')
+             read(value,*) ndirections
           case ('maxdist')
              read(value,*) maxdist
           case ('maxtau')
