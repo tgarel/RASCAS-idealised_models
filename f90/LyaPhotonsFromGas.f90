@@ -13,7 +13,7 @@ program LyaPhotonsFromGas
   real(kind=8),parameter   :: lambda_0_cm = lambda_0 / cmtoA              ! cm
   real(kind=8),parameter   :: nu_0 = clight / lambda_0_cm                 ! Hz
   
-  character(2000)              :: parameter_file,filename
+  character(2000)              :: parameter_file
   type(domain)                 :: emission_domain
   integer(kind=4)              :: nleaftot,nvar,narg,nsel,i,iphot,j,iseed,lmax,ii
   integer(kind=4), allocatable :: emitting_cells(:),leaf_level(:)
@@ -28,7 +28,8 @@ program LyaPhotonsFromGas
   ! user-defined parameters - read from section [CreateDomDump] of the parameter file
   ! ---------------------------------------------------------------------------
   ! --- input / outputs
-  character(2000)           :: outputfile = 'LyaPhotICs' ! file to which outputs will be written
+  character(2000)           :: outputfileRec = 'LyaPhotIC.recLya' ! file to which recombination photons will be written
+  character(2000)           :: outputfileCol = 'LyaPhotIC.colLya' ! file to which collisional photons will be written
   character(2000)           :: repository = './'      ! ramses run directory (where all output_xxxxx dirs are).
   integer(kind=4)           :: snapnum = 1            ! ramses output number to use
   ! --- emission domain  
@@ -208,8 +209,7 @@ program LyaPhotonsFromGas
      ! --------------------------------------------------------------------------------------
      ! write ICs
      ! --------------------------------------------------------------------------------------
-     write(filename,'(a,a)') trim(outputfile),'.recLya'
-     open(unit=14, file=filename, status='unknown', form='unformatted', action='write')
+     open(unit=14, file=outputfileRec, status='unknown', form='unformatted', action='write')
      write(14) nphotons      ! nb of MC photons 
      write(14) recomb_total  ! nb of real photons (per sec).
      write(14) ranseed
@@ -298,8 +298,7 @@ program LyaPhotonsFromGas
      ! --------------------------------------------------------------------------------------
      ! write ICs
      ! --------------------------------------------------------------------------------------
-     write(filename,'(a,a)') trim(outputfile),'.colLya'
-     open(unit=14, file=filename, status='unknown', form='unformatted', action='write')
+     open(unit=14, file=outputfileCol, status='unknown', form='unformatted', action='write')
      write(14) nphotons      ! nb of MC photons 
      write(14) coll_total  ! nb of real photons (per sec).
      write(14) ranseed
@@ -363,8 +362,10 @@ contains
           i = scan(value,'!')
           if (i /= 0) value = trim(adjustl(value(:i-1)))
           select case (trim(name))
-          case ('outputfile')
-             write(outputfile,'(a)') trim(value)
+          case ('outputfileRec')
+             write(outputfileRec,'(a)') trim(value)
+          case ('outputfileCol')
+             write(outputfileCol,'(a)') trim(value)
           case ('repository')
              write(repository,'(a)') trim(value)
           case ('snapnum')
@@ -421,7 +422,8 @@ contains
     if (present(unit)) then 
        write(unit,'(a,a,a)')         '[LyaPhotonsFromGas]'
        write(unit,'(a)')             '# input / output parameters'
-       write(unit,'(a,a)')           '  outputfile      = ',trim(outputfile)
+       write(unit,'(a,a)')           '  outputfileRec   = ',trim(outputfileRec)
+       write(unit,'(a,a)')           '  outputfileCol   = ',trim(outputfileCol)
        write(unit,'(a,a)')           '  repository      = ',trim(repository)
        write(unit,'(a,i5)')          '  snapnum         = ',snapnum
        write(unit,'(a)')             '# emissionational domain parameters'
@@ -454,7 +456,8 @@ contains
        write(*,'(a)')             ' '
        write(*,'(a,a,a)')         '[LyaPhotonsFromGas]'
        write(*,'(a)')             '# input / output parameters'
-       write(*,'(a,a)')           '  outputfile = ',trim(outputfile)
+       write(*,'(a,a)')           '  outputfileRec = ',trim(outputfileRec)
+       write(*,'(a,a)')           '  outputfileCol = ',trim(outputfileCol)
        write(*,'(a,a)')           '  repository = ',trim(repository)
        write(*,'(a,i5)')          '  snapnum    = ',snapnum
        write(*,'(a)')             '# emissionational domain parameters'
