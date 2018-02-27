@@ -16,9 +16,8 @@ contains
 
   function voigt_fit(x,a)
 
-    ! returns ... what exactly?
-    ! REF to where the fit is taken from ?
-    ! comment on accuracy ?
+    ! returns H(x,a) = a/pi * integral(exp(-z**2) dz / (a**2+(z-x)**2))
+    ! Fit from Tasitsiomi 2006
     
     implicit none
     
@@ -34,7 +33,7 @@ contains
     else
        q = 0.0d0 
     end if
-    voigt_fit = q + exp(-x2) / sqrtpi
+    voigt_fit = sqrtpi*q + exp(-x2)
     
     return
     
