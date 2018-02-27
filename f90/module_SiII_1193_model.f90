@@ -20,18 +20,18 @@ module module_SiII_1193_model
   ! level 3 is 3s 3p^2 2P 1/2
 
   ! transition between levels 1 and 3 
-  real(kind=8),parameter :: lambda13       = 1193.28d0                ! transition wavelength [A]
-  real(kind=8),parameter :: lambda13_cm    = lambda13 / cmtoA         ! [cm]
-  real(kind=8),parameter :: nu13           = clight / lambda13_cm     ! [Hz]
-  real(kind=8),parameter :: f13            = 0.575d0                  ! oscillator strength
-  real(kind=8),parameter :: sigma13_factor = pi*e_ch**2*f13/me/clight ! multiply by Voigt(x,a)/delta_nu_doppler to get sigma.
-  real(kind=8),parameter :: A31            = 2.69d9                   ! spontaneous decay [/s]
+  real(kind=8),parameter :: lambda13       = 1193.28d0                    ! transition wavelength [A]
+  real(kind=8),parameter :: lambda13_cm    = lambda13 / cmtoA             ! [cm]
+  real(kind=8),parameter :: nu13           = clight / lambda13_cm         ! [Hz]
+  real(kind=8),parameter :: f13            = 0.575d0                      ! oscillator strength
+  real(kind=8),parameter :: sigma13_factor = sqrtpi*e_ch**2*f13/me/clight ! multiply by Voigt(x,a)/delta_nu_doppler to get sigma.
+  real(kind=8),parameter :: A31            = 2.69d9                       ! spontaneous decay [/s]
 
   ! transition between levels 2 and 3
-  real(kind=8),parameter :: lambda23       = 1197.39d0                ! transition wavelength [A]
-  real(kind=8),parameter :: lambda23_cm    = lambda23 / cmtoA         ! [cm]
-  real(kind=8),parameter :: nu23           = clight / lambda23_cm     ! [Hz]
-  real(kind=8),parameter :: A32            = 1.4d9                    ! spontaneous decay [/s]
+  real(kind=8),parameter :: lambda23       = 1197.39d0                    ! transition wavelength [A]
+  real(kind=8),parameter :: lambda23_cm    = lambda23 / cmtoA             ! [cm]
+  real(kind=8),parameter :: nu23           = clight / lambda23_cm         ! [Hz]
+  real(kind=8),parameter :: A32            = 1.4d9                        ! spontaneous decay [/s]
   
   real(kind=8),parameter :: A31_over_A31_plus_A32 = A31 / (A31+A32)
 

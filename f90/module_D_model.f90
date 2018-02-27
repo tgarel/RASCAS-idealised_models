@@ -17,7 +17,7 @@ module module_D_model
   ! useful pre-computed quantities
   real(kind=8),parameter   :: lambda_0_cm = lambda_0 / cmtoA              ! cm
   real(kind=8),parameter   :: nu_0 = clight / lambda_0_cm                 ! Hz
-  real(kind=8),parameter   :: sigma_factor = pi*e_ch**2*f12/ me / clight ! cross-section factor-> multiply by Voigt(x,a)/delta_nu_doppler to get sigma.
+  real(kind=8),parameter   :: sigma_factor = sqrtpi*e_ch**2*f12/me/clight ! cross-section factor-> multiply by Voigt(x,a)/delta_nu_doppler to get sigma.
   real(kind=8),parameter   :: gamma_over_fourpi = gamma / fourpi
 
   ! user-defined parameters - read from section [Deuterium] of the parameter file 
