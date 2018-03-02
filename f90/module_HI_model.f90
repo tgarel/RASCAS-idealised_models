@@ -1,9 +1,10 @@
 module module_HI_model
 
   use module_constants
-  use module_utils, only : voigt_fit, isotropic_direction, anisotropic_direction_HIcore, anisotropic_direction_Rayleigh
+  use module_utils, only : isotropic_direction, anisotropic_direction_HIcore, anisotropic_direction_Rayleigh
   use module_uparallel
   use module_random
+  use module_voigt
 
   implicit none
 

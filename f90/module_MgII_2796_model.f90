@@ -5,9 +5,10 @@ module module_MgII_2796_model
   ! The module also implements one decay channel (resonant) at 2796.35 A.
 
   use module_constants
-  use module_utils, only : voigt_fit, isotropic_direction
+  use module_utils, only : isotropic_direction
   use module_uparallel
   use module_random
+  use module_voigt
 
   implicit none
 

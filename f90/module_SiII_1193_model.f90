@@ -5,9 +5,10 @@ module module_SiII_1193_model
   ! The module also implements the two decay channels (resonant and fluorescent) at 1193.28 A and 1197.39 A. 
   
   use module_constants
-  use module_utils, only : voigt_fit, isotropic_direction
+  use module_utils, only : isotropic_direction
   use module_uparallel
   use module_random
+  use module_voigt
 
   implicit none
 
