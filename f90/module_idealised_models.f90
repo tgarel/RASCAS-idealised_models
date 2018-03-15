@@ -1,7 +1,7 @@
 module module_idealised_models
 
   use module_random
-  use module_constants, only : kb, mp, pi
+  use module_constants, only : kb, mp, pi, msun
   
   implicit none
 
@@ -20,6 +20,7 @@ module module_idealised_models
   real(kind=8)             :: r_max               = -999.0d0         ! full box size [cm]
   real(kind=8)             :: disc_rd             = -999.0d0         ! Disc radial scalelength
   real(kind=8)             :: disc_zd             = -999.0d0         ! Disc height, i.e. vertical scalelength
+  real(kind=8)             :: fix_mtot_hi         = -999.0d0         ! Disc HI mass [Msun] 
   real(kind=8),public      :: box_size_IM_cm      = -999.0d0         ! full box size [cm]
 
   character(100)           :: idealmodel_type     = 'my_model'       ! name of the idealised model
@@ -28,7 +29,7 @@ module module_idealised_models
 
   
   ! public functions:
-  public :: read_IdealisedModels_params, print_IdealisedModels_params, compute_idealised_gas, shell_V_rho_gradient, shellcone_V_rho_gradient, shell_chisholm, shell_V_rho_gradient_steady
+  public :: read_IdealisedModels_params, print_IdealisedModels_params, compute_idealised_gas, shell_V_rho_gradient, shellcone_V_rho_gradient, shell_chisholm, shell_V_rho_gradient_steady, disc_thick_vcirc
   
   
 contains
@@ -65,6 +66,10 @@ contains
        do ileaf=1,nleaf
           call shell_chisholm(n_dust(ileaf),n_gas(ileaf),b_param(ileaf),v_leaf(1,ileaf),v_leaf(2,ileaf),v_leaf(3,ileaf),x_leaf(ileaf,1),x_leaf(ileaf,2),x_leaf(ileaf,3),dx_cell)
        end do
+    case('disc_thick_vcirc')
+       do ileaf=1,nleaf
+          call disc_thick_vcirc(n_dust(ileaf),n_gas(ileaf),b_param(ileaf),v_leaf(1,ileaf),v_leaf(2,ileaf),v_leaf(3,ileaf),x_leaf(ileaf,1),x_leaf(ileaf,2),x_leaf(ileaf,3),dx_cell)
+       end do
     end select
     
     return
@@ -75,6 +80,122 @@ contains
 
   !!\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\ BEGINNING MODELS //////////////////////////////////////////////////////////////////////////
 
+  !!+++++++++++++++++++++++++++++ THICK DISC ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+  subroutine disc_thick_vcirc(ndust_ideal,ngas_ideal,bparam_ideal,vx_ideal,vy_ideal,vz_ideal,xcell_ideal,ycell_ideal,zcell_ideal,dx_cell)
+
+    implicit none
+
+    !! Input paremeters specific to discs are:
+    !! - fix_mtot_hi (in Msun), disc_rd, disc_zd
+    !! Non-specfic ones are : r_max, r_min MUST BE 0 (central source embedded in gaseous disc) for MCsampling, Vgas_norm (norm. of Vcirc), Tgas_norm and ndust_norm
+    ! For discs, ndust_norm is dust/gas ratio (in terms of density!)
+    
+    ! Declare arguments
+    real(kind=8)                          :: dx_cell
+    real(kind=8),intent(inout)            :: ndust_ideal,ngas_ideal,bparam_ideal
+    real(kind=8),intent(inout)            :: vx_ideal,vy_ideal,vz_ideal
+    real(kind=8),intent(in)               :: xcell_ideal,ycell_ideal,zcell_ideal    
+    real(kind=8)                          :: volfrac2
+    real(kind=8)                          :: dist_cell,dist2,dist_cell_min,dist_cell_max, dist_cell_zdir,dist2_rdir,dist_cell_rdir
+    integer(kind=4)                       :: missed_cell
+    real(kind=8)                          :: log_mtot, mtot_hi_tilde
+    real(kind=8),parameter                :: gram_to_atoms = 1.673534d-24 ! Hydrogen mass in g
+
+    !! Disc in XY plane, with rho(z) profile too
+
+    vx_ideal    = 0.0d0
+    vy_ideal    = 0.0d0
+    vz_ideal    = 0.0d0
+    ngas_ideal  = 0.0d0
+    ndust_ideal = 0.0d0
+    volfrac2    = 1.0d0
+
+    ! I use mtot_hi_tilde instead of fix_mtot_hi such that fix_mtot_hi is encompssed into r_max
+    ! This is for THICK discs (for thin discs, drop the tanh term)
+    mtot_hi_tilde = fix_mtot_hi / (1.0d0-(r_max/disc_rd+1.0d0)*exp(-r_max/disc_rd)) / tanh(r_max / disc_zd)
+    ! in log10
+    log_mtot = log10(mtot_hi_tilde) + log10(msun) - log10(gram_to_atoms)    ! Msun -> g -> atoms
+    
+    ! Cut off cells at R(x,y,z) > r_max, i.e. out of sphere domain delimited by r_max
+    ! For thick discs, I need cell distances in 3D (dist_cell), in z dir (dist_cell_zdir), and in XY plane (dist_cell_rdir)
+    dist2_rdir          = 0.0d0
+    dist_cell_zdir      = 0.0d0
+    dist_cell_rdir      = 0.0d0
+    dist_cell           = 0.0d0
+    dist2               = 0.0d0
+    
+    dist2_rdir          = (xcell_ideal-0.5d0)**2 + (ycell_ideal-0.5d0)**2!  in XY plane for discs...  ! in frame with origin at center of box
+    dist_cell_rdir      = sqrt(dist2_rdir)
+    dist_cell_zdir      = sqrt((zcell_ideal-0.5d0)**2)
+    dist2               = (xcell_ideal-0.5d0)**2 + (ycell_ideal-0.5d0)**2 + (zcell_ideal-0.5d0)**2 ! squared distance of cell from center in xy plane
+    dist_cell           = sqrt(dist2)
+    
+    if (MCsampling) then
+       dist_cell_max = dist_cell + dx_cell * sqrt(3.0d0) / 2.0d0 ! dx_cell * sqrt(3.0) / 2. is half the longest length in a cube
+       dist_cell_min = dist_cell - dx_cell * sqrt(3.0d0) / 2.0d0 ! dx_cell * sqrt(3.0) / 2. is half the longest length in a cube
+       
+       if (dist_cell_max > r_max) then ! cell partially within shell
+          volfrac2 = mc_sampling_shell(xcell_ideal,ycell_ideal,zcell_ideal,dx_cell) ! Same fct as shell but I must use r_min=0 for discs !!
+          missed_cell = 0
+       end if
+       if (dist_cell_max < r_max) then ! cell completely within shell
+          volfrac2 = 1.0
+          missed_cell = 0
+       end if
+      
+       ngas_ideal  = 10.d0**log_mtot / 4.d0 / pi / (disc_zd*box_size_IM_cm) / (disc_rd*box_size_IM_cm)**2. * exp(-dist_cell_rdir/disc_rd) * 1.d0 / cosh(-dist_cell_zdir/disc_zd)**2.
+       ngas_ideal  = ngas_ideal * volfrac2
+       ndust_ideal = ndust_norm * ngas_ideal ! ndust_norm is dust/gas ratio (in terms of density!)
+
+       vx_ideal  = -1.0d0 * Vgas_norm * (ycell_ideal-0.5d0) / dist_cell ! vx = -V*sintheta*sinphi in spher. coord.
+       vy_ideal  = Vgas_norm *  (xcell_ideal-0.5d0) / dist_cell         ! vy = V*sintheta*cosphi in spher. coord.
+       vz_ideal  = 0.0d0 ! no z vel. comp. for now
+       
+       if (dist_cell_min > r_max) then  ! cell completely out of shell      
+          vx_ideal    = 0.0d0
+          vy_ideal    = 0.0d0
+          vz_ideal    = 0.0d0
+          ngas_ideal  = 0.0d0
+          ndust_ideal = 0.0d0
+          missed_cell = 0
+       end if
+       
+    else  !! Brut force: compare dist to cell center against Rmin/Rmax 
+       if (dist_cell < r_max) then ! cell completely within sphere
+          
+          vx_ideal  = -1.0d0 * Vgas_norm * (ycell_ideal-0.5d0) / dist_cell ! vx = -V*sintheta*sinphi in spher. coord.
+          vy_ideal  = Vgas_norm *  (xcell_ideal-0.5d0) / dist_cell         ! vy = V*sintheta*cosphi in spher. coord.
+          vz_ideal  = 0.0d0 ! no z vel. comp. for now
+
+          ngas_ideal  = 10.d0**log_mtot / 4.d0 / pi / (disc_zd*box_size_IM_cm) / (disc_rd*box_size_IM_cm)**2. * exp(-dist_cell_rdir/disc_rd) * 1.d0 / cosh(-dist_cell_zdir/disc_zd)**2.
+          ngas_ideal  = ngas_ideal * volfrac2
+          ndust_ideal = ndust_norm * ngas_ideal ! ndust_norm is dust/gas ratio (in terms of density!)    
+          missed_cell = 0
+       else                                                ! cell completely out of sphere            
+          vx_ideal    = 0.0d0
+          vy_ideal    = 0.0d0
+          vz_ideal    = 0.0d0
+          ngas_ideal  = 0.0d0
+          ndust_ideal = 0.0d0
+          missed_cell = 0
+       end if
+    end if
+    
+    bparam_ideal = sqrt(2.0d0*kb*Tgas_norm)
+    
+    if (missed_cell .eq. 1) then
+       print*,'I missed a cell in module_idealised_models !'
+       print*,dist_cell
+       stop
+    endif  
+    
+    return
+    
+  end subroutine disc_thick_vcirc
+
+
+  
   !+++++++++++++++++++++++++++++++++++++++++++++++ SHELL with velocity gradient and density gradient (power-laws) +++++++++++++++++++++++++++++++++++++++++++++
 
   subroutine shell_V_rho_gradient(ndust_ideal,ngas_ideal,bparam_ideal,vx_ideal,vy_ideal,vz_ideal,xcell_ideal,ycell_ideal,zcell_ideal,dx_cell)
@@ -373,8 +494,9 @@ contains
     
   end subroutine shellcone_V_rho_gradient
 
+  !!++++++++++++++++++++++++++++++++++++++++ Shell with velocity gradient and density gradient a la Chisholm ++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-   subroutine shell_chisholm(ndust_ideal,ngas_ideal,bparam_ideal,vx_ideal,vy_ideal,vz_ideal,xcell_ideal,ycell_ideal,zcell_ideal,dx_cell)
+  subroutine shell_chisholm(ndust_ideal,ngas_ideal,bparam_ideal,vx_ideal,vy_ideal,vz_ideal,xcell_ideal,ycell_ideal,zcell_ideal,dx_cell)
     
     implicit none
 
@@ -470,8 +592,6 @@ contains
   
   !!\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\ END MODELS //////////////////////////////////////////////////////////////////////////
   
-
-  !!+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
   function mc_sampling_shell(xcell_ideal,ycell_ideal,zcell_ideal,dx_cell)
 
@@ -616,7 +736,13 @@ contains
           case ('r_min')
              read(value,*) r_min
           case ('r_max')
-             read(value,*) r_max 
+             read(value,*) r_max   
+          case ('fix_mtot_hi')
+             read(value,*) fix_mtot_hi
+          case ('disc_rd')
+             read(value,*) disc_rd 
+          case ('disc_zd')
+             read(value,*) disc_zd
           case ('verbose')
              read(value,*) verbose
           end select
@@ -628,6 +754,9 @@ contains
     print*, ' MCsampling           = ', MCsampling
     print*, ' ngas_norm            = ',ngas_norm
     print*, ' coldens_norm         = ',coldens_norm
+    print*, ' fix_mtot_hi          = ',fix_mtot_hi
+    print*, ' disc_rd              = ',disc_rd
+    print*, ' disc_zd              = ',disc_zd
     print*, ' ngas_slope           = ',ngas_slope
     print*, ' Vgas_norm            = ',Vgas_norm
     print*, ' Vgas_slope           = ',Vgas_slope

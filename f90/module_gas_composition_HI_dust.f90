@@ -98,7 +98,7 @@ contains
     open(unit=15, file=trim(file), status='unknown', form='unformatted', action='write')
     write(15) nleaf
     do ileaf = 1,nleaf
-       write(15) x_leaf(ileaf,1),x_leaf(ileaf,2),x_leaf(ileaf,3),g(ileaf)%v(1),g(ileaf)%v(2),g(ileaf)%v(3),g(ileaf)%dopwidth,g(ileaf)%nHI
+       write(15) x_leaf(ileaf,1),x_leaf(ileaf,2),x_leaf(ileaf,3),g(ileaf)%v(1),g(ileaf)%v(2),g(ileaf)%v(3),g(ileaf)%dopwidth,g(ileaf)%nHI,g(ileaf)%ndust
     end do
     close(15)
     
@@ -222,7 +222,7 @@ contains
     tau_HI   = get_tau_HI(cell_gas%nHI, cell_gas%dopwidth, distance_to_border_cm, nu_cell)
     tau_dust = get_tau_dust(cell_gas%ndust, distance_to_border_cm, nu_cell)
     tau_cell = tau_HI + tau_dust
-
+    
     if (tau_abs > tau_cell) then  ! photon is due for absorption outside the cell 
        gas_get_scatter_flag = 0   ! no scatter
        tau_abs = tau_abs - tau_cell

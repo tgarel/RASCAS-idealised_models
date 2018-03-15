@@ -57,7 +57,7 @@ contains
     sigmaH  = sigmaH_factor / delta_nu_doppler * h
  
     get_tau_HI = sigmaH * nhi * distance_to_border_cm
-
+    
     return
 
   end function get_tau_HI
