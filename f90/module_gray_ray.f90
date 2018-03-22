@@ -23,6 +23,7 @@ module module_gray_ray
   type ray_type
      integer(kind=4)           :: ID       ! a positive unique ID 
      real(kind=8)              :: dist     ! distance traveled along ray (box units)
+     real(kind=8)              :: maxdist_cm ! max distance for ray (cm)
      real(kind=8)              :: tau      ! integrated opacity along ray
      real(kind=8),dimension(3) :: x_em     ! emission location (box units)
      real(kind=8),dimension(3) :: k_em     ! emission direction == propagation direction (normalised vector)
@@ -161,10 +162,12 @@ contains
        tau  = tau + tau_cell 
        
        ! check if we reached tau or distance limits
-       if (dist > maxdist_cm .and. tau > maxtau) then ! dist or tau exceeding boundary -> correct excess and exit. 
-          if (maxdist_cm > 0) then
+       if ((dist > maxdist_cm .or. dist>ray%maxdist_cm) .and. tau > maxtau) then
+          ! dist or tau exceeding boundary -> correct excess and exit. 
+          if (maxdist_cm > 0 .or. ray%maxdist_cm>0) then
              excess   = maxdist_cm - dist
-             ray%dist = maxdist_cm
+             if(ray%maxdist_cm>0) excess = min(excess, ray%maxdist_cm - dist)
+             ray%dist = dist
              ray%tau  = tau - (excess / distance_to_border_cm)*tau_cell
           else
              excess   = maxtau - tau
@@ -259,15 +262,16 @@ contains
     open(unit=14, file=trim(file), status='unknown', form='unformatted', action='read')
     read(14) n_rays
     allocate(rays(n_rays))
-    read(14) (rays(i)%ID,i=1,n_rays)
-    read(14) (rays(i)%x_em(1),i=1,n_rays)
-    read(14) (rays(i)%x_em(2),i=1,n_rays)
-    read(14) (rays(i)%x_em(3),i=1,n_rays)
+    read(14) (rays(i)%ID,         i=1,n_rays)
+    read(14) (rays(i)%x_em(1),    i=1,n_rays)
+    read(14) (rays(i)%x_em(2),    i=1,n_rays)
+    read(14) (rays(i)%x_em(3),    i=1,n_rays)
+    read(14) (rays(i)%maxdist_cm, i=1,n_rays)
     close(14)
     ! initialise other properties. 
     do i=1,n_rays
+       rays(i)%dist  = 0.d0
        rays(i)%tau  = 0.d0
-       rays(i)%dist = 0.d0
     enddo
 
     print*,minval(rays(:)%x_em(1)),maxval(rays(:)%x_em(1))
