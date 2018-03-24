@@ -1,6 +1,5 @@
 module module_gray_ray
 
-  ! This module assumes a single domain and will not work with domain decomposition... 
   ! This is a trimmed and slightly modified version of module_photon.
   !
   ! THIS IMPLENMENTATION HAS NO WAVELENGTH / VELOCITY INFO (used for escape fraction measurements). 
@@ -18,19 +17,27 @@ module module_gray_ray
   real(kind=8),parameter :: accuracy=1.d-15
   integer(kind=4) :: iran = -10
   logical::identical_ray_distribution=.false. ! Same ray directions for all sources?
+  logical:: use_halos = .false.
 
 
   type ray_type
      integer(kind=4)           :: ID       ! a positive unique ID 
      real(kind=8)              :: dist     ! distance traveled along ray (box units)
-     real(kind=8)              :: maxdist_cm ! max distance for ray (cm)
      real(kind=8)              :: tau      ! integrated opacity along ray
      real(kind=8),dimension(3) :: x_em     ! emission location (box units)
+     integer(kind=4)           :: halo_ID  ! a positive unique ID 
      real(kind=8),dimension(3) :: k_em     ! emission direction == propagation direction (normalised vector)
      real(kind=8)              :: fesc     ! escape fraction 
   end type ray_type
 
-  public  :: ComputeFesc, ray_advance, init_rays_from_file, dump_rays
+  type halo_type
+     integer(kind=4)           :: ID       ! a positive unique ID
+     type(domain)              :: domain   ! rvir and center (box units)
+  end type halo_type
+
+  type(halo_type),dimension(:),allocatable :: halos
+
+  public  :: ComputeFesc, ray_advance, init_rays_from_file, init_halos_from_file, dump_rays
   private :: path
 
 contains
@@ -60,11 +67,11 @@ contains
 !$OMP PRIVATE(i,iran,idir,fesc)
 !$OMP DO SCHEDULE(DYNAMIC, 100) 
     do i=1,nrays  ! these are actually star particle positions
-!!!!$OMP CRITICAL
-!!!       write (*, "(A, f5.2, A, A)", advance='no') &           ! Progress bar
-!!!            ' Tracing rays ',dble(iloop) / nrays * 100,' % ',char(13)
-!!!       iloop=iloop+1
-!!!!$OMP END CRITICAL
+!!!$OMP CRITICAL
+!!       write (*, "(A, f5.2, A, A)", advance='no') &           ! Progress bar
+!!            ' Tracing rays ',dble(iloop) / nrays * 100,' % ',char(13)
+!!       iloop=iloop+1
+!!!$OMP END CRITICAL
        fesc = 0.0d0
        do idir = 1,ndirections
           if(identical_ray_distribution) then
@@ -74,7 +81,16 @@ contains
           endif
           rays(i)%tau = 0.0d0 
           rays(i)%dist = 0.0d0
-          call ray_advance(rays(i),mesh_dom,compute_dom,maxdist,maxtau)
+          if(use_halos) then
+             if(rays(i)%halo_ID > 0) then
+                call ray_advance(rays(i),mesh_dom,halos(rays(i)%halo_ID)%domain,maxdist,maxtau)
+             else
+                ! No halo assigned here => 100% escape since already in IGM
+                rays(i)%tau = 0.0d0 
+             endif
+          else
+             call ray_advance(rays(i),mesh_dom,compute_dom,maxdist,maxtau)
+          endif 
           fesc = fesc + exp(-rays(i)%tau)
        end do
        rays(i)%fesc = fesc / real(ndirections,8)
@@ -104,7 +120,7 @@ contains
     integer(kind=4)                :: i, icellnew, npush
     real(kind=8),dimension(3)      :: vgas, kray, cell_corner, posoct
     logical                        :: flagoutvol, in_domain
-    real(kind=8)                   :: excess
+    real(kind=8)                   :: excess, tmp
     
     ! initialise ray tracing 
     ppos  = ray%x_em   ! emission position 
@@ -162,11 +178,10 @@ contains
        tau  = tau + tau_cell 
        
        ! check if we reached tau or distance limits
-       if ((dist > maxdist_cm .or. dist>ray%maxdist_cm) .and. tau > maxtau) then
+       if (dist > maxdist_cm .and. tau > maxtau) then
           ! dist or tau exceeding boundary -> correct excess and exit. 
-          if (maxdist_cm > 0 .or. ray%maxdist_cm>0) then
+          if (maxdist_cm > 0) then
              excess   = maxdist_cm - dist
-             if(ray%maxdist_cm>0) excess = min(excess, ray%maxdist_cm - dist)
              ray%dist = dist
              ray%tau  = tau - (excess / distance_to_border_cm)*tau_cell
           else
@@ -190,9 +205,9 @@ contains
        if (.not.(in_domain)) then
           ray%dist = dist
           ray%tau  = tau
-          print*,'WARNING: escaping domain before maxdist or maxtau is reached... '
-          print*,'initial distance to border of domain [cm] : ',domain_distance_to_border(ray%x_em,domaine_calcul)*box_size_cm
-          print*,'maxdist [cm]                              : ',maxdist_cm
+          !print*,'WARNING: escaping domain before maxdist or maxtau is reached... '
+          !print*,'initial distance to border of domain [cm] : ',domain_distance_to_border(ray%x_em,domaine_calcul)*box_size_cm
+          !print*,'maxdist [cm]                              : ',maxdist_cm
           exit ray_propagation  ! ray is done 
        end if
        ! Ray moves to next cell : find it
@@ -204,11 +219,29 @@ contains
           npush = npush + 1
           if (npush>100) then
              print*,'Too many pushes, npush>100 '
+             print*,'ray id = ',ray%ID
+             print*,'ray initial position = ',ray%x_em
+             print*,'ray direction = ',ray%k_em
+             print*,'halo domain type = ',domaine_calcul%type
+             print*,'halo center = ',domaine_calcul%sp%center
+             print*,'halo radius = ',domaine_calcul%sp%radius
+             print*,'ray position = ',ppos
+             print*,'distance to border = ',distance_to_border,distance_to_border_cm
+             tmp = sqrt(sum((ppos-domaine_calcul%sp%center)**2))
+             print*,'dist of ray from center = ',tmp
+             print*,'dist - rvir = ',tmp - domaine_calcul%sp%radius
              stop
           endif
-          ppos(1) = ppos(1) + merge(-1.0d0,1.0d0,kray(1)<0.0d0) * epsilon(ppos(1))
-          ppos(2) = ppos(2) + merge(-1.0d0,1.0d0,kray(2)<0.0d0) * epsilon(ppos(2))
-          ppos(3) = ppos(3) + merge(-1.0d0,1.0d0,kray(3)<0.0d0) * epsilon(ppos(3))
+
+          ! hack
+          do i=1,3
+             ppos(i) = ppos(i) + kray(i) * 500000.0d0 * epsilon(ppos(i))
+          end do
+          !!$ ppos(1) = ppos(1) + merge(-1.0d0,1.0d0,kray(1)<0.0d0) * epsilon(ppos(1))
+          !!$ ppos(2) = ppos(2) + merge(-1.0d0,1.0d0,kray(2)<0.0d0) * epsilon(ppos(2))
+          !!$ ppos(3) = ppos(3) + merge(-1.0d0,1.0d0,kray(3)<0.0d0) * epsilon(ppos(3))
+          ! kcah
+          
           ! correct for periodicity
           do i=1,3
              if (ppos(i) < 0.0d0) ppos(i)=ppos(i)+1.0d0
@@ -219,9 +252,9 @@ contains
           if (.not.(in_domain)) then
              ray%dist = dist
              ray%tau  = tau
-             print*,'WARNING: escaping domain before maxdist or maxtau is reached... '
-             print*,'initial distance to border of domain [cm] : ',domain_distance_to_border(ray%x_em,domaine_calcul)*box_size_cm
-             print*,'maxdist [cm]                              : ',maxdist_cm
+             !print*,'WARNING: escaping domain before maxdist or maxtau is reached... '
+             !print*,'initial distance to border of domain [cm] : ',domain_distance_to_border(ray%x_em,domaine_calcul)*box_size_cm
+             !print*,'maxdist [cm]                              : ',maxdist_cm
              exit ray_propagation  ! ray is done 
           end if
           call whereIsPhotonGoing(domesh,icell,ppos,icellnew,flagoutvol)
@@ -266,7 +299,7 @@ contains
     read(14) (rays(i)%x_em(1),    i=1,n_rays)
     read(14) (rays(i)%x_em(2),    i=1,n_rays)
     read(14) (rays(i)%x_em(3),    i=1,n_rays)
-    read(14) (rays(i)%maxdist_cm, i=1,n_rays)
+    read(14) (rays(i)%halo_ID,     i=1,n_rays)
     close(14)
     ! initialise other properties. 
     do i=1,n_rays
@@ -279,6 +312,27 @@ contains
     print*,minval(rays(:)%x_em(3)),maxval(rays(:)%x_em(3))
     
   end subroutine init_rays_from_file
+
+  subroutine init_halos_from_file(file,halos)
+
+    character(2000),intent(in)                            :: file
+    type(halo_type),dimension(:),allocatable, intent(out) :: halos
+    integer(kind=4)                                       :: i, n_halos
+
+    print*,'Initialising halos from file (in module_gray_ray.f90)'
+    ! read Halos (for escape fractions out of virial radii)
+    open(unit=14, file=trim(file), status='unknown', form='unformatted', action='read')
+    read(14) n_halos
+    allocate(halos(n_halos))
+    halos(1:n_halos)%domain%type='sphere'
+    read(14) (halos(i)%ID,               i=1,n_halos)
+    read(14) (halos(i)%domain%sp%radius,    i=1,n_halos)
+    read(14) (halos(i)%domain%sp%center(1), i=1,n_halos)
+    read(14) (halos(i)%domain%sp%center(2), i=1,n_halos)
+    read(14) (halos(i)%domain%sp%center(3), i=1,n_halos)
+    close(14)
+    
+  end subroutine init_halos_from_file
 
 
   subroutine dump_rays(file,rays)

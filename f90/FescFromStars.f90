@@ -9,11 +9,11 @@ program main
 
   implicit none
 
-  type(ray_type),dimension(:),allocatable :: rays
-  type(mesh)                              :: meshdom
-  type(domain)                            :: compute_dom
-  integer                                 :: nrays
-  real(kind=8)                            :: start, tmptime, finish
+  type(ray_type),dimension(:),allocatable  :: rays
+  type(mesh)                               :: meshdom
+  type(domain)                             :: compute_dom
+  integer                                  :: nrays
+  real(kind=8)                             :: start, tmptime, finish
 
   character(2000) :: parameter_file, line, file_compute_dom
   character(2000),dimension(:),allocatable :: mesh_file_list 
@@ -32,6 +32,9 @@ program main
   integer(kind=4)           :: ndirections=500 ! Number of directions (rays) from each source
   real(kind=8)              :: maxdist = -1 ! stop rays after this distance [cm] negative => ignored)
   real(kind=8)              :: maxtau  = -1  ! stop rays after this tau (overrides maxdist) (negative => ignored)
+  ! --- halos - for escape fractions out of virial radii
+  integer(kind=4)           :: nhalos=0 ! Number of halos
+  character(2000)           :: HaloFile = 'halos.dat' ! the file containing halo ids, rvir, and pos
   ! --- miscelaneous
   logical                   :: verbose = .false.
   ! --------------------------------------------------------------------------
@@ -59,6 +62,14 @@ program main
   if (verbose) print *,'--> Nb of rays =',nrays
   ! ------------------------------------------------------------
 
+  ! -------------------- read halo IDs and domains -------------
+  if(use_halos) then
+     if (verbose) print *,'--> reading halos in file: ',trim(HaloFile)
+     call init_halos_from_file(HaloFile,halos)
+     nhalos = size(halos)
+     if (verbose) print *,'--> Nb of halos =',nhalos
+  endif
+  ! -----------------------------------------------------------
 
   
   ! -------------------- Get domain properties --------------------
@@ -155,6 +166,10 @@ contains
              write(DataDir,'(a)') trim(value)
           case ('RaysICFile')
              write(RaysICFile,'(a)') trim(value)
+          case ('Halos')
+             read(value,*) use_halos
+          case ('HaloFile')
+             write(HaloFile,'(a)') trim(value)
           case ('DomDumpFile')
              write(DomDumpFile,'(a)') trim(value)
           case ('fileout')
@@ -177,6 +192,7 @@ contains
     
     ! add path (datadir) to input files 
     RaysICFile = trim(DataDir)//trim(RaysICFile)
+    HaloFile = trim(DataDir)//trim(HaloFile)
     DomDumpFile  = trim(DataDir)//trim(DomDumpFile)
     
     call read_mesh_params(pfile)
