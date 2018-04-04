@@ -42,13 +42,13 @@ module module_gray_ray
 
 contains
 
-  subroutine ComputeFesc(nrays,rays,mesh_dom,compute_dom,maxdist,maxtau,ndirections)
+  subroutine ComputeFesc(nrays,rays,mesh_dom,compute_dom,maxdist,maxtau,minnH,ndirections)
 
     integer(kind=4), intent(in)                     :: nrays
     type(ray_type), dimension(nrays), intent(inout) :: rays
     type(mesh), intent(in)                          :: mesh_dom
     type(domain), intent(in)                        :: compute_dom
-    real(kind=8),intent(in)                         :: maxdist,maxtau
+    real(kind=8),intent(in)                         :: maxdist,maxtau,minnH
     integer(kind=4)                                 :: ndirections ! Number of directions from each source
     integer(kind=4)                                 :: i,idir,iloop
     real(kind=8)                                    :: fesc
@@ -83,13 +83,13 @@ contains
           rays(i)%dist = 0.0d0
           if(use_halos) then
              if(rays(i)%halo_ID > 0) then
-                call ray_advance(rays(i),mesh_dom,halos(rays(i)%halo_ID)%domain,maxdist,maxtau)
+                call ray_advance(rays(i),mesh_dom,halos(rays(i)%halo_ID)%domain,maxdist,maxtau,minnH)
              else
                 ! No halo assigned here => 100% escape since already in IGM
                 rays(i)%tau = 0.0d0 
              endif
           else
-             call ray_advance(rays(i),mesh_dom,compute_dom,maxdist,maxtau)
+             call ray_advance(rays(i),mesh_dom,compute_dom,maxdist,maxtau,minnH)
           endif 
           fesc = fesc + exp(-rays(i)%tau)
        end do
@@ -105,12 +105,13 @@ contains
   end subroutine ComputeFesc
 
 
-  subroutine ray_advance(ray,domesh,domaine_calcul,maxdist,maxtau)
+  subroutine ray_advance(ray,domesh,domaine_calcul,maxdist,maxtau,minnH)
 
     type(ray_type),intent(inout)   :: ray            ! a ray 
     type(mesh),intent(in)          :: domesh         ! mesh
     type(domain),intent(in)        :: domaine_calcul ! domaine dans lequel on propage les photons...
     real(kind=8),intent(in)        :: maxdist,maxtau ! stop propagation at either maxdist or maxtau (the one which is positive). 
+    real(kind=8),intent(in)        :: minnH          ! stop propagation when reaching hydrogen density below this value
     type(gas)                      :: cell_gas       ! gas in the current cell 
     integer(kind=4)                :: icell, ioct, ind, ileaf, cell_level  ! current cell indices and level
     real(kind=8)                   :: cell_size, cell_size_cm, scalar, nu_cell, maxdist_cm
@@ -191,6 +192,11 @@ contains
           end if
           exit ray_propagation  ! no need to update other unused properties of ray. 
        end if
+       if ( cell_gas%nH < minnH ) then ! Gone below the minimum density
+          ray%dist = dist
+          ray%tau  = tau
+          exit ray_propagation
+       endif
 
        ! update head of ray position
        ppos = ppos + kray * distance_to_border *(1.0d0 + epsilon(1.0d0))
@@ -235,7 +241,7 @@ contains
 
           ! hack
           do i=1,3
-             ppos(i) = ppos(i) + kray(i) * 500000.0d0 * epsilon(ppos(i))
+             ppos(i) = ppos(i) + kray(i) * 1d7 * epsilon(ppos(i))
           end do
           !!$ ppos(1) = ppos(1) + merge(-1.0d0,1.0d0,kray(1)<0.0d0) * epsilon(ppos(1))
           !!$ ppos(2) = ppos(2) + merge(-1.0d0,1.0d0,kray(2)<0.0d0) * epsilon(ppos(2))

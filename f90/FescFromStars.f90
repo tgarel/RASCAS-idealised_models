@@ -30,8 +30,9 @@ program main
   character(2000)           :: fileout = 'fescs.dat'   ! output file ... 
   ! --- parameters
   integer(kind=4)           :: ndirections=500 ! Number of directions (rays) from each source
-  real(kind=8)              :: maxdist = -1 ! stop rays after this distance [cm] negative => ignored)
-  real(kind=8)              :: maxtau  = -1  ! stop rays after this tau (overrides maxdist) (negative => ignored)
+  real(kind=8)              :: maxdist = -1    ! stop rays after this distance [cm] negative => ignored)
+  real(kind=8)              :: maxtau  = -1    ! stop rays after this tau (overrides maxdist) (negative => ignored)
+  real(kind=8)              :: minnH   = -1    ! stop rays when reaching H density lower than this (in cm^-3)
   ! --- halos - for escape fractions out of virial radii
   integer(kind=4)           :: nhalos=0 ! Number of halos
   character(2000)           :: HaloFile = 'halos.dat' ! the file containing halo ids, rvir, and pos
@@ -107,7 +108,7 @@ program main
 
   if (verbose) print *,'--> starting RT...'
   ! do the RT stuff
-  call ComputeFesc(nrays,rays,meshdom,compute_dom,maxdist,maxtau,ndirections)
+  call ComputeFesc(nrays,rays,meshdom,compute_dom,maxdist,maxtau,minnH,ndirections)
 
   if (verbose) print *,'--> RT done'
 
@@ -178,6 +179,8 @@ contains
              read(value,*) ndirections
           case ('maxdist')
              read(value,*) maxdist
+          case ('minnH')
+             read(value,*) minnH
           case ('maxtau')
              read(value,*) maxtau
           end select
@@ -188,6 +191,9 @@ contains
     if (maxtau > 0) then
        print*,'Will stop ray propagation at tau = ',maxtau
        maxdist = -1 
+    end if
+    if (minnH > 0) then
+       print*,'Will stop ray propagation at nH < ',minnH
     end if
     
     ! add path (datadir) to input files 

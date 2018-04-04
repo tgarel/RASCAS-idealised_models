@@ -14,6 +14,7 @@ module module_gas_composition
   private
 
   type, public :: gas
+     real(kind=8) :: nH    ! H  numerical density [H/cm3]
      real(kind=8) :: nHI   ! HI numerical density [HI/cm3]
      real(kind=8) :: nHeI  ! HeI numerical density [HeI/cm3]
      real(kind=8) :: nHeII ! HeII numerical density [HeII/cm3]
@@ -49,20 +50,21 @@ contains
     real(kind=8),intent(in),dimension(nvar,nleaf)  :: ramses_var
     type(gas),dimension(:),allocatable,intent(out) :: g
     integer(kind=4)                                :: ileaf
-    real(kind=8),dimension(:),allocatable          :: nhi, nhei, nheii
+    real(kind=8),dimension(:),allocatable          :: nh, nhi, nhei, nheii
 
     ! allocate gas-element array
     allocate(g(nleaf))
 
     box_size_cm = ramses_get_box_size_cm(repository,snapnum)
-    ! get nHI, nHeI, nHeII
+    ! get nH, nHI, nHeI, nHeII
     if (verbose) write(*,*) '-- module_gas_composition_HI_HeI_HeII : extracting nHI, nHeI, and nHeII from ramses'
-    allocate(nhi(nleaf),nhei(nleaf),nheii(nleaf))
-    call ramses_get_nhi_nhei_nehii_cgs(repository,snapnum,nleaf,nvar,ramses_var,nhi,nhei,nheii)
+    allocate(nh(nleaf),nhi(nleaf),nhei(nleaf),nheii(nleaf))
+    call ramses_get_nh_nhi_nhei_nehii_cgs(repository,snapnum,nleaf,nvar,ramses_var,nh,nhi,nhei,nheii)
+    g(:)%nH    = nh(:)
     g(:)%nHI   = nhi(:)
     g(:)%nHeI  = nhei(:)
     g(:)%nHeII = nheii(:)
-    deallocate(nhi,nhei,nheii)
+    deallocate(nh,nhi,nhei,nheii)
 
     return
 
@@ -136,6 +138,7 @@ contains
     integer(kind=4),intent(in)        :: unit
     integer(kind=4)                   :: i,nleaf
     nleaf = size(g)
+    write(unit) (g(i)%nH,  i=1,nleaf)
     write(unit) (g(i)%nHI, i=1,nleaf)
     write(unit) (g(i)%nHeI, i=1,nleaf)
     write(unit) (g(i)%nHeII, i=1,nleaf)
@@ -149,12 +152,14 @@ contains
     type(gas),dimension(:),allocatable,intent(out) :: g
     integer(kind=4)                                :: i
     allocate(g(1:n))
+    read(unit) (g(i)%nH,i=1,n)
     read(unit) (g(i)%nHI,i=1,n)
     read(unit) (g(i)%nHeI,i=1,n)
     read(unit) (g(i)%nHeII,i=1,n)
     read(unit) box_size_cm 
 
     print*,'minmax densities : '
+    print*,minval(g(:)%nH), maxval(g(:)%nH)
     print*,minval(g(:)%nHI), maxval(g(:)%nHI)
     print*,minval(g(:)%nHeI), maxval(g(:)%nHeI)
     print*,minval(g(:)%nHeII), maxval(g(:)%nHeII)
