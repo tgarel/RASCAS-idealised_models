@@ -3,8 +3,8 @@ pro nbscatt
   tau0_arr_st = ['4','5','6','7','8']
   tau0_arr    = [1.d4,1.d5,1.d6,1.d7,1.d8]
 
-  tau0_arr_st = ['6']      ;,'8']
-  tau0_arr    = [1.d6]  ;,1.d8]
+  ;; tau0_arr_st = ['6']      ;,'8']
+  ;; tau0_arr    = [1.d6]  ;,1.d8]
    
   vth         = 128500.0d0     ; cm/s
 
