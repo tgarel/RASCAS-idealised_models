@@ -232,7 +232,8 @@ contains
        ! ramses RT
        allocate(mu(1:nleaf))
        nhi  = ramses_var(1,:) * dp_scale_nh  * (1.d0 - ramses_var(ihii,:))   ! nb of H atoms per cm^3
-       mu   = 1.d0 / (XH * (1.d0*ramses_var(ihii,:) + 0.25d0*(1.d0-XH)*(1.d0 + ramses_var(iheii,:) + 2.d0*ramses_var(iheiii,:)))) ! assumes no metals
+       mu   = XH * (1.d0+ramses_var(ihii,:)) + 0.25d0*(1.d0-XH)*(1.d0 + ramses_var(iheii,:) + 2.d0*ramses_var(iheiii,:)) ! assumes no metals
+       mu   = 1.0d0 / mu   
        temp = ramses_var(5,:) / ramses_var(1,:) * dp_scale_T2                ! T/mu [ K ]
        temp = temp * mu                                                      ! This is now T (in K) with no bloody mu ... 
        deallocate(mu)
@@ -409,7 +410,8 @@ contains
     if(ramses_rt)then
        ! ramses RT
        allocate(mu(1:nleaf))
-       mu   = 1.d0 / (XH * (1.d0*ramses_var(ihii,:) + 0.25d0*(1.d0-XH)*(1.d0 + ramses_var(iheii,:) + 2.d0*ramses_var(iheiii,:)))) ! assumes no metals
+       mu   = XH * (1.d0+ramses_var(ihii,:)) + 0.25d0*(1.d0-XH)*(1.d0 + ramses_var(iheii,:) + 2.d0*ramses_var(iheiii,:)) ! assumes no metals
+       mu   = 1.0d0 / mu
        temp = ramses_var(5,:) / ramses_var(1,:) * dp_scale_T2                ! T/mu [ K ]
        temp = temp * mu                                                      ! This is now T (in K) with no bloody mu ... 
        deallocate(mu)
@@ -524,7 +526,8 @@ contains
     if(ramses_rt)then
        ! ramses RT
        allocate(mu(1:nleaf))
-       mu   = 1.d0 / (XH * (1.d0*ramses_var(ihii,:) + 0.25d0*(1.d0-XH)*(1.d0 + ramses_var(iheii,:) + 2.d0*ramses_var(iheiii,:)))) ! assumes no metals
+       mu   = XH * (1.d0+ramses_var(ihii,:)) + 0.25d0*(1.d0-XH)*(1.d0 + ramses_var(iheii,:) + 2.d0*ramses_var(iheiii,:)) ! assumes no metals
+       mu   = 1.0d0 / mu
        temp = ramses_var(5,:) / ramses_var(1,:) * dp_scale_T2                ! T/mu [ K ]
        temp = temp * mu                                                      ! This is now T (in K) with no bloody mu ... 
        deallocate(mu)
@@ -1319,26 +1322,22 @@ contains
 
   subroutine ramses_read_stars_in_domain(repository,snapnum,selection_domain,star_pos,star_age,star_mass,star_vel,star_met,cosmo)
 
-    ! ONLY WORKS FOR COSMO RUNS (WITHOUT PROPER TIME OPTION)
-    ! -> this should be parameterised (and coded). 
-    
     implicit none
 
-    character(1000),intent(in) :: repository
-    integer(kind=4),intent(in) :: snapnum
-    type(domain),intent(in)    :: selection_domain
+    character(1000),intent(in)             :: repository
+    integer(kind=4),intent(in)             :: snapnum
+    type(domain),intent(in)                :: selection_domain
     real(kind=8),allocatable,intent(inout) :: star_pos(:,:),star_age(:),star_mass(:),star_vel(:,:),star_met(:)
-    integer(kind=4)            :: nstars
-    real(kind=8)               :: omega_0,lambda_0,little_h,omega_k,H0
-    real(kind=8)               :: aexp,stime,time_cu,boxsize
-    integer(kind=4)            :: ncpu,ilast,icpu,npart,i,ifield,nfields
-    character(1000)            :: filename
-    integer(kind=4),allocatable :: id(:)
-    real(kind=8),allocatable    :: age(:),m(:),x(:,:),v(:,:),mets(:)
-    logical, intent(in)         :: cosmo
-    real(kind=8)                :: temp(3)
-    
-    
+    integer(kind=4)                        :: nstars
+    real(kind=8)                           :: omega_0,lambda_0,little_h,omega_k,H0
+    real(kind=8)                           :: aexp,stime,time_cu,boxsize
+    integer(kind=4)                        :: ncpu,ilast,icpu,npart,i,ifield,nfields
+    character(1000)                        :: filename
+    integer(kind=4),allocatable            :: id(:)
+    real(kind=8),allocatable               :: age(:),m(:),x(:,:),v(:,:),mets(:),skipy(:)
+    logical, intent(in)                    :: cosmo
+    real(kind=8)                           :: temp(3)
+        
     ! get cosmological parameters to convert conformal time into ages
     call read_cosmo_params(repository,snapnum,omega_0,lambda_0,little_h)
     omega_k = 0.0d0
@@ -1388,6 +1387,7 @@ contains
        allocate(id(1:npart))
        allocate(mets(1:npart))
        allocate(v(1:npart,1:ndim))
+       allocate(skipy(1:npart))
        do ifield = 1,nfields
           select case(trim(ParticleFields(ifield)))
           case('pos')
@@ -1409,6 +1409,8 @@ contains
           case('metal')
              read(11) mets(1:npart)
           case default
+             ! Note: we presume here that the unknown field is an 1d array of size 1:npart
+             read(11) skipy(1:npart)
              print*,'Error, Field unknown: ',trim(ParticleFields(ifield))
           end select
        end do
@@ -1441,7 +1443,7 @@ contains
           end if
        end do
           
-       deallocate(age,m,x,id,mets,v)
+       deallocate(age,m,x,id,mets,v,skipy)
 
     end do
 
@@ -1486,8 +1488,6 @@ contains
     allocate(star_met(nstars))
     star_met = mets
     deallocate(mets)
-
-
     
     return
   end subroutine ramses_read_stars_in_domain

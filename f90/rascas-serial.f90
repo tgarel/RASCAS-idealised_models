@@ -5,7 +5,6 @@ program main
   use module_photon
   use module_mesh
   use module_domain
-  use module_uparallel
   use module_constants
 
   implicit none
@@ -84,19 +83,6 @@ program main
   ! ------------------------------------------------------------
 
   
-
-#ifdef DEBUG
-  print *,'--> check mesh dom'
-  print *,meshdom%domain
-  print *,meshdom%nCoarse,meshdom%nOct,meshdom%nLeaf,meshdom%nCell
-  print *,minval(meshdom%xoct(:,:)),maxval(meshdom%xoct(:,:))
-  print *,minval(meshdom%nbor(:,:)),maxval(meshdom%nbor(:,:))
-  print *,minval(meshdom%octlevel(:)),maxval(meshdom%octlevel(:))
-  print *,minval(meshdom%son(:)),maxval(meshdom%son(:))
-  print *,minval(meshdom%father(:)),maxval(meshdom%father(:))
-  !!!print *,'level of leaves =',minval(meshdom%octlevel(:), mask=(meshdom%son(:)<0)),maxval(meshdom%octlevel(:), mask=(meshdom%son(:)<0))
-#endif
-
   call cpu_time(tmptime)
   if (verbose) print '(" --> Time = ",f12.3," seconds.")',tmptime-start
 
@@ -171,7 +157,7 @@ contains
     do
        read (10,'(a)',iostat=err) line
        if(err/=0) exit
-       if (line(1:15) == '[RASCAS-serial]') then
+       if ((line(1:15) == '[RASCAS-serial]').or.(line(1:15) == '[rascas-serial]')) then
           section_present = .true.
           exit
        end if
