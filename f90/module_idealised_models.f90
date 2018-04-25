@@ -505,7 +505,13 @@ contains
     dist2 = (xcell_ideal-0.5d0)**2 + (ycell_ideal-0.5d0)**2 + (zcell_ideal-0.5d0)**2  ! in frame with origin at center of box
     dist_cell = sqrt(dist2)
     
-    n0 = ngas_norm
+    if (coldens_norm .gt. 1.0d0) then 
+       ! if gas norm set as column density in param file.... OK ngas=const. and r_min=0 only !
+       n0 = coldens_norm / (r_max * box_size_IM_cm)  ! cm-3
+    else
+       ! I use the std density ngas_norm
+       n0 = ngas_norm 
+    end if
     
     if (MCsampling) then
        dist_cell_max = dist_cell + dx_cell * sqrt(3.0d0) / 2.0d0 ! dx_cell * sqrt(3.0) / 2. is half the longest length in a cube
