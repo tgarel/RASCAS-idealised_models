@@ -1104,7 +1104,7 @@ contains
     integer(kind=4),intent(in)  :: snapnum
     integer(kind=4),intent(in)  :: nleaf, nvar
     real(kind=8),intent(in)     :: ramses_var(nvar,nleaf) ! one cell only
-    real(kind=8),intent(inout)  :: nh(nleaf),nhi(nleaf), nhei(nleaf), nheii(nleaf)
+    real(kind=8),intent(inout)  :: nh(nleaf), nhi(nleaf), nhei(nleaf), nheii(nleaf)
     real(kind=8),allocatable    :: nHe(:)
 
     ! get conversion factors if necessary
