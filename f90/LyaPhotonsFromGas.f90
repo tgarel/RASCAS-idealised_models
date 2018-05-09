@@ -114,8 +114,8 @@ program LyaPhotonsFromGas
      recomb_em(i) = recomb_em(i) * dv   ! erg/s 
      if (recomb_em(i) > maxrec) maxrec = recomb_em(i)
      ! if cooling time is not resolved, set collisional emission to zero
-     dt = (boxsize*0.5**leaf_level(j))/0.0125d0/clight/3.d0  ! courant condition
-     if (coolingTime(i) > 3.0d0 * dt) then 
+     dt = (boxsize*0.5**leaf_level(j))/0.0125d0/clight/3.d0  ! courant condition [s]
+     if (coolingTime(i) > tcool_resolution * dt) then 
         coll_em(i)   = coll_em(i) * dv
      else
         coll_em(i) = 0.0d0
@@ -126,7 +126,9 @@ program LyaPhotonsFromGas
   recomb_total = sum(recomb_em) / (planck*nu_0)  ! nb of photons per second
   coll_total   = sum(coll_em) / (planck*nu_0)  ! nb of photons per second
 
-  print*,'coll_total,recomb_total = ',coll_total,recomb_total
+  !print*,'coll_total,recomb_total = ',coll_total,recomb_total
+  print*,'coll_total,recomb_total = ',coll_total*(planck*nu_0),recomb_total*(planck*nu_0)
+
   
   recomb_em = recomb_em / maxrec
   coll_em   = coll_em / maxcol
