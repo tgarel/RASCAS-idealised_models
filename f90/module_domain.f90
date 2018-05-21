@@ -374,11 +374,33 @@ contains
     type(domain),intent(in)              :: dom
     real(kind=8),dimension(3),intent(in) :: x
     logical                              :: domain_contains_point
-    real(kind=8)                         :: rr,dx
+    real(kind=8)                         :: rr,dx,dy,dz
     domain_contains_point=.false.
     select case(trim(dom%type))
     case('sphere')
-       rr = (x(1)-dom%sp%center(1))**2 + (x(2)-dom%sp%center(2))**2 + (x(3)-dom%sp%center(3))**2
+       dx = x(1)-dom%sp%center(1)
+       if (dx > 0.5d0) then 
+          dx = dx -1.0d0 
+       else if (dx < -0.5d0) then 
+          dx = dx + 1.0d0
+       end if
+       
+       dy = x(2)-dom%sp%center(2)
+       if (dy > 0.5d0) then 
+          dy = dy -1.0d0 
+       else if (dy < -0.5d0) then 
+          dy = dy + 1.0d0
+       end if
+
+       dz = x(3)-dom%sp%center(3)
+       if (dz > 0.5d0) then 
+          dz = dz -1.0d0 
+       else if (dz < -0.5d0) then 
+          dz = dz + 1.0d0
+       end if
+       
+       !rr = (x(1)-dom%sp%center(1))**2 + (x(2)-dom%sp%center(2))**2 + (x(3)-dom%sp%center(3))**2
+       rr = dx**2 + dy**2 + dz**2
        if(rr<dom%sp%radius*dom%sp%radius)domain_contains_point=.true.
     case('shell')
        rr = (x(1)-dom%sh%center(1))**2 + (x(2)-dom%sh%center(2))**2 + (x(3)-dom%sh%center(3))**2
@@ -531,7 +553,29 @@ contains
     select case(trim(dom%type))
 
     case('sphere')
-       rr = sqrt((x(1)-dom%sp%center(1))**2 + (x(2)-dom%sp%center(2))**2 + (x(3)-dom%sp%center(3))**2)
+       ddx = x(1)-dom%sp%center(1)
+       if (ddx > 0.5d0) then 
+          ddx = ddx -1.0d0 
+       else if (ddx < -0.5d0) then 
+          ddx = ddx + 1.0d0
+       end if
+       
+       ddy = x(2)-dom%sp%center(2)
+       if (ddy > 0.5d0) then 
+          ddy = ddy -1.0d0 
+       else if (ddy < -0.5d0) then 
+          ddy = ddy + 1.0d0
+       end if
+
+       ddz = x(3)-dom%sp%center(3)
+       if (ddz > 0.5d0) then 
+          ddz = ddz -1.0d0 
+       else if (ddz < -0.5d0) then 
+          ddz = ddz + 1.0d0
+       end if
+       
+       !rr = sqrt((x(1)-dom%sp%center(1))**2 + (x(2)-dom%sp%center(2))**2 + (x(3)-dom%sp%center(3))**2)
+       rr = sqrt(ddx**2 + ddy**2 + ddz**2)
        domain_distance_to_border = dom%sp%radius - rr
 
     case('shell')
@@ -611,9 +655,30 @@ contains
        
     case('sphere')
        
-       dx = x(1) - dom%sp%center(1)
-       dy = x(2) - dom%sp%center(2)
-       dz = x(3) - dom%sp%center(3)
+       dx = x(1)-dom%sp%center(1)
+       if (dx > 0.5d0) then 
+          dx = dx -1.0d0 
+       else if (dx < -0.5d0) then 
+          dx = dx + 1.0d0
+       end if
+       
+       dy = x(2)-dom%sp%center(2)
+       if (dy > 0.5d0) then 
+          dy = dy -1.0d0 
+       else if (dy < -0.5d0) then 
+          dy = dy + 1.0d0
+       end if
+
+       dz = x(3)-dom%sp%center(3)
+       if (dz > 0.5d0) then 
+          dz = dz -1.0d0 
+       else if (dz < -0.5d0) then 
+          dz = dz + 1.0d0
+       end if
+       
+       !dx = x(1) - dom%sp%center(1)
+       !dy = x(2) - dom%sp%center(2)
+       !dz = x(3) - dom%sp%center(3)
        b = 2.d0 * ( k(1)*dx + k(2)*dy +  k(3)*dz )
        c = dx*dx + dy*dy + dz*dz - dom%sp%radius*dom%sp%radius
        delta = b*b - 4.0d0*c
