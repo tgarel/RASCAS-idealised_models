@@ -3,7 +3,7 @@
 # input / output parameters
   repository = directory_where_ramses_outputs_are
   snapnum    = output_number
-  outputfile = name_of_the_photonsIC_file
+  outputfile = path_to_the_photonsIC_file
 
 # computational domain parameters
   star_dom_type      = sphere
@@ -16,7 +16,7 @@
 
 # Particle weights 
   weight_type        = Mono
-  weight_input_file  = name_of_the_table_file_with_SSP_weights
+  weight_input_file  = path_to_the_table_file_with_SSP_weights
 
 # Spectral shape 
   spec_type               = Gauss
