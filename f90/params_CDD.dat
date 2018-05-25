@@ -1,7 +1,7 @@
 !--------------------------------------------------------------------------------
 [CreateDomDump]
 # input outputs:
-  DataDir    = directory_where_outputting_files
+  DomDumpDir = directory_where_outputting_files
   repository = directory_where_ramses_outputs_are
   snapnum    = output_number
 

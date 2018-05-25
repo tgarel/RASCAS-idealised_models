@@ -30,7 +30,7 @@ program ExtractSubvol
   ! user-defined parameters - read from section [ExtractSubvol] of the parameter file
   ! --------------------------------------------------------------------------
   ! --- input / outputs
-  character(2000)           :: DataDir = 'test/'      ! directory to which outputs will be written
+  character(2000)           :: DomDumpDir = 'test/'   ! directory to which outputs will be written
   character(2000)           :: repository = './'      ! ramses run directory (where all output_xxxxx dirs are).
   integer(kind=4)           :: snapnum = 1            ! ramses output number to use
 
@@ -112,7 +112,7 @@ program ExtractSubvol
 
   ! write master info
   filedecomp = "subvol_extraction_params.dat"
-  open(unit=10, file=trim(datadir)//trim(filedecomp))
+  open(unit=10, file=trim(DomDumpDir)//trim(filedecomp))
   ! write here the header info:
   ! -> ramses snapshot info
   write(10,*)' '
@@ -126,7 +126,7 @@ program ExtractSubvol
   do i=1,decomp_dom_ndomain
      write(10,*)     'subvol_file = ',trim(domain_file_list(i))
      write(10,*)     'mesh_file   = ',trim(mesh_file_list(i))
-     fichier = trim(datadir)//trim(domain_file_list(i))
+     fichier = trim(DomDumpDir)//trim(domain_file_list(i))
      call domain_write_file(fichier,domain_list(i))
   end do
   write(10,*)' '
@@ -147,7 +147,7 @@ program ExtractSubvol
 
      call mesh_from_leaves(nOctSnap,domain_list(i),nleaf_sel, &
           selected_leaves,xleaf_sel,leaflevel_sel,domain_mesh)
-     fichier = trim(datadir)//trim(mesh_file_list(i))
+     fichier = trim(DomDumpDir)//trim(mesh_file_list(i))
      call dump_mesh(domain_mesh, fichier)
 
      ! read star particles within domain if asked
@@ -167,7 +167,7 @@ program ExtractSubvol
         !! -> dump a new file "subvol_part.dat" ???
         write(charisnap,'(i8)') i
         write(charisnap,'(a)') adjustl(charisnap)  ! remove leading spaces
-        fileout = trim(datadir)//trim(meshroot)//"stars_"//trim(charisnap)//".dat"
+        fileout = trim(DomDumpDir)//trim(meshroot)//"stars_"//trim(charisnap)//".dat"
         if (verbose) write(*,*) '...writing stars in file: ',trim(fileout)
         call dump_subvol_stars
      endif
@@ -250,8 +250,8 @@ contains
              read(value,*) add_dm
           case ('verbose')
              read(value,*) verbose
-          case ('DataDir')
-             write(DataDir,'(a)') trim(value)
+          case ('DomDumpDir')
+             write(DomDumpDir,'(a)') trim(value)
           case ('repository')
              write(repository,'(a)') trim(value)
           case ('snapnum')
@@ -297,8 +297,8 @@ contains
        decomp_dom_zc(1) = 0.5d0
     end if
 
-    ! make sure DataDir ends with a /
-    DataDir = trim(datadir)//"/"
+    ! make sure DomDumpDir ends with a /
+    DomDumpDir = trim(DomDumpDir)//"/"
     
     call read_mesh_params(pfile)
     
@@ -320,7 +320,7 @@ contains
     if (present(unit)) then 
        write(unit,'(a,a,a)')         '[ExtractSubvol]'
        write(unit,'(a)')             '# input / output parameters'
-       write(unit,'(a,a)')           '  DataDir         = ',trim(DataDir)
+       write(unit,'(a,a)')           '  DomDumpDir      = ',trim(DomDumpDir)
        write(unit,'(a,a)')           '  repository      = ',trim(repository)
        write(unit,'(a,i5)')          '  snapnum         = ',snapnum
        write(unit,'(a)')             '# domain decomposition parameters'
@@ -353,7 +353,7 @@ contains
        write(*,'(a)')             ' '
        write(*,'(a,a,a)')         '[ExtractSubvol]'
        write(*,'(a)')             '# input / output parameters'
-       write(*,'(a,a)')           '  DataDir    = ',trim(DataDir)
+       write(*,'(a,a)')           '  DomDumpDir = ',trim(DomDumpDir)
        write(*,'(a,a)')           '  repository = ',trim(repository)
        write(*,'(a,i5)')          '  snapnum    = ',snapnum
        write(*,'(a)')             '# domain decomposition parameters'

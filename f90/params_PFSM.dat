@@ -1,7 +1,7 @@
 !--------------------------------------------------------------------------------
 [PhotonsFromStars]
 # input / output parameters
-  outputfile = ./PhotICs.dat
+  outputfile = path_to_output_file
 
 # computational domain parameters
   source_type = 'pointlike'
