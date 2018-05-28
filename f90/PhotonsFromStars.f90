@@ -134,8 +134,8 @@ program PhotonsFromStars
   call ramses_read_stars_in_domain(repository,snapnum,emission_domain,star_pos,star_age,star_mass,star_vel,star_met)
   ! NB: star_mass should be the mass of stars formed (-> set use_initial_mass=T in [ramses] if possible).
   ! --------------------------------------------------------------------------------------
-
-
+  
+  
   ! --------------------------------------------------------------------------------------
   ! Compute star-particle weights
   ! --------------------------------------------------------------------------------------
@@ -176,9 +176,9 @@ program PhotonsFromStars
      stop
   end select
   close(15)
+
   ! compute the weight of each star particle
   nstars = size(star_age)
-  print*,'nstars = ',nstars
   allocate(sweight(nstars))
   if (trim(weight_type) == 'PowLaw') allocate(star_beta(nstars))
   if (trim(weight_type) == 'Table') allocate(star_iage(nstars),star_imet(nstars))
@@ -186,6 +186,22 @@ program PhotonsFromStars
      ! pick SED with closest metallicity and age
      call locatedb(sed_met,sed_nmet,star_met(i),imet)
      call locatedb(sed_age,sed_nage,star_age(i),iage)
+     if (iage == 0) then
+        iage = 1
+        print*,'Star younger than min age in library, correcting (',star_age(i),')'
+        star_age(i) = sed_age(1)
+     else if (iage == sed_nage) then
+        print*,'Star older than max age in library, correcting (',star_age(i),')'
+        iage = sed_nage - 1
+        star_age(i) = sed_age(sed_nage)
+     end if
+     if (imet == 0) then
+        imet = 1
+        star_met(i) = sed_met(1)
+     else if (imet == sed_nmet) then 
+        imet = sed_nmet - 1
+        star_met(i) = sed_met(sed_nmet)
+     end if
      
      sweight(i) = star_mass(i) / msun  ! M_sun
      !if (sed_age(iage) < tdelay_SN) then ! SNs go off at 10Myr ... 
@@ -194,24 +210,6 @@ program PhotonsFromStars
      ! compute luminosity
      select case (trim(weight_type))
      case('Mono')
-        if (iage == 0) then
-           iage = 1
-           print*,'Star younger than min age in library, correcting (',star_age(i),')'
-           star_age(i) = sed_age(1)
-        else if (iage == sed_nage) then
-           !print*,'Star older than max age in library, correcting (',star_age(i),')'
-           iage = sed_nage - 1
-           star_age(i) = sed_age(sed_nage)
-        end if
-        if (imet == 0) then
-           imet = 1
-           !print*,'Star with lower Z than min Z in library, correcting (',star_met(i),')'
-           star_met(i) = sed_met(1)
-        else if (imet == sed_nmet) then 
-           print*,'Star with higher Z than min Z in library, correcting (',star_met(i),')'
-           imet = sed_nmet - 1
-           star_met(i) = sed_met(sed_nmet)
-        end if
         ! interpolate in age and Z
         dxage1 = star_age(i) - sed_age(iage)
         dxage2 = sed_age(iage+1) - star_age(i) 
@@ -252,7 +250,7 @@ program PhotonsFromStars
   end do
   ! --------------------------------------------------------------------------------------
 
-  
+
   ! --------------------------------------------------------------------------------------
   ! define linear sampling of number of photons 
   ! --------------------------------------------------------------------------------------
@@ -262,10 +260,12 @@ program PhotonsFromStars
      total_flux = total_flux + sweight(i)
   end do
   if (verbose) write(*,*) '> Total luminosity (nb of photons per second): ',total_flux
+  
 
   ! it may happen that the range of luminosities is too large for linear sampling with our method ... 
   ! In that case we need to ignore faint particles:
   minflux = minval(sweight)
+  if (verbose) write(*,*) '> min luminosity (nb of photons per second): ',minflux
   if (total_flux / minflux > 2d8) minflux = total_flux / 2d8  ! NB: dont go much higher than 1d8 (to stay below a few GB RAM). 
   ! check that we dont loose significant flux by sampling only particles with sweight > minflux
   check_flux = 0.0d0
@@ -277,7 +277,8 @@ program PhotonsFromStars
      print*,'> Flux losses > 0.1 percent... change algorithm ...'
      ! debug - stop
   end if
-  ! construct the cumulative flux distribution, with enough bins to have the smallest star-particle flux in a bin. 
+  
+  ! construct the cumulative flux distribution, with enough bins to have the smallest star-particle flux in a bin
   allocate(cum_flux_prob(int(3*total_flux / minflux,kind=8)))
   ilast = 1
   do i=1,nstars
