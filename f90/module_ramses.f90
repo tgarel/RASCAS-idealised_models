@@ -97,7 +97,7 @@ module module_ramses
   ! --------------------------------------------------------------------------
 
   
-  public  :: get_cpu_list,get_ncpu
+  public  :: get_cpu_list,get_cpu_list_periodic,get_ncpu
   public  :: ramses_get_nhi_nhei_nehii_cgs, read_leaf_cells_in_domain, read_leaf_cells_omp
   public  :: ramses_get_nh_nhi_nhei_nehii_cgs
   public  :: read_leaf_cells, get_ngridtot, ramses_get_velocity_cgs, ramses_get_T_nhi_cgs, ramses_get_metallicity, ramses_get_box_size_cm, ramses_get_nh_cgs
@@ -203,7 +203,7 @@ contains
 
     if(verbose) then
        print*,' '
-       print *,'--> nleaftot, nvar, ncpu =',nleaftot,nvar,ncpu_read
+       print *,'read_leaf_cells_omp --> nleaftot, nvar, ncpu =',nleaftot,nvar,ncpu_read
        print*,' '
     end if
 
@@ -237,7 +237,7 @@ contains
              leaf_level(ileaf) = cell_level(icell)
           end if
        end do
-       
+
 !$OMP CRITICAL
        ! only one CRITICAL zone
        !write (*, "(A, f5.2, A, A)", advance='no') &           ! Progress bar
@@ -270,7 +270,7 @@ contains
 
   subroutine read_leaf_cells_in_domain(repository, snapnum, selection_domain, &
        & ncpu_read, cpu_list, &
-       & nleaftot, nvar, xleaf, ramses_var, leaf_level)
+       & nleaftot_all, nvar, xleaf_all, ramses_var_all, leaf_level_all)
 
     ! read all leaf cell from a simulation snapshot. Return standard 
     ! ramses ramses variables through ramses_var(nvar,nleaftot) and
@@ -281,62 +281,74 @@ contains
     character(2000),intent(in)                :: repository
     integer(kind=4),intent(in)                :: snapnum, ncpu_read
     type(domain),intent(in)                   :: selection_domain
-    integer(kind=4),intent(inout)             :: nleaftot, nvar
-    real(kind=8),allocatable, intent(inout)   :: ramses_var(:,:)
-    real(kind=8),allocatable,intent(inout)    :: xleaf(:,:)
-    integer(kind=4),allocatable,intent(inout) :: leaf_level(:)
+    integer(kind=4),intent(inout)             :: nleaftot_all, nvar
+    integer(kind=4)                           :: nleaftot
+    real(kind=8),allocatable                  :: ramses_var(:,:)
+    real(kind=8),allocatable                  :: xleaf(:,:)
+    integer(kind=4),allocatable               :: leaf_level(:)
+    real(kind=8),allocatable, intent(inout)   :: ramses_var_all(:,:)
+    real(kind=8),allocatable,intent(inout)    :: xleaf_all(:,:)
+    integer(kind=4),allocatable,intent(inout) :: leaf_level_all(:)
+
     integer(kind=4),dimension(:),allocatable,intent(in) :: cpu_list
     
     logical                                   :: do_allocs
     integer(kind=4)                           :: icpu, ileaf, icell, ivar, nleaf_in_domain, k
+    integer(kind=4)                           :: ilast
     real(kind=8),dimension(3)                 :: temp
     
     if(verbose)then
        print *,' '
-       print *,'...reading RAMSES cells...'
+       print *,'read_leaf_cells_in_domain...reading RAMSES cells...'
     endif
 
-    !nleaftot = get_nleaf(repository,snapnum)  ! sets ncpu too 
     nvar     = get_nvar(repository,snapnum)
     ncpu = get_ncpu(repository,snapnum)
 
-    !if(verbose)print *,'--> nleaftot, nvar, ncpu =',nleaftot,nvar,ncpu
-
-    ! first cout leaf cells in domain...
-    do_allocs = .true.
-    ileaf = 0
-    nleaftot = 0
-    !do icpu = 1,ncpu
+    ! first count leaf cells in domain...
+    nleaftot = 0 ; nleaf_in_domain = 0
+!$OMP PARALLEL &
+!$OMP REDUCTION(+:nleaftot,nleaf_in_domain) &
+!$OMP DEFAULT(private) &
+!$OMP SHARED(repository, snapnum, ncpu_read, cpu_list, selection_domain)
+!$OMP DO
     do k=1,ncpu_read
        icpu=cpu_list(k)
-       call read_amr(repository,snapnum,icpu,do_allocs)
-       call read_hydro(repository,snapnum,icpu,do_allocs)
-       do_allocs = .false.
+       call read_amr_hydro(repository,snapnum,icpu,&
+            & son,cpu_map,var,cell_x,cell_y,cell_z,cell_level,ncell)
+       !call read_amr(repository,snapnum,icpu,do_allocs)
+       !call read_hydro(repository,snapnum,icpu,do_allocs)
        ! collect leaf cells
        do icell = 1,ncell
           if (son(icell)==0 .and. cpu_map(icell) == icpu) then
              temp(:) = (/cell_x(icell), cell_y(icell), cell_z(icell)/)
              nleaftot = nleaftot+1
              if (domain_contains_point(temp,selection_domain)) then
-                ileaf = ileaf + 1
+                nleaf_in_domain = nleaf_in_domain + 1
              end if
           end if
        end do
     end do
-    nleaf_in_domain = ileaf
+!$OMP END DO
+!$OMP END PARALLEL
 
-    if(verbose)print *,'--> nleaftot, nleaf_in_domain, nvar, ncpu =',nleaftot, nleaf_in_domain,nvar,ncpu
+    if(verbose)print *,'--> nleaftot, nleaf_in_domain, nvar, ncpu =',nleaftot, nleaf_in_domain, nvar, ncpu_read
     
-    allocate(ramses_var(nvar,nleaf_in_domain), xleaf(nleaf_in_domain,3), leaf_level(nleaf_in_domain))
-    
-    ileaf = 0
-    !do icpu = 1,ncpu
+    allocate(ramses_var_all(nvar,nleaf_in_domain), xleaf_all(nleaf_in_domain,3), leaf_level_all(nleaf_in_domain))
+    ilast = 1
+!$OMP PARALLEL &
+!$OMP DEFAULT(private) &
+!$OMP SHARED(ilast, xleaf_all, leaf_level_all, ramses_var_all, repository, snapnum, nvar, nleaftot, ncpu_read, cpu_list, selection_domain)
+    do_allocs=.true.
+!$OMP DO
     do k=1,ncpu_read
        icpu=cpu_list(k)
-       call read_amr(repository,snapnum,icpu,do_allocs)
-       call read_hydro(repository,snapnum,icpu,do_allocs)
-       do_allocs = .false.
+       call read_amr_hydro(repository,snapnum,icpu,&
+            & son,cpu_map,var,cell_x,cell_y,cell_z,cell_level,ncell)
+       if (do_allocs) allocate(ramses_var(nvar,ncell), xleaf(ncell,3), leaf_level(ncell))
+       do_allocs=.false.
        ! collect leaf cells
+       ileaf = 0
        do icell = 1,ncell
           if (son(icell)==0 .and. cpu_map(icell) == icpu) then
              temp(:) = (/cell_x(icell), cell_y(icell), cell_z(icell)/)
@@ -352,9 +364,28 @@ contains
              end if
           end if
        end do
+!$OMP CRITICAL
+       ! only one CRITICAL zone
+       !write (*, "(A, f5.2, A, A)", advance='no') &           ! Progress bar
+       !     ' Reading leaves ',dble(iloop) / ncpu_read * 100,' % ',char(13)
+       !iloop=iloop+1
+
+       ! ileaf is now the number of leaves on local cpu
+       if(ileaf .gt. 0) then
+          ! save leaf cells to return arrays
+          xleaf_all(ilast:ilast-1+ileaf,1:3)  = xleaf(1:ileaf,1:3)
+          leaf_level_all(ilast:ilast-1+ileaf) = leaf_level(1:ileaf)
+          ramses_var_all(1:nvar,ilast:ilast-1+ileaf) = ramses_var(1:nvar,1:ileaf)
+       endif
+       ilast=ilast+ileaf
+!$OMP END CRITICAL
     end do
+!$OMP END DO
+    if(allocated(ramses_var)) deallocate(ramses_var,xleaf,leaf_level)
+!$OMP END PARALLEL
+    
     call clear_amr
-    nleaftot = nleaf_in_domain
+    nleaftot_all = nleaf_in_domain
     
     return
 
@@ -374,8 +405,6 @@ contains
     character(512)             :: line,name,value,orderingtype
     integer(kind=4)            :: i, impi
     integer(kind=4),parameter  :: param_unit = 13
-
-    print*,'trying to read hilbert key'
 
     not_ok = .true.
     write(nomfich,'(a,a,i5.5,a,i5.5,a)') trim(repository),'/output_',snapnum,'/info_',snapnum,'.txt'
@@ -441,8 +470,6 @@ contains
     cpu_read=.false.
     cpu_list=0
     
-    print*,'...getting CPU list...'
-
     call read_hilbert_keys(repository,snapnum,ncpu,bound_key)
     
     do ilevel=1,lmax
@@ -520,6 +547,170 @@ contains
     return
 
   end subroutine get_cpu_list
+
+
+  subroutine get_cpu_list_periodic(repository, snapnum, xmin, xmax, ymin &
+       ,ymax, zmin, zmax, ncpu_read, cpu_list)
+
+    implicit none
+
+    character(2000),intent(in) :: repository
+    integer(kind=4),intent(in) :: snapnum
+    real(KIND=8),intent(in) :: xmin,xmax,ymin,ymax,zmin,zmax
+
+    ! Can have dom_min<0 and dom_max>1
+    real(KIND=8),dimension(3)::     dom_min,dom_max
+    ! Can NOT have dom_pmin<0 and dom_pmax>1
+    ! (therefore extra domains across boundaires)
+    real(KIND=8),dimension(3,1:2):: dom_pmin,dom_pmax
+    integer(kind=4) :: i,j,ix,iy,iz,ndom
+    integer(kind=4) :: ilevel, lmax, lmin
+    integer(kind=4) :: ncpu_read, ncpu
+    integer(kind=4) :: imin,imax,jmin,jmax,kmin,kmax
+    integer(kind=4) :: impi,bit_length,maxdom
+    integer(kind=4),dimension(1:8):: idom,jdom,kdom,cpu_min,cpu_max
+    real(KIND=8),dimension(1:8):: bounding_min,bounding_max, order_min
+    real(KIND=8)::dkey,dmin,dmax
+    real(KIND=8)::dx
+
+    real(kind=8),dimension(:),allocatable :: bound_key
+    logical,dimension(:),allocatable      :: cpu_read
+    integer(kind=4),dimension(:),allocatable,intent(out)      :: cpu_list
+    
+    lmax = nint(get_param_real(repository,snapnum,'levelmax'))
+    ncpu = get_ncpu(repository,snapnum)
+    
+    allocate(cpu_list(1:ncpu))
+    allocate(bound_key(0:ncpu))
+    allocate(cpu_read(1:ncpu))
+    cpu_read=.false.
+    cpu_list=0
+    
+    print*,'...getting CPU list...'
+
+    call read_hilbert_keys(repository,snapnum,ncpu,bound_key)
+
+    ! Set up the periodic domains
+    dom_min(1) = xmin;   dom_max(1) = xmax
+    dom_min(2) = ymin;   dom_max(2) = ymax
+    dom_min(3) = zmin;   dom_max(3) = zmax
+    dom_pmin(:,1) = dom_min ! Main domain ...
+    dom_pmax(:,1) = dom_max ! ...always used
+    dom_pmin(:,2) = 1.
+    dom_pmax(:,2) = 0.
+    do i=1,3 ! loop x,y,z
+       if (dom_min(i) < 0.) then ! Lower limit left of boundary
+          dom_pmin(i,1) = 0.     ! Adjust main domain
+          dom_pmin(i,2) = 1. + dom_min(i) ! Extra domain
+          dom_pmax(i,2) = 1.
+       endif
+       if (dom_max(i) > 1.) then ! Upper limit right of boundary
+          dom_pmax(i,1) = 1.     ! Adjust main domain
+          dom_pmax(i,2) = dom_min(i) - 1. ! Extra domain
+          dom_pmin(i,2) = 0.
+       endif
+    end do
+
+    ncpu_read=0
+    do ix=1,2
+    do iy=1,2
+    do iz=1,2
+
+       dmin = min(dom_pmax(1,ix)-dom_pmin(1,ix)  &
+                 ,dom_pmax(2,iy)-dom_pmin(2,iy)  &
+                 ,dom_pmax(3,iz)-dom_pmin(3,iz) )
+       if(dmin<=0.) cycle
+       !print*,'Extracting from hilbert domain '
+       !print*,xmin,xmax
+       !print*,ymin,ymax
+       !print*,zmin,zmax
+       !print*,dom_pmin(1,ix),dom_pmax(1,ix)
+       !print*,dom_pmin(2,iy),dom_pmax(2,iy)
+       !print*,dom_pmin(3,iz),dom_pmax(3,iz)
+       !dmax = max(xmax-xmin,ymax-ymin,zmax-zmin)
+       dmax = max(dom_pmax(1,ix)-dom_pmin(1,ix)  &
+                 ,dom_pmax(2,iy)-dom_pmin(2,iy)  &
+                 ,dom_pmax(3,iz)-dom_pmin(3,iz) )
+
+       ! Set up at most 8 sub-domains in periodic box
+       do ilevel=1,lmax
+          dx=0.5d0**ilevel
+          if(dx.lt.dmax)exit
+       end do
+       lmin=ilevel
+       bit_length=lmin-1
+       maxdom=2**bit_length
+       imin=0; imax=0; jmin=0; jmax=0; kmin=0; kmax=0
+       if(bit_length>0)then
+          imin=int(dom_pmin(1,ix)*dble(maxdom))
+          imax=imin+1
+          jmin=int(dom_pmin(2,iy)*dble(maxdom))
+          jmax=jmin+1
+          kmin=int(dom_pmin(3,iz)*dble(maxdom))
+          kmax=kmin+1
+       endif
+       
+       dkey=(dble(2**(lmax+1)/dble(maxdom)))**ndim
+       ndom=1
+       if(bit_length>0)ndom=8
+       idom(1)=imin; idom(2)=imax
+       idom(3)=imin; idom(4)=imax
+       idom(5)=imin; idom(6)=imax
+       idom(7)=imin; idom(8)=imax
+       jdom(1)=jmin; jdom(2)=jmin
+       jdom(3)=jmax; jdom(4)=jmax
+       jdom(5)=jmin; jdom(6)=jmin
+       jdom(7)=jmax; jdom(8)=jmax
+       kdom(1)=kmin; kdom(2)=kmin
+       kdom(3)=kmin; kdom(4)=kmin
+       kdom(5)=kmax; kdom(6)=kmax
+       kdom(7)=kmax; kdom(8)=kmax
+       
+       do i=1,ndom
+          if(bit_length>0)then
+             call hilbert3d(idom(i),jdom(i),kdom(i),order_min(i),bit_length,1)
+          else
+             order_min(i)=0.0d0
+          endif
+          bounding_min(i)=(order_min(i))*dkey
+          bounding_max(i)=(order_min(i)+1.0D0)*dkey
+       end do
+       
+       cpu_min=0; cpu_max=0
+       do impi=1,ncpu
+          do i=1,ndom
+             if (   bound_key(impi-1).le.bounding_min(i).and.&
+                  & bound_key(impi  ).gt.bounding_min(i))then
+                cpu_min(i)=impi
+             endif
+             if (   bound_key(impi-1).lt.bounding_max(i).and.&
+                  & bound_key(impi  ).ge.bounding_max(i))then
+                cpu_max(i)=impi
+             endif
+          end do
+       end do
+       
+       do i=1,ndom
+          do j=cpu_min(i),cpu_max(i)
+             if(.not. cpu_read(j))then
+                ncpu_read=ncpu_read+1
+                cpu_list(ncpu_read)=j
+                cpu_read(j)=.true.
+             endif
+          enddo
+       enddo
+
+    end do !ix=1,2
+    end do !iy=1,2
+    end do !iz=1,2
+
+    deallocate(bound_key,cpu_read)
+
+    print*,'--> Ncpu to read = ',ncpu_read
+    
+    return
+
+  end subroutine get_cpu_list_periodic
 
 
   subroutine hilbert3d(x,y,z,order,bit_length,npoint)
@@ -1456,9 +1647,9 @@ contains
 
     implicit none
 
-    deallocate(son,cpu_map,xg,nbor,next)
-    deallocate(headl,taill,numbl,numbtot,headb,tailb,numbb)
-    deallocate(var,cell_x,cell_y,cell_z,cell_level)
+    if(allocated(son)) deallocate(son,cpu_map,xg,nbor,next)
+    if(allocated(headl)) deallocate(headl,taill,numbl,numbtot,headb,tailb,numbb)
+    if(allocated(var)) deallocate(var,cell_x,cell_y,cell_z,cell_level)
 
     return
 
@@ -1634,7 +1825,8 @@ contains
     end do
     close(iunit)
     ! => can return cpu_map_l & son_l
-    
+
+    !print*,'in module_ramses.read_amr_hydro -> ',ncell_l,nvar,icpu,snapnum
     ! and then the hydro file
     write(nomfich,'(a,a,i5.5,a,i5.5,a,i5.5)') trim(repository),'/output_',snapnum,'/hydro_',snapnum,'.out',icpu
     iunit=icpu+10

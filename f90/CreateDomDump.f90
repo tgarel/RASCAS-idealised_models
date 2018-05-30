@@ -17,7 +17,7 @@ program CreateDomDump
   real(kind=8),dimension(:,:),allocatable  :: ramses_var
   integer,dimension(:),allocatable         :: leaf_level, leaflevel_sel, ind_sel
 
-  integer :: noctsnap,nleaftot,nvar,nleaf_sel,i, narg
+  integer :: noctsnap,nleaftot,nvar,nleaf_sel,i,j, narg
   character(2000) :: toto,meshroot,parameter_file,fichier, fichier2
   character(2000),dimension(:),allocatable :: domain_file_list, mesh_file_list
   real(kind=8) :: computdom_max,decompdom_max, start, finish, intermed
@@ -208,24 +208,30 @@ program CreateDomDump
            zmax = decomp_dom_zc(i) + decomp_dom_thickness(i)*0.5d0
            zmin = decomp_dom_zc(i) - decomp_dom_thickness(i)*0.5d0
         end select
-        call get_cpu_list(repository, snapnum, xmin,xmax,ymin,ymax,zmin,zmax, ncpu_read, cpu_list)
-        !call read_leaf_cells_in_domain(repository, snapnum, domain_list(i), ncpu_read, cpu_list, &
-        !     & nleaftot, nvar, x_leaf, ramses_var, leaf_level)
-        call read_leaf_cells_omp(repository, snapnum, ncpu_read, cpu_list, nleaftot, nvar, x_leaf, ramses_var, leaf_level)
+        call get_cpu_list_periodic(repository, snapnum, xmin,xmax,ymin,ymax,zmin,zmax, ncpu_read, cpu_list)
+        call read_leaf_cells_in_domain(repository, snapnum, domain_list(i), ncpu_read, cpu_list, &
+             & nleaftot, nvar, x_leaf, ramses_var, leaf_level)
+        !call read_leaf_cells_omp(repository, snapnum, ncpu_read, cpu_list, nleaftot, nvar, x_leaf, ramses_var, leaf_level)
         ! Extract and convert properties of cells into gas mix properties
         call gas_from_ramses_leaves(repository,snapnum,nleaftot,nvar,ramses_var, gas_leaves)
         call cpu_time(finish)
-        print '(" --> Time to read leaves in domain = ",f12.3," seconds.")',finish-intermed
+        print '(" --> Time to read leaves in hilbert domain = ",f12.3," seconds.")',finish-intermed
+        allocate(ind_sel(1:nleaftot))
+        do j=1,nleaftot
+           ind_sel(j)=j
+        end do
+     else
+        call select_in_domain(domain_list(i), nleaftot, x_leaf, ind_sel)
      endif
-        
-     call select_in_domain(domain_list(i), nleaftot, x_leaf, ind_sel)
+     print*,'in CreateDomDump: ind_sel = ',size(ind_sel)
      call select_from_domain(arr_in=x_leaf,     ind_sel=ind_sel, arr_out=xleaf_sel)
      call select_from_domain(arr_in=leaf_level, ind_sel=ind_sel, arr_out=leaflevel_sel)
      call select_from_domain(arr_in=gas_leaves, ind_sel=ind_sel, arr_out=selected_leaves)
      nleaf_sel = size(ind_sel)
-     print*,nleaf_sel
+     print*,'in CreateDomDump: nleaf_sel = ',size(leaf_level)
      call mesh_from_leaves(nOctSnap,domain_list(i),nleaf_sel, &
           selected_leaves,xleaf_sel,leaflevel_sel,domain_mesh)
+     print*,'in CreateDomDump: back from mesh_from_leaves '
      fichier = trim(datadir)//trim(mesh_file_list(i))
      call dump_mesh(domain_mesh, fichier)
      call mesh_destructor(domain_mesh)
