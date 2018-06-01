@@ -1,10 +1,10 @@
 #############################################################################
 # Fortran compiler options and directives
 
-SYSTYPE="CCF"
+#SYSTYPE="CCF"
 #SYSTYPE="lyocral"
 #SYSTYPE="lyocralP"
-#SYSTYPE="mac"
+SYSTYPE="mac"
 #SYSTYPE="macP"
 #SYSTYPE="ccage"
 
@@ -41,7 +41,7 @@ endif
 
 ifeq ($(SYSTYPE),"mac")
 #F90         = gfortran-mp-4.7 -ffree-line-length-none -ffree-form  ###-fopenmp
-F90         = gfortran-mp-6 -ffree-line-length-none -ffree-form  ###-fopenmp
+F90         = gfortran-mp-6 -ffree-line-length-none -ffree-form -fopenmp
 #FFLAGS      = -g -fcheck=all -ftrapv -fbacktrace -Wall -fbounds-check
 FFLAGS      = -O2
 FFLAGS += $(OPTIONS)
