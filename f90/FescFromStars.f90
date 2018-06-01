@@ -61,6 +61,12 @@ program main
   call init_rays_from_file(RaysICFile,rays)
   nrays = size(rays)
   if (verbose) print *,'--> Nb of rays =',nrays
+  if (nrays .eq. 0) then
+     if (verbose) print *,' '
+     if (verbose) print*,'--> writing results in empty file: ',trim(fileout)
+     call dump_rays(fileout,rays)
+     stop
+  endif
   ! ------------------------------------------------------------
 
   ! -------------------- read halo IDs and domains -------------
@@ -118,7 +124,6 @@ program main
 
   call cpu_time(finish)
   if (verbose) print '(" --> Time = ",f12.3," seconds.")',finish-start
-
   
 
 contains
