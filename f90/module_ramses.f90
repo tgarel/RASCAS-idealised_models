@@ -79,6 +79,7 @@ module module_ramses
   logical                  :: self_shielding   = .true.   ! if true, reproduce self-shielding approx made in ramses to compute nHI. 
   logical                  :: ramses_rt        = .false.  ! if true, read ramses-RT output and compute nHI and T accordingly.
   logical                  :: use_initial_mass = .false.  ! if true, use initial masses of star particles instead of mass at output time
+  logical                  :: cosmo            = .true.   ! if false, assume idealised simulation
   ! miscelaneous
   logical                  :: verbose        = .false. ! display some run-time info on this module
   ! RT variable indices, should become user params
@@ -1321,7 +1322,7 @@ contains
   !==================================================================================
   ! STARS utilities 
 
-  subroutine ramses_read_stars_in_domain(repository,snapnum,selection_domain,star_pos,star_age,star_mass,star_vel,star_met,cosmo)
+  subroutine ramses_read_stars_in_domain(repository,snapnum,selection_domain,star_pos,star_age,star_mass,star_vel,star_met)
 
     implicit none
 
@@ -1336,7 +1337,6 @@ contains
     character(1000)                        :: filename
     integer(kind=4),allocatable            :: id(:)
     real(kind=8),allocatable               :: age(:),m(:),x(:,:),v(:,:),mets(:),skipy(:),imass(:)
-    logical, intent(in)                    :: cosmo
     real(kind=8)                           :: temp(3)
         
     ! get cosmological parameters to convert conformal time into ages
@@ -1770,6 +1770,8 @@ contains
              read(value,*) verbose
           case ('use_initial_mass')
              read(value,*) use_initial_mass
+          case ('cosmo')
+             read(value,*) cosmo
           end select
        end do
     end if
@@ -1794,12 +1796,14 @@ contains
        write(unit,'(a,L1)') '  self_shielding   = ',self_shielding
        write(unit,'(a,L1)') '  ramses_rt        = ',ramses_rt
        write(unit,'(a,L1)') '  use_initial_mass = ',use_initial_mass
+       write(unit,'(a,L1)') '  cosmo            = ',cosmo
        write(unit,'(a,L1)') '  verbose          = ',verbose
     else
        write(*,'(a,a,a)') '[ramses]'
        write(*,'(a,L1)') '  self_shielding   = ',self_shielding
        write(*,'(a,L1)') '  ramses_rt        = ',ramses_rt
        write(*,'(a,L1)') '  use_initial_mass = ',use_initial_mass
+       write(*,'(a,L1)') '  cosmo            = ',cosmo
        write(*,'(a,L1)') '  verbose          = ',verbose
     end if
 

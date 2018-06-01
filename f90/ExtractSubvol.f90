@@ -48,7 +48,6 @@ program ExtractSubvol
 
   ! --- miscelaneous
   logical                   :: verbose = .false.
-  logical                   :: cosmo   = .true.       ! cosmo flag
 
   ! --- also extract particles
   ! stars -> add linked list stars-cell? -> use function in_cell_finder
@@ -154,7 +153,7 @@ program ExtractSubvol
      if (add_stars) then
         !print*,'not implemented yet'
         if (verbose) write(*,*) '...reading star particles...'
-        call ramses_read_stars_in_domain(repository,snapnum,domain_list(i),star_pos,star_age,star_mass,star_vel,star_met,cosmo)
+        call ramses_read_stars_in_domain(repository,snapnum,domain_list(i),star_pos,star_age,star_mass,star_vel,star_met)
         nstars = size(star_age)
         print*,'nstars = ',nstars
         print*,'min max pos = ',minval(star_pos),maxval(star_pos)
@@ -281,8 +280,6 @@ contains
              read(value,*) decomp_dom_size(:)
           case ('decomp_dom_thickness')
              read(value,*) decomp_dom_thickness(:)
-          case ('cosmo')
-             read(value,*) cosmo
           end select
        end do
     end if
@@ -345,7 +342,6 @@ contains
        write(unit,'(a,L1)')          '  verbose         = ',verbose
        write(unit,'(a,L1)')          '  add_stars       = ',add_stars
        write(unit,'(a,L1)')          '  add_dm          = ',add_dm
-       write(unit,'(a,L1)')          '  cosmo           = ',cosmo
        write(unit,'(a)')             ' '
        call print_mesh_params(unit)
     else
@@ -378,7 +374,6 @@ contains
        write(*,'(a,L1)')          '  verbose         = ',verbose
        write(*,'(a,L1)')          '  add_stars       = ',add_stars
        write(*,'(a,L1)')          '  add_dm          = ',add_dm
-       write(*,'(a,L1)')          '  cosmo           = ',cosmo
        write(*,'(a)')             ' '
        call print_mesh_params
        write(*,'(a)')             ' '
