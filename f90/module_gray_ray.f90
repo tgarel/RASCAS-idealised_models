@@ -301,6 +301,7 @@ contains
     open(unit=14, file=trim(file), status='unknown', form='unformatted', action='read')
     read(14) n_rays
     allocate(rays(n_rays))
+    if (n_rays==0) return
     read(14) (rays(i)%ID,         i=1,n_rays)
     read(14) (rays(i)%x_em(1),    i=1,n_rays)
     read(14) (rays(i)%x_em(2),    i=1,n_rays)
@@ -350,8 +351,10 @@ contains
     np = size(rays)
     open(unit=14, file=trim(file), status='unknown', form='unformatted', action='write')
     write(14) np
-    write(14) (rays(i)%fesc,i=1,np)
-    write(14) (rays(i)%ID,i=1,np)
+    if(np.gt.0) then
+       write(14) (rays(i)%fesc,i=1,np)
+       write(14) (rays(i)%ID,i=1,np)
+    endif
     close(14)
 
   end subroutine dump_rays
