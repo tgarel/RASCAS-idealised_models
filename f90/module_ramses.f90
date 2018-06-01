@@ -1647,7 +1647,8 @@ contains
 
     implicit none
 
-    if(allocated(son)) deallocate(son,cpu_map,xg,nbor,next)
+    if(allocated(son)) deallocate(son,cpu_map,nbor,next)
+    if(allocated(xg)) deallocate(xg)
     if(allocated(headl)) deallocate(headl,taill,numbl,numbtot,headb,tailb,numbb)
     if(allocated(var)) deallocate(var,cell_x,cell_y,cell_z,cell_level)
 
