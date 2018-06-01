@@ -87,11 +87,12 @@ module module_ramses
   logical                  :: use_proper_time  = .false.  ! if true, use proper time instead of conformal time for cosmo runs. 
   ! miscelaneous
   logical                  :: verbose        = .false. ! display some run-time info on this module
-  ! RT variable indices, should become user params
-  integer(kind=4),parameter :: imetal = 6
-  integer(kind=4),parameter :: ihii   = 7
-  integer(kind=4),parameter :: iheii  = 8
-  integer(kind=4),parameter :: iheiii = 9
+  ! Hydro and RT variable indices, should become user params
+  integer(kind=4) :: itemp  = 5 ! index of thermal pressure
+  integer(kind=4) :: imetal = 6 ! index of metallicity 
+  integer(kind=4) :: ihii   = 7 ! index of HII fraction 
+  integer(kind=4) :: iheii  = 8 ! index of HeII fraction 
+  integer(kind=4) :: iheiii = 9 ! index of HeIII fraction 
   ! Solar abundance ratio
   ! Si
   ! abundance_Si_mass == abundance_Si_number * 28.085
@@ -878,7 +879,7 @@ contains
        nhi  = ramses_var(1,:) * dp_scale_nh  * (1.d0 - ramses_var(ihii,:))   ! nb of H atoms per cm^3
        mu   = XH * (1.d0+ramses_var(ihii,:)) + 0.25d0*(1.d0-XH)*(1.d0 + ramses_var(iheii,:) + 2.d0*ramses_var(iheiii,:)) ! assumes no metals
        mu   = 1.0d0 / mu
-       temp = ramses_var(5,:) / ramses_var(1,:) * dp_scale_T2                ! T/mu [ K ]
+       temp = ramses_var(itemp,:) / ramses_var(1,:) * dp_scale_T2                ! T/mu [ K ]
        temp = temp * mu                                                      ! This is now T (in K) with no bloody mu ... 
        deallocate(mu)
     else
@@ -1045,7 +1046,10 @@ contains
     logical                    :: subsample
     ! Heating terms (RT)
     real(kind=8),parameter::eV_to_erg=1.6022d-12  ! eV to erg conv. constant
-    real(kind=8),parameter,dimension(3)::ion_egy = (/13.60d0, 24.59d0, 54.42d0/)*eV_to_erg
+    !!JB- should read these from files ! 
+    !real(kind=8),parameter,dimension(3)::ion_egy = (/13.60d0, 24.59d0, 54.42d0/)*eV_to_erg
+    real(kind=8),parameter,dimension(4)::ion_egy = (/13.60d0, 15.20d0, 24.59d0, 54.42d0/)*eV_to_erg
+    !! -JB
     character(1000)            :: filename
     integer(kind=4)            :: levelmin,levelmax,ilun=33,nRTvar,nIons,nGroups,igroup,indexgroup,nvarH
     real(kind=8),allocatable   :: group_egy(:),group_csn(:,:),group_cse(:,:)
@@ -1074,10 +1078,11 @@ contains
        call read_int( ilun, 'nRTvar', nRTvar)
        nvarH = nvar - nRTvar
        call read_int( ilun, 'nIons', nIons)
-       if (nIons .ne. 3) then
-          print*,'nIons has to be 3 with current implementation ... '
-          stop
-       end if
+! JB: make sure this is OK for non-Harley cases ... 
+!!$       if (nIons .ne. 3) then
+!!$          print*,'nIons has to be 3 with current implementation ... '
+!!$          stop
+!!$       end if
        call read_int( ilun, 'nGroups', nGroups)
        allocate(group_egy(nGroups),group_csn(ngroups,nions),group_cse(ngroups,nions))
        call read_real(ilun, 'unit_pf', unit_fp)
@@ -1112,16 +1117,27 @@ contains
        nheiii = nhe * xheiii
        ne     = nHII + nHe * (xHeII + 2.0d0*xHeIII)
        mu     = 1./( XH*(1.+xHII) + 0.25d0*(1.0d0-XH)*(1.+xHeII+2.*xHeIII) )
-       T      = ramses_var(5,i)/ramses_var(1,i)*mu*dp_scale_T2
+       T      = ramses_var(itemp,i)/ramses_var(1,i)*mu*dp_scale_T2
        crate  = compCoolrate(T, ne, nHI, nHII, nHeI, nHeII, nHeIII, aexp, dcooldT)  ! [erg s-1 cm-3]  
        if (read_rt_variables) then
           hrate = 0.0d0
-          do igroup=1,ngroups
-             indexgroup = nvarH+1+(igroup-1)*(1+ndim)
-             hrate = hrate + nhi * ramses_var(indexgroup,i) * unit_fp * (group_cse(igroup,1)*group_egy(igroup) -group_csn(iGroup,1)*ion_egy(1)) &
-                  & + nhei * ramses_var(indexgroup,i) * unit_fp * (group_cse(igroup,2)*group_egy(igroup) -group_csn(iGroup,2)*ion_egy(2)) &
-                  & + nheii * ramses_var(indexgroup,i) * unit_fp * (group_cse(igroup,3)*group_egy(igroup) -group_csn(iGroup,3)*ion_egy(3)) 
-          end do
+          ! JB- There has to be a way to use non-hard-coded indexes ... 
+          if (nions.eq.3) then
+             do igroup=1,ngroups
+                indexgroup = nvarH+1+(igroup-1)*(1+ndim)
+                hrate = hrate + nhi * ramses_var(indexgroup,i) * unit_fp * (group_cse(igroup,1)*group_egy(igroup) -group_csn(iGroup,1)*ion_egy(1)) &
+                     & + nhei * ramses_var(indexgroup,i) * unit_fp * (group_cse(igroup,2)*group_egy(igroup) -group_csn(iGroup,2)*ion_egy(2)) &
+                     & + nheii * ramses_var(indexgroup,i) * unit_fp * (group_cse(igroup,3)*group_egy(igroup) -group_csn(iGroup,3)*ion_egy(3)) 
+             end do
+          else !!HK addition for nIons=4 (molecular hydrogen case)
+             do igroup=1,ngroups
+                indexgroup = nvarH+1+(igroup-1)*(1+ndim)
+                hrate = hrate + nhi * ramses_var(indexgroup,i) * unit_fp * (group_cse(igroup,2)*group_egy(igroup) -group_csn(iGroup,2)*ion_egy(2)) &
+                     & + nhei * ramses_var(indexgroup,i) * unit_fp * (group_cse(igroup,3)*group_egy(igroup) -group_csn(iGroup,3)*ion_egy(3)) &
+                     & + nheii * ramses_var(indexgroup,i) * unit_fp * (group_cse(igroup,4)*group_egy(igroup) -group_csn(iGroup,4)*ion_egy(4))
+             end do
+          endif
+          ! -JB 
           crate = max(1.0d-40,crate-hrate)  ! we're only interested in relatively fast cooling rates. 
        end if
        enerth = (1.5d0 * kb / mp ) * T / mu * ramses_var(1,i) * dp_scale_d  ! [erg cm-3]
@@ -1299,7 +1315,7 @@ contains
           nhi    = nh * (1.0d0 - xhii)
           n_e    = nHII + nHe * (xHeII + 2.0d0*xHeIII)
           mu     = 1./( XH*(1.+xHII) + 0.25d0*(1.0d0-XH)*(1.+xHeII+2.*xHeIII) )
-          TK     = var(5,i)/var(1,i)*mu*dp_scale_T2
+          TK     = var(itemp,i)/var(1,i)*mu*dp_scale_T2
           HIDopwidth(j) = sqrt((2.0d0*kb/mp)*TK)
           ! Cantalupo+(08)
           Ta = max(TK,100.0) ! no extrapolation..
@@ -3166,6 +3182,16 @@ contains
              read(value,*) use_proper_time
           case ('verbose')
              read(value,*) verbose
+          case('itemp') ! index of thermal pressure
+             read(value,*) itemp
+          case('imetal')! index of metallicity  
+             read(value,*) imetal
+          case('ihii') ! index of HII fraction 
+             read(value,*) ihii
+          case ('iheii') ! index of HeII fraction 
+             read(value,*) iheii
+          case('iheiii') ! index of HeIII fraction 
+             read(value,*) iheiii
           end select
        end do
     end if
@@ -3194,6 +3220,11 @@ contains
        write(unit,'(a,L1)') '  use_initial_mass  = ',use_initial_mass
        write(unit,'(a,L1)') '  use_proper_time   = ',use_proper_time
        write(unit,'(a,L1)') '  verbose           = ',verbose
+       write(unit,'(a,i2)') '  itemp             = ', itemp
+       write(unit,'(a,i2)') '  imetal            = ', imetal
+       write(unit,'(a,i2)') '  ihii              = ', ihii
+       write(unit,'(a,i2)') '  iheii             = ', iheii
+       write(unit,'(a,i2)') '  iheiii            = ', iheiii
     else
        write(*,'(a,a,a)') '[ramses]'
        write(*,'(a,L1)') '  self_shielding    = ',self_shielding
@@ -3203,6 +3234,11 @@ contains
        write(*,'(a,L1)') '  use_initial_mass  = ',use_initial_mass
        write(*,'(a,L1)') '  use_proper_time   = ',use_proper_time
        write(*,'(a,L1)') '  verbose           = ',verbose
+       write(*,'(a,i2)') '  itemp             = ', itemp
+       write(*,'(a,i2)') '  imetal            = ', imetal
+       write(*,'(a,i2)') '  ihii              = ', ihii
+       write(*,'(a,i2)') '  iheii             = ', iheii
+       write(*,'(a,i2)') '  iheiii            = ', iheiii       
     end if
 
     return
