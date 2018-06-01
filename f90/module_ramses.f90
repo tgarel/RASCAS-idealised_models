@@ -80,6 +80,7 @@ module module_ramses
   logical                  :: ramses_rt        = .false.  ! if true, read ramses-RT output and compute nHI and T accordingly.
   logical                  :: use_initial_mass = .false.  ! if true, use initial masses of star particles instead of mass at output time
   logical                  :: cosmo            = .true.   ! if false, assume idealised simulation
+  logical                  :: use_proper_time  = .false.  ! if true, use proper time instead of conformal time for cosmo runs. 
   ! miscelaneous
   logical                  :: verbose        = .false. ! display some run-time info on this module
   ! RT variable indices, should become user params
@@ -1429,8 +1430,12 @@ contains
              temp(:) = x(i,:)
              if (domain_contains_point(temp,selection_domain)) then ! it is inside the domain
                 if(cosmo)then
-                   ! Convert from conformal time to age in Myr
-                   star_age(ilast)   = (stime - ct_conftime2time(age(i)))*1.d-6 ! Myr
+                   if (use_proper_time) then
+                      star_age(ilast) = (stime - ct_proptime2time(age(i),h0))*1.d-6 ! Myr
+                   else
+                      ! Convert from conformal time to age in Myr
+                      star_age(ilast) = (stime - ct_conftime2time(age(i)))*1.d-6 ! Myr
+                   end if
                 else
                    ! convert from tborn to age in Myr
                    star_age(ilast)   = max(0.d0, (time_cu - age(i)) * dp_scale_t / (365.d0*24.d0*3600.d0*1.d6))
@@ -1546,8 +1551,25 @@ contains
     return
 
   end function ct_conftime2time
+  
+  
+  function ct_proptime2time(tau,h0)
 
+    ! return look-back time in yr
+    
+    implicit none 
+    
+    real(kind=8),intent(in) :: tau,h0
+    real(kind=8)            :: ct_proptime2time
+    integer(kind=4)         :: i
+    
+    
+    ct_proptime2time = tau / (h0 / 3.08d19) / (365.25*24.*3600.)
+    return
 
+  end function ct_proptime2time
+  
+  
   function ct_aexp2time(aexp)
 
     ! return look-back time in yr
@@ -1772,6 +1794,8 @@ contains
              read(value,*) use_initial_mass
           case ('cosmo')
              read(value,*) cosmo
+          case ('use_proper_time')
+             read(value,*) use_proper_time
           end select
        end do
     end if
@@ -1797,6 +1821,7 @@ contains
        write(unit,'(a,L1)') '  ramses_rt        = ',ramses_rt
        write(unit,'(a,L1)') '  use_initial_mass = ',use_initial_mass
        write(unit,'(a,L1)') '  cosmo            = ',cosmo
+       write(unit,'(a,L1)') '  use_proper_time  = ',use_proper_time
        write(unit,'(a,L1)') '  verbose          = ',verbose
     else
        write(*,'(a,a,a)') '[ramses]'
@@ -1804,6 +1829,7 @@ contains
        write(*,'(a,L1)') '  ramses_rt        = ',ramses_rt
        write(*,'(a,L1)') '  use_initial_mass = ',use_initial_mass
        write(*,'(a,L1)') '  cosmo            = ',cosmo
+       write(*,'(a,L1)') '  use_proper_time  = ',use_proper_time
        write(*,'(a,L1)') '  verbose          = ',verbose
     end if
 
