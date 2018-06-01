@@ -2001,9 +2001,10 @@ contains
 
     implicit none
 
-    deallocate(son,cpu_map,xg,nbor,next)
-    deallocate(headl,taill,numbl,numbtot,headb,tailb,numbb)
-    deallocate(var,cell_x,cell_y,cell_z,cell_level)
+    if(allocated(son)) deallocate(son,cpu_map)
+    if(allocated(xg))  deallocate(xg,nbor,next)
+    if(allocated(headl)) deallocate(headl,taill,numbl,numbtot,headb,tailb,numbb)
+    if(allocated(var)) deallocate(var,cell_x,cell_y,cell_z,cell_level)
 
     return
 
