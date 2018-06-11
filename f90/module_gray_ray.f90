@@ -67,11 +67,13 @@ contains
 !$OMP PRIVATE(i,iran,idir,fesc)
 !$OMP DO SCHEDULE(DYNAMIC, 100) 
     do i=1,nrays  ! these are actually star particle positions
-!!!$OMP CRITICAL
-!!       write (*, "(A, f5.2, A, A)", advance='no') &           ! Progress bar
-!!            ' Tracing rays ',dble(iloop) / nrays * 100,' % ',char(13)
-!!       iloop=iloop+1
-!!!$OMP END CRITICAL
+#ifdef DISPLAY_PROGRESS_PERCENT
+!$OMP CRITICAL
+       write (*, "(A, f5.2, A, A)", advance='no') &           ! Progress bar
+            ' Tracing rays ',dble(iloop) / nrays * 100,' % ',char(13)
+       iloop=iloop+1
+!$OMP END CRITICAL
+#endif
        fesc = 0.0d0
        do idir = 1,ndirections
           if(identical_ray_distribution) then

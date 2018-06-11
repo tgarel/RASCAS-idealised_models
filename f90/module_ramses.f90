@@ -240,9 +240,11 @@ contains
        
 !$OMP CRITICAL
        ! only one CRITICAL zone
-       !write (*, "(A, f5.2, A, A)", advance='no') &           ! Progress bar
-       !     ' Reading leaves ',dble(iloop) / ncpu_read * 100,' % ',char(13)
-       !iloop=iloop+1
+#ifdef DISPLAY_PROGRESS_PERCENT
+       write (*, "(A, f5.2, A, A)", advance='no') &           ! Progress bar
+            ' Reading leaves ',dble(iloop) / ncpu_read * 100,' % ',char(13)
+       iloop=iloop+1
+#endif
 
        ! ileaf is now the number of leaves on local cpu
        if(ileaf .gt. 0) then
@@ -1754,12 +1756,13 @@ contains
     do_allocs = .true. 
 !$OMP DO SCHEDULE(DYNAMIC, 10) 
     do icpu = 1, ncpu
-!!!!$OMP CRITICAL
-!!!       write (*, "(A, f5.2, A, A)", advance='no') &           ! Progress bar
-!!!            ' Reading nleaftot ',dble(iloop) / ncpu * 100,' % ',char(13)
-!!!       iloop=iloop+1
-!!!!$OMP END CRITICAL
-
+#ifdef DISPLAY_PROGRESS_PERCENT
+!$OMP CRITICAL
+       write (*, "(A, f5.2, A, A)", advance='no') &           ! Progress bar
+            ' Reading nleaftot ',dble(iloop) / ncpu * 100,' % ',char(13)
+       iloop=iloop+1
+!$OMP END CRITICAL
+#endif       
        iunit = icpu+10
        write(nomfich,'(a,a,i5.5,a,i5.5,a,i5.5)') trim(repository),'/output_',snapnum,'/amr_',snapnum,'.out',icpu
        inquire(file=nomfich, exist=ok)

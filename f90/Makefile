@@ -1,8 +1,9 @@
 #############################################################################
 # Fortran compiler options and directives
 
-SYSTYPE="CCF"
-#SYSTYPE="lyocral"
+#SYSTYPE="CCF"
+SYSTYPE="lyocralgfort"
+#SYSTYPE="lyocralifort"
 #SYSTYPE="lyocralP"
 #SYSTYPE="mac"
 #SYSTYPE="macP"
@@ -11,15 +12,25 @@ SYSTYPE="CCF"
 OPTIONS = -cpp
 #OPTIONS += -DSWITCH_OFF_UPARALLEL
 #OPTIONS += -DDEBUG
+#OPTIONS += -DDISPLAY_PROGRESS_PERCENT
 
 
-ifeq ($(SYSTYPE),"lyocral")
+ifeq ($(SYSTYPE),"lyocralifort")
 F90         = ifort
 #FFLAGS      = -g -traceback -fpp -check all -debug -warn all -ftrapuv 
 FFLAGS      = -O3 -fpp -ftz -ipo -fno-alias -fno-fnalias -no-prec-div -no-prec-sqrt -align all
 ##FFLAGS      = -p -g
 FFLAGS += $(OPTIONS)
 LDFLAGS     = #-lmpi
+endif
+
+ifeq ($(SYSTYPE),"lyocralgfort")
+F90         = gfortran  -ffree-line-length-none -fopenmp ###-ffree-form
+DEBUG   = -g -ffpe-trap=invalid -fbacktrace -fbounds-check -frange-check -Wall
+OPTIM   = -O2
+FFLAGS += $(OPTIONS) $(OPTIM)
+#FFLAGS += $(OPTIONS) $(DEBUG)
+LDFLAGS     = -fopenmp
 endif
 
 ifeq ($(SYSTYPE),"lyocralP")
