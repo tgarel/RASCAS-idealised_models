@@ -1,8 +1,8 @@
 #############################################################################
 # Fortran compiler options and directives
 
-#SYSTYPE="CCF"
-SYSTYPE="lyocralgfort"
+SYSTYPE="CCF"
+#SYSTYPE="lyocralgfort"
 #SYSTYPE="lyocralifort"
 #SYSTYPE="lyocralP"
 #SYSTYPE="mac"
@@ -43,11 +43,10 @@ endif
 
 
 ifeq ($(SYSTYPE),"CCF")
-F90         = ifort
+F90         = ifort -fopenmp
 #FFLAGS      = -g -fpp -check all -debug -warn all -ftrapuv -traceback
 ##FFLAGS      = -O3 -fpp -ftz  -xavx -sox -ipo -fno-alias -fno-fnalias -no-prec-div -no-prec-sqrt -align all
-#FFLAGS      = -O3 -fpp -ftz  -xavx -ipo -fno-alias -fno-fnalias -no-prec-div -no-prec-sqrt -align all
-FFLAGS      = -O2 -fopenmp
+FFLAGS      = -O3 -fpp -ftz  -xavx -ipo -fno-alias -fno-fnalias -no-prec-div -no-prec-sqrt -align all
 FFLAGS += $(OPTIONS)
 LDFLAGS     =  -lmpi
 endif
