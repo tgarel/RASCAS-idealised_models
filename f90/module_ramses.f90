@@ -318,8 +318,6 @@ contains
        icpu=cpu_list(k)
        call read_amr_hydro(repository,snapnum,icpu,&
             & son,cpu_map,var,cell_x,cell_y,cell_z,cell_level,ncell)
-       !call read_amr(repository,snapnum,icpu,do_allocs)
-       !call read_hydro(repository,snapnum,icpu,do_allocs)
        ! collect leaf cells
        do icell = 1,ncell
           if (son(icell)==0 .and. cpu_map(icell) == icpu) then
@@ -368,10 +366,11 @@ contains
        end do
 !$OMP CRITICAL
        ! only one CRITICAL zone
-       !write (*, "(A, f5.2, A, A)", advance='no') &           ! Progress bar
-       !     ' Reading leaves ',dble(iloop) / ncpu_read * 100,' % ',char(13)
-       !iloop=iloop+1
-
+#ifdef DISPLAY_PROGRESS_PERCENT
+       write (*, "(A, f5.2, A, A)", advance='no') &           ! Progress bar
+            ' Reading leaves ',dble(iloop) / ncpu_read * 100,' % ',char(13)
+       iloop=iloop+1
+#endif
        ! ileaf is now the number of leaves on local cpu
        if(ileaf .gt. 0) then
           ! save leaf cells to return arrays
