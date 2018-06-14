@@ -133,6 +133,7 @@ contains
     if(verbose)then
        print *,' '
        print *,'...reading RAMSES cells...'
+       print *,' '
     endif
 
     nleaftot = get_nleaf(repository,snapnum)  ! sets ncpu too 
@@ -140,7 +141,7 @@ contains
     allocate(ramses_var(nvar,nleaftot), xleaf(nleaftot,3), leaf_level(nleaftot))
     ncpu = get_ncpu(repository,snapnum)
 
-    if(verbose)print *,'--> nleaftot, nvar, ncpu =',nleaftot,nvar,ncpu
+    if(verbose)print *,'-- read_leaf_cells --> nleaftot, nvar, ncpu =',nleaftot,nvar,ncpu
 
     do_allocs = .true.
     ileaf = 0
@@ -200,11 +201,7 @@ contains
     allocate(ramses_var_all(nvar,nleaftot), xleaf_all(nleaftot,3), leaf_level_all(nleaftot))
     !ncpu = get_ncpu(repository,snapnum)
 
-    if(verbose) then
-       print*,' '
-       print *,'read_leaf_cells_omp --> nleaftot, nvar, ncpu =',nleaftot,nvar,ncpu_read
-       print*,' '
-    end if
+    if(verbose) print *,'-- read_leaf_cells_omp --> nleaftot, nvar, ncpu =',nleaftot,nvar,ncpu_read
 
     ileaf = 0
     iloop = 0
@@ -302,7 +299,8 @@ contains
     
     if(verbose)then
        print *,' '
-       print *,'read_leaf_cells_in_domain...reading RAMSES cells...'
+       print *,'...reading RAMSES cells...'
+       print *,' '
     endif
 
     nvar     = get_nvar(repository,snapnum)
@@ -335,7 +333,7 @@ contains
 !$OMP END DO
 !$OMP END PARALLEL
 
-    if(verbose)print *,'--> nleaftot, nleaf_in_domain, nvar, ncpu =',nleaftot, nleaf_in_domain, nvar, ncpu_read
+    if(verbose)print *,'-- read_leaf_cells_in_domain --> nleaftot, nleaf_in_domain, nvar, ncpu =',nleaftot, nleaf_in_domain, nvar, ncpu_read
     
     allocate(ramses_var_all(nvar,nleaf_in_domain), xleaf_all(nleaf_in_domain,3), leaf_level_all(nleaf_in_domain))
     ilast = 1
@@ -387,7 +385,7 @@ contains
     if(allocated(ramses_var)) deallocate(ramses_var,xleaf,leaf_level)
 !$OMP END PARALLEL
     
-    call clear_amr
+    !call clear_amr
     nleaftot_all = nleaf_in_domain
     
     return

@@ -230,7 +230,9 @@ program CreateDomDump
         call gas_from_ramses_leaves(repository,snapnum,nleaftot,nvar,ramses_var, gas_leaves)
         call cpu_time(finish)
         print '(" --> Time to read leaves in domain = ",f12.3," seconds.")',finish-intermed
-        ! and then no need for selection
+        ! and then no need for selection, but to adapt the call to mesh_from_leaves
+        call mesh_from_leaves(nOctSnap,domain_list(i),nleaftot, &
+             gas_leaves,x_leaf,leaf_level,domain_mesh)
      else
         call select_in_domain(domain_list(i), nleaftot, x_leaf, ind_sel)
         print*,'in CreateDomDump: ind_sel = ',size(ind_sel)
@@ -239,10 +241,10 @@ program CreateDomDump
         call select_from_domain(arr_in=gas_leaves, ind_sel=ind_sel, arr_out=selected_leaves)
         nleaf_sel = size(ind_sel)
         print*,'in CreateDomDump: nleaf_sel = ',nleaf_sel
+        call mesh_from_leaves(nOctSnap,domain_list(i),nleaf_sel, &
+             selected_leaves,xleaf_sel,leaflevel_sel,domain_mesh)
      endif
 
-     call mesh_from_leaves(nOctSnap,domain_list(i),nleaf_sel, &
-          selected_leaves,xleaf_sel,leaflevel_sel,domain_mesh)
      fichier = trim(DomDumpDir)//trim(mesh_file_list(i))
      call dump_mesh(domain_mesh, fichier)
      call mesh_destructor(domain_mesh)
