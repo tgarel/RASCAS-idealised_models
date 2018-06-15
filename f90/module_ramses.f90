@@ -28,7 +28,7 @@ module module_ramses
   real(kind=8),allocatable         :: cell_x(:),cell_y(:),cell_z(:)
   integer(kind=4),allocatable      :: cell_level(:)
 
-  integer(kind=4)                  :: ncpu,nvar
+  integer(kind=4)                  :: ncpu
 
   ! conversion factors (units)
   logical                        :: conversion_scales_are_known = .False. 
@@ -76,18 +76,19 @@ module module_ramses
   ! user-defined parameters - read from section [ramses] of the parameter file
   ! --------------------------------------------------------------------------
   ! ramses options (not guessable from outputs)
-  logical                  :: self_shielding   = .true.   ! if true, reproduce self-shielding approx made in ramses to compute nHI. 
-  logical                  :: ramses_rt        = .false.  ! if true, read ramses-RT output and compute nHI and T accordingly.
-  logical                  :: use_initial_mass = .false.  ! if true, use initial masses of star particles instead of mass at output time
-  logical                  :: cosmo            = .true.   ! if false, assume idealised simulation
-  logical                  :: use_proper_time  = .false.  ! if true, use proper time instead of conformal time for cosmo runs. 
+  logical                  :: self_shielding    = .true.   ! if true, reproduce self-shielding approx made in ramses to compute nHI. 
+  logical                  :: ramses_rt         = .false.  ! if true, read ramses-RT output and compute nHI and T accordingly.
+  logical                  :: use_initial_mass  = .false.  ! if true, use initial masses of star particles instead of mass at output time
+  logical                  :: cosmo             = .true.   ! if false, assume idealised simulation
+  logical                  :: use_proper_time   = .false.  ! if true, use proper time instead of conformal time for cosmo runs. 
   ! miscelaneous
   logical                  :: verbose        = .false. ! display some run-time info on this module
-  ! RT variable indices, should become user params
-  integer(kind=4),parameter :: imetal = 6
-  integer(kind=4),parameter :: ihii   = 7
-  integer(kind=4),parameter :: iheii  = 8
-  integer(kind=4),parameter :: iheiii = 9
+  ! RT variable indices
+  integer(kind=4) :: itemp  = 5 ! index of thermal pressure
+  integer(kind=4) :: imetal = 6 ! index of metallicity 
+  integer(kind=4) :: ihii   = 7 ! index of HII fraction 
+  integer(kind=4) :: iheii  = 8 ! index of HeII fraction 
+  integer(kind=4) :: iheiii = 9 ! index of HeIII fraction 
   ! Solar abundance ratio
   ! Si
   ! abundance_Si_mass == abundance_Si_number * 28.085
@@ -569,95 +570,95 @@ contains
     
     ncpu_read=0
     do ix=1,2
-    do iy=1,2
-    do iz=1,2
-       
-       dmin = min(dom_pmax(1,ix)-dom_pmin(1,ix)  &
-                 ,dom_pmax(2,iy)-dom_pmin(2,iy)  &
-                 ,dom_pmax(3,iz)-dom_pmin(3,iz) )
-       if(dmin<=0.) cycle
-       !print*,'Extracting from hilbert domain '
-       !print*,xmin,xmax
-       !print*,ymin,ymax
-       !print*,zmin,zmax
-       !print*,dom_pmin(1,ix),dom_pmax(1,ix)
-       !print*,dom_pmin(2,iy),dom_pmax(2,iy)
-       !print*,dom_pmin(3,iz),dom_pmax(3,iz)
-       !dmax = max(xmax-xmin,ymax-ymin,zmax-zmin)
-       dmax = max(dom_pmax(1,ix)-dom_pmin(1,ix)  &
-                 ,dom_pmax(2,iy)-dom_pmin(2,iy)  &
-                 ,dom_pmax(3,iz)-dom_pmin(3,iz) )
-
-       ! Set up at most 8 sub-domains in periodic box
-       do ilevel=1,lmax
-          dx=0.5d0**ilevel
-          if(dx.lt.dmax)exit
-       end do
-       lmin=ilevel
-       bit_length=lmin-1
-       maxdom=2**bit_length
-       imin=0; imax=0; jmin=0; jmax=0; kmin=0; kmax=0
-       if(bit_length>0)then
-          imin=int(dom_pmin(1,ix)*dble(maxdom))
-          imax=imin+1
-          jmin=int(dom_pmin(2,iy)*dble(maxdom))
-          jmax=jmin+1
-          kmin=int(dom_pmin(3,iz)*dble(maxdom))
-          kmax=kmin+1
-       endif
-       
-       dkey=(dble(2**(lmax+1)/dble(maxdom)))**ndim
-       ndom=1
-       if(bit_length>0)ndom=8
-       idom(1)=imin; idom(2)=imax
-       idom(3)=imin; idom(4)=imax
-       idom(5)=imin; idom(6)=imax
-       idom(7)=imin; idom(8)=imax
-       jdom(1)=jmin; jdom(2)=jmin
-       jdom(3)=jmax; jdom(4)=jmax
-       jdom(5)=jmin; jdom(6)=jmin
-       jdom(7)=jmax; jdom(8)=jmax
-       kdom(1)=kmin; kdom(2)=kmin
-       kdom(3)=kmin; kdom(4)=kmin
-       kdom(5)=kmax; kdom(6)=kmax
-       kdom(7)=kmax; kdom(8)=kmax
-       
-       do i=1,ndom
-          if(bit_length>0)then
-             call hilbert3d(idom(i),jdom(i),kdom(i),order_min(i),bit_length,1)
-          else
-             order_min(i)=0.0d0
-          endif
-          bounding_min(i)=(order_min(i))*dkey
-          bounding_max(i)=(order_min(i)+1.0D0)*dkey
-       end do
-       
-       cpu_min=0; cpu_max=0
-       do impi=1,ncpu
-          do i=1,ndom
-             if (   bound_key(impi-1).le.bounding_min(i).and.&
-                  & bound_key(impi  ).gt.bounding_min(i))then
-                cpu_min(i)=impi
+       do iy=1,2
+          do iz=1,2
+             
+             dmin = min(dom_pmax(1,ix)-dom_pmin(1,ix)  &
+                  ,dom_pmax(2,iy)-dom_pmin(2,iy)  &
+                  ,dom_pmax(3,iz)-dom_pmin(3,iz) )
+             if(dmin<=0.) cycle
+             !print*,'Extracting from hilbert domain '
+             !print*,xmin,xmax
+             !print*,ymin,ymax
+             !print*,zmin,zmax
+             !print*,dom_pmin(1,ix),dom_pmax(1,ix)
+             !print*,dom_pmin(2,iy),dom_pmax(2,iy)
+             !print*,dom_pmin(3,iz),dom_pmax(3,iz)
+             !dmax = max(xmax-xmin,ymax-ymin,zmax-zmin)
+             dmax = max(dom_pmax(1,ix)-dom_pmin(1,ix)  &
+                  ,dom_pmax(2,iy)-dom_pmin(2,iy)  &
+                  ,dom_pmax(3,iz)-dom_pmin(3,iz) )
+             
+             ! Set up at most 8 sub-domains in periodic box
+             do ilevel=1,lmax
+                dx=0.5d0**ilevel
+                if(dx.lt.dmax)exit
+             end do
+             lmin=ilevel
+             bit_length=lmin-1
+             maxdom=2**bit_length
+             imin=0; imax=0; jmin=0; jmax=0; kmin=0; kmax=0
+             if(bit_length>0)then
+                imin=int(dom_pmin(1,ix)*dble(maxdom))
+                imax=imin+1
+                jmin=int(dom_pmin(2,iy)*dble(maxdom))
+                jmax=jmin+1
+                kmin=int(dom_pmin(3,iz)*dble(maxdom))
+                kmax=kmin+1
              endif
-             if (   bound_key(impi-1).lt.bounding_max(i).and.&
-                  & bound_key(impi  ).ge.bounding_max(i))then
-                cpu_max(i)=impi
-             endif
-          end do
-       end do
-       
-       do i=1,ndom
-          do j=cpu_min(i),cpu_max(i)
-             if(.not. cpu_read(j))then
-                ncpu_read=ncpu_read+1
-                cpu_list(ncpu_read)=j
-                cpu_read(j)=.true.
-             endif
-          enddo
-       enddo
-       
-    end do !ix=1,2
-    end do !iy=1,2
+             
+             dkey=(dble(2**(lmax+1)/dble(maxdom)))**ndim
+             ndom=1
+             if(bit_length>0)ndom=8
+             idom(1)=imin; idom(2)=imax
+             idom(3)=imin; idom(4)=imax
+             idom(5)=imin; idom(6)=imax
+             idom(7)=imin; idom(8)=imax
+             jdom(1)=jmin; jdom(2)=jmin
+             jdom(3)=jmax; jdom(4)=jmax
+             jdom(5)=jmin; jdom(6)=jmin
+             jdom(7)=jmax; jdom(8)=jmax
+             kdom(1)=kmin; kdom(2)=kmin
+             kdom(3)=kmin; kdom(4)=kmin
+             kdom(5)=kmax; kdom(6)=kmax
+             kdom(7)=kmax; kdom(8)=kmax
+             
+             do i=1,ndom
+                if(bit_length>0)then
+                   call hilbert3d(idom(i),jdom(i),kdom(i),order_min(i),bit_length,1)
+                else
+                   order_min(i)=0.0d0
+                endif
+                bounding_min(i)=(order_min(i))*dkey
+                bounding_max(i)=(order_min(i)+1.0D0)*dkey
+             end do
+             
+             cpu_min=0; cpu_max=0
+             do impi=1,ncpu
+                do i=1,ndom
+                   if (   bound_key(impi-1).le.bounding_min(i).and.&
+                        & bound_key(impi  ).gt.bounding_min(i))then
+                      cpu_min(i)=impi
+                   endif
+                   if (   bound_key(impi-1).lt.bounding_max(i).and.&
+                        & bound_key(impi  ).ge.bounding_max(i))then
+                      cpu_max(i)=impi
+                   endif
+                end do
+             end do
+             
+             do i=1,ndom
+                do j=cpu_min(i),cpu_max(i)
+                   if(.not. cpu_read(j))then
+                      ncpu_read=ncpu_read+1
+                      cpu_list(ncpu_read)=j
+                      cpu_read(j)=.true.
+                   endif
+                enddo
+             enddo
+             
+          end do !ix=1,2
+       end do !iy=1,2
     end do !iz=1,2
     
     deallocate(bound_key,cpu_read)
@@ -870,7 +871,7 @@ contains
        nhi  = ramses_var(1,:) * dp_scale_nh  * (1.d0 - ramses_var(ihii,:))   ! nb of H atoms per cm^3
        mu   = XH * (1.d0+ramses_var(ihii,:)) + 0.25d0*(1.d0-XH)*(1.d0 + ramses_var(iheii,:) + 2.d0*ramses_var(iheiii,:)) ! assumes no metals
        mu   = 1.0d0 / mu   
-       temp = ramses_var(5,:) / ramses_var(1,:) * dp_scale_T2                ! T/mu [ K ]
+       temp = ramses_var(itemp,:) / ramses_var(1,:) * dp_scale_T2            ! T/mu [ K ]
        temp = temp * mu                                                      ! This is now T (in K) with no bloody mu ... 
        deallocate(mu)
     else
@@ -882,7 +883,7 @@ contains
        end if
 
        nhi  = ramses_var(1,:) * dp_scale_nh  ! nb of H atoms per cm^3
-       temp = ramses_var(5,:) / ramses_var(1,:) * dp_scale_T2  ! T/mu [ K ]
+       temp = ramses_var(itemp,:) / ramses_var(1,:) * dp_scale_T2  ! T/mu [ K ]
 
        allocate(boost(nleaf))
        if (self_shielding) then
@@ -1048,7 +1049,7 @@ contains
        allocate(mu(1:nleaf))
        mu   = XH * (1.d0+ramses_var(ihii,:)) + 0.25d0*(1.d0-XH)*(1.d0 + ramses_var(iheii,:) + 2.d0*ramses_var(iheiii,:)) ! assumes no metals
        mu   = 1.0d0 / mu
-       temp = ramses_var(5,:) / ramses_var(1,:) * dp_scale_T2                ! T/mu [ K ]
+       temp = ramses_var(itemp,:) / ramses_var(1,:) * dp_scale_T2            ! T/mu [ K ]
        temp = temp * mu                                                      ! This is now T (in K) with no bloody mu ... 
        deallocate(mu)
     else
@@ -1059,7 +1060,7 @@ contains
        end if
        allocate(nh(nleaf))
        nh   = ramses_var(1,:) * dp_scale_nh  ! nb of H atoms per cm^3
-       temp = ramses_var(5,:) / ramses_var(1,:) * dp_scale_T2  ! T/mu [ K ]
+       temp = ramses_var(itemp,:) / ramses_var(1,:) * dp_scale_T2  ! T/mu [ K ]
        allocate(boost(nleaf))
        if (self_shielding) then
           do i=1,nleaf
@@ -1164,7 +1165,7 @@ contains
        allocate(mu(1:nleaf))
        mu   = XH * (1.d0+ramses_var(ihii,:)) + 0.25d0*(1.d0-XH)*(1.d0 + ramses_var(iheii,:) + 2.d0*ramses_var(iheiii,:)) ! assumes no metals
        mu   = 1.0d0 / mu
-       temp = ramses_var(5,:) / ramses_var(1,:) * dp_scale_T2                ! T/mu [ K ]
+       temp = ramses_var(itemp,:) / ramses_var(1,:) * dp_scale_T2                ! T/mu [ K ]
        temp = temp * mu                                                      ! This is now T (in K) with no bloody mu ... 
        deallocate(mu)
     else
@@ -1175,7 +1176,7 @@ contains
        end if
        allocate(nh(nleaf))
        nh   = ramses_var(1,:) * dp_scale_nh  ! nb of H atoms per cm^3
-       temp = ramses_var(5,:) / ramses_var(1,:) * dp_scale_T2  ! T/mu [ K ]
+       temp = ramses_var(itemp,:) / ramses_var(1,:) * dp_scale_T2  ! T/mu [ K ]
        allocate(boost(nleaf))
        if (self_shielding) then
           do i=1,nleaf
@@ -1313,18 +1314,6 @@ contains
   end subroutine dump_ramses_info
 
 
-  !subroutine ramses_read_star_particles(repository, snapnum, nstars, stars)
-  !  character(2000),intent(in)                     :: repository
-  !  integer(kind=4),intent(in)                     :: snapnum
-  !  integer(kind=4),intent(inout)                  :: nstars
-  !  type(star_particle),allocatable, intent(inout) :: stars(:)
-  !  ! ...
-  !  ! allocate(stars(nstars))
-  !  ! ... 
-  !end subroutine ramses_read_star_particles
-
-
-
   !==================================================================================
   ! ----------------
   ! private functions 
@@ -1339,7 +1328,7 @@ contains
     logical,intent(in)          :: do_allocs
     real(kind=8)                :: dx
     character(1000)             :: nomfich
-    integer(kind=4)             :: i,nlevelmax,nboundary,ix,iy,iz,ind,ilevel,ibound,ncache,istart,ivar,iskip,igrid
+    integer(kind=4)             :: i,nlevelmax,nboundary,ix,iy,iz,ind,ilevel,ibound,ncache,istart,ivar,iskip,igrid,nvar
     real(kind=8),allocatable    :: xc(:,:),xx(:)
     integer(kind=4),allocatable :: ind_grid(:)
 
@@ -1614,7 +1603,7 @@ contains
     real(KIND=8),dimension(1:3)      :: xbound_l=(/0d0,0d0,0d0/)  
 
     real(kind=8)                :: dx
-    integer(kind=4)             :: ix,iy,iz,istart,ivar,igrid
+    integer(kind=4)             :: ix,iy,iz,istart,ivar,igrid,nvar
     real(kind=8),allocatable    :: xc(:,:),xx(:)
 
     ! stuff read from the HYDRO files
@@ -2703,12 +2692,21 @@ contains
              read(value,*) cosmo
           case ('use_proper_time')
              read(value,*) use_proper_time
+          case('itemp') ! index of thermal pressure
+             read(value,*) itemp
+          case('imetal')! index of metallicity  
+             read(value,*) imetal
+          case('ihii') ! index of HII fraction 
+             read(value,*) ihii
+          case ('iheii') ! index of HeII fraction 
+             read(value,*) iheii
+          case('iheiii') ! index of HeIII fraction 
+             read(value,*) iheiii
           end select
        end do
     end if
     close(10)
     return
-    
   end subroutine read_ramses_params
 
 
@@ -2730,6 +2728,11 @@ contains
        write(unit,'(a,L1)') '  cosmo            = ',cosmo
        write(unit,'(a,L1)') '  use_proper_time  = ',use_proper_time
        write(unit,'(a,L1)') '  verbose          = ',verbose
+       write(unit,'(a,i2)') '  itemp            = ', itemp
+       write(unit,'(a,i2)') '  imetal           = ', imetal
+       write(unit,'(a,i2)') '  ihii             = ', ihii
+       write(unit,'(a,i2)') '  iheii            = ', iheii
+       write(unit,'(a,i2)') '  iheiii           = ', iheiii
     else
        write(*,'(a,a,a)') '[ramses]'
        write(*,'(a,L1)') '  self_shielding   = ',self_shielding
@@ -2738,10 +2741,14 @@ contains
        write(*,'(a,L1)') '  cosmo            = ',cosmo
        write(*,'(a,L1)') '  use_proper_time  = ',use_proper_time
        write(*,'(a,L1)') '  verbose          = ',verbose
+       write(*,'(a,i2)') '  itemp            = ', itemp
+       write(*,'(a,i2)') '  imetal           = ', imetal
+       write(*,'(a,i2)') '  ihii             = ', ihii
+       write(*,'(a,i2)') '  iheii            = ', iheii
+       write(*,'(a,i2)') '  iheiii           = ', iheiii
     end if
-
-    return
     
+    return
   end subroutine print_ramses_params
 
 
