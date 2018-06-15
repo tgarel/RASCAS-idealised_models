@@ -305,7 +305,7 @@ contains
        print *,' '
     endif
 
-    nvar     = get_nvar(repository,snapnum)
+    nvar = get_nvar(repository,snapnum)
     ncpu = get_ncpu(repository,snapnum)
 
     ! first count leaf cells in domain...
@@ -1626,8 +1626,8 @@ contains
     real(kind=8),allocatable         :: xg_l(:,:)      ! grids position
     integer,allocatable              :: nbor_l(:,:)    ! neighboring father cells
     integer,allocatable              :: next_l(:)      ! next grid in list
-    integer,allocatable,intent(out)              :: son_l(:)       ! sons grids
-    integer,allocatable,intent(out)              :: cpu_map_l(:)  ! domain decomposition
+    integer,allocatable,intent(out)  :: son_l(:)       ! sons grids
+    integer,allocatable,intent(out)  :: cpu_map_l(:)   ! domain decomposition
     integer,allocatable              :: headl_l(:,:),taill_l(:,:),numbl_l(:,:),numbtot_l(:,:)
     integer,allocatable              :: headb_l(:,:),tailb_l(:,:),numbb_l(:,:)
     real(KIND=8),dimension(1:3)      :: xbound_l=(/0d0,0d0,0d0/)  
@@ -1637,9 +1637,9 @@ contains
     real(kind=8),allocatable    :: xc(:,:),xx(:)
 
     ! stuff read from the HYDRO files
-    real(kind=8),allocatable,intent(out)         :: var_l(:,:)
-    real(kind=8),allocatable,intent(out)         :: cell_x_l(:),cell_y_l(:),cell_z_l(:)
-    integer(kind=4),allocatable,intent(out)      :: cell_level_l(:)
+    real(kind=8),allocatable,intent(out)     :: var_l(:,:)
+    real(kind=8),allocatable,intent(out)     :: cell_x_l(:),cell_y_l(:),cell_z_l(:)
+    integer(kind=4),allocatable,intent(out)  :: cell_level_l(:)
   
     ! Vérification de l'existence des fichiers AMR
     write(nomfich,'(a,a,i5.5,a,i5.5,a,i5.5)') trim(repository),'/output_',snapnum,'/amr_',snapnum,'.out',icpu
@@ -1859,7 +1859,7 @@ contains
                       read(iu2) xx
                       if (ibound > ncpu) cycle  ! dont bother with boundaries
                       do i = 1, ncache
-                         var(ind_grid(i)+iskip,ivar+nvarH) = xx(i)
+                         var_l(ind_grid(i)+iskip,ivar+nvarH) = xx(i)
                       end do
                    end do
                 end if
