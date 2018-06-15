@@ -1608,6 +1608,7 @@ contains
        & son_l,cpu_map_l,var_l,cell_x_l,cell_y_l,cell_z_l,cell_level_l,ncell_l)
     ! purpose: use only local variables for OMP
 
+    !$ use OMP_LIB
     implicit none 
 
     integer(kind=4),intent(in)  :: snapnum,icpu
@@ -1618,7 +1619,7 @@ contains
     real(kind=8),allocatable    :: xxg(:)
     logical                     :: ok
     integer(kind=4)             :: i,nx,ny,nz,nlevelmax,nboundary
-    integer(kind=4)             :: ilevel,ncache,ibound,idim,ind,iskip,iunit,iu2
+    integer(kind=4)             :: ilevel,ncache,ibound,idim,ind,iskip,iunit,iu2,rank
 
     ! stuff read from AMR files
     integer(kind=4),intent(out)      :: ncell_l
@@ -1640,7 +1641,12 @@ contains
     real(kind=8),allocatable,intent(out)     :: var_l(:,:)
     real(kind=8),allocatable,intent(out)     :: cell_x_l(:),cell_y_l(:),cell_z_l(:)
     integer(kind=4),allocatable,intent(out)  :: cell_level_l(:)
-  
+    
+    rank = 1
+    !$ rank = OMP_GET_THREAD_NUM()
+    iunit=10+rank*2
+    iu2 = 10+rank*2+1
+
     ! Vérification de l'existence des fichiers AMR
     write(nomfich,'(a,a,i5.5,a,i5.5,a,i5.5)') trim(repository),'/output_',snapnum,'/amr_',snapnum,'.out',icpu
     inquire(file=nomfich, exist=ok)
@@ -1648,7 +1654,6 @@ contains
        write(*,*)'File '//TRIM(nomfich)//' not found'    
        stop
     end if
-    iunit=icpu+10
     open(unit=iunit,file=nomfich,form='unformatted',status='old',action='read')
     ! Read grid variables
     read(iunit)
@@ -1777,7 +1782,6 @@ contains
     !print*,'in module_ramses.read_amr_hydro -> ',ncell_l,nvar,icpu,snapnum
     ! and then the hydro file
     write(nomfich,'(a,a,i5.5,a,i5.5,a,i5.5)') trim(repository),'/output_',snapnum,'/hydro_',snapnum,'.out',icpu
-    iunit=icpu+10
     open(unit=iunit,file=nomfich,form='unformatted',status='old',action='read')
     read(iunit)
     read(iunit)nvarH
@@ -1789,7 +1793,6 @@ contains
     if (read_rt_variables) then
        ! Open RT file and get nvarRT
        write(nomfich,'(a,a,i5.5,a,i5.5,a,i5.5)') trim(repository),'/output_',snapnum,'/rt_',snapnum,'.out',icpu
-       iu2 = icpu+100
        open(unit=iu2,file=nomfich,status='old',form='unformatted')
        read(iu2)
        read(iu2)nvarRT
@@ -2069,6 +2072,7 @@ contains
        read(12)
        read(12)nvarRT
        get_nvar = get_nvar + nvarRT
+       close(12)
     end if
 
     return
