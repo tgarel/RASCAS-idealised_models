@@ -4,6 +4,7 @@
   DomDumpDir = directory_where_outputting_files
   repository = directory_where_ramses_outputs_are
   snapnum    = output_number
+  reading_method = fullbox
 
 # computational domain parameters
   comput_dom_type      = sphere
@@ -29,9 +30,17 @@
 
 !--------------------------------------------------------------------------------
 [ramses]
-  self_shielding = F
-  ramses_rt      = F
-  verbose        = T
+  self_shielding   = F
+  ramses_rt        = F
+  verbose          = T
+  cosmo            = T
+  use_initial_mass = F
+  use_proper_time  = F
+  itemp  = 5
+  imetal = 6
+  ihii   = 7
+  iheii  = 8
+  iheiii = 9
 !--------------------------------------------------------------------------------
 
 !--------------------------------------------------------------------------------
