@@ -78,6 +78,7 @@ module module_ramses
   ! ramses options (not guessable from outputs)
   logical                  :: self_shielding    = .true.   ! if true, reproduce self-shielding approx made in ramses to compute nHI. 
   logical                  :: ramses_rt         = .false.  ! if true, read ramses-RT output and compute nHI and T accordingly.
+  logical                  :: read_rt_variables = .false.  ! if true, read RT variables (e.g. to compute heating terms)
   logical                  :: use_initial_mass  = .false.  ! if true, use initial masses of star particles instead of mass at output time
   logical                  :: cosmo             = .true.   ! if false, assume idealised simulation
   logical                  :: use_proper_time   = .false.  ! if true, use proper time instead of conformal time for cosmo runs. 
@@ -1328,20 +1329,35 @@ contains
     logical,intent(in)          :: do_allocs
     real(kind=8)                :: dx
     character(1000)             :: nomfich
-    integer(kind=4)             :: i,nlevelmax,nboundary,ix,iy,iz,ind,ilevel,ibound,ncache,istart,ivar,iskip,igrid,nvar
+    integer(kind=4)             :: i,nlevelmax,nboundary,ix,iy,iz,ind,ilevel,ibound,ncache,istart,ivar,iskip,igrid,nvarH,nvarRT
     real(kind=8),allocatable    :: xc(:,:),xx(:)
     integer(kind=4),allocatable :: ind_grid(:)
 
     write(nomfich,'(a,a,i5.5,a,i5.5,a,i5.5)') trim(repository),'/output_',snapnum,'/hydro_',snapnum,'.out',icpu
     open(unit=10,file=nomfich,form='unformatted',status='old',action='read')
     read(10)
-    read(10)nvar
+    read(10)nvarH
     read(10)
     read(10)nlevelmax
     read(10)nboundary
     read(10)
+    
+    if (read_rt_variables) then
+       ! Open RT file and get nvarRT
+       write(nomfich,'(a,a,i5.5,a,i5.5,a,i5.5)') trim(repository),'/output_',snapnum,'/rt_',snapnum,'.out',icpu
+       open(unit=12,file=nomfich,status='old',form='unformatted')
+       read(12)
+       read(12)nvarRT
+       read(12)
+       read(12)
+       read(12)
+       read(12)
+    else
+       nvarRT = 0
+    end if
+    
     if (do_allocs) then
-       allocate(var(1:ncell,1:nvar))
+       allocate(var(1:ncell,1:nvarH+nvarRT))
        allocate(cell_x(1:ncell),cell_y(1:ncell),cell_z(1:ncell))
        allocate(cell_level(1:ncell))
     end if
@@ -1371,6 +1387,10 @@ contains
           end if
           read(10)!ilevel2
           read(10)!numbl2
+          if (read_rt_variables) then
+             read(12)
+             read(12)
+          end if
           if(ncache>0)then
              allocate(ind_grid(1:ncache))
              allocate(xx(1:ncache))
@@ -1384,13 +1404,22 @@ contains
              do ind=1,twotondim
                 iskip=ncoarse+(ind-1)*ngridmax
                 ! Loop over conservative variables
-                do ivar=1,nvar
+                do ivar=1,nvarH
                    read(10) xx
                    if (ibound > ncpu) cycle  ! dont bother with boundaries
                    do i = 1, ncache
                       var(ind_grid(i)+iskip,ivar) = xx(i)
                    end do
                 end do
+                if (read_rt_variables) then 
+                   do ivar=1,nvarRT
+                      read(12) xx
+                      if (ibound > ncpu) cycle  ! dont bother with boundaries
+                      do i = 1, ncache
+                         var(ind_grid(i)+iskip,ivar+nvarH) = xx(i)
+                      end do
+                   end do
+                end if
                 do i = 1,ncache
                    cell_x(ind_grid(i)+iskip) = xc(ind,1) + xg(ind_grid(i),1) -xbound(1)
                    cell_y(ind_grid(i)+iskip) = xc(ind,2) + xg(ind_grid(i),2) -xbound(2)
@@ -1404,7 +1433,8 @@ contains
     end do
     deallocate(xc)
     close(10)
-
+    if (read_rt_variables) close(12)
+    
     return
 
   end subroutine read_hydro
@@ -1588,7 +1618,7 @@ contains
     real(kind=8),allocatable    :: xxg(:)
     logical                     :: ok
     integer(kind=4)             :: i,nx,ny,nz,nlevelmax,nboundary
-    integer(kind=4)             :: ilevel,ncache,ibound,idim,ind,iskip,iunit
+    integer(kind=4)             :: ilevel,ncache,ibound,idim,ind,iskip,iunit,iu2
 
     ! stuff read from AMR files
     integer(kind=4),intent(out)      :: ncell_l
@@ -1603,7 +1633,7 @@ contains
     real(KIND=8),dimension(1:3)      :: xbound_l=(/0d0,0d0,0d0/)  
 
     real(kind=8)                :: dx
-    integer(kind=4)             :: ix,iy,iz,istart,ivar,igrid,nvar
+    integer(kind=4)             :: ix,iy,iz,istart,ivar,igrid,nvarH,nvarRT
     real(kind=8),allocatable    :: xc(:,:),xx(:)
 
     ! stuff read from the HYDRO files
@@ -1750,12 +1780,28 @@ contains
     iunit=icpu+10
     open(unit=iunit,file=nomfich,form='unformatted',status='old',action='read')
     read(iunit)
-    read(iunit)nvar
+    read(iunit)nvarH
     read(iunit)
     read(iunit)nlevelmax
     read(iunit)nboundary
     read(iunit)
-    allocate(var_l(1:ncell_l,1:nvar))
+
+    if (read_rt_variables) then
+       ! Open RT file and get nvarRT
+       write(nomfich,'(a,a,i5.5,a,i5.5,a,i5.5)') trim(repository),'/output_',snapnum,'/rt_',snapnum,'.out',icpu
+       iu2 = icpu+100
+       open(unit=iu2,file=nomfich,status='old',form='unformatted')
+       read(iu2)
+       read(iu2)nvarRT
+       read(iu2)
+       read(iu2)
+       read(iu2)
+       read(iu2)
+    else
+       nvarRT = 0
+    end if
+    
+    allocate(var_l(1:ncell_l,1:nvarH+nvarRT))
     allocate(cell_x_l(1:ncell_l),cell_y_l(1:ncell_l),cell_z_l(1:ncell_l))
     allocate(cell_level_l(1:ncell_l))
     allocate(xc(1:twotondim,1:ndim))
@@ -1784,6 +1830,10 @@ contains
           end if
           read(iunit)!ilevel2
           read(iunit)!numbl2
+          if (read_rt_variables) then
+             read(iu2)
+             read(iu2)
+          end if
           if(ncache>0)then
              allocate(ind_grid(1:ncache))
              allocate(xx(1:ncache))
@@ -1797,13 +1847,22 @@ contains
              do ind=1,twotondim
                 iskip=ncoarse_l+(ind-1)*ngridmax_l
                 ! Loop over conservative variables
-                do ivar=1,nvar
+                do ivar=1,nvarH
                    read(iunit) xx
                    if (ibound > ncpu) cycle  ! dont bother with boundaries
                    do i = 1, ncache
                       var_l(ind_grid(i)+iskip,ivar) = xx(i)
                    end do
                 end do
+                if (read_rt_variables) then 
+                   do ivar=1,nvarRT
+                      read(iu2) xx
+                      if (ibound > ncpu) cycle  ! dont bother with boundaries
+                      do i = 1, ncache
+                         var(ind_grid(i)+iskip,ivar+nvarH) = xx(i)
+                      end do
+                   end do
+                end if
                 do i = 1,ncache
                    cell_x_l(ind_grid(i)+iskip) = xc(ind,1) + xg_l(ind_grid(i),1) -xbound_l(1)
                    cell_y_l(ind_grid(i)+iskip) = xc(ind,2) + xg_l(ind_grid(i),2) -xbound_l(2)
@@ -1817,6 +1876,7 @@ contains
     end do
     deallocate(xc)
     close(iunit)
+    if (read_rt_variables) close(iu2)
     ! => can return var_l, cell_x_l, cell_y_l, cell_z_l, cell_level_l
 
     deallocate(headl_l, taill_l, numbl_l, numbtot_l, headb_l, tailb_l, numbb_l)
@@ -1994,7 +2054,7 @@ contains
     integer(kind=4),intent(in)  :: snapnum
     character(1000),intent(in)  :: repository
     character(1000)             :: nomfich
-    integer(kind=4)             :: get_nvar,icpu
+    integer(kind=4)             :: get_nvar,icpu,nvarRT
 
     icpu = 1
     write(nomfich,'(a,a,i5.5,a,i5.5,a,i5.5)') trim(repository),'/output_',snapnum,'/hydro_',snapnum,'.out',icpu
@@ -2002,6 +2062,15 @@ contains
     read(10)
     read(10)get_nvar
     close(10)
+    if (read_rt_variables) then
+       ! Open RT file and get nvarRT
+       write(nomfich,'(a,a,i5.5,a,i5.5,a,i5.5)') trim(repository),'/output_',snapnum,'/rt_',snapnum,'.out',icpu
+       open(unit=12,file=nomfich,status='old',form='unformatted')
+       read(12)
+       read(12)nvarRT
+       get_nvar = get_nvar + nvarRT
+    end if
+
     return
   end function get_nvar
 
@@ -2684,6 +2753,8 @@ contains
              read(value,*) self_shielding
           case ('ramses_rt')
              read(value,*) ramses_rt
+          case ('read_rt_variables')
+             read(value,*) read_rt_variables
           case ('verbose')
              read(value,*) verbose
           case ('use_initial_mass')
@@ -2722,30 +2793,32 @@ contains
 
     if (present(unit)) then 
        write(unit,'(a,a,a)') '[ramses]'
-       write(unit,'(a,L1)') '  self_shielding   = ',self_shielding
-       write(unit,'(a,L1)') '  ramses_rt        = ',ramses_rt
-       write(unit,'(a,L1)') '  use_initial_mass = ',use_initial_mass
-       write(unit,'(a,L1)') '  cosmo            = ',cosmo
-       write(unit,'(a,L1)') '  use_proper_time  = ',use_proper_time
-       write(unit,'(a,L1)') '  verbose          = ',verbose
-       write(unit,'(a,i2)') '  itemp            = ', itemp
-       write(unit,'(a,i2)') '  imetal           = ', imetal
-       write(unit,'(a,i2)') '  ihii             = ', ihii
-       write(unit,'(a,i2)') '  iheii            = ', iheii
-       write(unit,'(a,i2)') '  iheiii           = ', iheiii
+       write(unit,'(a,L1)') '  self_shielding    = ',self_shielding
+       write(unit,'(a,L1)') '  ramses_rt         = ',ramses_rt
+       write(unit,'(a,L1)') '  read_rt_variables = ',read_rt_variables
+       write(unit,'(a,L1)') '  use_initial_mass  = ',use_initial_mass
+       write(unit,'(a,L1)') '  cosmo             = ',cosmo
+       write(unit,'(a,L1)') '  use_proper_time   = ',use_proper_time
+       write(unit,'(a,L1)') '  verbose           = ',verbose
+       write(unit,'(a,i2)') '  itemp             = ', itemp
+       write(unit,'(a,i2)') '  imetal            = ', imetal
+       write(unit,'(a,i2)') '  ihii              = ', ihii
+       write(unit,'(a,i2)') '  iheii             = ', iheii
+       write(unit,'(a,i2)') '  iheiii            = ', iheiii
     else
        write(*,'(a,a,a)') '[ramses]'
-       write(*,'(a,L1)') '  self_shielding   = ',self_shielding
-       write(*,'(a,L1)') '  ramses_rt        = ',ramses_rt
-       write(*,'(a,L1)') '  use_initial_mass = ',use_initial_mass
-       write(*,'(a,L1)') '  cosmo            = ',cosmo
-       write(*,'(a,L1)') '  use_proper_time  = ',use_proper_time
-       write(*,'(a,L1)') '  verbose          = ',verbose
-       write(*,'(a,i2)') '  itemp            = ', itemp
-       write(*,'(a,i2)') '  imetal           = ', imetal
-       write(*,'(a,i2)') '  ihii             = ', ihii
-       write(*,'(a,i2)') '  iheii            = ', iheii
-       write(*,'(a,i2)') '  iheiii           = ', iheiii
+       write(*,'(a,L1)') '  self_shielding    = ',self_shielding
+       write(*,'(a,L1)') '  ramses_rt         = ',ramses_rt
+       write(*,'(a,L1)') '  read_rt_variables = ',read_rt_variables
+       write(*,'(a,L1)') '  use_initial_mass  = ',use_initial_mass
+       write(*,'(a,L1)') '  cosmo             = ',cosmo
+       write(*,'(a,L1)') '  use_proper_time   = ',use_proper_time
+       write(*,'(a,L1)') '  verbose           = ',verbose
+       write(*,'(a,i2)') '  itemp             = ', itemp
+       write(*,'(a,i2)') '  imetal            = ', imetal
+       write(*,'(a,i2)') '  ihii              = ', ihii
+       write(*,'(a,i2)') '  iheii             = ', iheii
+       write(*,'(a,i2)') '  iheiii            = ', iheiii
     end if
     
     return
