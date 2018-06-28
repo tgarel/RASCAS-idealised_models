@@ -1,6 +1,6 @@
 !--------------------------------------------------------------------------------
 [PhotonsFromSourceModel]
-  outputfile              = /scratch/garel/Rascas/output/Lya_tests/sphere/tauH4_temp1d2_xin0_hotfix_rs1d-3/ICs_photons.dat
+  outputfile              = /scratch/garel/Rascas/output/Lya_tests/sphere/NH2d19_temp1d4_xin0_deut3d-5_dijk06comp_noRecIso/ICs_photons.dat
   source_pos              = 0.00195312, 0.00195312, 0.00195312
   source_type             = pointlike
   ranseed                 = -100
@@ -17,7 +17,7 @@
 !--------------------------------------------------------------------------------
 [CreateDomDump]
 # input outputs:
-  DataDir    = /scratch/garel/Rascas/output/Lya_tests/sphere/tauH4_temp1d2_xin0_hotfix_rs1d-3/
+  DataDir    = /scratch/garel/Rascas/output/Lya_tests/sphere/NH2d19_temp1d4_xin0_deut3d-5_dijk06comp_noRecIso/
   repository = /scratch/dansac/Grid_for_RT/
   snapnum    = 00001
 
@@ -37,26 +37,26 @@
   
 !--------------------------------------------------------------------------------
 [RASCAS]
-  DataDir      = /scratch/garel/Rascas/output/Lya_tests/sphere/tauH4_temp1d2_xin0_hotfix_rs1d-3/
+  DataDir      = /scratch/garel/Rascas/output/Lya_tests/sphere/NH2d19_temp1d4_xin0_deut3d-5_dijk06comp_noRecIso/
   DomDumpFile  = domain_decomposition_params.dat
   PhotonICFile = ICs_photons.dat
-  fileout      = /scratch/garel/Rascas/output/Lya_tests/sphere/tauH4_temp1d2_xin0_hotfix_rs1d-3/photons_out.dat
+  fileout      = /scratch/garel/Rascas/output/Lya_tests/sphere/NH2d19_temp1d4_xin0_deut3d-5_dijk06comp_noRecIso/photons_out.dat
   nbuffer      = 10
   verbose      = T
   
 !--------------------------------------------------------------------------------
 [gas_composition] 
 # mixture parameters
-  deut2H_nb_ratio     = 0.0     ! 3.000E-05
+  deut2H_nb_ratio     = 3.000E-05
   Zref                = 0.005   ! OK for LMC dust model.
 
 # overwrite parameters
   gas_overwrite       = T
   fix_nhi             = 1.0 ! 0.70776d0
-  fix_vth             = 128500.0d0
+  fix_vth             = 1285000.0d0
   fix_ndust           = 0.000
   fix_vel             = 0.000
-  fix_box_size_cm     = 1.6954900d19
+  fix_box_size_cm     = 1.2d22
   
 # miscelaneous parameters
   verbose             = T
@@ -70,7 +70,7 @@
 !--------------------------------------------------------------------------------
 [Deuterium]
   recoil    = F
-  isotropic = F
+  isotropic = T
 !--------------------------------------------------------------------------------
 
 !--------------------------------------------------------------------------------
