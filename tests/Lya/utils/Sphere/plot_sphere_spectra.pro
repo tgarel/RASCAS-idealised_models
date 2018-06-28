@@ -10,7 +10,7 @@ pro plot_sphere_spectra
  ; vth         = 40635.269d0      ; cm/s
   vth         = 128500.0d0       ; cm/s
 
-  PS_Start, File='plots/tauH4-7_temp1d2_xin0_hotfix_rs1d-3.ps',nomatch=1,font=0
+  PS_Start, File='plots/tauH4-7_temp1d2_xin0_hotfix_rs1d-3new.ps',nomatch=1,font=0
 
   device, helvetica=1,/bold
   device, isolatin1=1,/bold
@@ -53,7 +53,7 @@ pro plot_sphere_spectra
      histo,x_out,-250.,250.,750,h
 
      if i eq 0 then begin
-        plot,h.x,h.dn/h.dx/total(h.dn),xtitle='x',ytitle='J(x,'+greek('tau')+'!d0!n)',charthick=5,xr=[-60.,60.],/xs,thick=8,yr=[0.000001,max(h.dn/h.dx/total(h.dn))*1.2],/nodata ;,/ylog
+        plot,h.x,h.dn/h.dx/total(h.dn),xtitle='x',ytitle='J(x,'+greek('tau')+'!dHI!n)',charthick=5,xr=[-60.,60.],/xs,thick=8,yr=[0.000001,max(h.dn/h.dx/total(h.dn))*1.2],/nodata ;,/ylog
       ;  plot,h.x,h.dn/h.dx/total(h.dn),xtitle='x',ytitle='J(x,'+greek('tau')+'!d0!n)',charthick=5,xr=[-80.,80.],/xs,thick=8,yr=[0.0001,max(h.dn/h.dx/total(h.dn))*1.2],/nodata ,/ylog
        ; legendold,['R!dsphere!n within 1 cell'],box=0,/left,charsize=1.3,spacing=2.1
      endif
@@ -100,7 +100,7 @@ pro plot_sphere_spectra
 
   ;legendold,['Nxbin = 2000','Nxbin=500'],textcolors=col,box=0,/right,charsize=1.4
 
-  legendold,[greek('tau')+'!d0!n = 10!u4!n',greek('tau')+'!d0!n = 10!u5!n',greek('tau')+'!d0!n = 10!u6!n',greek('tau')+'!d0!n = 10!u7!n'],textcolors=col,box=0,/right,charsize=1.4
+  legendold,[greek('tau')+'!dHI!n = 10!u4!n',greek('tau')+'!dHI!n = 10!u5!n',greek('tau')+'!dHI!n = 10!u6!n',greek('tau')+'!dHI!n = 10!u7!n'],textcolors=col,box=0,/right,charsize=1.4
 
  ; legendold,[greek('tau')+'!d0!n = 10!u5!n',greek('tau')+'!d0!n = 10!u6!n',greek('tau')+'!d0!n = 10!u7!n',greek('tau')+'!d0!n = 10!u8!n'],textcolors=col,box=0,/right,charsize=1.4
 

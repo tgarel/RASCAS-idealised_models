@@ -5,7 +5,7 @@ pro taudust_escape_fraction
    
   vth         = 128500.0d0       ; cm/s
 
-  path = '/Users/tgarel/Rascas_tests/output/slab_dom/'
+  path = '/Users/tgarel/all_rascasses/Rascas_tests/output/slab_dom/'
   
   filearr = ['slab_np1e6_T1e2_ndust0.0_DH0.0_tauH1e6_vexp0_NoRecoil_iso/','slab_np1e6_T1e2_taudust00001_DH0.0_tauH1e6_vexp0_NoRecoil_iso/','slab_np1e6_T1e2_taudust0001_DH0.0_tauH1e6_vexp0_NoRecoil_iso/','slab_np1e6_T1e2_taudust001_DH0.0_tauH1e6_vexp0_NoRecoil_iso/','slab_np1e6_T1e2_taudust01_DH0.0_tauH1e6_vexp0_NoRecoil_iso/','slab_np1e6_T1e2_taudust05_DH0.0_tauH1e6_vexp0_NoRecoil_iso/','slab_np1e6_T1e2_taudust1_DH0.0_tauH1e6_vexp0_NoRecoil_iso/','slab_np1e6_T1e2_taudust2_DH0.0_tauH1e6_vexp0_NoRecoil_iso/','slab_np1e6_T1e2_taudust5_DH0.0_tauH1e6_vexp0_NoRecoil_iso/','slab_np1e6_T1e2_taudust10_DH0.0_tauH1e6_vexp0_NoRecoil_iso/']
 
@@ -13,7 +13,7 @@ pro taudust_escape_fraction
   fesc = dblarr(n_elements(filearr))
   xxx  = dblarr(n_elements(filearr))
   
-  PS_Start, File='plots/slab_fesc_temp100K_tau6_taudust_ok.ps',nomatch=1,font=0
+  PS_Start, File='plots/slab_fesc_temp100K_tau6_taudust_new.ps',nomatch=1,font=0
 
   device, helvetica=1,/bold
   device, isolatin1=1,/bold
@@ -31,7 +31,7 @@ pro taudust_escape_fraction
   !p.thick=7
   !p.charthick=20
 
-  for i=0,n_elements(filearr)-1 do begin
+  for i=1,n_elements(filearr)-1 do begin
 
      myfile = path+filearr[i]+'photons_out.dat'
      
@@ -60,7 +60,7 @@ pro taudust_escape_fraction
      
   endfor
 
-  plot,alog10(xxx),alog10(fesc),xtitle='log[(a'+greek('tau')+'!d0!n)!u1/3!n '+greek('tau')+'!ddust!n]',ytitle='log f!desc!n',charthick=5,xr=[-4.,2.],/xs,thick=8,yr=[-4.5,1.5],psym=sym(1),symsize=1.4 ;,/ylog
+  plot,alog10(xxx),alog10(fesc),xtitle='log[(a'+greek('tau')+'!dHI!n)!u1/3!n '+greek('tau')+'!ddust!n]',ytitle='log f!desc!n',charthick=5,xr=[-4.,2.],/xs,thick=8,yr=[-4.5,1.5],psym=sym(1),symsize=1.4 ;,/ylog
 
   tau0fix = 1.d6
   ;x_neuf = alog10((a*tau0fix)^(1./3.)*taud_arr*0.54)
@@ -69,7 +69,7 @@ pro taudust_escape_fraction
   ;y_neuf2 = 1.d0 / cosh(sqrt(3.)/0.525/!pi^(5./12.)*sqrt(10.^(x_neuf)))
   oplot,x_neuf,alog10(y_neuf2),linestyle=2,thick=6,color=254
    
-  legendold,[greek('tau')+'!d0!n = 10!u6!n','T=100 K'],box=0,/left,/center,charsize=1.3,spacing=1.8
+  legendold,[greek('tau')+'!dHI!n = 10!u6!n','T=100 K'],box=0,/left,/center,charsize=1.3,spacing=1.8
 
   legendold,['RASCAS','Neufeld90'],box=0,/left,/bottom,charsize=1.5,spacing=2.1,colors=[0,254],textcolors=[0,254]
 

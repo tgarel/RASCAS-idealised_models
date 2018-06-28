@@ -1,8 +1,8 @@
 pro frequency_redistribution_D,log_plots=log_plots
 
   xin_arr   = [0,1,2,3,4,5,8]
-  temp_arr  = ['1.E+02','1.E+04']
-  ;temp_arr  = ['1.E+04']
+  ;temp_arr  = ['1.E+02','1.E+04']
+  temp_arr  = ['1.E+02']
   temp_arr_bis = temp_arr
   for k=0,n_elements(temp_arr_bis)-1 do begin
      aaa = temp_arr_bis[k]
@@ -34,8 +34,20 @@ pro frequency_redistribution_D,log_plots=log_plots
      endelse
   endelse
 
-  startpdf,myplot_title
-  loadct,39
+  PS_Start, File=myplot_title+'_allx.ps',nomatch=1,font=0 ;,ysize=10,xsize=8;,yoffset=4
+  device, helvetica=1                                     ;,/bold
+  device, isolatin1=1,/bold
+  ct = 39
+  loadct,ct
+  !x.style=1
+  !y.style=1
+  !x.thick=4
+  !y.thick=4
+  !x.charsize=1.3
+  !y.charsize=1.3
+  !p.thick=5
+  !p.charthick=6
+  
 
   mycol = [cgcolor('cg3'),cgcolor('chartreuse'),cgcolor('ygb3'),210,cgcolor('red4'),cgcolor('violet'),cgcolor('gray')]
   xin_arr = [0,1,2,3,4,5,8]
@@ -90,7 +102,7 @@ pro frequency_redistribution_D,log_plots=log_plots
         mytitle = 'Deuterium - T=10!u'+strtrim(temp_arr_bis[p],2)+'!n K'
         histo,xout,-20.,20.,1600,h
         if not keyword_set(log_plots) then begin
-           if j eq 0 then plot,h.x,h.dn/total(h.dn)/h.dx,psym=10,xr=[-5.,13.],/nodata,xtitle='x!dout!n',ytitle='R(x!din!n,x!dout!n)',title=mytitle,charsize=1.3,yr=[0.,0.95]
+           if j eq 0 then plot,h.x,h.dn/total(h.dn)/h.dx,psym=10,xr=[-5.,13.],/nodata,xtitle='x!dout!n',ytitle='R(x!din!n,x!dout!n)',charsize=1.3,yr=[0.,0.95];,title=mytitle
         ;; ytitle='R!dII-A!n(x!din!n,x!dout!n)'
         endif else begin
            if j eq 0 then plot,h.x,h.dn/total(h.dn)/h.dx,psym=10,xr=[-5.,13.],/nodata,xtitle='x!dout!n',ytitle='R(x!din!n,x!dout!n)',title=mytitle,charsize=1.3,yr=[1.d-4,9.9],/ylog
@@ -135,20 +147,20 @@ pro frequency_redistribution_D,log_plots=log_plots
      
      
      
-     if (isotropic eq 'true') then begin
-        if (recoil eq 'true') then begin
-           legendold,['isotropic case','with recoil'],colors=[0,0],thick=8 ,charthick=7,charsize=1.2,box=0,/top,/left
-        endif else begin
-           legendold,['isotropic case','no recoil'],colors=[0,0],thick=8 ,charthick=7,charsize=1.2,box=0,/top,/left        
-        endelse
-     endif else begin
-        if (recoil eq 'true') then begin
-           legendold,['anisotropic case','with recoil'],colors=[0,0],thick=8 ,charthick=7,charsize=1.2,box=0,/top,/left
-        endif else begin
-           ;legendold,['anisotropic case','no recoil'],colors=[0,0],thick=8 ,charthick=7,charsize=1.2,box=0,/top,/left
-           legendold,['Rayleigh','no recoil'],colors=[0,0],thick=8 ,charthick=7,charsize=1.2,box=0,/top,/left                 
-        endelse
-     endelse
+     ;; if (isotropic eq 'true') then begin
+     ;;    if (recoil eq 'true') then begin
+     ;;       legendold,['isotropic case','with recoil'],colors=[0,0],thick=8 ,charthick=7,charsize=1.2,box=0,/top,/left
+     ;;    endif else begin
+     ;;       legendold,['isotropic case','no recoil'],colors=[0,0],thick=8 ,charthick=7,charsize=1.2,box=0,/top,/left        
+     ;;    endelse
+     ;; endif else begin
+     ;;    if (recoil eq 'true') then begin
+     ;;       legendold,['anisotropic case','with recoil'],colors=[0,0],thick=8 ,charthick=7,charsize=1.2,box=0,/top,/left
+     ;;    endif else begin
+     ;;       ;legendold,['anisotropic case','no recoil'],colors=[0,0],thick=8 ,charthick=7,charsize=1.2,box=0,/top,/left
+     ;;       legendold,['Rayleigh','no recoil'],colors=[0,0],thick=8 ,charthick=7,charsize=1.2,box=0,/top,/left                 
+     ;;    endelse
+     ;; endelse
      
   endfor
   

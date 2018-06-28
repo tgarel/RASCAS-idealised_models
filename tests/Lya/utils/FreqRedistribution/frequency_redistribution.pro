@@ -21,21 +21,35 @@ pro frequency_redistribution,log_plots=log_plots
   
   if (isotropic eq 'true') then begin
      if (recoil eq 'true') then begin
-        myplot_title = 'plots/tests_hi_FreqRedist_isotropic_Recoil_'+scale
+        myplot_title = 'plots/newtests_hi_FreqRedist_isotropic_Recoil_'+scale
      endif else begin
-        myplot_title = 'plots/tests_hi_FreqRedist_isotropic_NoRecoil_'+scale
+        myplot_title = 'plots/newtests_hi_FreqRedist_isotropic_NoRecoil_'+scale
      endelse
   endif else begin
      if (recoil eq 'true') then begin
-        myplot_title = 'plots/tests_hi_FreqRedist_dipolar_Recoil_'+scale
+        myplot_title = 'plots/newtests_hi_FreqRedist_dipolar_Recoil_'+scale
      endif else begin
        ;; myplot_title = 'plots/tests_hi_FreqRedist_dipolar_NoRecoil_'+scale
-        myplot_title = 'plots/tests_hi_FreqRedist_Rayleigh_NoRecoil_'+scale
+        myplot_title = 'plots/newtests_hi_FreqRedist_Rayleigh_NoRecoil_'+scale
      endelse
   endelse
 
-  startpdf,myplot_title+'_eps7'
-  loadct,39
+
+   PS_Start, File=myplot_title+'_allx.ps',nomatch=1,font=0;,ysize=10,xsize=8;,yoffset=4
+  device, helvetica=1;,/bold
+  device, isolatin1=1,/bold
+  ct = 39
+  loadct,ct
+  !x.style=1
+  !y.style=1
+  !x.thick=4
+  !y.thick=4
+  !x.charsize=1.3
+  !y.charsize=1.3
+  !p.thick=5
+  !p.charthick=6
+
+  
 
   mycol = [cgcolor('cg3'),cgcolor('chartreuse'),cgcolor('ygb3'),210,cgcolor('red4'),cgcolor('violet'),cgcolor('gray')]
   xin_arr = [0,1,2,3,4,5,8]
@@ -90,7 +104,7 @@ pro frequency_redistribution,log_plots=log_plots
         mytitle = 'Hydrogen - T=10!u'+strtrim(temp_arr_bis[p],2)+'!n K'
         histo,xout,-20.,20.,1600,h
         if not keyword_set(log_plots) then begin
-           if j eq 0 then plot,h.x,h.dn/total(h.dn)/h.dx,psym=10,xr=[-5.,13.],/nodata,xtitle='x!dout!n',ytitle='R(x!din!n,x!dout!n)',title=mytitle,charsize=1.3,yr=[0.,0.95]
+           if j eq 0 then plot,h.x,h.dn/total(h.dn)/h.dx,psym=10,xr=[-5.,13.],/nodata,xtitle='x!dout!n',ytitle='R(x!din!n,x!dout!n)',charsize=1.3,yr=[0.,0.95];title=mytitle
         ;; ytitle='R!dII-A!n(x!din!n,x!dout!n)'
         endif else begin
            if j eq 0 then plot,h.x,h.dn/total(h.dn)/h.dx,psym=10,xr=[-5.,13.],/nodata,xtitle='x!dout!n',ytitle='R(x!din!n,x!dout!n)',title=mytitle,charsize=1.3,yr=[1.d-4,9.9],/ylog
@@ -124,6 +138,11 @@ pro frequency_redistribution,log_plots=log_plots
            endif else begin
               restore,'hummer_redistribution_dipolar/hummer_DIPOLAR_xin'+strtrim(string(x_in,format='(i1)'),2)+'_temp100K_eps7.sav'
              ; if x_in eq 8 then restore,'hummer_redistribution_dipolar/hummer_DIPOLAR_xin'+strtrim(string(x_in,format='(i1)'),2)+'_temp100K_eps6.sav'
+              if x_in eq 8. then begin
+                 ii=where(p_xout gt 0.6)
+                 p_xout[ii] = 0.6
+                
+              endif
            endelse
            oplot,xout,p_xout,linestyle=2,color=0,thick=6  
         endfor
@@ -134,27 +153,28 @@ pro frequency_redistribution,log_plots=log_plots
      for i=0,n_elements(xin_arr)-1 do begin
         my_legend[i] = 'x!din!n = '+strtrim(string(xin_arr[i],format='(i1)'),2)
      endfor
-     legendold,[my_legend],linsize=0.45,colors=[mycol],textcolors=[mycol],thick=8 ,charthick=7,charsize=1.2,box=0,/top,/right,linestyle=[0,0,0,0,0,0,0]
+     legendold,[my_legend],linsize=0.45,colors=[mycol],textcolors=[mycol],thick=6,charthick=9,charsize=1.2,box=0,/top,/right,linestyle=[0,0,0,0,0,0,0]
      
      
      
-     if (isotropic eq 'true') then begin
-        if (recoil eq 'true') then begin
-           legendold,['isotropic case','with recoil'],colors=[0,0],thick=8 ,charthick=7,charsize=1.2,box=0,/top,/left
-        endif else begin
-           legendold,['isotropic case','no recoil'],colors=[0,0],thick=8 ,charthick=7,charsize=1.2,box=0,/top,/left        
-        endelse
-     endif else begin
-        if (recoil eq 'true') then begin
-           legendold,['anisotropic case','with recoil'],colors=[0,0],thick=8 ,charthick=7,charsize=1.2,box=0,/top,/left
-        endif else begin
-           ;legendold,['anisotropic case','no recoil'],colors=[0,0],thick=8 ,charthick=7,charsize=1.2,box=0,/top,/left
-           legendold,['Rayleigh','no recoil'],colors=[0,0],thick=8 ,charthick=7,charsize=1.2,box=0,/top,/left                 
-        endelse
-     endelse
+     ;; if (isotropic eq 'true') then begin
+     ;;    if (recoil eq 'true') then begin
+     ;;       legendold,['isotropic case','with recoil'],colors=[0,0],thick=8 ,charthick=7,charsize=1.2,box=0,/top,/left
+     ;;    endif else begin
+     ;;       legendold,['isotropic case','no recoil'],colors=[0,0],thick=8 ,charthick=7,charsize=1.2,box=0,/top,/left        
+     ;;    endelse
+     ;; endif else begin
+     ;;    if (recoil eq 'true') then begin
+     ;;       legendold,['anisotropic case','with recoil'],colors=[0,0],thick=8 ,charthick=7,charsize=1.2,box=0,/top,/left
+     ;;    endif else begin
+     ;;       ;legendold,['anisotropic case','no recoil'],colors=[0,0],thick=8 ,charthick=7,charsize=1.2,box=0,/top,/left
+     ;;       legendold,['Rayleigh','no recoil'],colors=[0,0],thick=8 ,charthick=7,charsize=1.2,box=0,/top,/left                 
+     ;;    endelse
+     ;; endelse
      
   endfor
   
-  stoppdf
+    PS_End, /PDF, /Delete_PS
+
   
 end 
