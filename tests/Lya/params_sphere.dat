@@ -17,7 +17,7 @@
 !--------------------------------------------------------------------------------
 [CreateDomDump]
 # input outputs:
-  DataDir    = /scratch/garel/Rascas/output/Lya_tests/sphere/NH2d19_temp1d4_xin0_deut3d-5_dijk06comp_noRecIso/
+  DomDumpDir = /scratch/garel/Rascas/output/Lya_tests/sphere/NH2d19_temp1d4_xin0_deut3d-5_dijk06comp_noRecIso/
   repository = /scratch/dansac/Grid_for_RT/
   snapnum    = 00001
 
@@ -37,9 +37,9 @@
   
 !--------------------------------------------------------------------------------
 [RASCAS]
-  DataDir      = /scratch/garel/Rascas/output/Lya_tests/sphere/NH2d19_temp1d4_xin0_deut3d-5_dijk06comp_noRecIso/
+  DomDumpDir = /scratch/garel/Rascas/output/Lya_tests/sphere/NH2d19_temp1d4_xin0_deut3d-5_dijk06comp_noRecIso/
   DomDumpFile  = domain_decomposition_params.dat
-  PhotonICFile = ICs_photons.dat
+  PhotonICFile = /scratch/garel/Rascas/output/Lya_tests/sphere/NH2d19_temp1d4_xin0_deut3d-5_dijk06comp_noRecIso/ICs_photons.dat
   fileout      = /scratch/garel/Rascas/output/Lya_tests/sphere/NH2d19_temp1d4_xin0_deut3d-5_dijk06comp_noRecIso/photons_out.dat
   nbuffer      = 10
   verbose      = T
