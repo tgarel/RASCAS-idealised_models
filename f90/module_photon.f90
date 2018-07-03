@@ -35,7 +35,22 @@ module module_photon
      integer(kind=4)           :: iran     ! state of the random generator
   end type photon_init
 
+  
+  !--PEEL--
+  type peel
+     real(kind=8)              :: peeloff_fraction  ! if peeloff_fraction is not a constant, this allows to re-normalise rays to correct for weighted sampling
+     real(kind=8)              :: nu ! frequency after scattering occurs
+     real(kind=8),dimension(3) :: x  ! position at scattering
+     real(kind=8),dimension(3) :: k  ! direction before scattering occurs
+     integer(kind=4)           :: scatter_flag ! keep track of the species with which the photon is interacting ... 
+  end type peel
+  integer(kind=4),parameter            :: PeelBufferSize = 100000
+  type(peel),dimension(PeelBufferSize) :: PeelBuffer
+  integer(kind=4)                      :: nPeeled
+  real(kind=8)                         :: peeloff_fraction ! can be a constant (should be read from parameter file) or a function of cell properties for weighted peeling.
+  !--LEEP--
 
+  
   public  :: MCRT, propagate, init_photons_from_file, dump_photons
 
 contains
@@ -78,7 +93,10 @@ contains
     real(kind=8),dimension(3)            :: vgas, k, cell_corner, posoct, pcell
     logical                              :: cell_fully_in_domain, flagoutvol, in_domain, OutOfDomainBeforeCell
     real(kind=8)                         :: dborder, dborder_cm, error
-    
+    !--PEEL--
+    real(kind=8) :: x ! a random number 
+    !--LEEP--
+
     ! initialise working props of photon
     ppos    = p%xcurr        ! position within full simulation box, in box units.
     time    = p%time
@@ -96,10 +114,20 @@ contains
     ioct  = icell - domesh%nCoarse - (ind - 1) * domesh%nOct
     flagoutvol = .false.
 
-
+    !--PEEL-- initialise counter of peels ... 
+    nPeeled = 0
+    !--LEEP-- 
+    
     ! propagate photon until escape or death ... 
     photon_propagation : do 
 
+       !--PEEL--
+       ! initialise peeloff_fraction to 1.0d0
+       ! (This could be a function of wavelength, going to zero after finding out that exp(-tau) << 1 )
+       peeloff_fraction=1.0d0
+       !--LEEP-- 
+
+       
        ! gather properties properties of current cell
        cell_level   = domesh%octlevel(ioct)      ! level of current cell
        cell_size    = 0.5d0**cell_level          ! size of current cell in box units
@@ -114,7 +142,7 @@ contains
           print*,"ERROR: problem in computing ppos_cell"
           stop
        endif
-
+       
        ! get gas velocity (in cgs units)
        vgas         = get_gas_velocity(cell_gas)
        ! compute photon's frequency in cell's moving frame
@@ -254,6 +282,23 @@ contains
              !------------
              ! scattering
              !------------
+             !--PEEL--
+             ! save ray for batch processing later.
+             x=ran3(iran)
+             if (x <= peeloff_fraction) then  
+                nPeeled = nPeeled + 1
+                PeelBuffer(nPeeled)%peeloff_fraction = peeloff_fraction  ! if peeloff_fraction is not a constant, this allows to re-normalise rays to correct for weighted sampling
+                PeelBuffer(nPeeled)%nu = p%nu_ext ! frequency (before scattering)
+                PeelBuffer(nPeeled)%x  = p%xlast  ! position (at scattering)
+                PeelBuffer(nPeeled)%k  = p%k      ! direction (before scattering)
+                PeelBuffer(nPeeled)%scatter_flag = scatter_flag ! save the species on which the scattering occurs.
+                if (nPeeled == PeelBufferSize) then ! buffer is full -> process.
+                   call peels_to_map(PeelBuffer,nPeeled)
+                   nPeeled=0
+                endif
+             endif
+             !--LEEP-- 
+
              p%nb_abs = p%nb_abs + 1     ! increment nb of scatterings
              p%xlast = ppos              ! memorize the location of "potential" last interaction
              ! a scattering event modifies nu_cell, k, and nu_ext
@@ -262,6 +307,9 @@ contains
              k = p%k
              call gas_scatter(scatter_flag, cell_gas, nu_cell, k, nu_ext, iran)    ! NB: nu_cell, k, nu_ext, and iran en inout
              p%nu_ext = nu_ext
+
+
+             
              ! NB: for TEST case, to have photons propagating straight on, comment the following line
              p%k = k
              ! there has been an interaction -> reset tau_abs
@@ -283,6 +331,16 @@ contains
        end do propag_in_cell
 
     end do photon_propagation
+
+    !--PEEL--
+    ! finish processing peel buffer before moving to next photon packet. 
+    if (nPeeled > 0) then ! buffer is not empty -> process.
+       call peels_to_map(PeelBuffer,nPeeled)
+       nPeeled=0
+    endif
+    !--LEEP-- 
+
+    
 
     ! End of the photon propagation. There are 3 possible cases:
     !   1/ photon is out of the computational domain == escaped           -> in_domain=.false. && p%status=1
