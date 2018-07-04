@@ -94,16 +94,16 @@ contains
     ! adapt n_species name to each module_gas_composition
     g(:)%nFeII    = ngas_temp(:)
     ! Deal with m_atom here: adapt m_species name to each module_gas_composition
-    g(:)%dopwidth = 10.0d5 ! dopwidth_temp(:) / sqrt(mFe)
+    g(:)%dopwidth = 30.0d5 ! dopwidth_temp(:) / sqrt(mFe)
     
-!!$    modelprops_file = 'modelprops_file'
-!!$    file = trim(outputdir)//trim(modelprops_file)
-!!$    open(unit=15, file=trim(file), status='unknown', form='unformatted', action='write')
-!!$    write(15) nleaf
-!!$    do ileaf = 1,nleaf
-!!$       write(15) x_leaf(ileaf,1),x_leaf(ileaf,2),x_leaf(ileaf,3),g(ileaf)%v(1),g(ileaf)%v(2),g(ileaf)%v(3),g(ileaf)%dopwidth,g(ileaf)%nFeII,g(ileaf)%ndust
-!!$    end do
-!!$    close(15)
+    modelprops_file = 'modelprops_file'
+    file = trim(outputdir)//trim(modelprops_file)
+    open(unit=15, file=trim(file), status='unknown', form='unformatted', action='write')
+    write(15) nleaf
+    do ileaf = 1,nleaf
+       write(15) x_leaf(ileaf,1),x_leaf(ileaf,2),x_leaf(ileaf,3),g(ileaf)%v(1),g(ileaf)%v(2),g(ileaf)%v(3),g(ileaf)%dopwidth,g(ileaf)%nFeII,g(ileaf)%ndust
+    end do
+    close(15)
     
     deallocate(ndust_temp,ngas_temp,dopwidth_temp,vel_temp)
 
@@ -239,7 +239,7 @@ contains
     tau_FeII_2600 = get_tau_FeII_2600(cell_gas%nFeII, cell_gas%dopwidth, distance_to_border_cm, nu_cell)
     tau_dust      = get_tau_dust(cell_gas%ndust, distance_to_border_cm, nu_cell)
     tau_cell      = tau_FeII_2587 + tau_FeII_2600 + tau_dust
-
+    
     if (tau_abs > tau_cell) then  ! photon is due for absorption outside the cell 
        gas_get_scatter_flag = 0
        tau_abs = tau_abs - tau_cell
