@@ -35,7 +35,6 @@ hummer_old/
 # File 
 ###################
 run.log
-f90/Makefile
 tests/Lya/params_slab.dat
 tests/Lya/params_sphere.dat
 
