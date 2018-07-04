@@ -5,7 +5,8 @@ module module_photon
   use module_constants
   use module_random
   use module_domain
-  use module_utils, only: path 
+  use module_utils, only: path
+  use module_mock
 
   implicit none
 
@@ -39,10 +40,10 @@ module module_photon
   !--PEEL--
   type peel
      real(kind=8)              :: peeloff_fraction  ! if peeloff_fraction is not a constant, this allows to re-normalise rays to correct for weighted sampling
-     real(kind=8)              :: nu ! frequency after scattering occurs
+     real(kind=8)              :: nu ! frequency before scattering occurs 
      real(kind=8),dimension(3) :: x  ! position at scattering
-     real(kind=8),dimension(3) :: k  ! direction before scattering occurs
-     integer(kind=4)           :: scatter_flag ! keep track of the species with which the photon is interacting ... 
+     integer(kind=4)           :: icell ! cell in which scattering occurs, saves one search... 
+     real(kind=8)              :: weight ! probability of being re-emitted in obs direction
   end type peel
   integer(kind=4),parameter            :: PeelBufferSize = 100000
   type(peel),dimension(PeelBufferSize) :: PeelBuffer
@@ -288,12 +289,14 @@ contains
              if (x <= peeloff_fraction) then  
                 nPeeled = nPeeled + 1
                 PeelBuffer(nPeeled)%peeloff_fraction = peeloff_fraction  ! if peeloff_fraction is not a constant, this allows to re-normalise rays to correct for weighted sampling
-                PeelBuffer(nPeeled)%nu = p%nu_ext ! frequency (before scattering)
-                PeelBuffer(nPeeled)%x  = p%xlast  ! position (at scattering)
-                PeelBuffer(nPeeled)%k  = p%k      ! direction (before scattering)
-                PeelBuffer(nPeeled)%scatter_flag = scatter_flag ! save the species on which the scattering occurs.
+                PeelBuffer(nPeeled)%x     = p%xlast  ! position (at scattering)
+                PeelBuffer(nPeeled)%icell = icell 
+                ! compute first term of ray's weights : the peeling-off strategy
+                x = p%nu_ext ! incoming freq.
+                PeelBuffer(nPeeled)%weight = gas_peeloff_weight(scatter_flag, cell_gas, x, p%k, kobs, iran)
+                PeelBuffer(nPeeled)%nu = x ! frequency in the direction of observation 
                 if (nPeeled == PeelBufferSize) then ! buffer is full -> process.
-                   call peels_to_map(PeelBuffer,nPeeled)
+                   call process_peels(domesh,domaine_calcul)
                    nPeeled=0
                 endif
              endif
@@ -335,7 +338,7 @@ contains
     !--PEEL--
     ! finish processing peel buffer before moving to next photon packet. 
     if (nPeeled > 0) then ! buffer is not empty -> process.
-       call peels_to_map(PeelBuffer,nPeeled)
+       call process_peels(domesh,domaine_calcul)
        nPeeled=0
     endif
     !--LEEP-- 
@@ -361,6 +364,168 @@ contains
   end subroutine propagate
   
 
+  !--PEEL--
+  function tau_to_border(p,domesh,domaine_calcul,tau_max)
+
+    type(peel),intent(inout)             :: p              ! peel 
+    type(mesh),intent(in)                :: domesh         ! mesh
+    type(domain),intent(in)              :: domaine_calcul ! computational domain in which photons are propagating
+    real(kind=8),intent(in)              :: tau_max    ! stop computation when tau reaches tau_max
+    real(kind=8)                         :: tau_to_border
+    real(kind=8)                         :: tau_cell
+    type(gas)                            :: cell_gas                   ! gas in the current cell 
+    integer(kind=4)                      :: icell, ioct, ind, ileaf, cell_level  ! current cell indices and level
+    real(kind=8)                         :: cell_size, cell_size_cm, scalar, nu_cell
+    real(kind=8),dimension(3)            :: ppos,ppos_cell             ! working coordinates of photon (in box and in cell units)
+    real(kind=8)                         :: distance_to_border,distance_to_border_cm, distance_to_border_box_units
+    integer(kind=4)                      :: i, icellnew, npush
+    real(kind=8),dimension(3)            :: vgas, cell_corner, posoct, pcell
+    logical                              :: cell_fully_in_domain, flagoutvol, in_domain, OutOfDomainBeforeCell
+    real(kind=8)                         :: dborder, dborder_cm
+
+    tau_to_border = 0.0d0 
+    
+    ! initialise working props of peel (aka ray)
+    ppos  = p%x        ! position within full simulation box, in box units.
+    icell = p%icell 
+
+    ! define cell indices
+    ileaf = - domesh%son(icell)
+    ind   = (icell - domesh%nCoarse - 1) / domesh%nOct + 1   ! JB: should we make a few simple functions to do all this ? 
+    ioct  = icell - domesh%nCoarse - (ind - 1) * domesh%nOct
+    flagoutvol = .false.
+
+    ! propagate peel to border of computational domain
+    photon_propagation : do 
+       
+       ! gather properties properties of current cell
+       cell_level   = domesh%octlevel(ioct)      ! level of current cell
+       cell_size    = 0.5d0**cell_level          ! size of current cell in box units
+       cell_size_cm = cell_size * box_size_cm    ! size of the current cell in cm
+       cell_gas     = domesh%gas(ileaf)
+       ! compute position of photon in current-cell units
+       posoct(:)    = domesh%xoct(ioct,:)
+       cell_corner  = get_cell_corner(posoct,ind,cell_level)   ! position of cell corner, in box units.
+       ppos_cell    = (ppos - cell_corner) / cell_size         ! position of photon in cell units (x,y,z in [0,1] within cell)
+       if((ppos_cell(1)>1.0d0).or.(ppos_cell(2)>1.0d0).or.(ppos_cell(3)>1.0d0).or. &
+            (ppos_cell(1)<0.0d0).or.(ppos_cell(2)<0.0d0).or.(ppos_cell(3)<0.0d0))then
+          print*,"ERROR: problem in computing ppos_cell"
+          stop
+       endif
+       
+       ! get gas velocity (in cgs units)
+       vgas         = get_gas_velocity(cell_gas)
+       ! compute photon's frequency in cell's moving frame
+       scalar       = kobs(1) * vgas(1) + kobs(2) * vgas(2) + kobs(3) * vgas(3)
+       nu_cell      = (1.0d0 - scalar/clight) * p%nu 
+
+       ! define/update flag_cell_fully_in_comp_dom to avoid various tests in the following
+       pcell = cell_corner + 0.5d0*cell_size
+       cell_fully_in_domain = domain_contains_cell(pcell,cell_size,domaine_calcul)
+       
+       ! compute distance of photon to border of cell along propagation direction
+       distance_to_border           = path(ppos_cell,kobs)                   ! in cell units
+       distance_to_border_cm        = distance_to_border * cell_size_cm     ! cm
+       distance_to_border_box_units = distance_to_border * cell_size        ! in box units
+       ! if cell not fully in domain, modify distance_to_border to "distance_to_domain_border" if relevant
+       OutOfDomainBeforeCell = .False.
+       if(.not.(cell_fully_in_domain))then
+          dborder    = domain_distance_to_border_along_k(ppos,kobs,domaine_calcul)  ! in box units
+          dborder_cm = dborder * box_size_cm                                       ! from box units to cm
+          ! compare distance to cell border and distance to domain border and take the min
+          if (dborder_cm < distance_to_border_cm) then
+             OutOfDomainBeforeCell        = .True.
+             distance_to_border_cm        = dborder_cm
+             distance_to_border_box_units = dborder
+             distance_to_border           = distance_to_border_cm / cell_size_cm
+          end if
+       endif
+       
+       ! compute (total) optical depth along ray in cell 
+       tau_cell = gas_get_tau(cell_gas, distance_to_border_cm, nu_cell)
+
+       tau_to_border = tau_to_border + tau_cell
+       if (tau_to_border > tau_max) then
+          exit photon_propagation
+       end if
+
+       ! advance photon
+       ppos = ppos + kobs * distance_to_border_box_units *(1.0d0 + epsilon(1.0d0))
+       ! correct for periodicity
+       do i=1,3
+          if (ppos(i) < 0.0d0) ppos(i)=ppos(i)+1.0d0
+          if (ppos(i) > 1.0d0) ppos(i)=ppos(i)-1.0d0
+       enddo
+
+
+       if (OutOfDomainBeforeCell) then ! photon exits computational domain and is done 
+          exit photon_propagation
+       end if
+
+       ! photon moves to next cell 
+       call whereIsPhotonGoing(domesh,icell,ppos,icellnew,flagoutvol)
+
+       ! It may happen due to numerical precision that the photon is still in the current cell (i.e. icell == icellnew).
+       ! -> give it an extra push untill it is out. 
+       npush = 0
+       do while (icell==icellnew)
+          npush = npush + 1
+          ppos(1) = ppos(1) + merge(-1.0d0,1.0d0,kobs(1)<0.0d0) * epsilon(ppos(1))
+          ppos(2) = ppos(2) + merge(-1.0d0,1.0d0,kobs(2)<0.0d0) * epsilon(ppos(2))
+          ppos(3) = ppos(3) + merge(-1.0d0,1.0d0,kobs(3)<0.0d0) * epsilon(ppos(3))
+          call whereIsPhotonGoing(domesh,icell,ppos,icellnew,flagoutvol)
+          if (npush > 1000) then
+             print*,'npush > 1000 !!! '
+             stop
+          end if
+       end do
+       if (npush > 1) print*,'WARNING : npush > 1 needed in module_photon:propagate.'
+       ! test whether photon was pushed out of domain with the extra pushes
+       ! (and in that case, call it done). 
+       if (npush > 0) then 
+          in_domain = domain_contains_point(ppos,domaine_calcul)
+          if (.not. in_domain) then
+             print*,'WARNING: pushed photon outside domain ... '
+             exit photon_propagation
+          end if
+       end if
+       ! check if the new cell is outside of the current cpu domain (flagoutvol)
+       ! And if so send it back to master
+       if(flagoutvol)then
+          print*,'ERROR: peeling off works with a single domain for now... '
+          stop
+       endif
+       ! Finally, if we're here, the photon entered a cell within the current cpu domain so we go on. 
+       icell = icellnew
+       ileaf = - domesh%son(icell)
+       ind   = (icell - domesh%nCoarse - 1) / domesh%nOct + 1   ! JB: should we make a few simple functions to do all this ? 
+       ioct  = icell - domesh%nCoarse - (ind - 1) * domesh%nOct
+       
+    end do photon_propagation
+
+  end function tau_to_border
+  !--LEEP--
+  
+  !--PEEL--
+  subroutine process_peels(domesh,domaine_calcul)
+    implicit none
+    type(mesh),intent(in)                :: domesh         ! mesh
+    type(domain),intent(in)              :: domaine_calcul ! computational domain in which photons are propagating
+    real(kind=8),parameter               :: tau_max = 20   ! stop computation when tau=20 is reached ... 
+    integer(kind=4) :: ipeel
+    real(kind=8)    :: tau,peel_contrib
+    
+    do ipeel = 1,nPeeled
+       tau = tau_to_border(PeelBuffer(ipeel),domesh,domaine_calcul,tau_max)
+       if (tau < tau_max) then
+          peel_contrib = PeelBuffer(ipeel)%weight
+          peel_contrib = peel_contrib * exp(-tau)
+          call peel_to_map(PeelBuffer(ipeel)%x,peel_contrib)
+       end if
+    end do
+    
+  end subroutine process_peels
+  !--LEEP--
 
   subroutine init_photons_from_file(file,pgrid)
 
