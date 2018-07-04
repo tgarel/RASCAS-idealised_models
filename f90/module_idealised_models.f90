@@ -244,7 +244,7 @@ contains
     ndust_ideal = 0.0d0
     volfrac2    = 1.0d0
     
-    missed_cell = 1 ! =1 if cell doesn't satisfy and if statements... should not happen!
+    missed_cell = 1 ! =1 if cell doesn't satisfy if statements... should not happen!
     
     ! xcell, ycell and zcell are in frame with origin at bottom-left corner of box
     dist2 = (xcell_ideal-0.5d0)**2 + (ycell_ideal-0.5d0)**2 + (zcell_ideal-0.5d0)**2  ! in frame with origin at center of box

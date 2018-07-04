@@ -12,7 +12,7 @@
 !--------------------------------------------------------------------------------
 [CreateDomDump]
 # input outputs:
-  DataDir    = /cral4/garel/IdealisedModels_test/output/metals_grid_test/flatCont_FeII_Rmin1_Rmax20kpc/blah_taud1/
+  DomDumpDir = /cral4/garel/IdealisedModels_test/output/metals_grid_test/flatCont_FeII_Rmin1_Rmax20kpc/blah_taud1/
   repository = /cral4/dansac/Grid_for_RT/
   snapnum    = 00001
 # computational domain parameters
@@ -49,9 +49,9 @@
   
 !--------------------------------------------------------------------------------
 [RASCAS]
-  DataDir      = /cral4/garel/IdealisedModels_test/output/metals_grid_test/flatCont_FeII_Rmin1_Rmax20kpc/blah_taud1/
+  DomDumpDir   = /cral4/garel/IdealisedModels_test/output/metals_grid_test/flatCont_FeII_Rmin1_Rmax20kpc/blah_taud1/
   DomDumpFile  = domain_decomposition_params.dat
-  PhotonICFile = ICs_photons.dat
+  PhotonICFile = /cral4/garel/IdealisedModels_test/output/metals_grid_test/flatCont_FeII_Rmin1_Rmax20kpc/blah_taud1/ICs_photons.dat
   fileout      = /cral4/garel/IdealisedModels_test/output/metals_grid_test/flatCont_FeII_Rmin1_Rmax20kpc/blah_taud1/photons_out.dat
   nbuffer      = 10
   verbose      = T
@@ -63,6 +63,9 @@
 !--------------------------------------------------------------------------------
 [master]
   verbose = T
+  restart        = F
+  PhotonBakFile  = backup_photons.dat
+  dt_backup      = 1000000000000000.000
 
 !--------------------------------------------------------------------------------
 [mesh]
