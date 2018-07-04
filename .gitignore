@@ -10,31 +10,34 @@ parameters*dat
 parameters*dat~
 pbscript
 pbscript~
-Makefile
-rascas.o*
-rascas.e*
+rascas.*
 
 # Executables
 ###################
 PhotonsMonoPointSource
 PhotonsFromSourceModel
+PhotonsFromStars
 CreateDomDump
 MCLya
 rascas
-rascas-serial
+
 
 # Directories
 ###################
 plots/
 output/
-toto/
 idl/
 py/
+tests/
+tests/Lya/LyaTests_output_data/
+hummer_old/
 
 # File 
 ###################
 run.log
-backup_photons*
+f90/Makefile
+tests/Lya/params_slab.dat
+tests/Lya/params_sphere.dat
 
 # OS generated files #
 ######################
@@ -45,4 +48,3 @@ backup_photons*
 .Trashes
 ehthumbs.db
 Thumbs.db
-*.dSYM

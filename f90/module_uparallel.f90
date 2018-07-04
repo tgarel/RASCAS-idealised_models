@@ -75,6 +75,7 @@ contains
           end if
        case default
           print*,'ERROR: method not known in module_uparallel.f90:PROB_FUNC : ',trim(method)
+          stop
        end select
        ! Perform the rejection method given u_0
        ctloc=0
@@ -153,39 +154,41 @@ contains
     character(1000)         :: line,name,value
     integer(kind=4)         :: err,i
     logical                 :: section_present
-
-    section_present = .false.
-    open(unit=10,file=trim(pfile),status='old',form='formatted')
-    ! search for section start
-    do
-       read (10,'(a)',iostat=err) line
-       if(err/=0) exit
-       if (line(1:11) == '[uparallel]') then
-          section_present = .true.
-          exit
-       end if
-    end do
-    ! read section if present
-    if (section_present) then 
+    
+    if(.not.(isRead)) then
+       section_present = .false.
+       open(unit=10,file=trim(pfile),status='old',form='formatted')
+       ! search for section start
        do
           read (10,'(a)',iostat=err) line
           if(err/=0) exit
-          if (line(1:1) == '[') exit ! next section starting... -> leave
-          i = scan(line,'=')
-          if (i==0 .or. line(1:1)=='#' .or. line(1:1)=='!') cycle  ! skip blank or commented lines
-          name=trim(adjustl(line(:i-1)))
-          value=trim(adjustl(line(i+1:)))
-          i = scan(value,'!')
-          if (i /= 0) value = trim(adjustl(value(:i-1)))
-          select case (trim(name))
-          case ('method')
-             write(method,'(a)') trim(value)
-          case ('xForGaussian')
-             read(value,*) xForGaussian
-          end select
+          if (line(1:11) == '[uparallel]') then
+             section_present = .true.
+             exit
+          end if
        end do
-    end if
-    close(10)
+       ! read section if present
+       if (section_present) then 
+          do
+             read (10,'(a)',iostat=err) line
+             if(err/=0) exit
+             if (line(1:1) == '[') exit ! next section starting... -> leave
+             i = scan(line,'=')
+             if (i==0 .or. line(1:1)=='#' .or. line(1:1)=='!') cycle  ! skip blank or commented lines
+             name=trim(adjustl(line(:i-1)))
+             value=trim(adjustl(line(i+1:)))
+             i = scan(value,'!')
+             if (i /= 0) value = trim(adjustl(value(:i-1)))
+             select case (trim(name))
+             case ('method')
+                write(method,'(a)') trim(value)
+             case ('xForGaussian')
+                read(value,*) xForGaussian
+             end select
+          end do
+       end if
+       close(10)
+    endif
 
     isRead = .True.
     
@@ -204,18 +207,20 @@ contains
 
     integer(kind=4),optional,intent(in) :: unit
 
-    if (present(unit)) then
-       write(unit,'(a)') ''
-       write(unit,'(a,a,a)')    '[uparallel]'
-       write(unit,'(a,a)')      '  method       = ',method
-       write(unit,'(a,ES10.3)') '  xForGaussian = ',xForGaussian
-       write(unit,'(a)') ''
-    else
-       write(*,*) ''
-       write(*,'(a,a,a)')    '[uparallel]'
-       write(*,'(a,a)')      '  method       = ',method
-       write(*,'(a,ES10.3)') '  xForGaussian = ',xForGaussian
-       write(*,*) ''
+    if(.not.(isPrinted)) then
+       if (present(unit)) then
+          write(unit,'(a)') ''
+          write(unit,'(a,a,a)')    '[uparallel]'
+          write(unit,'(a,a)')      '  method       = ',method
+          write(unit,'(a,ES10.3)') '  xForGaussian = ',xForGaussian
+          !write(unit,'(a)') ''
+       else
+          write(*,*) ''
+          write(*,'(a,a,a)')    '[uparallel]'
+          write(*,'(a,a)')      '  method       = ',method
+          write(*,'(a,ES10.3)') '  xForGaussian = ',xForGaussian
+          !write(*,*) ''
+       end if
     end if
 
     isPrinted = .True.
