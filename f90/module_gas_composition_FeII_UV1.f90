@@ -159,7 +159,7 @@ contains
     g(:)%v(1)     = fix_vel
     g(:)%v(2)     = fix_vel
     g(:)%v(3)     = fix_vel
-    g(:)%nSiII    = fix_nFeII
+    g(:)%nFeII    = fix_nFeII
     g(:)%dopwidth = fix_vth
     
 #ifdef DEBUG
