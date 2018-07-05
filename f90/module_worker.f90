@@ -65,8 +65,11 @@ contains
        call cpu_time(start_photpacket)
 
        ! do the RT stuff. This is a single loop over photons in photpacket.
-       call MCRT(nbuffer,photpacket,meshdom,compute_dom)
-
+       !--PEEL--
+       call MCRT(nbuffer,photpacket,meshdom,compute_dom,rank)
+       !call MCRT(nbuffer,photpacket,meshdom,compute_dom)
+       !--LEEP--
+       
        call cpu_time(end_photpacket)
 
        if(verbose)then

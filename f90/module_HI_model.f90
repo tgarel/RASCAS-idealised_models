@@ -70,8 +70,11 @@ contains
 
 
   
-  subroutine scatter_HI(vcell,vth,nu_cell,k,nu_ext,iran)
-
+  !--CORESKIP--
+  subroutine scatter_HI(vcell,vth,nu_cell,k,nu_ext,iran,xcrit)
+  !subroutine scatter_HI(vcell,vth,nu_cell,k,nu_ext,iran)
+  !--PIKSEROC--
+    
     ! ---------------------------------------------------------------------------------
     ! perform scattering event on a Hydrogen atom with an anisotropic phase function
     ! ---------------------------------------------------------------------------------
@@ -100,6 +103,9 @@ contains
     real(kind=8),dimension(3),intent(inout) :: k
     real(kind=8),dimension(3),intent(in)    :: vcell
     real(kind=8),intent(in)                 :: vth
+    !--CORESKIP--
+    real(kind=8),intent(in)                 :: xcrit
+    !--PIKSEROC--
     integer(kind=4),intent(inout)           :: iran
     real(kind=8)                            :: delta_nu_doppler, a, x_cell, upar, ruper
     real(kind=8)                            :: r2, uper, nu_atom, mu, bu, scalar
@@ -119,7 +125,9 @@ contains
     ! 2/ component perpendicular to photon's propagation
     ruper  = ran3(iran)
     r2     = ran3(iran)
-    uper   = sqrt(-log(ruper))*cos(twopi*r2)
+    !--CORESKIP--
+    uper   = sqrt(xcrit**2-log(ruper))*cos(twopi*r2)
+    !--PIKSEROC--
     uper   = uper * vth  ! from x to velocity
 
     ! 3/ incoming frequency in atom's frame
@@ -200,11 +208,7 @@ contains
 
     ! 1/ component parallel to photon's propagation
     ! -> get velocity of interacting atom parallel to propagation
-#ifdef SWITCH_OFF_UPARALLEL
-    upar = 0.5
-#else
-    upar = get_uparallel(a,x_cell,iran)
-#endif
+    upar = get_uparallel(x_cell,a,iran)
     upar = upar * vth    ! upar is an x -> convert to a velocity 
 
     ! 2/ component perpendicular to photon's propagation

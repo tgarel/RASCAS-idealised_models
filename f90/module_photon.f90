@@ -45,7 +45,7 @@ module module_photon
      integer(kind=4)           :: icell ! cell in which scattering occurs, saves one search... 
      real(kind=8)              :: weight ! probability of being re-emitted in obs direction
   end type peel
-  integer(kind=4),parameter            :: PeelBufferSize = 100000
+  integer(kind=4),parameter            :: PeelBufferSize = 1000000
   type(peel),dimension(PeelBufferSize) :: PeelBuffer
   integer(kind=4)                      :: nPeeled
   real(kind=8)                         :: peeloff_fraction ! can be a constant (should be read from parameter file) or a function of cell properties for weighted peeling.
@@ -56,9 +56,10 @@ module module_photon
 
 contains
 
-
-  subroutine MCRT(nbuffer,photpacket,mesh_dom,compute_dom)
-
+!--PEEL--
+  subroutine MCRT(nbuffer,photpacket,mesh_dom,compute_dom,cpuNum)
+  !subroutine MCRT(nbuffer,photpacket,mesh_dom,compute_dom)    
+!--LEEP--
     ! this is the Monte Carlo Radiative transfer routine... but also a single loop over photons...
 
     integer(kind=4),intent(in)                            :: nbuffer
@@ -66,20 +67,27 @@ contains
     type(mesh),intent(in)                                 :: mesh_dom
     type(domain),intent(in)                               :: compute_dom
     integer(kind=4)                                       :: i
-
+    !--PEEL--
+    integer(kind=4),intent(in) :: cpuNum
+    !--LEEP--
+    
     do i=1,nbuffer
        ! case of photpacket not fully filled...
        if (photpacket(i)%ID>0) then
-          call propagate(photpacket(i),mesh_dom,compute_dom)
+          !--PEEL--
+          call propagate(photpacket(i),mesh_dom,compute_dom,cpuNum)
+          !call propagate(photpacket(i),mesh_dom,compute_dom)
+          !--LEEP
        endif
     enddo
  
   end subroutine MCRT
 
 
-
-  subroutine propagate(p,domesh,domaine_calcul)
-
+  !--PEEL--
+  subroutine propagate(p,domesh,domaine_calcul,cpuNum)
+  !subroutine propagate(p,domesh,domaine_calcul)    
+  !--LEEP--
     type(photon_current),intent(inout)   :: p              ! photon 
     type(mesh),intent(in)                :: domesh         ! mesh
     type(domain),intent(in)              :: domaine_calcul ! computational domain in which photons are propagating
@@ -95,8 +103,12 @@ contains
     logical                              :: cell_fully_in_domain, flagoutvol, in_domain, OutOfDomainBeforeCell
     real(kind=8)                         :: dborder, dborder_cm, error
     !--PEEL--
-    real(kind=8) :: x ! a random number 
+    real(kind=8) :: x ! a random number
+    integer(kind=4),intent(in) :: cpuNum
     !--LEEP--
+    !--CORESKIP--
+    real(kind=8) :: xcrit,tau_cell,delta_nu_doppler,a,xcw,nu_0
+    !--PIKSEROC--
 
     ! initialise working props of photon
     ppos    = p%xcurr        ! position within full simulation box, in box units.
@@ -128,6 +140,7 @@ contains
        peeloff_fraction=1.0d0
        !--LEEP-- 
 
+
        
        ! gather properties properties of current cell
        cell_level   = domesh%octlevel(ioct)      ! level of current cell
@@ -153,6 +166,14 @@ contains
        ! define/update flag_cell_fully_in_comp_dom to avoid various tests in the following
        pcell = cell_corner + 0.5d0*cell_size
        cell_fully_in_domain = domain_contains_cell(pcell,cell_size,domaine_calcul)
+
+       !--CORESKIP--
+       delta_nu_doppler = cell_gas%dopwidth/(1215.67d0/cmtoA)
+       a    = 6.265d8/fourpi/delta_nu_doppler
+       xcw  = 6.9184721d0 + 81.766279d0 / (log10(a)-14.651253d0)  ! Smith+15, Eq. 21
+       nu_0 = clight /(1215.67d0/cmtoA)
+       !--PIKSEROC--
+
        
        propag_in_cell : do
           
@@ -180,6 +201,17 @@ contains
              end if
           endif
 
+          !--CORESKIP--
+          x    = (nu_cell - nu_0)/delta_nu_doppler
+          xcrit = 0.0d0
+          if (x < xcw) then ! apply core-skipping
+             tau_cell = gas_get_tau(cell_gas, distance_to_border_cm, nu_cell)
+             tau_cell = tau_cell * a
+             if (tau_cell > 1.0d0) xcrit = tau_cell**(1./3.)/5.
+          end if
+          !--PIKSEROC--
+
+          
           ! check whether scattering occurs within cell or domain (scatter_flag > 0) or not (scatter_flag==0)
           scatter_flag = gas_get_scatter_flag(cell_gas, distance_to_border_cm, nu_cell, tau_abs, iran)
 
@@ -289,14 +321,16 @@ contains
              if (x <= peeloff_fraction) then  
                 nPeeled = nPeeled + 1
                 PeelBuffer(nPeeled)%peeloff_fraction = peeloff_fraction  ! if peeloff_fraction is not a constant, this allows to re-normalise rays to correct for weighted sampling
-                PeelBuffer(nPeeled)%x     = p%xlast  ! position (at scattering)
+                PeelBuffer(nPeeled)%x     = ppos  ! position (at scattering)
                 PeelBuffer(nPeeled)%icell = icell 
                 ! compute first term of ray's weights : the peeling-off strategy
                 x = p%nu_ext ! incoming freq.
                 PeelBuffer(nPeeled)%weight = gas_peeloff_weight(scatter_flag, cell_gas, x, p%k, kobs, iran)
                 PeelBuffer(nPeeled)%nu = x ! frequency in the direction of observation 
                 if (nPeeled == PeelBufferSize) then ! buffer is full -> process.
-                   call process_peels(domesh,domaine_calcul)
+                   print*,'PROCESSING PEELS'
+                   call process_peels(domesh,domaine_calcul,cpuNum)
+                   print*,'---DONE'
                    nPeeled=0
                 endif
              endif
@@ -308,7 +342,10 @@ contains
              ! so it needs to transport nu_cell, k, nu_ext, but not type p (because type p not known in gas)
              nu_ext = p%nu_ext
              k = p%k
-             call gas_scatter(scatter_flag, cell_gas, nu_cell, k, nu_ext, iran)    ! NB: nu_cell, k, nu_ext, and iran en inout
+             !--CORESKIP--
+             call gas_scatter(scatter_flag, cell_gas, nu_cell, k, nu_ext, iran, xcrit)    ! NB: nu_cell, k, nu_ext, and iran en inout
+             !call gas_scatter(scatter_flag, cell_gas, nu_cell, k, nu_ext, iran)    ! NB: nu_cell, k, nu_ext, and iran en inout             
+             !--PIKSEROC--
              p%nu_ext = nu_ext
 
 
@@ -338,7 +375,7 @@ contains
     !--PEEL--
     ! finish processing peel buffer before moving to next photon packet. 
     if (nPeeled > 0) then ! buffer is not empty -> process.
-       call process_peels(domesh,domaine_calcul)
+       call process_peels(domesh,domaine_calcul,cpuNum)
        nPeeled=0
     endif
     !--LEEP-- 
@@ -397,7 +434,7 @@ contains
 
     ! propagate peel to border of computational domain
     photon_propagation : do 
-       
+
        ! gather properties properties of current cell
        cell_level   = domesh%octlevel(ioct)      ! level of current cell
        cell_size    = 0.5d0**cell_level          ! size of current cell in box units
@@ -409,7 +446,7 @@ contains
        ppos_cell    = (ppos - cell_corner) / cell_size         ! position of photon in cell units (x,y,z in [0,1] within cell)
        if((ppos_cell(1)>1.0d0).or.(ppos_cell(2)>1.0d0).or.(ppos_cell(3)>1.0d0).or. &
             (ppos_cell(1)<0.0d0).or.(ppos_cell(2)<0.0d0).or.(ppos_cell(3)<0.0d0))then
-          print*,"ERROR: problem in computing ppos_cell"
+          print*,"ERROR: problem in computing ppos_cell",ppos_cell
           stop
        endif
        
@@ -469,13 +506,30 @@ contains
        ! -> give it an extra push untill it is out. 
        npush = 0
        do while (icell==icellnew)
+          print*,ppos
           npush = npush + 1
           ppos(1) = ppos(1) + merge(-1.0d0,1.0d0,kobs(1)<0.0d0) * epsilon(ppos(1))
           ppos(2) = ppos(2) + merge(-1.0d0,1.0d0,kobs(2)<0.0d0) * epsilon(ppos(2))
           ppos(3) = ppos(3) + merge(-1.0d0,1.0d0,kobs(3)<0.0d0) * epsilon(ppos(3))
           call whereIsPhotonGoing(domesh,icell,ppos,icellnew,flagoutvol)
-          if (npush > 1000) then
-             print*,'npush > 1000 !!! '
+          if (npush == 10) then
+             print*,'npush == 10 ... using les grands moyens ... '
+             ppos(1) = ppos(1) + kobs(1)*(1000.*epsilon(ppos(1)))
+             ppos(2) = ppos(2) + kobs(2)*(1000.*epsilon(ppos(2)))
+             ppos(3) = ppos(3) + kobs(3)*(1000.*epsilon(ppos(3)))
+          end if
+          if (npush == 11) then
+             print*,'npush == 11 ... using les very grands moyens ... '
+             ppos(1) = ppos(1) + kobs(1)*(1e5*epsilon(ppos(1)))
+             ppos(2) = ppos(2) + kobs(2)*(1e5*epsilon(ppos(2)))
+             ppos(3) = ppos(3) + kobs(3)*(1e5*epsilon(ppos(3)))
+          end if
+          if (npush > 11) then
+             print*,'oh well ...'
+             print*,ppos
+             print*,kobs
+             print*,sqrt(sum(kobs*kobs))
+             print*,domain_contains_point(ppos,domaine_calcul)
              stop
           end if
        end do
@@ -507,22 +561,31 @@ contains
   !--LEEP--
   
   !--PEEL--
-  subroutine process_peels(domesh,domaine_calcul)
+  subroutine process_peels(domesh,domaine_calcul,cpuNum)
     implicit none
     type(mesh),intent(in)                :: domesh         ! mesh
     type(domain),intent(in)              :: domaine_calcul ! computational domain in which photons are propagating
-    real(kind=8),parameter               :: tau_max = 20   ! stop computation when tau=20 is reached ... 
-    integer(kind=4) :: ipeel
+    integer(kind=4),intent(in)           :: cpuNum ! worker ID 
+    real(kind=8),parameter               :: tau_max = 30   ! stop computation when tau=20 is reached ... 
+    integer(kind=4) :: ipeel,i,j
     real(kind=8)    :: tau,peel_contrib
-    
+    character(1000) :: filename 
+    i=0
     do ipeel = 1,nPeeled
        tau = tau_to_border(PeelBuffer(ipeel),domesh,domaine_calcul,tau_max)
        if (tau < tau_max) then
+          i = i + 1
           peel_contrib = PeelBuffer(ipeel)%weight
           peel_contrib = peel_contrib * exp(-tau)
           call peel_to_map(PeelBuffer(ipeel)%x,peel_contrib)
        end if
     end do
+    print*,sum(image), i
+    write(filename,'(a,i5.5)') 'image.',cpuNum
+    open(unit=133,file=filename,form='unformatted',status='unknown')
+    write(133) npix
+    write(133) ((image(i,j),i=1,npix),j=1,npix)
+    close(133)
     
   end subroutine process_peels
   !--LEEP--
