@@ -69,25 +69,31 @@ contains
     integer(kind=4)                                       :: i
     !--PEEL--
     integer(kind=4),intent(in) :: cpuNum
+    integer(kind=4) :: j
+    character(1000) :: filename 
     !--LEEP--
     
     do i=1,nbuffer
        ! case of photpacket not fully filled...
        if (photpacket(i)%ID>0) then
-          !--PEEL--
-          call propagate(photpacket(i),mesh_dom,compute_dom,cpuNum)
-          !call propagate(photpacket(i),mesh_dom,compute_dom)
-          !--LEEP
+          call propagate(photpacket(i),mesh_dom,compute_dom)
        endif
     enddo
- 
+
+    !--PEEL--
+    ! save image
+    write(filename,'(a,i5.5)') 'image.',cpuNum
+    open(unit=133,file=filename,form='unformatted',status='unknown')
+    write(133) npix
+    write(133) ((image(i,j),i=1,npix),j=1,npix)
+    close(133)
+    !--LEEP--
+    
+    
   end subroutine MCRT
 
 
-  !--PEEL--
-  subroutine propagate(p,domesh,domaine_calcul,cpuNum)
-  !subroutine propagate(p,domesh,domaine_calcul)    
-  !--LEEP--
+  subroutine propagate(p,domesh,domaine_calcul)    
     type(photon_current),intent(inout)   :: p              ! photon 
     type(mesh),intent(in)                :: domesh         ! mesh
     type(domain),intent(in)              :: domaine_calcul ! computational domain in which photons are propagating
@@ -104,7 +110,6 @@ contains
     real(kind=8)                         :: dborder, dborder_cm, error
     !--PEEL--
     real(kind=8) :: x ! a random number
-    integer(kind=4),intent(in) :: cpuNum
     !--LEEP--
     !--CORESKIP--
     real(kind=8) :: xcrit,tau_cell,delta_nu_doppler,a,xcw,nu_0
@@ -204,7 +209,7 @@ contains
           !--CORESKIP--
           x    = (nu_cell - nu_0)/delta_nu_doppler
           xcrit = 0.0d0
-          if (x < xcw) then ! apply core-skipping
+          if (abs(x) < xcw) then ! apply core-skipping
              tau_cell = gas_get_tau(cell_gas, distance_to_border_cm, nu_cell)
              tau_cell = tau_cell * a
              if (tau_cell > 1.0d0) xcrit = tau_cell**(1./3.)/5.
@@ -328,9 +333,7 @@ contains
                 PeelBuffer(nPeeled)%weight = gas_peeloff_weight(scatter_flag, cell_gas, x, p%k, kobs, iran)
                 PeelBuffer(nPeeled)%nu = x ! frequency in the direction of observation 
                 if (nPeeled == PeelBufferSize) then ! buffer is full -> process.
-                   print*,'PROCESSING PEELS'
-                   call process_peels(domesh,domaine_calcul,cpuNum)
-                   print*,'---DONE'
+                   call process_peels(domesh,domaine_calcul)
                    nPeeled=0
                 endif
              endif
@@ -375,7 +378,7 @@ contains
     !--PEEL--
     ! finish processing peel buffer before moving to next photon packet. 
     if (nPeeled > 0) then ! buffer is not empty -> process.
-       call process_peels(domesh,domaine_calcul,cpuNum)
+       call process_peels(domesh,domaine_calcul)
        nPeeled=0
     endif
     !--LEEP-- 
@@ -506,7 +509,6 @@ contains
        ! -> give it an extra push untill it is out. 
        npush = 0
        do while (icell==icellnew)
-          print*,ppos
           npush = npush + 1
           ppos(1) = ppos(1) + merge(-1.0d0,1.0d0,kobs(1)<0.0d0) * epsilon(ppos(1))
           ppos(2) = ppos(2) + merge(-1.0d0,1.0d0,kobs(2)<0.0d0) * epsilon(ppos(2))
@@ -526,10 +528,6 @@ contains
           end if
           if (npush > 11) then
              print*,'oh well ...'
-             print*,ppos
-             print*,kobs
-             print*,sqrt(sum(kobs*kobs))
-             print*,domain_contains_point(ppos,domaine_calcul)
              stop
           end if
        end do
@@ -561,31 +559,22 @@ contains
   !--LEEP--
   
   !--PEEL--
-  subroutine process_peels(domesh,domaine_calcul,cpuNum)
+  subroutine process_peels(domesh,domaine_calcul)
     implicit none
     type(mesh),intent(in)                :: domesh         ! mesh
     type(domain),intent(in)              :: domaine_calcul ! computational domain in which photons are propagating
-    integer(kind=4),intent(in)           :: cpuNum ! worker ID 
     real(kind=8),parameter               :: tau_max = 30   ! stop computation when tau=20 is reached ... 
-    integer(kind=4) :: ipeel,i,j
+    integer(kind=4) :: ipeel
     real(kind=8)    :: tau,peel_contrib
-    character(1000) :: filename 
-    i=0
+
     do ipeel = 1,nPeeled
        tau = tau_to_border(PeelBuffer(ipeel),domesh,domaine_calcul,tau_max)
        if (tau < tau_max) then
-          i = i + 1
           peel_contrib = PeelBuffer(ipeel)%weight
           peel_contrib = peel_contrib * exp(-tau)
           call peel_to_map(PeelBuffer(ipeel)%x,peel_contrib)
        end if
     end do
-    print*,sum(image), i
-    write(filename,'(a,i5.5)') 'image.',cpuNum
-    open(unit=133,file=filename,form='unformatted',status='unknown')
-    write(133) npix
-    write(133) ((image(i,j),i=1,npix),j=1,npix)
-    close(133)
     
   end subroutine process_peels
   !--LEEP--

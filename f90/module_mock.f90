@@ -12,8 +12,8 @@ module module_mock
   real(kind=8) :: mock_image_side ! box units
   
   ! detector (image for now)
-  integer(kind=4),parameter :: npix = 2000
-  real(kind=8)    :: image(npix,npix)
+  integer(kind=4) :: npix
+  real(kind=8),allocatable :: image(:,:)
 
   ! 
   logical :: is_initialised = .false. 
@@ -23,7 +23,7 @@ contains
   subroutine mock_init()
 
     implicit none
-
+    allocate(image(npix,npix))
     image = 0.0d0
     ! define direction of observation (normalise vector)
     kobs = kobs / sqrt(kobs(1)*kobs(1)+kobs(2)*kobs(2)+kobs(3)*kobs(3))
@@ -118,6 +118,8 @@ contains
              read(value,*) mock_center(:)
           case ('kobs')
              read(value,*) kobs
+          case ('npix')
+             read(value,*) npix
           case ('mock_image_side')
              read(value,*) mock_image_side
           end select
