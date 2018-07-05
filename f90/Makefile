@@ -1,10 +1,10 @@
 #############################################################################
 # Fortran compiler options and directives
 
-SYSTYPE="CCF"
+#SYSTYPE="CCF"
 #SYSTYPE="lyocral"
 #SYSTYPE="lyocralP"
-#SYSTYPE="mac"
+SYSTYPE="mac"
 #SYSTYPE="macP"
 #SYSTYPE="ccage"
 
@@ -41,7 +41,7 @@ LDFLAGS     =  -lmpi
 endif
 
 ifeq ($(SYSTYPE),"mac")
-#F90         = gfortran-mp-4.7 -ffree-line-length-none -ffree-form  ###-fopenmp
+##F90         = gfortran-mp-4.7 -ffree-line-length-none -ffree-form  ###-fopenmp
 F90         = gfortran-mp-6 -ffree-line-length-none -ffree-form  ###-fopenmp
 FFLAGS      = -g -fcheck=all -ftrapv -fbacktrace -Wall -fbounds-check
 #FFLAGS      = -O2
@@ -93,7 +93,7 @@ endif
 # 9-bis/ FeII UV1+dust
 #COMPOBJS = module_dust_model.o module_FeII_2587_model.o module_FeII_2600_model.o module_gas_composition_FeII_UV1_dust.o
 # TIBO-1/ pure HI + idealised_models
-COMPOBJS = module_HI_model.o module_idealised_models.o module_gas_composition_HI.o
+#COMPOBJS = module_HI_model.o module_idealised_models.o module_gas_composition_HI.o
 # TIBO-1bis/ HI + dust + idealised_models
 # COMPOBJS = module_dust_model.o module_HI_model.o module_idealised_models.o module_gas_composition_HI_dust.o
 # TIBO-2/ SiII_dust + idealised_models
@@ -105,7 +105,7 @@ COMPOBJS = module_HI_model.o module_idealised_models.o module_gas_composition_HI
 # TIBO-5/ FeII + idealised_models
 #COMPOBJS =  module_FeII_2587_model.o module_FeII_2600_model.o module_idealised_models.o module_gas_composition_FeII_UV1.o
 # TIBO-6/ FeII + dust + idealised_models
-# COMPOBJS =  module_dust_model.o module_FeII_2587_model.o module_FeII_2600_model.o module_idealised_models.o module_gas_composition_FeII_UV1_dust.o
+ COMPOBJS =  module_dust_model.o module_FeII_2587_model.o module_FeII_2600_model.o module_idealised_models.o module_gas_composition_FeII_UV1_dust.o
 
 
 GASOBJS = module_constants.o module_random.o module_utils.o module_domain.o module_ramses.o module_uparallel.o $(COMPOBJS)
