@@ -39,8 +39,7 @@ module module_photon
   
   !--PEEL--
   type peel
-     real(kind=8)              :: peeloff_fraction  ! if peeloff_fraction is not a constant, this allows to re-normalise rays to correct for weighted sampling
-     real(kind=8)              :: nu ! frequency before scattering occurs 
+     real(kind=8)              :: nu ! frequency before scattering, converted to after virtual scat. towards dir. of observation. 
      real(kind=8),dimension(3) :: x  ! position at scattering
      integer(kind=4)           :: icell ! cell in which scattering occurs, saves one search... 
      real(kind=8)              :: weight ! probability of being re-emitted in obs direction
@@ -48,7 +47,6 @@ module module_photon
   integer(kind=4),parameter            :: PeelBufferSize = 1000000
   type(peel),dimension(PeelBufferSize) :: PeelBuffer
   integer(kind=4)                      :: nPeeled
-  real(kind=8)                         :: peeloff_fraction ! can be a constant (should be read from parameter file) or a function of cell properties for weighted peeling.
   !--LEEP--
 
   
@@ -85,7 +83,16 @@ contains
     write(filename,'(a,i5.5)') 'image.',cpuNum
     open(unit=133,file=filename,form='unformatted',status='unknown')
     write(133) npix
+    write(133) mock_image_side
+    write(133) (mock_center(i),i=1,3)
     write(133) ((image(i,j),i=1,npix),j=1,npix)
+    close(133)
+    ! save spectrum
+    write(filename,'(a,i5.5)') 'spectrum.',cpuNum
+    open(unit=133,file=filename,form='unformatted',status='unknown')
+    write(133) npix_spec
+    write(133) spec_lmin,spec_lmax
+    write(133) (spectrum(i),i=1,npix_spec)
     close(133)
     !--LEEP--
     
@@ -132,21 +139,24 @@ contains
     ioct  = icell - domesh%nCoarse - (ind - 1) * domesh%nOct
     flagoutvol = .false.
 
-    !--PEEL-- initialise counter of peels ... 
-    nPeeled = 0
+    !--PEEL-- initialise counter of peels ...
+    ! Start with a peel off initial photon 
+    nPeeled = 1
+    PeelBuffer(nPeeled)%x      = ppos  ! position (at scattering)
+    PeelBuffer(nPeeled)%icell  = icell 
+    ! compute first term of ray's weights : the peeling-off strategy
+    PeelBuffer(nPeeled)%weight = 0.5 ! assume isotropy for this particular (non-)event
+    PeelBuffer(nPeeled)%nu     = p%nu_ext       ! frequency in the direction of observation 
+    if (nPeeled == PeelBufferSize) then ! buffer is full -> process.
+       call process_peels(domesh,domaine_calcul)
+       nPeeled=0
+    endif
     !--LEEP-- 
+
     
     ! propagate photon until escape or death ... 
     photon_propagation : do 
 
-       !--PEEL--
-       ! initialise peeloff_fraction to 1.0d0
-       ! (This could be a function of wavelength, going to zero after finding out that exp(-tau) << 1 )
-       peeloff_fraction=1.0d0
-       !--LEEP-- 
-
-
-       
        ! gather properties properties of current cell
        cell_level   = domesh%octlevel(ioct)      ! level of current cell
        cell_size    = 0.5d0**cell_level          ! size of current cell in box units
@@ -322,20 +332,16 @@ contains
              !------------
              !--PEEL--
              ! save ray for batch processing later.
-             x=ran3(iran)
-             if (x <= peeloff_fraction) then  
-                nPeeled = nPeeled + 1
-                PeelBuffer(nPeeled)%peeloff_fraction = peeloff_fraction  ! if peeloff_fraction is not a constant, this allows to re-normalise rays to correct for weighted sampling
-                PeelBuffer(nPeeled)%x     = ppos  ! position (at scattering)
-                PeelBuffer(nPeeled)%icell = icell 
-                ! compute first term of ray's weights : the peeling-off strategy
-                x = p%nu_ext ! incoming freq.
-                PeelBuffer(nPeeled)%weight = gas_peeloff_weight(scatter_flag, cell_gas, x, p%k, kobs, iran)
-                PeelBuffer(nPeeled)%nu = x ! frequency in the direction of observation 
-                if (nPeeled == PeelBufferSize) then ! buffer is full -> process.
-                   call process_peels(domesh,domaine_calcul)
-                   nPeeled=0
-                endif
+             nPeeled = nPeeled + 1
+             PeelBuffer(nPeeled)%x     = ppos  ! position (at scattering)
+             PeelBuffer(nPeeled)%icell = icell 
+             ! compute first term of ray's weights : the peeling-off strategy
+             x = p%nu_ext ! incoming freq.
+             PeelBuffer(nPeeled)%weight = gas_peeloff_weight(scatter_flag, cell_gas, x, p%k, kobs, iran)
+             PeelBuffer(nPeeled)%nu = x ! frequency in the direction of observation 
+             if (nPeeled == PeelBufferSize) then ! buffer is full -> process.
+                call process_peels(domesh,domaine_calcul)
+                nPeeled=0
              endif
              !--LEEP-- 
 
@@ -462,7 +468,7 @@ contains
        ! define/update flag_cell_fully_in_comp_dom to avoid various tests in the following
        pcell = cell_corner + 0.5d0*cell_size
        cell_fully_in_domain = domain_contains_cell(pcell,cell_size,domaine_calcul)
-       
+
        ! compute distance of photon to border of cell along propagation direction
        distance_to_border           = path(ppos_cell,kobs)                   ! in cell units
        distance_to_border_cm        = distance_to_border * cell_size_cm     ! cm
@@ -471,7 +477,7 @@ contains
        OutOfDomainBeforeCell = .False.
        if(.not.(cell_fully_in_domain))then
           dborder    = domain_distance_to_border_along_k(ppos,kobs,domaine_calcul)  ! in box units
-          dborder_cm = dborder * box_size_cm                                       ! from box units to cm
+          dborder_cm = dborder * box_size_cm                                        ! from box units to cm
           ! compare distance to cell border and distance to domain border and take the min
           if (dborder_cm < distance_to_border_cm) then
              OutOfDomainBeforeCell        = .True.
@@ -480,7 +486,7 @@ contains
              distance_to_border           = distance_to_border_cm / cell_size_cm
           end if
        endif
-       
+
        ! compute (total) optical depth along ray in cell 
        tau_cell = gas_get_tau(cell_gas, distance_to_border_cm, nu_cell)
 
@@ -563,7 +569,7 @@ contains
     implicit none
     type(mesh),intent(in)                :: domesh         ! mesh
     type(domain),intent(in)              :: domaine_calcul ! computational domain in which photons are propagating
-    real(kind=8),parameter               :: tau_max = 30   ! stop computation when tau=20 is reached ... 
+    real(kind=8),parameter               :: tau_max = 60   ! stop computation when tau=20 is reached ... 
     integer(kind=4) :: ipeel
     real(kind=8)    :: tau,peel_contrib
 
@@ -573,6 +579,7 @@ contains
           peel_contrib = PeelBuffer(ipeel)%weight
           peel_contrib = peel_contrib * exp(-tau)
           call peel_to_map(PeelBuffer(ipeel)%x,peel_contrib)
+          call peel_to_spec(PeelBuffer(ipeel)%nu,peel_contrib)
        end if
     end do
     

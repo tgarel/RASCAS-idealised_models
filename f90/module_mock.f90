@@ -1,5 +1,7 @@
 module module_mock
 
+  use module_constants, only:clight
+  
   public
 
   ! direction of observation
@@ -11,12 +13,15 @@ module module_mock
   ! extent of observation
   real(kind=8) :: mock_image_side ! box units
   
-  ! detector (image for now)
+  ! image 
   integer(kind=4) :: npix
   real(kind=8),allocatable :: image(:,:)
 
-  ! 
-  logical :: is_initialised = .false. 
+  ! spectrum
+  integer(kind=4) :: npix_spec
+  real(kind=8)    :: spec_lmin, spec_lmax
+  real(kind=8),allocatable :: spectrum(:)
+
   
 contains
 
@@ -25,6 +30,8 @@ contains
     implicit none
     allocate(image(npix,npix))
     image = 0.0d0
+    allocate(spectrum(npix_spec))
+    spectrum = 0.0d0 
     ! define direction of observation (normalise vector)
     kobs = kobs / sqrt(kobs(1)*kobs(1)+kobs(2)*kobs(2)+kobs(3)*kobs(3))
     ! define basis for sky plane
@@ -76,6 +83,22 @@ contains
     return
   end subroutine peel_to_map
 
+  subroutine peel_to_spec(peel_nu,peel_contribution)
+    implicit none
+
+    real(kind=8),intent(in) :: peel_nu,peel_contribution
+    real(kind=8)            :: lambda 
+    integer(kind=4) :: i
+
+    lambda = clight / peel_nu * 1d8 ! [Angstrom]
+    i = int( (lambda - spec_lmin) / (spec_lmax - spec_lmin) * npix_spec)
+    if ((i > 0) .and. (i<=npix_spec)) then
+       spectrum(i) = spectrum(i) + peel_contribution
+    end if
+    
+    return
+  end subroutine peel_to_spec
+
 
   subroutine read_mock_params(pfile)
     
@@ -122,6 +145,12 @@ contains
              read(value,*) npix
           case ('mock_image_side')
              read(value,*) mock_image_side
+          case ('npix_spec')
+             read(value,*) npix_spec
+          case ('spec_lmin')
+             read(value,*) spec_lmin
+          case ('spec_lmax')
+             read(value,*) spec_lmax
           end select
        end do
     end if
