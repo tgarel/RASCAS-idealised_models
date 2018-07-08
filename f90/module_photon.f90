@@ -183,10 +183,12 @@ contains
        cell_fully_in_domain = domain_contains_cell(pcell,cell_size,domaine_calcul)
 
        !--CORESKIP--
-       delta_nu_doppler = cell_gas%dopwidth/(1215.67d0/cmtoA)
-       a    = 6.265d8/fourpi/delta_nu_doppler
-       xcw  = 6.9184721d0 + 81.766279d0 / (log10(a)-14.651253d0)  ! Smith+15, Eq. 21
-       nu_0 = clight /(1215.67d0/cmtoA)
+       if (HI_core_skip) then 
+          delta_nu_doppler = cell_gas%dopwidth/(1215.67d0/cmtoA)
+          a    = 6.265d8/fourpi/delta_nu_doppler
+          xcw  = 6.9184721d0 + 81.766279d0 / (log10(a)-14.651253d0)  ! Smith+15, Eq. 21
+          nu_0 = clight /(1215.67d0/cmtoA)
+       end if
        !--PIKSEROC--
 
        
@@ -217,12 +219,14 @@ contains
           endif
 
           !--CORESKIP--
-          x    = (nu_cell - nu_0)/delta_nu_doppler
           xcrit = 0.0d0
-          if (abs(x) < xcw) then ! apply core-skipping
-             tau_cell = gas_get_tau(cell_gas, distance_to_border_cm, nu_cell)
-             tau_cell = tau_cell * a
-             if (tau_cell > 1.0d0) xcrit = tau_cell**(1./3.)/5.
+          if (HI_core_skip) then 
+             x    = (nu_cell - nu_0)/delta_nu_doppler
+             if (abs(x) < xcw) then ! apply core-skipping
+                tau_cell = gas_get_tau(cell_gas, distance_to_border_cm, nu_cell)
+                tau_cell = tau_cell * a
+                if (tau_cell > 1.0d0) xcrit = tau_cell**(1./3.)/5.
+             end if
           end if
           !--PIKSEROC--
 

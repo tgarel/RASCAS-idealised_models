@@ -27,6 +27,9 @@ module module_HI_model
   ! --------------------------------------------------------------------------
   logical                  :: recoil       = .true.      ! if set to true, recoil effect is computed [default is true]
   logical                  :: isotropic    = .false.     ! if set to true, scattering events will be isotropic [default is false]
+  !--CORESKIP--
+  logical                  :: HI_core_skip    = .false.     ! if true, skip scatterings in the core of the line (as in Smith+15). 
+  !--PIKSEROC--
   ! --------------------------------------------------------------------------
 
   public :: get_tau_HI, scatter_HI, read_HI_params, print_HI_params
@@ -34,6 +37,10 @@ module module_HI_model
   public :: HI_peeloff_weight
   !--LEEP--
 
+  !--CORESKIP--
+  public :: HI_core_skip 
+  !--PIKSEROC-- 
+  
 contains
 
   function get_tau_HI(nhi, vth, distance_to_border_cm, nu_cell)
@@ -112,6 +119,13 @@ contains
     real(kind=8)                            :: x_atom
     real(kind=8),dimension(3)               :: knew
 
+    !--CORESKIP--  sanity check ... 
+    if (.not. HI_core_skip .and. xcrit .ne. 0.0d0) then
+       print*,'ERROR: core skipping is on but xcrit is not zero ... '
+       stop
+    end if
+    !--PIKSEROC-- 
+    
     ! define x_cell & a
     delta_nu_doppler = vth / lambda_0_cm 
     a = gamma_over_fourpi / delta_nu_doppler
@@ -287,6 +301,10 @@ contains
              read(value,*) recoil
           case ('isotropic')
              read(value,*) isotropic
+          !--CORESKIP--
+          case ('HI_core_skip') 
+             read(value,*) HI_core_skip
+          !--PIKSEROC--
           end select
        end do
     end if
@@ -313,11 +331,18 @@ contains
        write(unit,'(a,a,a)') '[HI]'
        write(unit,'(a,L1)') '  recoil    = ',recoil
        write(unit,'(a,L1)') '  isotropic = ',isotropic
+       !--CORESKIP--
+       write(unit,'(a,L1)') '  HI_core_skip = ',HI_core_skip
+       !--PIKSEROC--
+
        call print_uparallel_params(unit)
     else
        write(*,'(a,a,a)') '[HI]'
        write(*,'(a,L1)') '  recoil    = ',recoil
        write(*,'(a,L1)') '  isotropic = ',isotropic
+       !--CORESKIP--
+       write(*,'(a,L1)') '  HI_core_skip = ',HI_core_skip
+       !--PIKSEROC--
        call print_uparallel_params()
     end if
 

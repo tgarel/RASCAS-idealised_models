@@ -58,6 +58,10 @@ module module_gas_composition
   public :: gas_peeloff_weight,gas_get_tau
   !--LEEP--
 
+  !--CORESKIP-- push variable from module_HI_model up so that module_photon knows about it... 
+  public :: HI_core_skip 
+  !--PIKSEROC-- 
+
 contains
 
   
