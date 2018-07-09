@@ -57,47 +57,30 @@ contains
           print *,'[master] --> Nphoton =',nphot
           print *,'[master] --> Nphoton to do =',nphottodo
        endif
-       !--PEEL--
-       ! read rays from restart (rays are peeled-off photons)
-       ! nraystodo = ...
-       !--LEEP--
     else
        if (verbose) print *,'[master] --> reading ICs photons in file: ',trim(file_ICs)
        call init_photons_from_file(file_ICs,photgrid)
        nphot = size(photgrid)
        nphottodo = nphot
        if (verbose) print *,'[master] --> Nphoton =',nphot
-       !--PEEL--
-       ! read a possible ray IC file ?
-       ! nraystodo = ... 
-       !--LEEP--
     endif
 
     ! some sanity checks
     if(nbuffer*nslave>nphottodo)then
-       ! PEEL -> nphottodo + nraystodo 
        print *,'ERROR: decrease nbuffer and/or ncpu'
        call stop_mpi
     endif
     ! guidance for a good load-balancing
     if(4*nbuffer*nslave>nphottodo)then
-       ! PEEL -> nphottodo + nraystodo 
        print *,'ERROR: decrease nbuffer for a good load-balancing of the code'
        print *,'--> suggested nbuffer =', nphottodo/nslave/10
        call stop_mpi
     endif
 
     allocate(photpacket(nbuffer))
-    !--PEEL--
-    ! allocate(raypacket(nRayBuffer))
-    !--LEEP-- 
     allocate(cpu(1:nslave))
     allocate(first(ndomain),last(ndomain),nqueue(ndomain),ncpuperdom(ndomain))
     allocate(next(nphot,ndomain))
-    !--PEEL--
-    !allocate(firstRay(ndomain),lastRay(ndomain),nqueueRay(ndomain),ncpuperdomRay(ndomain))
-    !allocate(nextRay(MaxNRay,ndomain))  
-    !--LEEP--
     allocate(delta(ndomain))
     allocate(domain_list(ndomain))
 
@@ -124,10 +107,6 @@ contains
           call add_photon_to_domain(i,j)
        endif
     enddo
-    !--PEEL--
-    ! repeat above for rays ...
-    !--LEEP-- 
-
     
     ! according to the distribution of photons in domains, ditribute cpus to each domain
     call init_loadb(nbuffer,ndomain)

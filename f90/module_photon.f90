@@ -49,15 +49,12 @@ module module_photon
   integer(kind=4)                      :: nPeeled
   !--LEEP--
 
-  
   public  :: MCRT, propagate, init_photons_from_file, dump_photons
-
+  
 contains
 
-!--PEEL--
-  subroutine MCRT(nbuffer,photpacket,mesh_dom,compute_dom,cpuNum)
-  !subroutine MCRT(nbuffer,photpacket,mesh_dom,compute_dom)    
-!--LEEP--
+  subroutine MCRT(nbuffer,photpacket,mesh_dom,compute_dom)    
+
     ! this is the Monte Carlo Radiative transfer routine... but also a single loop over photons...
 
     integer(kind=4),intent(in)                            :: nbuffer
@@ -65,11 +62,6 @@ contains
     type(mesh),intent(in)                                 :: mesh_dom
     type(domain),intent(in)                               :: compute_dom
     integer(kind=4)                                       :: i
-    !--PEEL--
-    integer(kind=4),intent(in) :: cpuNum
-    integer(kind=4) :: j
-    character(1000) :: filename 
-    !--LEEP--
     
     do i=1,nbuffer
        ! case of photpacket not fully filled...
@@ -77,25 +69,6 @@ contains
           call propagate(photpacket(i),mesh_dom,compute_dom)
        endif
     enddo
-
-    !--PEEL--
-    ! save image
-    write(filename,'(a,i5.5)') 'image.',cpuNum
-    open(unit=133,file=filename,form='unformatted',status='unknown')
-    write(133) npix
-    write(133) mock_image_side
-    write(133) (mock_center(i),i=1,3)
-    write(133) ((image(i,j),i=1,npix),j=1,npix)
-    close(133)
-    ! save spectrum
-    write(filename,'(a,i5.5)') 'spectrum.',cpuNum
-    open(unit=133,file=filename,form='unformatted',status='unknown')
-    write(133) npix_spec
-    write(133) spec_lmin,spec_lmax
-    write(133) (spectrum(i),i=1,npix_spec)
-    close(133)
-    !--LEEP--
-    
     
   end subroutine MCRT
 
@@ -140,17 +113,19 @@ contains
     flagoutvol = .false.
 
     !--PEEL-- initialise counter of peels ...
-    ! Start with a peel off initial photon 
-    nPeeled = 1
-    PeelBuffer(nPeeled)%x      = ppos  ! position (at scattering)
-    PeelBuffer(nPeeled)%icell  = icell 
-    ! compute first term of ray's weights : the peeling-off strategy
-    PeelBuffer(nPeeled)%weight = 0.5 ! assume isotropy for this particular (non-)event
-    PeelBuffer(nPeeled)%nu     = p%nu_ext       ! frequency in the direction of observation 
-    if (nPeeled == PeelBufferSize) then ! buffer is full -> process.
-       call process_peels(domesh,domaine_calcul)
-       nPeeled=0
-    endif
+    if (peeling_off) then
+       ! Start with a peel off initial photon 
+       nPeeled = 1
+       PeelBuffer(nPeeled)%x      = ppos  ! position (at scattering)
+       PeelBuffer(nPeeled)%icell  = icell 
+       ! compute first term of ray's weights : the peeling-off strategy
+       PeelBuffer(nPeeled)%weight = 0.5 ! assume isotropy for this particular (non-)event
+       PeelBuffer(nPeeled)%nu     = p%nu_ext       ! frequency in the direction of observation 
+       if (nPeeled == PeelBufferSize) then ! buffer is full -> process.
+          call process_peels(domesh,domaine_calcul)
+          nPeeled=0
+       endif
+    end if
     !--LEEP-- 
 
     
@@ -335,18 +310,20 @@ contains
              ! scattering
              !------------
              !--PEEL--
-             ! save ray for batch processing later.
-             nPeeled = nPeeled + 1
-             PeelBuffer(nPeeled)%x     = ppos  ! position (at scattering)
-             PeelBuffer(nPeeled)%icell = icell 
-             ! compute first term of ray's weights : the peeling-off strategy
-             x = p%nu_ext ! incoming freq.
-             PeelBuffer(nPeeled)%weight = gas_peeloff_weight(scatter_flag, cell_gas, x, p%k, kobs, iran)
-             PeelBuffer(nPeeled)%nu = x ! frequency in the direction of observation 
-             if (nPeeled == PeelBufferSize) then ! buffer is full -> process.
-                call process_peels(domesh,domaine_calcul)
-                nPeeled=0
-             endif
+             if (peeling_off) then 
+                ! save ray for batch processing later.
+                nPeeled = nPeeled + 1
+                PeelBuffer(nPeeled)%x     = ppos  ! position (at scattering)
+                PeelBuffer(nPeeled)%icell = icell 
+                ! compute first term of ray's weights : the peeling-off strategy
+                x = p%nu_ext ! incoming freq.
+                PeelBuffer(nPeeled)%weight = gas_peeloff_weight(scatter_flag, cell_gas, x, p%k, kobs, iran)
+                PeelBuffer(nPeeled)%nu = x ! frequency in the direction of observation 
+                if (nPeeled == PeelBufferSize) then ! buffer is full -> process.
+                   call process_peels(domesh,domaine_calcul)
+                   nPeeled=0
+                end if
+             end if
              !--LEEP-- 
 
              p%nb_abs = p%nb_abs + 1     ! increment nb of scatterings
@@ -387,10 +364,12 @@ contains
 
     !--PEEL--
     ! finish processing peel buffer before moving to next photon packet. 
-    if (nPeeled > 0) then ! buffer is not empty -> process.
-       call process_peels(domesh,domaine_calcul)
-       nPeeled=0
-    endif
+    if (peeling_off) then 
+       if (nPeeled > 0) then ! buffer is not empty -> process.
+          call process_peels(domesh,domaine_calcul)
+          nPeeled=0
+       endif
+    end if
     !--LEEP-- 
 
     

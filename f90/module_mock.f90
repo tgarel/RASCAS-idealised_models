@@ -22,6 +22,8 @@ module module_mock
   real(kind=8)    :: spec_lmin, spec_lmax
   real(kind=8),allocatable :: spectrum(:)
 
+  ! global parameter setting peeling-off on or off.
+  logical         :: peeling_off 
   
 contains
 
@@ -124,8 +126,10 @@ contains
           exit
        end if
     end do
+
     ! read section if present
     if (section_present) then 
+       peeling_off = .true.
        do
           read (10,'(a)',iostat=err) line
           if(err/=0) exit
@@ -153,10 +157,12 @@ contains
              read(value,*) spec_lmax
           end select
        end do
+    else
+       peeling_off = .false.
     end if
     close(10)
 
-    call mock_init
+    if (peeling_off) call mock_init
 
     return
 
