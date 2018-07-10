@@ -28,7 +28,8 @@ module module_HI_model
   logical                  :: recoil       = .true.      ! if set to true, recoil effect is computed [default is true]
   logical                  :: isotropic    = .false.     ! if set to true, scattering events will be isotropic [default is false]
   !--CORESKIP--
-  logical                  :: HI_core_skip    = .false.     ! if true, skip scatterings in the core of the line (as in Smith+15). 
+  logical                  :: HI_core_skip    = .false.     ! if true, skip scatterings in the core of the line (as in Smith+15).
+  real(kind=8)             :: xcritmax        = 1d10        ! core-skipping will truncate at min(xcrit, xcritmax) -> set to a low value to activate. 
   !--PIKSEROC--
   ! --------------------------------------------------------------------------
 
@@ -112,6 +113,7 @@ contains
     real(kind=8),intent(in)                 :: vth
     !--CORESKIP--
     real(kind=8),intent(in)                 :: xcrit
+    real(kind=8)                            :: xc
     !--PIKSEROC--
     integer(kind=4),intent(inout)           :: iran
     real(kind=8)                            :: delta_nu_doppler, a, x_cell, upar, ruper
@@ -124,6 +126,7 @@ contains
        print*,'ERROR: core skipping is on but xcrit is not zero ... '
        stop
     end if
+    if (HI_core_skip) xc = min(xcrit,xcritmax)
     !--PIKSEROC-- 
     
     ! define x_cell & a
@@ -140,7 +143,7 @@ contains
     ruper  = ran3(iran)
     r2     = ran3(iran)
     !--CORESKIP--
-    uper   = sqrt(xcrit**2-log(ruper))*cos(twopi*r2)
+    uper   = sqrt(xc**2-log(ruper))*cos(twopi*r2)
     !--PIKSEROC--
     uper   = uper * vth  ! from x to velocity
 
@@ -304,6 +307,8 @@ contains
           !--CORESKIP--
           case ('HI_core_skip') 
              read(value,*) HI_core_skip
+          case ('xcritmax')
+             read(value,*) xcritmax
           !--PIKSEROC--
           end select
        end do
@@ -332,7 +337,8 @@ contains
        write(unit,'(a,L1)') '  recoil    = ',recoil
        write(unit,'(a,L1)') '  isotropic = ',isotropic
        !--CORESKIP--
-       write(unit,'(a,L1)') '  HI_core_skip = ',HI_core_skip
+       write(unit,'(a,L1)')     '  HI_core_skip = ',HI_core_skip
+       write(unit,'(a,ES10.3)') '  xcritmax     = ',xcritmax
        !--PIKSEROC--
 
        call print_uparallel_params(unit)
@@ -341,7 +347,8 @@ contains
        write(*,'(a,L1)') '  recoil    = ',recoil
        write(*,'(a,L1)') '  isotropic = ',isotropic
        !--CORESKIP--
-       write(*,'(a,L1)') '  HI_core_skip = ',HI_core_skip
+       write(*,'(a,L1)')     '  HI_core_skip = ',HI_core_skip
+       write(*,'(a,ES10.3)') '  xcritmax     = ',xcritmax
        !--PIKSEROC--
        call print_uparallel_params()
     end if
