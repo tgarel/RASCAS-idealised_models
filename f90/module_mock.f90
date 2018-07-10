@@ -23,12 +23,15 @@ module module_mock
   real(kind=8),allocatable :: spectrum(:)
 
   ! global parameter setting peeling-off on or off.
-  logical         :: peeling_off 
+  logical         :: peeling_off
+
+  ! name for output files (absolute path).
+  character(1000) :: mock_outputfilename
   
 contains
 
   subroutine mock_init()
-
+    
     implicit none
     allocate(image(npix,npix))
     image = 0.0d0
@@ -155,6 +158,8 @@ contains
              read(value,*) spec_lmin
           case ('spec_lmax')
              read(value,*) spec_lmax
+          case ('mock_outputfilename','outputfile')
+             write(mock_outputfilename,'(a)') trim(value)
           end select
        end do
     else

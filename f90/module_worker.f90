@@ -91,7 +91,7 @@ contains
     !--PEEL--
     if (peeling_off) then 
        ! save image
-       write(filename,'(a,i5.5)') 'image.',rank
+       write(filename,'(a,a,i5.5)') trim(mock_outputfilename),'_image.',rank
        open(unit=133,file=filename,form='unformatted',status='unknown')
        write(133) npix
        write(133) mock_image_side
@@ -99,7 +99,7 @@ contains
        write(133) ((image(i,j),i=1,npix),j=1,npix)
        close(133)
        ! save spectrum
-       write(filename,'(a,i5.5)') 'spectrum.',rank
+       write(filename,'(a,a,i5.5)') trim(mock_outputfilename),'_spectrum.',rank
        open(unit=133,file=filename,form='unformatted',status='unknown')
        write(133) npix_spec
        write(133) spec_lmin,spec_lmax
