@@ -107,7 +107,7 @@ contains
           call add_photon_to_domain(i,j)
        endif
     enddo
-
+    
     ! according to the distribution of photons in domains, ditribute cpus to each domain
     call init_loadb(nbuffer,ndomain)
 

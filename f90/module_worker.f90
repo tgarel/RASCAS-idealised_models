@@ -4,6 +4,9 @@ module module_worker
   use module_domain
   use module_photon
   use module_mesh
+  !--PEEL--
+  use module_mock
+  !--LEEP--
 
   private 
 
@@ -31,6 +34,10 @@ contains
     type(mesh)                                    :: meshdom
     type(domain)                                  :: compute_dom
     real(kind=8)                                  :: start_photpacket,end_photpacket
+    !--PEEL--
+    integer(kind=4) :: i,j
+    character(1000) :: filename 
+    !--LEEP--
 
     ! get the computational domain
     call domain_constructor_from_file(file_compute_dom,compute_dom)
@@ -66,7 +73,7 @@ contains
 
        ! do the RT stuff. This is a single loop over photons in photpacket.
        call MCRT(nbuffer,photpacket,meshdom,compute_dom)
-
+       
        call cpu_time(end_photpacket)
 
        if(verbose)then
@@ -81,6 +88,26 @@ contains
 
     enddo
 
+    !--PEEL--
+    if (peeling_off) then 
+       ! save image
+       write(filename,'(a,a,i5.5)') trim(mock_outputfilename),'_image.',rank
+       open(unit=133,file=filename,form='unformatted',status='unknown')
+       write(133) npix
+       write(133) mock_image_side
+       write(133) (mock_center(i),i=1,3)
+       write(133) ((image(i,j),i=1,npix),j=1,npix)
+       close(133)
+       ! save spectrum
+       write(filename,'(a,a,i5.5)') trim(mock_outputfilename),'_spectrum.',rank
+       open(unit=133,file=filename,form='unformatted',status='unknown')
+       write(133) npix_spec
+       write(133) spec_lmin,spec_lmax
+       write(133) (spectrum(i),i=1,npix_spec)
+       close(133)
+    end if
+    !--LEEP--
+    
     if(verbose) write(*,'(a,i4.4,a)') ' [w',rank,'] : exit of loop...'
 
     ! synchronization, for profiling purposes

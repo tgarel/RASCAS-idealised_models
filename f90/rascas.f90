@@ -151,6 +151,9 @@ contains
     
     call read_master_params(pfile)
     call read_worker_params(pfile)
+    !--PEEL--
+    call read_mock_params(pfile)
+    !--LEEP--
     
     return
 
