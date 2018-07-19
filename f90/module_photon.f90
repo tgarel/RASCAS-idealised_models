@@ -552,7 +552,7 @@ contains
     implicit none
     type(mesh),intent(in)                :: domesh         ! mesh
     type(domain),intent(in)              :: domaine_calcul ! computational domain in which photons are propagating
-    real(kind=8),parameter               :: tau_max = 60   ! stop computation when tau=20 is reached ... 
+    real(kind=8),parameter               :: tau_max = 60   ! stop computation when tau reaches tau_max ... 
     integer(kind=4) :: ipeel
     real(kind=8)    :: tau,peel_contrib
 
@@ -561,8 +561,8 @@ contains
        if (tau < tau_max) then
           peel_contrib = PeelBuffer(ipeel)%weight
           peel_contrib = peel_contrib * exp(-tau)
-          call peel_to_map(PeelBuffer(ipeel)%x,peel_contrib)
-          call peel_to_spec(PeelBuffer(ipeel)%nu,peel_contrib)
+          if (mock_compute_image) call peel_to_map(PeelBuffer(ipeel)%x,peel_contrib)
+          if (mock_compute_spectrum) call peel_to_spec(PeelBuffer(ipeel)%nu,peel_contrib)
        end if
     end do
     

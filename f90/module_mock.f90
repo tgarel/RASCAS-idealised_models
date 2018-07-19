@@ -6,37 +6,55 @@ module module_mock
 
   ! direction of observation
   real(kind=8) :: kobs(3),kobs_perp_1(3),kobs_perp_2(3)
-
   ! center of observation
   real(kind=8) :: mock_center(3)
+  ! Prefix for output files (including absolute path) -> will be followed
+  ! by "_image.xxxxx" or "_spectrum.xxxxx", with xxxxx the cpu number.
+  character(1000) :: mock_outputfilename
 
-  ! extent of observation
-  real(kind=8) :: mock_image_side ! box units
+  ! --- FLUX --- 
+  real(kind=8)             :: Flux            ! flux 
   
-  ! image 
-  integer(kind=4) :: npix
-  real(kind=8),allocatable :: image(:,:)
+  ! --- SPECTRUM --- 
+  real(kind=8)             :: spec_lmin, spec_lmax  ! min/max of spectrum [Angstrom]
+  integer(kind=4)          :: npix_spec = 0         ! nb of pixels
+  real(kind=8),allocatable :: spectrum(:)           ! actual spectrum. 
 
-  ! spectrum
-  integer(kind=4) :: npix_spec
-  real(kind=8)    :: spec_lmin, spec_lmax
-  real(kind=8),allocatable :: spectrum(:)
+  ! --- IMAGE --- 
+  real(kind=8)             :: mock_image_side ! extent of observation [box units]
+  integer(kind=4)          :: npix = 0        ! nb of pixels across image
+  real(kind=8),allocatable :: image(:,:)      ! actual image. 
 
+  ! --- CUBE ---
+  ! to be done ... 
+  
   ! global parameter setting peeling-off on or off.
   logical         :: peeling_off
-
-  ! name for output files (absolute path).
-  character(1000) :: mock_outputfilename
+  logical         :: mock_compute_image
+  logical         :: mock_compute_spectrum
   
+
 contains
 
+  
   subroutine mock_init()
     
     implicit none
-    allocate(image(npix,npix))
-    image = 0.0d0
-    allocate(spectrum(npix_spec))
-    spectrum = 0.0d0 
+
+    ! allocate detectors ... 
+    mock_compute_image = .false.
+    if (npix > 0) then 
+       allocate(image(npix,npix))
+       image = 0.0d0
+       mock_compute_image = .true.
+    end if
+    mock_compute_spectrum = .false.
+    if (npix_spec > 0) then 
+       allocate(spectrum(npix_spec))
+       spectrum = 0.0d0
+       mock_compute_spectrum = .true.
+    end if
+    
     ! define direction of observation (normalise vector)
     kobs = kobs / sqrt(kobs(1)*kobs(1)+kobs(2)*kobs(2)+kobs(3)*kobs(3))
     ! define basis for sky plane
@@ -58,22 +76,28 @@ contains
     end if
         
     return
+    
   end subroutine mock_init
   
+
   
   subroutine projected_pos(pos,pp)
+
     implicit none
-    real(kind=8),intent(in) :: pos(3)
+
+    real(kind=8),intent(in)    :: pos(3)
     real(kind=8),intent(inout) :: pp(2)
     
     pp(1) = (pos(1)-mock_center(1))*kobs_perp_1(1) + (pos(2)-mock_center(2))*kobs_perp_1(2) + (pos(3)-mock_center(3))*kobs_perp_1(3)
     pp(2) = (pos(1)-mock_center(1))*kobs_perp_2(1) + (pos(2)-mock_center(2))*kobs_perp_2(2) + (pos(3)-mock_center(3))*kobs_perp_2(3)
 
     return 
+
   end subroutine projected_pos
     
   
   subroutine peel_to_map(peel_pos,peel_contribution)
+
     implicit none
 
     real(kind=8),intent(in) :: peel_pos(3),peel_contribution
@@ -86,8 +110,10 @@ contains
     if (ix>0 .and. ix<=npix .and. iy>0 .and. iy<=npix) image(ix,iy) = image(ix,iy) + peel_contribution
     
     return
+
   end subroutine peel_to_map
 
+  
   subroutine peel_to_spec(peel_nu,peel_contribution)
     implicit none
 
