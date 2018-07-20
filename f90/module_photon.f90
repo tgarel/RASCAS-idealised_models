@@ -39,10 +39,12 @@ module module_photon
   
   !--PEEL--
   type peel
-     real(kind=8)              :: nu ! frequency before scattering, converted to after virtual scat. towards dir. of observation. 
-     real(kind=8),dimension(3) :: x  ! position at scattering
-     integer(kind=4)           :: icell ! cell in which scattering occurs, saves one search... 
+     real(kind=8)              :: nu     ! frequency before scattering, converted to freq. after virtual scat. towards dir. of observation. 
+     real(kind=8),dimension(3) :: x      ! position at scattering
+     real(kind=8),dimension(3) :: kin    ! incoming photon direcrtion
+     integer(kind=4)           :: icell  ! cell in which scattering occurs, saves one search... 
      real(kind=8)              :: weight ! probability of being re-emitted in obs direction
+     integer(kind=4)           :: scatter_flag ! (if negative, this is a emission peel-> specific processing)
   end type peel
   integer(kind=4),parameter            :: PeelBufferSize = 1000000
   type(peel),dimension(PeelBufferSize) :: PeelBuffer
@@ -117,12 +119,13 @@ contains
        ! Start with a peel off initial photon 
        nPeeled = 1
        PeelBuffer(nPeeled)%x      = ppos  ! position (at scattering)
-       PeelBuffer(nPeeled)%icell  = icell 
+       PeelBuffer(nPeeled)%icell  = icell
        ! compute first term of ray's weights : the peeling-off strategy
-       PeelBuffer(nPeeled)%weight = 0.5 ! assume isotropy for this particular (non-)event
-       PeelBuffer(nPeeled)%nu     = p%nu_ext       ! frequency in the direction of observation 
+       PeelBuffer(nPeeled)%weight = 0.5      ! assume isotropy for this particular (non-)event
+       PeelBuffer(nPeeled)%nu     = p%nu_ext ! frequency in the direction of observation
+       PeelBuffer(nPeeled)%scatter_flag = -1 ! flag peel as an initial peel 
        if (nPeeled == PeelBufferSize) then ! buffer is full -> process.
-          call process_peels(domesh,domaine_calcul)
+          call process_peels(domesh,domaine_calcul,iran)
           nPeeled=0
        endif
     end if
@@ -314,13 +317,12 @@ contains
                 ! save ray for batch processing later.
                 nPeeled = nPeeled + 1
                 PeelBuffer(nPeeled)%x     = ppos  ! position (at scattering)
-                PeelBuffer(nPeeled)%icell = icell 
-                ! compute first term of ray's weights : the peeling-off strategy
-                x = p%nu_ext ! incoming freq.
-                PeelBuffer(nPeeled)%weight = gas_peeloff_weight(scatter_flag, cell_gas, x, p%k, kobs, iran)
-                PeelBuffer(nPeeled)%nu = x ! frequency in the direction of observation 
+                PeelBuffer(nPeeled)%icell = icell    
+                PeelBuffer(nPeeled)%kin   = p%k      ! incoming photon direction 
+                PeelBuffer(nPeeled)%nu    = p%nu_ext ! incoming photon frequency
+                PeelBuffer(nPeeled)%scatter_flag = scatter_flag
                 if (nPeeled == PeelBufferSize) then ! buffer is full -> process.
-                   call process_peels(domesh,domaine_calcul)
+                   call process_peels(domesh,domaine_calcul,iran)
                    nPeeled=0
                 end if
              end if
@@ -366,7 +368,7 @@ contains
     ! finish processing peel buffer before moving to next photon packet. 
     if (peeling_off) then 
        if (nPeeled > 0) then ! buffer is not empty -> process.
-          call process_peels(domesh,domaine_calcul)
+          call process_peels(domesh,domaine_calcul,iran)
           nPeeled=0
        endif
     end if
@@ -394,12 +396,13 @@ contains
   
 
   !--PEEL--
-  function tau_to_border(p,domesh,domaine_calcul,tau_max)
+  function tau_to_border(p,domesh,domaine_calcul,tau_max,kobs)
 
     type(peel),intent(inout)             :: p              ! peel 
     type(mesh),intent(in)                :: domesh         ! mesh
     type(domain),intent(in)              :: domaine_calcul ! computational domain in which photons are propagating
     real(kind=8),intent(in)              :: tau_max    ! stop computation when tau reaches tau_max
+    real(kind=8),intent(in)              :: kobs(3) ! direction to observer 
     real(kind=8)                         :: tau_to_border
     real(kind=8)                         :: tau_cell
     type(gas)                            :: cell_gas                   ! gas in the current cell 
@@ -548,22 +551,45 @@ contains
   !--LEEP--
   
   !--PEEL--
-  subroutine process_peels(domesh,domaine_calcul)
+  subroutine process_peels(domesh,domaine_calcul,iran)
     implicit none
-    type(mesh),intent(in)                :: domesh         ! mesh
-    type(domain),intent(in)              :: domaine_calcul ! computational domain in which photons are propagating
-    real(kind=8),parameter               :: tau_max = 60   ! stop computation when tau reaches tau_max ... 
-    integer(kind=4) :: ipeel
-    real(kind=8)    :: tau,peel_contrib
+    type(mesh),intent(in)         :: domesh         ! mesh
+    type(domain),intent(in)       :: domaine_calcul ! computational domain in which photons are propagating
+    integer(kind=4),intent(inout) :: iran 
+    real(kind=8),parameter        :: tau_max = 60   ! stop computation when tau reaches tau_max ... 
+    integer(kind=4)               :: ipeel,idir,ileaf
+    real(kind=8)                  :: tau,peel_contrib
+    real(kind=8)                  :: projpos(2),kobs(3),x
+    logical                       :: increment_flux,increment_spec,increment_image
+    type(gas)                     :: cell_gas       ! gas in the current cell 
 
-    do ipeel = 1,nPeeled
-       tau = tau_to_border(PeelBuffer(ipeel),domesh,domaine_calcul,tau_max)
-       if (tau < tau_max) then
-          peel_contrib = PeelBuffer(ipeel)%weight
-          peel_contrib = peel_contrib * exp(-tau)
-          if (mock_compute_image) call peel_to_map(PeelBuffer(ipeel)%x,peel_contrib)
-          if (mock_compute_spectrum) call peel_to_spec(PeelBuffer(ipeel)%nu,peel_contrib)
-       end if
+    do idir = 1,nDirections
+       kobs = mock_line_of_sight(idir)
+       do ipeel = 1,nPeeled
+          ! if projected peel falls into one of the detector compute tau to detector.
+          call mock_projected_pos(PeelBuffer(ipeel)%x,projpos,idir)
+          increment_flux  = mock_point_in_flux_aperture(projpos,idir)
+          increment_spec  = mock(idir)%compute_spectrum .and. mock_point_in_spectral_aperture(projpos,idir)
+          increment_image = mock(idir)%compute_image .and. mock_point_in_image(projpos,idir)
+          tau = tau_max
+          if (increment_flux .or. increment_spec .or. increment_image) then
+             if (PeelBuffer(ipeel)%scatter_flag > 0) then 
+                ileaf    = - domesh%son(PeelBuffer(ipeel)%icell)
+                cell_gas = domesh%gas(ileaf)
+                x        = PeelBuffer(ipeel)%nu ! incoming direction ... 
+                PeelBuffer(ipeel)%weight = gas_peeloff_weight(PeelBuffer(ipeel)%scatter_flag, cell_gas, x, PeelBuffer(ipeel)%kin, kobs, iran)
+                PeelBuffer(ipeel)%nu     = x ! frequency in the direction of observation 
+             end if
+             tau = tau_to_border(PeelBuffer(ipeel),domesh,domaine_calcul,tau_max,kobs)
+          end if
+          ! if tau is not absurdly large, increment detectors 
+          if (tau < tau_max) then
+             peel_contrib = PeelBuffer(ipeel)%weight * exp(-tau)
+             if (increment_flux)  call peel_to_flux(peel_contrib,idir) 
+             if (increment_spec)  call peel_to_spec(PeelBuffer(ipeel)%nu,peel_contrib,idir)
+             if (increment_image) call peel_to_map(projpos,peel_contrib,idir)
+          end if
+       end do
     end do
     
   end subroutine process_peels
