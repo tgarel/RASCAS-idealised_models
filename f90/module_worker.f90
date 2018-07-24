@@ -4,6 +4,9 @@ module module_worker
   use module_domain
   use module_photon
   use module_mesh
+  !--PEEL--
+  use module_mock
+  !--LEEP--
 
   private 
 
@@ -66,7 +69,7 @@ contains
 
        ! do the RT stuff. This is a single loop over photons in photpacket.
        call MCRT(nbuffer,photpacket,meshdom,compute_dom)
-
+       
        call cpu_time(end_photpacket)
 
        if(verbose)then
@@ -81,6 +84,12 @@ contains
 
     enddo
 
+    !--PEEL--
+    if (peeling_off) then 
+       call dump_mocks(rank)
+    end if
+    !--LEEP--
+    
     if(verbose) write(*,'(a,i4.4,a)') ' [w',rank,'] : exit of loop...'
 
     ! synchronization, for profiling purposes

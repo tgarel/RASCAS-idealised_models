@@ -132,7 +132,6 @@ program PhotonsFromStars
   ! --------------------------------------------------------------------------------------
   if (verbose) write(*,*) '> reading star particles'
   call ramses_read_stars_in_domain(repository,snapnum,emission_domain,star_pos,star_age,star_mass,star_vel,star_met)
-  ! NB: star_mass should be the mass of stars formed (-> set use_initial_mass=T in [ramses] if possible).
   ! --------------------------------------------------------------------------------------
   
   

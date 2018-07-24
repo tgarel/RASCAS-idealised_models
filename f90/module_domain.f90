@@ -456,12 +456,12 @@ contains
     do i=1,ndom
        db = domain_distance_to_border(x,liste_domaines(i))
        ! if db < 0 point outside domain
-       if (db>dmax)then
+       if (db>=dmax)then
           imax = i
           dmax = db
        endif
     enddo
-    if(dmax<=0.0d0 .or. imax==0)then
+    if(dmax<0.0d0 .or. imax==0)then
        print *,'ERROR: problem with get_my_new_domain'
        stop
     endif

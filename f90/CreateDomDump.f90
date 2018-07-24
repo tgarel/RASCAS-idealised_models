@@ -16,8 +16,7 @@ program CreateDomDump
   real(kind=8),dimension(:,:),allocatable  :: x_leaf, xleaf_sel
   real(kind=8),dimension(:,:),allocatable  :: ramses_var
   integer,dimension(:),allocatable         :: leaf_level, leaflevel_sel, ind_sel
-
-  integer :: noctsnap,nleaftot,nvar,nleaf_sel,i,j, narg
+  integer :: noctsnap,nleaftot,nvar,nleaf_sel,i, narg, j
   character(2000) :: toto,meshroot,parameter_file,fichier, fichier2
   character(2000),dimension(:),allocatable :: domain_file_list, mesh_file_list
   real(kind=8) :: computdom_max,decompdom_max, start, finish, intermed
@@ -29,9 +28,9 @@ program CreateDomDump
   ! user-defined parameters - read from section [CreateDomDump] of the parameter file
   ! --------------------------------------------------------------------------
   ! --- input / outputs
-  character(2000)           :: DataDir = 'test/'      ! directory to which outputs will be written
-  character(2000)           :: repository = './'      ! ramses run directory (where all output_xxxxx dirs are).
-  integer(kind=4)           :: snapnum = 1            ! ramses output number to use
+  character(2000)           :: DomDumpDir = 'test/'       ! directory to which outputs will be written
+  character(2000)           :: repository = './'          ! ramses run directory (where all output_xxxxx dirs are).
+  integer(kind=4)           :: snapnum = 1                ! ramses output number to use
   character(20)             :: reading_method = 'fullbox' ! strategy to read ramses data
   ! --- computational domain  
   character(10)             :: comput_dom_type      = 'sphere'         ! shape type of domain  // default is a shpere.
@@ -107,7 +106,6 @@ program CreateDomDump
      do i=1,ncpu_read
         cpu_list(i)=i
      end do
-
      call read_leaf_cells_omp(repository, snapnum, ncpu_read, cpu_list, nleaftot, nvar, x_leaf, ramses_var, leaf_level)
      ! Extract and convert properties of cells into gas mix properties
      call gas_from_ramses_leaves(repository,snapnum,nleaftot,nvar,ramses_var, gas_leaves)
@@ -158,15 +156,15 @@ program CreateDomDump
 
   ! write master info
   fichier = "compute_domain.dom"
-  call domain_write_file(trim(datadir)//trim(fichier),domaine_de_calcul)
+  call domain_write_file(trim(DomDumpDir)//trim(fichier),domaine_de_calcul)
   fichier2 = "domain_decomposition_params.dat"
-  open(unit=10, file=trim(datadir)//trim(fichier2))
+  open(unit=10, file=trim(DomDumpDir)//trim(fichier2))
   write(10,*) 'computational_domain_file = ',trim(fichier)
   write(10,*) 'Ndomain = ',decomp_dom_ndomain
   do i=1,decomp_dom_ndomain
      write(10,*) 'domain_file = ',trim(domain_file_list(i))
      write(10,*) 'mesh_file   = ',trim(mesh_file_list(i))
-     fichier = trim(datadir)//trim(domain_file_list(i))
+     fichier = trim(DomDumpDir)//trim(domain_file_list(i))
      call domain_write_file(fichier,domain_list(i))
   end do
   close(10)
@@ -209,30 +207,44 @@ program CreateDomDump
            zmin = decomp_dom_zc(i) - decomp_dom_thickness(i)*0.5d0
         end select
         call get_cpu_list_periodic(repository, snapnum, xmin,xmax,ymin,ymax,zmin,zmax, ncpu_read, cpu_list)
-        call read_leaf_cells_in_domain(repository, snapnum, domain_list(i), ncpu_read, cpu_list, &
-             & nleaftot, nvar, x_leaf, ramses_var, leaf_level)
-        !call read_leaf_cells_omp(repository, snapnum, ncpu_read, cpu_list, nleaftot, nvar, x_leaf, ramses_var, leaf_level)
+        call read_leaf_cells_omp(repository, snapnum, ncpu_read, cpu_list, nleaftot, nvar, x_leaf, ramses_var, leaf_level)
         ! Extract and convert properties of cells into gas mix properties
         call gas_from_ramses_leaves(repository,snapnum,nleaftot,nvar,ramses_var, gas_leaves)
         call cpu_time(finish)
         print '(" --> Time to read leaves in hilbert domain = ",f12.3," seconds.")',finish-intermed
-        allocate(ind_sel(1:nleaftot))
-        do j=1,nleaftot
-           ind_sel(j)=j
+     endif
+
+     ! another last option would be to read all cpu files but to select cells on the fly to maintain low memory
+     ! this would be for zoom-in simulations with -Dquadhilbert
+     if (reading_method == 'select_onthefly') then
+        ncpu_read = get_ncpu(repository,snapnum)
+        allocate(cpu_list(1:ncpu_read))
+        do j=1,ncpu_read
+           cpu_list(j)=j
         end do
+        call read_leaf_cells_in_domain(repository, snapnum, domain_list(i), ncpu_read, cpu_list, &
+             & nleaftot, nvar, x_leaf, ramses_var, leaf_level)
+        print*,'in CreateDomDump: nleaf_sel = ',nleaftot, size(leaf_level)
+        ! Extract and convert properties of cells into gas mix properties
+        call gas_from_ramses_leaves(repository,snapnum,nleaftot,nvar,ramses_var, gas_leaves)
+        call cpu_time(finish)
+        print '(" --> Time to read leaves in domain = ",f12.3," seconds.")',finish-intermed
+        ! and then no need for selection, but to adapt the call to mesh_from_leaves
+        call mesh_from_leaves(nOctSnap,domain_list(i),nleaftot, &
+             gas_leaves,x_leaf,leaf_level,domain_mesh)
      else
         call select_in_domain(domain_list(i), nleaftot, x_leaf, ind_sel)
+        print*,'in CreateDomDump: ind_sel = ',size(ind_sel)
+        call select_from_domain(arr_in=x_leaf,     ind_sel=ind_sel, arr_out=xleaf_sel)
+        call select_from_domain(arr_in=leaf_level, ind_sel=ind_sel, arr_out=leaflevel_sel)
+        call select_from_domain(arr_in=gas_leaves, ind_sel=ind_sel, arr_out=selected_leaves)
+        nleaf_sel = size(ind_sel)
+        print*,'in CreateDomDump: nleaf_sel = ',nleaf_sel
+        call mesh_from_leaves(nOctSnap,domain_list(i),nleaf_sel, &
+             selected_leaves,xleaf_sel,leaflevel_sel,domain_mesh)
      endif
-     print*,'in CreateDomDump: ind_sel = ',size(ind_sel)
-     call select_from_domain(arr_in=x_leaf,     ind_sel=ind_sel, arr_out=xleaf_sel)
-     call select_from_domain(arr_in=leaf_level, ind_sel=ind_sel, arr_out=leaflevel_sel)
-     call select_from_domain(arr_in=gas_leaves, ind_sel=ind_sel, arr_out=selected_leaves)
-     nleaf_sel = size(ind_sel)
-     print*,'in CreateDomDump: nleaf_sel = ',size(leaf_level)
-     call mesh_from_leaves(nOctSnap,domain_list(i),nleaf_sel, &
-          selected_leaves,xleaf_sel,leaflevel_sel,domain_mesh)
-     print*,'in CreateDomDump: back from mesh_from_leaves '
-     fichier = trim(datadir)//trim(mesh_file_list(i))
+
+     fichier = trim(DomDumpDir)//trim(mesh_file_list(i))
      call dump_mesh(domain_mesh, fichier)
      call mesh_destructor(domain_mesh)
   enddo
@@ -299,8 +311,8 @@ contains
              read(value,*) comput_dom_thickness
           case ('verbose')
              read(value,*) verbose
-          case ('DataDir')
-             write(DataDir,'(a)') trim(value)
+          case ('DomDumpDir')
+             write(DomDumpDir,'(a)') trim(value)
           case ('repository')
              write(repository,'(a)') trim(value)
           case ('snapnum')
@@ -346,8 +358,8 @@ contains
        decomp_dom_zc(1) = 0.5d0
     end if
 
-    ! make sure DataDir ends with a /
-    DataDir = trim(datadir)//"/"
+    ! make sure DomDumpDir ends with a /
+    DomDumpDir = trim(DomDumpDir)//"/"
     
     call read_mesh_params(pfile)
     
@@ -369,7 +381,7 @@ contains
     if (present(unit)) then 
        write(unit,'(a,a,a)')         '[CreateDomDump]'
        write(unit,'(a)')             '# input / output parameters'
-       write(unit,'(a,a)')           '  DataDir         = ',trim(DataDir)
+       write(unit,'(a,a)')           '  DomDumpDir      = ',trim(DomDumpDir)
        write(unit,'(a,a)')           '  repository      = ',trim(repository)
        write(unit,'(a,i5)')          '  snapnum         = ',snapnum
        write(unit,'(a,a)')           '  reading_method  = ',trim(reading_method)
@@ -414,7 +426,7 @@ contains
        write(*,'(a)')             ' '
        write(*,'(a,a,a)')         '[CreateDomDump]'
        write(*,'(a)')             '# input / output parameters'
-       write(*,'(a,a)')           '  DataDir    = ',trim(DataDir)
+       write(*,'(a,a)')           '  DomDumpDir = ',trim(DomDumpDir)
        write(*,'(a,a)')           '  repository = ',trim(repository)
        write(*,'(a,i5)')          '  snapnum    = ',snapnum
        write(*,'(a,a)')           '  reading_method  = ',trim(reading_method)

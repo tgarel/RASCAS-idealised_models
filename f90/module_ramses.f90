@@ -79,15 +79,15 @@ module module_ramses
   ! user-defined parameters - read from section [ramses] of the parameter file
   ! --------------------------------------------------------------------------
   ! ramses options (not guessable from outputs)
-  logical                  :: self_shielding = .true.     ! if true, reproduce self-shielding approx made in ramses to compute nHI. 
-  logical                  :: ramses_rt      = .false.    ! if true, read ramses-RT output and compute nHI and T accordingly.
-  logical                  :: read_rt_variables = .false. ! if true, read RT variables (e.g. to compute heating terms)
-  logical                  :: cosmo            = .true.   ! if false, assume idealised simulation
-  logical                  :: use_initial_mass = .false.  ! if true, use initial masses of star particles instead of mass at output time
-  logical                  :: use_proper_time  = .false.  ! if true, use proper time instead of conformal time for cosmo runs. 
+  logical                  :: self_shielding    = .true.   ! if true, reproduce self-shielding approx made in ramses to compute nHI. 
+  logical                  :: ramses_rt         = .false.  ! if true, read ramses-RT output and compute nHI and T accordingly.
+  logical                  :: read_rt_variables = .false.  ! if true, read RT variables (e.g. to compute heating terms)
+  logical                  :: use_initial_mass  = .false.  ! if true, use initial masses of star particles instead of mass at output time
+  logical                  :: cosmo             = .true.   ! if false, assume idealised simulation
+  logical                  :: use_proper_time   = .false.  ! if true, use proper time instead of conformal time for cosmo runs. 
   ! miscelaneous
   logical                  :: verbose        = .false. ! display some run-time info on this module
-  ! Hydro and RT variable indices, should become user params
+  ! RT variable indices
   integer(kind=4) :: itemp  = 5 ! index of thermal pressure
   integer(kind=4) :: imetal = 6 ! index of metallicity 
   integer(kind=4) :: ihii   = 7 ! index of HII fraction 
@@ -101,16 +101,14 @@ module module_ramses
   ! abundance_Mg_mass == abundance_Mg_number * 24.305
   real(kind=8),parameter    :: abundance_Mg_mass = 8.24d-4 ! From Scarlata (private comm.): abundance_Mg_number = 3.39d-5
   ! --------------------------------------------------------------------------
-
   
-  public  :: get_cpu_list,get_cpu_list_periodic,get_ncpu
-  public  :: ramses_get_nhi_nhei_nehii_cgs, read_leaf_cells_in_domain, read_leaf_cells_omp
-  public  :: ramses_get_nh_nhi_nhei_nehii_cgs
-  public  :: read_leaf_cells, get_ngridtot, ramses_get_velocity_cgs, ramses_get_T_nhi_cgs, ramses_get_metallicity, ramses_get_box_size_cm, ramses_get_nh_cgs
-  public  :: ramses_read_stars_in_domain, read_ramses_params, print_ramses_params, dump_ramses_info, ramses_get_T_nSiII_cgs, ramses_get_T_nMgII_cgs
-  public :: ramses_get_LyaEmiss_HIDopwidth,ramses_get_cooling_time
-  ! default is private now ... !! private :: read_hydro, read_amr, get_nleaf, get_nvar, clear_amr, get_ncpu, get_param_real
-
+  
+  public :: read_leaf_cells, read_leaf_cells_omp, read_leaf_cells_in_domain
+  public :: get_ngridtot, ramses_get_box_size_cm, get_cpu_list, get_cpu_list_periodic, get_ncpu
+  public :: ramses_get_velocity_cgs, ramses_get_T_nhi_cgs, ramses_get_metallicity,  ramses_get_nh_cgs, ramses_get_T_nSiII_cgs, ramses_get_T_nMgII_cgs
+  public :: ramses_read_stars_in_domain
+  public :: read_ramses_params, print_ramses_params, dump_ramses_info
+  
   !==================================================================================
 contains
 
@@ -122,7 +120,7 @@ contains
        & xleaf, ramses_var, leaf_level)
 
     ! read all leaf cell from a simulation snapshot. Return standard 
-    ! ramses ramses variables through ramses_var(nvar,nleaftot) and
+    ! ramses variables through ramses_var(nvar,nleaftot) and
     ! positions (xleaf(3,nleaftot)) and levels (leaf_level).
 
     implicit none 
@@ -140,7 +138,7 @@ contains
     if(verbose)then
        print *,' '
        print *,'...reading RAMSES cells...'
-       if (read_rt_variables) print*,'......including RT variables...'
+       print *,' '
     endif
 
     nleaftot = get_nleaf(repository,snapnum)  ! sets ncpu too 
@@ -148,7 +146,7 @@ contains
     allocate(ramses_var(nvar,nleaftot), xleaf(nleaftot,3), leaf_level(nleaftot))
     ncpu = get_ncpu(repository,snapnum)
 
-    if(verbose)print *,'--> nleaftot, nvar, ncpu =',nleaftot,nvar,ncpu
+    if(verbose)print *,'-- read_leaf_cells --> nleaftot, nvar, ncpu =',nleaftot,nvar,ncpu
 
     do_allocs = .true.
     ileaf = 0
@@ -810,6 +808,637 @@ contains
   
 
 
+  subroutine read_leaf_cells_omp(repository, snapnum, ncpu_read, cpu_list, &
+       & nleaftot, nvar, xleaf_all, ramses_var_all, leaf_level_all)
+    ! read all leaf cell from a selection of cpu files in a simulation snapshot.
+    ! Return standard ramses variables through ramses_var(nvar,nleaftot) and
+    ! positions (xleaf(3,nleaftot)) and levels (leaf_level).
+    implicit none 
+    
+    character(2000),intent(in)                :: repository
+    integer(kind=4),intent(in)                :: snapnum, ncpu_read
+    integer(kind=4),dimension(:),allocatable,intent(in) :: cpu_list
+    integer(kind=4),intent(inout)             :: nleaftot, nvar
+    real(kind=8),allocatable, intent(inout)   :: ramses_var_all(:,:)
+    real(kind=8),allocatable,intent(inout)    :: xleaf_all(:,:)
+    integer(kind=4),allocatable,intent(inout) :: leaf_level_all(:)
+    real(kind=8),allocatable                  :: ramses_var(:,:)
+    real(kind=8),allocatable                  :: xleaf(:,:)
+    integer(kind=4),allocatable               :: leaf_level(:)
+    integer(kind=4)                           :: k, icpu, ileaf, icell, ivar, ilast, iloop
+    logical                                   :: do_allocs
+    
+    if(verbose)then
+       print *,' '
+       print *,'...reading RAMSES cells...'
+       print *,' '
+    endif
+
+    nleaftot = get_nleaf(repository,snapnum)  ! sets ncpu too 
+    nvar     = get_nvar(repository,snapnum)
+    allocate(ramses_var_all(nvar,nleaftot), xleaf_all(nleaftot,3), leaf_level_all(nleaftot))
+    !ncpu = get_ncpu(repository,snapnum)
+
+    if(verbose) print *,'-- read_leaf_cells_omp --> nleaftot, nvar, ncpu =',nleaftot,nvar,ncpu_read
+
+    ileaf = 0
+    iloop = 0
+    ilast = 1
+!$OMP PARALLEL &
+!$OMP DEFAULT(private) &
+!$OMP SHARED(iloop, ilast, xleaf_all, leaf_level_all, ramses_var_all, repository, snapnum, nvar, nleaftot, ncpu_read, cpu_list)
+    do_allocs = .true.
+!$OMP DO
+    do k=1,ncpu_read
+    !do icpu = 1, ncpu
+       icpu=cpu_list(k)
+       call read_amr_hydro(repository,snapnum,icpu,&
+            & son,cpu_map,var,cell_x,cell_y,cell_z,cell_level,ncell)
+       
+       if (do_allocs) allocate(ramses_var(nvar,ncell), xleaf(ncell,3), leaf_level(ncell))
+       do_allocs = .false.
+       ! collect leaf cells
+       ileaf = 0
+       do icell = 1,ncell
+          if (son(icell)==0 .and. cpu_map(icell) == icpu) then
+             ileaf = ileaf + 1
+             do ivar = 1,nvar
+                ramses_var(ivar,ileaf) = var(icell,ivar)
+             end do
+             xleaf(ileaf,1)    = cell_x(icell)
+             xleaf(ileaf,2)    = cell_y(icell)
+             xleaf(ileaf,3)    = cell_z(icell)
+             leaf_level(ileaf) = cell_level(icell)
+          end if
+       end do
+
+!$OMP CRITICAL
+       ! only one CRITICAL zone
+       !write (*, "(A, f5.2, A, A)", advance='no') &           ! Progress bar
+       !     ' Reading leaves ',dble(iloop) / ncpu_read * 100,' % ',char(13)
+       !iloop=iloop+1
+
+       ! ileaf is now the number of leaves on local cpu
+       if(ileaf .gt. 0) then
+          ! save leaf cells to return arrays
+          xleaf_all(ilast:ilast-1+ileaf,1:3)  = xleaf(1:ileaf,1:3)
+          leaf_level_all(ilast:ilast-1+ileaf) = leaf_level(1:ileaf)
+          ramses_var_all(1:nvar,ilast:ilast-1+ileaf) = ramses_var(1:nvar,1:ileaf)
+       endif
+       ilast=ilast+ileaf
+!$OMP END CRITICAL
+    end do
+!$OMP END DO
+    if(.not. do_allocs) deallocate(ramses_var,xleaf,leaf_level)
+!$OMP END PARALLEL
+    if(verbose)then
+       print*,' '
+       print*,'--> Nleaves read =',ilast-1
+       print*,' '
+    end if
+
+    return
+
+  end subroutine read_leaf_cells_omp
+
+
+  subroutine read_leaf_cells_in_domain(repository, snapnum, selection_domain, &
+       & ncpu_read, cpu_list, &
+       & nleaftot_all, nvar, xleaf_all, ramses_var_all, leaf_level_all)
+
+    ! Read leaf cells from a selection of cpu files in a simulation snapshot
+    ! and select cells inside selection_domain.
+    !
+    ! Return standard ramses variables through ramses_var(nvar,nleaftot) and
+    ! positions (xleaf(3,nleaftot)) and levels (leaf_level).
+    !
+    ! Slower method since it needs to read 2 times each file (one to count, one to extract)
+    
+    implicit none 
+
+    character(2000),intent(in)                :: repository
+    integer(kind=4),intent(in)                :: snapnum, ncpu_read
+    type(domain),intent(in)                   :: selection_domain
+    integer(kind=4),intent(inout)             :: nleaftot_all, nvar
+    integer(kind=4)                           :: nleaftot
+    real(kind=8),allocatable                  :: ramses_var(:,:)
+    real(kind=8),allocatable                  :: xleaf(:,:)
+    integer(kind=4),allocatable               :: leaf_level(:)
+    real(kind=8),allocatable, intent(inout)   :: ramses_var_all(:,:)
+    real(kind=8),allocatable,intent(inout)    :: xleaf_all(:,:)
+    integer(kind=4),allocatable,intent(inout) :: leaf_level_all(:)
+
+    integer(kind=4),dimension(:),allocatable,intent(in) :: cpu_list
+    
+    logical                                   :: do_allocs
+    integer(kind=4)                           :: icpu, ileaf, icell, ivar, nleaf_in_domain, k
+    integer(kind=4)                           :: ilast
+    real(kind=8),dimension(3)                 :: temp
+    
+    if(verbose)then
+       print *,' '
+       print *,'...reading RAMSES cells...'
+       print *,' '
+    endif
+
+    nvar = get_nvar(repository,snapnum)
+    ncpu = get_ncpu(repository,snapnum)
+
+    ! first count leaf cells in domain...
+    nleaftot = 0 ; nleaf_in_domain = 0
+!$OMP PARALLEL &
+!$OMP REDUCTION(+:nleaftot,nleaf_in_domain) &
+!$OMP DEFAULT(private) &
+!$OMP SHARED(repository, snapnum, ncpu_read, cpu_list, selection_domain)
+!$OMP DO
+    do k=1,ncpu_read
+       icpu=cpu_list(k)
+       call read_amr_hydro(repository,snapnum,icpu,&
+            & son,cpu_map,var,cell_x,cell_y,cell_z,cell_level,ncell)
+       !call read_amr(repository,snapnum,icpu,do_allocs)
+       !call read_hydro(repository,snapnum,icpu,do_allocs)
+       ! collect leaf cells
+       do icell = 1,ncell
+          if (son(icell)==0 .and. cpu_map(icell) == icpu) then
+             temp(:) = (/cell_x(icell), cell_y(icell), cell_z(icell)/)
+             nleaftot = nleaftot+1
+             if (domain_contains_point(temp,selection_domain)) then
+                nleaf_in_domain = nleaf_in_domain + 1
+             end if
+          end if
+       end do
+    end do
+!$OMP END DO
+!$OMP END PARALLEL
+
+    if(verbose)print *,'-- read_leaf_cells_in_domain --> nleaftot, nleaf_in_domain, nvar, ncpu =',nleaftot, nleaf_in_domain, nvar, ncpu_read
+    
+    allocate(ramses_var_all(nvar,nleaf_in_domain), xleaf_all(nleaf_in_domain,3), leaf_level_all(nleaf_in_domain))
+    ilast = 1
+!$OMP PARALLEL &
+!$OMP DEFAULT(private) &
+!$OMP SHARED(ilast, xleaf_all, leaf_level_all, ramses_var_all, repository, snapnum, nvar, nleaftot, ncpu_read, cpu_list, selection_domain)
+    do_allocs=.true.
+!$OMP DO
+    do k=1,ncpu_read
+       icpu=cpu_list(k)
+       call read_amr_hydro(repository,snapnum,icpu,&
+            & son,cpu_map,var,cell_x,cell_y,cell_z,cell_level,ncell)
+       if (do_allocs) allocate(ramses_var(nvar,ncell), xleaf(ncell,3), leaf_level(ncell))
+       do_allocs=.false.
+       ! collect leaf cells
+       ileaf = 0
+       do icell = 1,ncell
+          if (son(icell)==0 .and. cpu_map(icell) == icpu) then
+             temp(:) = (/cell_x(icell), cell_y(icell), cell_z(icell)/)
+             if (domain_contains_point(temp,selection_domain)) then
+                ileaf = ileaf + 1
+                do ivar = 1,nvar
+                   ramses_var(ivar,ileaf) = var(icell,ivar)
+                end do
+                xleaf(ileaf,1)    = cell_x(icell)
+                xleaf(ileaf,2)    = cell_y(icell)
+                xleaf(ileaf,3)    = cell_z(icell)
+                leaf_level(ileaf) = cell_level(icell)
+             end if
+          end if
+       end do
+!$OMP CRITICAL
+       ! only one CRITICAL zone
+       !write (*, "(A, f5.2, A, A)", advance='no') &           ! Progress bar
+       !     ' Reading leaves ',dble(iloop) / ncpu_read * 100,' % ',char(13)
+       !iloop=iloop+1
+
+       ! ileaf is now the number of leaves on local cpu
+       if(ileaf .gt. 0) then
+          ! save leaf cells to return arrays
+          xleaf_all(ilast:ilast-1+ileaf,1:3)  = xleaf(1:ileaf,1:3)
+          leaf_level_all(ilast:ilast-1+ileaf) = leaf_level(1:ileaf)
+          ramses_var_all(1:nvar,ilast:ilast-1+ileaf) = ramses_var(1:nvar,1:ileaf)
+       endif
+       ilast=ilast+ileaf
+!$OMP END CRITICAL
+    end do
+!$OMP END DO
+    if(allocated(ramses_var)) deallocate(ramses_var,xleaf,leaf_level)
+!$OMP END PARALLEL
+    
+    !call clear_amr
+    nleaftot_all = nleaf_in_domain
+    
+    return
+
+  end subroutine read_leaf_cells_in_domain
+
+
+  subroutine get_cpu_list(repository, snapnum, xmin,xmax,ymin,ymax,zmin,zmax, ncpu_read, cpu_list)
+    
+    implicit none
+    
+    character(2000),intent(in) :: repository
+    integer(kind=4),intent(in) :: snapnum
+    real(KIND=8),intent(in) :: xmin,xmax,ymin,ymax,zmin,zmax
+    
+    integer(kind=4) :: i,j,ndom
+    integer(kind=4) :: ilevel, lmax, lmin
+    integer(kind=4) :: ncpu_read, ncpu
+    integer(kind=4) :: imin,imax,jmin,jmax,kmin,kmax
+    integer(kind=4) :: impi,bit_length,maxdom
+    integer(kind=4),dimension(1:8):: idom,jdom,kdom,cpu_min,cpu_max
+    real(KIND=8),dimension(1:8):: bounding_min,bounding_max, order_min
+    real(KIND=8)::dkey,dmax
+    real(KIND=8)::dx
+    
+    real(kind=8),dimension(:),allocatable :: bound_key
+    logical,dimension(:),allocatable      :: cpu_read
+    integer(kind=4),dimension(:),allocatable,intent(out)      :: cpu_list
+    
+    lmax = nint(get_param_real(repository,snapnum,'levelmax'))
+    ncpu = get_ncpu(repository,snapnum)
+    
+    dmax = max(xmax-xmin,ymax-ymin,zmax-zmin)
+    
+    allocate(cpu_list(1:ncpu))
+    allocate(bound_key(0:ncpu))
+    allocate(cpu_read(1:ncpu))
+    cpu_read=.false.
+    cpu_list=0
+    
+    call read_hilbert_keys(repository,snapnum,ncpu,bound_key)
+    
+    do ilevel=1,lmax
+       dx=0.5d0**ilevel
+       if(dx.lt.dmax)exit
+    end do
+    lmin=ilevel
+    bit_length=lmin-1
+    maxdom=2**bit_length
+    imin=0; imax=0; jmin=0; jmax=0; kmin=0; kmax=0
+    if(bit_length>0)then
+       imin=int(xmin*dble(maxdom))
+       imax=imin+1
+       jmin=int(ymin*dble(maxdom))
+       jmax=jmin+1
+       kmin=int(zmin*dble(maxdom))
+       kmax=kmin+1
+    endif
+    
+    dkey=(dble(2**(lmax+1)/dble(maxdom)))**ndim
+    ndom=1
+    if(bit_length>0)ndom=8
+    idom(1)=imin; idom(2)=imax
+    idom(3)=imin; idom(4)=imax
+    idom(5)=imin; idom(6)=imax
+    idom(7)=imin; idom(8)=imax
+    jdom(1)=jmin; jdom(2)=jmin
+    jdom(3)=jmax; jdom(4)=jmax
+    jdom(5)=jmin; jdom(6)=jmin
+    jdom(7)=jmax; jdom(8)=jmax
+    kdom(1)=kmin; kdom(2)=kmin
+    kdom(3)=kmin; kdom(4)=kmin
+    kdom(5)=kmax; kdom(6)=kmax
+    kdom(7)=kmax; kdom(8)=kmax
+    
+    do i=1,ndom
+       if(bit_length>0)then
+          call hilbert3d(idom(i),jdom(i),kdom(i),order_min(i),bit_length,1)
+       else
+          order_min(i)=0.0d0
+       endif
+       bounding_min(i)=(order_min(i))*dkey
+       bounding_max(i)=(order_min(i)+1.0D0)*dkey
+    end do
+    
+    cpu_min=0; cpu_max=0
+    do impi=1,ncpu
+       do i=1,ndom
+          if (   bound_key(impi-1).le.bounding_min(i).and.&
+               & bound_key(impi  ).gt.bounding_min(i))then
+             cpu_min(i)=impi
+          endif
+          if (   bound_key(impi-1).lt.bounding_max(i).and.&
+               & bound_key(impi  ).ge.bounding_max(i))then
+             cpu_max(i)=impi
+          endif
+       end do
+    end do
+    
+    ncpu_read=0
+    do i=1,ndom
+       do j=cpu_min(i),cpu_max(i)
+          if(.not. cpu_read(j))then
+             ncpu_read=ncpu_read+1
+             cpu_list(ncpu_read)=j
+             cpu_read(j)=.true.
+          endif
+       enddo
+    enddo
+    
+    deallocate(bound_key,cpu_read)
+    
+    print*,'--> Ncpu to read = ',ncpu_read
+    
+    return
+    
+  end subroutine get_cpu_list
+  
+  
+  subroutine get_cpu_list_periodic(repository, snapnum, xmin, xmax, ymin, &
+       & ymax, zmin, zmax, ncpu_read, cpu_list)
+    
+    implicit none
+    
+    character(2000),intent(in) :: repository
+    integer(kind=4),intent(in) :: snapnum
+    real(KIND=8),intent(in) :: xmin,xmax,ymin,ymax,zmin,zmax
+    
+    ! Can have dom_min<0 and dom_max>1
+    real(KIND=8),dimension(3)::     dom_min,dom_max
+    ! Can NOT have dom_pmin<0 and dom_pmax>1
+    ! (therefore extra domains across boundaires)
+    real(KIND=8),dimension(3,1:2):: dom_pmin,dom_pmax
+    integer(kind=4) :: i,j,ix,iy,iz,ndom
+    integer(kind=4) :: ilevel, lmax, lmin
+    integer(kind=4) :: ncpu_read, ncpu
+    integer(kind=4) :: imin,imax,jmin,jmax,kmin,kmax
+    integer(kind=4) :: impi,bit_length,maxdom
+    integer(kind=4),dimension(1:8):: idom,jdom,kdom,cpu_min,cpu_max
+    real(KIND=8),dimension(1:8):: bounding_min,bounding_max, order_min
+    real(KIND=8)::dkey,dmin,dmax
+    real(KIND=8)::dx
+    
+    real(kind=8),dimension(:),allocatable :: bound_key
+    logical,dimension(:),allocatable      :: cpu_read
+    integer(kind=4),dimension(:),allocatable,intent(out)      :: cpu_list
+    
+    lmax = nint(get_param_real(repository,snapnum,'levelmax'))
+    ncpu = get_ncpu(repository,snapnum)
+    
+    allocate(cpu_list(1:ncpu))
+    allocate(bound_key(0:ncpu))
+    allocate(cpu_read(1:ncpu))
+    cpu_read=.false.
+    cpu_list=0
+    
+    print*,'...getting CPU list...'
+    
+    call read_hilbert_keys(repository,snapnum,ncpu,bound_key)
+    
+    ! Set up the periodic domains
+    dom_min(1) = xmin;   dom_max(1) = xmax
+    dom_min(2) = ymin;   dom_max(2) = ymax
+    dom_min(3) = zmin;   dom_max(3) = zmax
+    dom_pmin(:,1) = dom_min ! Main domain ...
+    dom_pmax(:,1) = dom_max ! ...always used
+    dom_pmin(:,2) = 1.
+    dom_pmax(:,2) = 0.
+    do i=1,3 ! loop x,y,z
+       if (dom_min(i) < 0.) then ! Lower limit left of boundary
+          dom_pmin(i,1) = 0.     ! Adjust main domain
+          dom_pmin(i,2) = 1. + dom_min(i) ! Extra domain
+          dom_pmax(i,2) = 1.
+       endif
+       if (dom_max(i) > 1.) then ! Upper limit right of boundary
+          dom_pmax(i,1) = 1.     ! Adjust main domain
+          dom_pmax(i,2) = dom_min(i) - 1. ! Extra domain
+          dom_pmin(i,2) = 0.
+       endif
+    end do
+    
+    ncpu_read=0
+    do ix=1,2
+       do iy=1,2
+          do iz=1,2
+             
+             dmin = min(dom_pmax(1,ix)-dom_pmin(1,ix)  &
+                  ,dom_pmax(2,iy)-dom_pmin(2,iy)  &
+                  ,dom_pmax(3,iz)-dom_pmin(3,iz) )
+             if(dmin<=0.) cycle
+             !print*,'Extracting from hilbert domain '
+             !print*,xmin,xmax
+             !print*,ymin,ymax
+             !print*,zmin,zmax
+             !print*,dom_pmin(1,ix),dom_pmax(1,ix)
+             !print*,dom_pmin(2,iy),dom_pmax(2,iy)
+             !print*,dom_pmin(3,iz),dom_pmax(3,iz)
+             !dmax = max(xmax-xmin,ymax-ymin,zmax-zmin)
+             dmax = max(dom_pmax(1,ix)-dom_pmin(1,ix)  &
+                  ,dom_pmax(2,iy)-dom_pmin(2,iy)  &
+                  ,dom_pmax(3,iz)-dom_pmin(3,iz) )
+             
+             ! Set up at most 8 sub-domains in periodic box
+             do ilevel=1,lmax
+                dx=0.5d0**ilevel
+                if(dx.lt.dmax)exit
+             end do
+             lmin=ilevel
+             bit_length=lmin-1
+             maxdom=2**bit_length
+             imin=0; imax=0; jmin=0; jmax=0; kmin=0; kmax=0
+             if(bit_length>0)then
+                imin=int(dom_pmin(1,ix)*dble(maxdom))
+                imax=imin+1
+                jmin=int(dom_pmin(2,iy)*dble(maxdom))
+                jmax=jmin+1
+                kmin=int(dom_pmin(3,iz)*dble(maxdom))
+                kmax=kmin+1
+             endif
+             
+             dkey=(dble(2**(lmax+1)/dble(maxdom)))**ndim
+             ndom=1
+             if(bit_length>0)ndom=8
+             idom(1)=imin; idom(2)=imax
+             idom(3)=imin; idom(4)=imax
+             idom(5)=imin; idom(6)=imax
+             idom(7)=imin; idom(8)=imax
+             jdom(1)=jmin; jdom(2)=jmin
+             jdom(3)=jmax; jdom(4)=jmax
+             jdom(5)=jmin; jdom(6)=jmin
+             jdom(7)=jmax; jdom(8)=jmax
+             kdom(1)=kmin; kdom(2)=kmin
+             kdom(3)=kmin; kdom(4)=kmin
+             kdom(5)=kmax; kdom(6)=kmax
+             kdom(7)=kmax; kdom(8)=kmax
+             
+             do i=1,ndom
+                if(bit_length>0)then
+                   call hilbert3d(idom(i),jdom(i),kdom(i),order_min(i),bit_length,1)
+                else
+                   order_min(i)=0.0d0
+                endif
+                bounding_min(i)=(order_min(i))*dkey
+                bounding_max(i)=(order_min(i)+1.0D0)*dkey
+             end do
+             
+             cpu_min=0; cpu_max=0
+             do impi=1,ncpu
+                do i=1,ndom
+                   if (   bound_key(impi-1).le.bounding_min(i).and.&
+                        & bound_key(impi  ).gt.bounding_min(i))then
+                      cpu_min(i)=impi
+                   endif
+                   if (   bound_key(impi-1).lt.bounding_max(i).and.&
+                        & bound_key(impi  ).ge.bounding_max(i))then
+                      cpu_max(i)=impi
+                   endif
+                end do
+             end do
+             
+             do i=1,ndom
+                do j=cpu_min(i),cpu_max(i)
+                   if(.not. cpu_read(j))then
+                      ncpu_read=ncpu_read+1
+                      cpu_list(ncpu_read)=j
+                      cpu_read(j)=.true.
+                   endif
+                enddo
+             enddo
+             
+          end do !ix=1,2
+       end do !iy=1,2
+    end do !iz=1,2
+    
+    deallocate(bound_key,cpu_read)
+    
+    print*,'--> Ncpu to read = ',ncpu_read
+    
+    return
+    
+  end subroutine get_cpu_list_periodic
+  
+  
+  subroutine read_hilbert_keys(repository,snapnum,ncpu,bound_key)
+    
+    implicit none
+    
+    character(2000),intent(in)                   :: repository
+    integer(kind=4),intent(in)                   :: snapnum, ncpu
+    real(kind=8),dimension(0:ncpu),intent(inout) :: bound_key
+    
+    logical(kind=4)            :: not_ok
+    character(512)             :: nomfich
+    character(512)             :: line,name,value,orderingtype
+    integer(kind=4)            :: i, impi
+    integer(kind=4),parameter  :: param_unit = 13
+    
+    not_ok = .true.
+    write(nomfich,'(a,a,i5.5,a,i5.5,a)') trim(repository),'/output_',snapnum,'/info_',snapnum,'.txt'
+    open(unit=param_unit,file=nomfich,status='old',form='formatted')
+    do
+       read(param_unit,'(a)',end=2) line
+       i = scan(line,'=')
+       if (i==0 .or. line(1:1)=='#') cycle
+       name=trim(adjustl(line(:i-1)))
+       value=trim(adjustl(line(i+1:)))
+       ! check for a comment at end of line !
+       i = scan(value,'!')
+       if (i /= 0) value = trim(adjustl(value(:i-1)))
+       if (trim(name) .eq. 'ordering type') then
+          read(value,*) orderingtype
+          if (orderingtype=='hilbert') then
+             ! start reading keys
+             ! skip one line
+             read(param_unit,*)
+             do impi=1,ncpu
+                read(param_unit,'(I8,1X,E23.15,1X,E23.15)')i,bound_key(impi-1),bound_key(impi)
+             end do
+          end if
+       end if
+    end do
+2   close (param_unit)
+    
+    return
+    
+  end subroutine read_hilbert_keys
+  
+  
+  subroutine hilbert3d(x,y,z,order,bit_length,npoint)
+    implicit none
+    
+    integer     ,INTENT(IN)                     ::bit_length,npoint
+    integer     ,INTENT(IN) ,dimension(1:npoint)::x,y,z
+    real(kind=8),INTENT(OUT),dimension(1:npoint)::order
+    
+    logical,dimension(0:3*bit_length-1)::i_bit_mask
+    logical,dimension(0:1*bit_length-1)::x_bit_mask,y_bit_mask,z_bit_mask
+    integer,dimension(0:7,0:1,0:11)::state_diagram
+    integer::i,ip,cstate,nstate,b0,b1,b2,sdigit,hdigit
+    
+    if(bit_length>bit_size(bit_length))then
+       write(*,*)'Maximum bit length=',bit_size(bit_length)
+       write(*,*)'stop in hilbert3d'
+       stop
+    endif
+    
+    state_diagram = RESHAPE( (/   1, 2, 3, 2, 4, 5, 3, 5,&
+         &   0, 1, 3, 2, 7, 6, 4, 5,&
+         &   2, 6, 0, 7, 8, 8, 0, 7,&
+         &   0, 7, 1, 6, 3, 4, 2, 5,&
+         &   0, 9,10, 9, 1, 1,11,11,&
+         &   0, 3, 7, 4, 1, 2, 6, 5,&
+         &   6, 0, 6,11, 9, 0, 9, 8,&
+         &   2, 3, 1, 0, 5, 4, 6, 7,&
+         &  11,11, 0, 7, 5, 9, 0, 7,&
+         &   4, 3, 5, 2, 7, 0, 6, 1,&
+         &   4, 4, 8, 8, 0, 6,10, 6,&
+         &   6, 5, 1, 2, 7, 4, 0, 3,&
+         &   5, 7, 5, 3, 1, 1,11,11,&
+         &   4, 7, 3, 0, 5, 6, 2, 1,&
+         &   6, 1, 6,10, 9, 4, 9,10,&
+         &   6, 7, 5, 4, 1, 0, 2, 3,&
+         &  10, 3, 1, 1,10, 3, 5, 9,&
+         &   2, 5, 3, 4, 1, 6, 0, 7,&
+         &   4, 4, 8, 8, 2, 7, 2, 3,&
+         &   2, 1, 5, 6, 3, 0, 4, 7,&
+         &   7, 2,11, 2, 7, 5, 8, 5,&
+         &   4, 5, 7, 6, 3, 2, 0, 1,&
+         &  10, 3, 2, 6,10, 3, 4, 4,&
+         &   6, 1, 7, 0, 5, 2, 4, 3 /), &
+         & (/8 ,2, 12 /) )
+    
+    do ip=1,npoint
+       
+       ! convert to binary
+       do i=0,bit_length-1
+          x_bit_mask(i)=btest(x(ip),i)
+          y_bit_mask(i)=btest(y(ip),i)
+          z_bit_mask(i)=btest(z(ip),i)
+       enddo
+       
+       ! interleave bits
+       do i=0,bit_length-1
+          i_bit_mask(3*i+2)=x_bit_mask(i)
+          i_bit_mask(3*i+1)=y_bit_mask(i)
+          i_bit_mask(3*i  )=z_bit_mask(i)
+       end do
+       
+       ! build Hilbert ordering using state diagram
+       cstate=0
+       do i=bit_length-1,0,-1
+          b2=0 ; if(i_bit_mask(3*i+2))b2=1
+          b1=0 ; if(i_bit_mask(3*i+1))b1=1
+          b0=0 ; if(i_bit_mask(3*i  ))b0=1
+          sdigit=b2*4+b1*2+b0
+          nstate=state_diagram(sdigit,0,cstate)
+          hdigit=state_diagram(sdigit,1,cstate)
+          i_bit_mask(3*i+2)=btest(hdigit,2)
+          i_bit_mask(3*i+1)=btest(hdigit,1)
+          i_bit_mask(3*i  )=btest(hdigit,0)
+          cstate=nstate
+       enddo
+       
+       ! save Hilbert key as double precision real
+       order(ip)=0.
+       do i=0,3*bit_length-1
+          b0=0 ; if(i_bit_mask(i))b0=1
+          order(ip)=order(ip)+dble(b0)*dble(2)**i
+       end do
+       
+    end do
+    
+  end subroutine hilbert3d
+  
+  
   function get_nGridTot(repository,snapnum)
 
     ! get total number of grids in the simulation 
@@ -878,8 +1507,8 @@ contains
        allocate(mu(1:nleaf))
        nhi  = ramses_var(1,:) * dp_scale_nh  * (1.d0 - ramses_var(ihii,:))   ! nb of H atoms per cm^3
        mu   = XH * (1.d0+ramses_var(ihii,:)) + 0.25d0*(1.d0-XH)*(1.d0 + ramses_var(iheii,:) + 2.d0*ramses_var(iheiii,:)) ! assumes no metals
-       mu   = 1.0d0 / mu
-       temp = ramses_var(itemp,:) / ramses_var(1,:) * dp_scale_T2                ! T/mu [ K ]
+       mu   = 1.0d0 / mu   
+       temp = ramses_var(itemp,:) / ramses_var(1,:) * dp_scale_T2            ! T/mu [ K ]
        temp = temp * mu                                                      ! This is now T (in K) with no bloody mu ... 
        deallocate(mu)
     else
@@ -891,7 +1520,7 @@ contains
        end if
 
        nhi  = ramses_var(1,:) * dp_scale_nh  ! nb of H atoms per cm^3
-       temp = ramses_var(5,:) / ramses_var(1,:) * dp_scale_T2  ! T/mu [ K ]
+       temp = ramses_var(itemp,:) / ramses_var(1,:) * dp_scale_T2  ! T/mu [ K ]
 
        allocate(boost(nleaf))
        if (self_shielding) then
@@ -1363,7 +1992,7 @@ contains
        allocate(mu(1:nleaf))
        mu   = XH * (1.d0+ramses_var(ihii,:)) + 0.25d0*(1.d0-XH)*(1.d0 + ramses_var(iheii,:) + 2.d0*ramses_var(iheiii,:)) ! assumes no metals
        mu   = 1.0d0 / mu
-       temp = ramses_var(5,:) / ramses_var(1,:) * dp_scale_T2                ! T/mu [ K ]
+       temp = ramses_var(itemp,:) / ramses_var(1,:) * dp_scale_T2            ! T/mu [ K ]
        temp = temp * mu                                                      ! This is now T (in K) with no bloody mu ... 
        deallocate(mu)
     else
@@ -1374,7 +2003,7 @@ contains
        end if
        allocate(nh(nleaf))
        nh   = ramses_var(1,:) * dp_scale_nh  ! nb of H atoms per cm^3
-       temp = ramses_var(5,:) / ramses_var(1,:) * dp_scale_T2  ! T/mu [ K ]
+       temp = ramses_var(itemp,:) / ramses_var(1,:) * dp_scale_T2  ! T/mu [ K ]
        allocate(boost(nleaf))
        if (self_shielding) then
           do i=1,nleaf
@@ -1479,7 +2108,7 @@ contains
        allocate(mu(1:nleaf))
        mu   = XH * (1.d0+ramses_var(ihii,:)) + 0.25d0*(1.d0-XH)*(1.d0 + ramses_var(iheii,:) + 2.d0*ramses_var(iheiii,:)) ! assumes no metals
        mu   = 1.0d0 / mu
-       temp = ramses_var(5,:) / ramses_var(1,:) * dp_scale_T2                ! T/mu [ K ]
+       temp = ramses_var(itemp,:) / ramses_var(1,:) * dp_scale_T2                ! T/mu [ K ]
        temp = temp * mu                                                      ! This is now T (in K) with no bloody mu ... 
        deallocate(mu)
     else
@@ -1490,7 +2119,7 @@ contains
        end if
        allocate(nh(nleaf))
        nh   = ramses_var(1,:) * dp_scale_nh  ! nb of H atoms per cm^3
-       temp = ramses_var(5,:) / ramses_var(1,:) * dp_scale_T2  ! T/mu [ K ]
+       temp = ramses_var(itemp,:) / ramses_var(1,:) * dp_scale_T2  ! T/mu [ K ]
        allocate(boost(nleaf))
        if (self_shielding) then
           do i=1,nleaf
@@ -1703,18 +2332,6 @@ contains
   end subroutine dump_ramses_info
 
 
-  !subroutine ramses_read_star_particles(repository, snapnum, nstars, stars)
-  !  character(2000),intent(in)                     :: repository
-  !  integer(kind=4),intent(in)                     :: snapnum
-  !  integer(kind=4),intent(inout)                  :: nstars
-  !  type(star_particle),allocatable, intent(inout) :: stars(:)
-  !  ! ...
-  !  ! allocate(stars(nstars))
-  !  ! ... 
-  !end subroutine ramses_read_star_particles
-
-
-
   !==================================================================================
   ! ----------------
   ! private functions 
@@ -1743,7 +2360,7 @@ contains
     read(10)
     
     if (read_rt_variables) then
-       ! Open RT file and check if there is a gamma in header:
+       ! Open RT file and get nvarRT
        write(nomfich,'(a,a,i5.5,a,i5.5,a,i5.5)') trim(repository),'/output_',snapnum,'/rt_',snapnum,'.out',icpu
        open(unit=12,file=nomfich,status='old',form='unformatted')
        read(12)
@@ -2025,8 +2642,7 @@ contains
     real(kind=8),allocatable    :: xxg(:)
     logical                     :: ok
     integer(kind=4)             :: i,nx,ny,nz,nlevelmax,nboundary
-    integer(kind=4)             :: ilevel,ncache,ibound,idim,ind,iskip,iunit
-    integer(kind=4)             :: nvarH,nvarRT
+    integer(kind=4)             :: ilevel,ncache,ibound,idim,ind,iskip,iunit,iu2,rank
 
     ! stuff read from AMR files
     integer(kind=4),intent(out)      :: ncell_l
@@ -2034,21 +2650,26 @@ contains
     real(kind=8),allocatable         :: xg_l(:,:)      ! grids position
     integer,allocatable              :: nbor_l(:,:)    ! neighboring father cells
     integer,allocatable              :: next_l(:)      ! next grid in list
-    integer,allocatable,intent(out)              :: son_l(:)       ! sons grids
-    integer,allocatable,intent(out)              :: cpu_map_l(:)  ! domain decomposition
+    integer,allocatable,intent(out)  :: son_l(:)       ! sons grids
+    integer,allocatable,intent(out)  :: cpu_map_l(:)   ! domain decomposition
     integer,allocatable              :: headl_l(:,:),taill_l(:,:),numbl_l(:,:),numbtot_l(:,:)
     integer,allocatable              :: headb_l(:,:),tailb_l(:,:),numbb_l(:,:)
     real(KIND=8),dimension(1:3)      :: xbound_l=(/0d0,0d0,0d0/)  
 
     real(kind=8)                :: dx
-    integer(kind=4)             :: ix,iy,iz,istart,ivar,igrid
+    integer(kind=4)             :: ix,iy,iz,istart,ivar,igrid,nvarH,nvarRT
     real(kind=8),allocatable    :: xc(:,:),xx(:)
 
     ! stuff read from the HYDRO files
-    real(kind=8),allocatable,intent(out)         :: var_l(:,:)
-    real(kind=8),allocatable,intent(out)         :: cell_x_l(:),cell_y_l(:),cell_z_l(:)
-    integer(kind=4),allocatable,intent(out)      :: cell_level_l(:)
-  
+    real(kind=8),allocatable,intent(out)     :: var_l(:,:)
+    real(kind=8),allocatable,intent(out)     :: cell_x_l(:),cell_y_l(:),cell_z_l(:)
+    integer(kind=4),allocatable,intent(out)  :: cell_level_l(:)
+    
+    rank = 1
+    !$ rank = OMP_GET_THREAD_NUM()
+    iunit=10+rank*2
+    iu2 = 10+rank*2+1
+
     ! Vérification de l'existence des fichiers AMR
     write(nomfich,'(a,a,i5.5,a,i5.5,a,i5.5)') trim(repository),'/output_',snapnum,'/amr_',snapnum,'.out',icpu
     inquire(file=nomfich, exist=ok)
@@ -2056,7 +2677,7 @@ contains
        write(*,*)'File '//TRIM(nomfich)//' not found'    
        stop
     end if
-    iunit=icpu+10
+
     open(unit=iunit,file=nomfich,form='unformatted',status='old',action='read')
     ! Read grid variables
     read(iunit)
@@ -2185,7 +2806,6 @@ contains
     !print*,'in module_ramses.read_amr_hydro -> ',ncell_l,nvar,icpu,snapnum
     ! and then the hydro file
     write(nomfich,'(a,a,i5.5,a,i5.5,a,i5.5)') trim(repository),'/output_',snapnum,'/hydro_',snapnum,'.out',icpu
-    iunit=icpu+10
     open(unit=iunit,file=nomfich,form='unformatted',status='old',action='read')
     read(iunit)
     read(iunit)nvarH
@@ -2195,15 +2815,15 @@ contains
     read(iunit)
 
     if (read_rt_variables) then
-       ! Open RT file and check if there is a gamma in header:
+       ! Open RT file and get nvarRT
        write(nomfich,'(a,a,i5.5,a,i5.5,a,i5.5)') trim(repository),'/output_',snapnum,'/rt_',snapnum,'.out',icpu
-       open(unit=12,file=nomfich,status='old',form='unformatted')
-       read(12)
-       read(12)nvarRT
-       read(12)
-       read(12)
-       read(12)
-       read(12)
+       open(unit=iu2,file=nomfich,status='old',form='unformatted')
+       read(iu2)
+       read(iu2)nvarRT
+       read(iu2)
+       read(iu2)
+       read(iu2)
+       read(iu2)
     else
        nvarRT = 0
     end if
@@ -2238,8 +2858,8 @@ contains
           read(iunit)!ilevel2
           read(iunit)!numbl2
           if (read_rt_variables) then
-             read(12)
-             read(12)
+             read(iu2)
+             read(iu2)
           end if
           if(ncache>0)then
              allocate(ind_grid(1:ncache))
@@ -2263,14 +2883,13 @@ contains
                 end do
                 if (read_rt_variables) then 
                    do ivar=1,nvarRT
-                      read(12) xx
+                      read(iu2) xx
                       if (ibound > ncpu) cycle  ! dont bother with boundaries
                       do i = 1, ncache
-                         var(ind_grid(i)+iskip,ivar+nvarH) = xx(i)
+                         var_l(ind_grid(i)+iskip,ivar+nvarH) = xx(i)
                       end do
                    end do
                 end if
-                
                 do i = 1,ncache
                    cell_x_l(ind_grid(i)+iskip) = xc(ind,1) + xg_l(ind_grid(i),1) -xbound_l(1)
                    cell_y_l(ind_grid(i)+iskip) = xc(ind,2) + xg_l(ind_grid(i),2) -xbound_l(2)
@@ -2284,8 +2903,7 @@ contains
     end do
     deallocate(xc)
     close(iunit)
-    if (read_rt_variables) close(12)
-
+    if (read_rt_variables) close(iu2)
     ! => can return var_l, cell_x_l, cell_y_l, cell_z_l, cell_level_l
 
     deallocate(headl_l, taill_l, numbl_l, numbtot_l, headb_l, tailb_l, numbb_l)
@@ -2295,7 +2913,6 @@ contains
     
   end subroutine read_amr_hydro
 
-  
 
   function get_nleaf(repository,snapnum)
 
@@ -2472,18 +3089,16 @@ contains
     read(10)
     read(10)get_nvar
     close(10)
-
     if (read_rt_variables) then
-       ! Open RT file and check if there is a gamma in header:
+       ! Open RT file and get nvarRT
        write(nomfich,'(a,a,i5.5,a,i5.5,a,i5.5)') trim(repository),'/output_',snapnum,'/rt_',snapnum,'.out',icpu
        open(unit=12,file=nomfich,status='old',form='unformatted')
        read(12)
        read(12)nvarRT
-       close(12)
        get_nvar = get_nvar + nvarRT
+       close(12)
     end if
 
-    
     return
   end function get_nvar
 
@@ -2821,7 +3436,7 @@ contains
                       star_age(ilast) = (stime - ct_proptime2time(age(i),h0))*1.d-6 ! Myr
                    else
                       ! Convert from conformal time to age in Myr
-                      star_age(ilast)   = (stime - ct_conftime2time(age(i)))*1.d-6 ! Myr
+                      star_age(ilast) = (stime - ct_conftime2time(age(i)))*1.d-6 ! Myr
                    end if
                 else
                    ! convert from tborn to age in Myr
@@ -2938,23 +3553,19 @@ contains
     return
 
   end function ct_conftime2time
-
+  
   function ct_proptime2time(tau,h0)
-
     ! return look-back time in yr
     
     implicit none 
-    
     real(kind=8),intent(in) :: tau,h0
     real(kind=8)            :: ct_proptime2time
-    integer(kind=4)         :: i
-    
     
     ct_proptime2time = tau / (h0 / 3.08d19) / (365.25*24.*3600.)
     return
-
   end function ct_proptime2time
-
+  
+  
   function ct_aexp2time(aexp)
 
     ! return look-back time in yr
@@ -3175,14 +3786,14 @@ contains
              read(value,*) ramses_rt
           case ('read_rt_variables')
              read(value,*) read_rt_variables
-          case ('cosmo')
-             read(value,*) cosmo
-          case ('use_initial_mass')
-             read(value,*) use_initial_mass
-          case ('use_proper_time')
-             read(value,*) use_proper_time
           case ('verbose')
              read(value,*) verbose
+          case ('use_initial_mass')
+             read(value,*) use_initial_mass
+          case ('cosmo')
+             read(value,*) cosmo
+          case ('use_proper_time')
+             read(value,*) use_proper_time
           case('itemp') ! index of thermal pressure
              read(value,*) itemp
           case('imetal')! index of metallicity  
@@ -3217,8 +3828,8 @@ contains
        write(unit,'(a,L1)') '  self_shielding    = ',self_shielding
        write(unit,'(a,L1)') '  ramses_rt         = ',ramses_rt
        write(unit,'(a,L1)') '  read_rt_variables = ',read_rt_variables
-       write(unit,'(a,L1)') '  cosmo             = ',cosmo
        write(unit,'(a,L1)') '  use_initial_mass  = ',use_initial_mass
+       write(unit,'(a,L1)') '  cosmo             = ',cosmo
        write(unit,'(a,L1)') '  use_proper_time   = ',use_proper_time
        write(unit,'(a,L1)') '  verbose           = ',verbose
        write(unit,'(a,i2)') '  itemp             = ', itemp
@@ -3231,19 +3842,18 @@ contains
        write(*,'(a,L1)') '  self_shielding    = ',self_shielding
        write(*,'(a,L1)') '  ramses_rt         = ',ramses_rt
        write(*,'(a,L1)') '  read_rt_variables = ',read_rt_variables
-       write(*,'(a,L1)') '  cosmo             = ',cosmo
        write(*,'(a,L1)') '  use_initial_mass  = ',use_initial_mass
+       write(*,'(a,L1)') '  cosmo             = ',cosmo
        write(*,'(a,L1)') '  use_proper_time   = ',use_proper_time
        write(*,'(a,L1)') '  verbose           = ',verbose
        write(*,'(a,i2)') '  itemp             = ', itemp
        write(*,'(a,i2)') '  imetal            = ', imetal
        write(*,'(a,i2)') '  ihii              = ', ihii
        write(*,'(a,i2)') '  iheii             = ', iheii
-       write(*,'(a,i2)') '  iheiii            = ', iheiii       
+       write(*,'(a,i2)') '  iheiii            = ', iheiii
     end if
-
-    return
     
+    return
   end subroutine print_ramses_params
 
 
