@@ -133,34 +133,29 @@ program LyaPhotonsFromGas
   recomb_total = sum(recomb_em) / (planck*nu_0)  ! nb of photons per second
   coll_total   = sum(coll_em) / (planck*nu_0)  ! nb of photons per second
 
-  !print*,'coll_total,recomb_total = ',coll_total,recomb_total
-  print*,'coll_total,recomb_total = ',coll_total*(planck*nu_0),recomb_total*(planck*nu_0)
+  print*,'coll_total,recomb_total [erg/s] = ',coll_total*(planck*nu_0),recomb_total*(planck*nu_0)
   
   recomb_em = recomb_em / maxrec
   coll_em   = coll_em / maxcol
 
-  print*,'nsel = ',nsel
-  print*,'tot recomb_em, coll_em = ',sum(recomb_em),sum(coll_em)
-  maxrec = 0.; maxcol = 0.
-  do i=1,nsel
-     if (recomb_em(i) > 1e-6) maxrec = maxrec+recomb_em(i)
-     if (coll_em(i) > 1e-6) maxcol = maxcol+coll_em(i)
-  end do
-  print*,'selecting > 1e-6 : ',maxrec,maxcol
-  maxrec = 0.; maxcol = 0.
-  do i=1,nsel
-     if (recomb_em(i) > 1e-5) maxrec = maxrec+recomb_em(i)
-     if (coll_em(i)> 1e-5) maxcol = maxcol+coll_em(i)
-  end do
-  print*,'selecting > 1e-5 : ',maxrec,maxcol
-  maxrec = 0.; maxcol = 0.
-  do i=1,nsel
-     if (recomb_em(i) > 1e-4) maxrec = maxrec+recomb_em(i)
-     if (coll_em(i) > 1e-4) maxcol = maxcol+coll_em(i)
-  end do
-  print*,'selecting > 1e-4 : ',maxrec,maxcol
-  stop
-  
+!!$  print*,'nsel = ',nsel
+!!$  print*,'tot recomb_em, coll_em = ',sum(recomb_em),sum(coll_em)
+!!$  maxrec = 0.; maxcol = 0.; j = 0 ; ii = 0
+!!$  do i=1,nsel
+!!$     if (recomb_em(i) > 1e-6) then
+!!$        maxrec = maxrec+recomb_em(i)
+!!$        j = j + 1
+!!$     end if
+!!$     if (coll_em(i) > 1e-6) then
+!!$        maxcol = maxcol+coll_em(i)
+!!$        ii = ii + 1
+!!$     end if
+!!$  end do
+!!$  print*,'selecting cells with P > 1e-6 would imply: '
+!!$  print*,'  fraction of recombs : ',maxrec/sum(recomb_em),maxcol/sum(coll_em)
+!!$  print*,'  fraction of cells   : ',real(j,kind=4)/nsel,real(ii,kind=4)/nsel
+!!$  stop
+
   
   allocate(v_leaf(3,nleaftot))
   call ramses_get_velocity_cgs(repository,snapnum,nleaftot,nvar,ramses_var,v_leaf)
