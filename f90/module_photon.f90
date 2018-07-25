@@ -567,7 +567,7 @@ contains
     integer(kind=4)               :: ipeel,idir,ileaf
     real(kind=8)                  :: tau,peel_contrib
     real(kind=8)                  :: projpos(2),kobs(3),x
-    logical                       :: increment_flux,increment_spec,increment_image
+    logical                       :: increment_flux, increment_spec, increment_image, increment_cube
     type(gas)                     :: cell_gas       ! gas in the current cell 
 
     do idir = 1,nDirections
@@ -578,6 +578,7 @@ contains
           increment_flux  = mock_point_in_flux_aperture(projpos,idir)
           increment_spec  = mock(idir)%compute_spectrum .and. mock_point_in_spectral_aperture(projpos,idir)
           increment_image = mock(idir)%compute_image .and. mock_point_in_image(projpos,idir)
+          increment_cube  = mock(idir)%compute_cube .and. mock_point_in_cube(projpos,idir)
           tau = tau_max
           if (increment_flux .or. increment_spec .or. increment_image) then
              if (PeelBuffer(ipeel)%scatter_flag > 0) then 
@@ -595,6 +596,7 @@ contains
              if (increment_flux)  call peel_to_flux(peel_contrib,idir) 
              if (increment_spec)  call peel_to_spec(PeelBuffer(ipeel)%nu,peel_contrib,idir)
              if (increment_image) call peel_to_map(projpos,peel_contrib,idir)
+             if (increment_cube)  call peel_to_cube(projpos,PeelBuffer(ipeel)%nu,peel_contrib,idir)
           end if
        end do
     end do

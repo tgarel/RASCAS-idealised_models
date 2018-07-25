@@ -22,11 +22,14 @@ module module_mock
      real(kind=8)             :: image_side            ! extent of observation [box units]
      real(kind=8),allocatable :: image(:,:)            ! actual image. 
      ! --- CUBE ---
-     ! ... 
+     integer(kind=4)          :: cube_lbda_npix  = 0
+     integer(kind=4)          :: cube_image_npix = 0
+     real(kind=8)             :: cube_lmin,cube_lmax
+     real(kind=8)             :: cube_side
+     real(kind=8),allocatable :: cube(:,:,:)
      ! useful variables
      real(kind=8)    :: flux_aperture2, spec_aperture2 
-     logical         :: compute_image
-     logical         :: compute_spectrum
+     logical         :: compute_spectrum,compute_image,compute_cube
   end type mockObs
   type(mockObs),allocatable :: mock(:)
 
@@ -43,8 +46,8 @@ module module_mock
   ! public variables 
   public :: peeling_off, nDirections, mock
   ! public functions 
-  public :: read_mock_params, mock_line_of_sight, mock_point_in_spectral_aperture, mock_point_in_flux_aperture, mock_point_in_image
-  public :: mock_projected_pos, peel_to_flux, peel_to_map, peel_to_spec, dump_mocks
+  public :: read_mock_params, mock_line_of_sight, mock_point_in_spectral_aperture, mock_point_in_flux_aperture, mock_point_in_image, mock_point_in_cube
+  public :: mock_projected_pos, peel_to_flux, peel_to_map, peel_to_spec, peel_to_cube, dump_mocks
 contains
 
   
@@ -81,6 +84,14 @@ contains
              allocate(mock(idir)%image(mock(idir)%image_npix,mock(idir)%image_npix))
              mock(idir)%image = 0.0d0
              mock(idir)%compute_image = .true.
+          end if
+
+          ! initialise cube
+          mock(idir)%compute_cube = .false.
+          if (mock(idir)%cube_lbda_npix > 0) then
+             allocate(mock(idir)%cube(mock(idir)%cube_lbda_npix,mock(idir)%cube_image_npix,mock(idir)%cube_image_npix))
+             mock(idir)%cube = 0.0d0
+             mock(idir)%compute_cube = .true.
           end if
           
           ! define direction of observation (normalise vector)
@@ -123,9 +134,10 @@ contains
       read(unit,*) mock(idir)%flux_aperture
       read(unit,*) mock(idir)%spec_npix, mock(idir)%spec_aperture, mock(idir)%spec_lmin, mock(idir)%spec_lmax
       read(unit,*) mock(idir)%image_npix, mock(idir)%image_side
+      read(unit,*) mock(idir)%cube_lbda_npix,mock(idir)%cube_image_npix,mock(idir)%cube_lmin,mock(idir)%cube_lmax,mock(idir)%cube_side
       return 
     end subroutine read_a_mock_param_set
-    
+
   end subroutine mock_init
 
   
@@ -156,7 +168,6 @@ contains
     return
   end function mock_point_in_flux_aperture
 
-  
   function mock_point_in_image(pp,idir)
     implicit none
     logical  :: mock_point_in_image
@@ -167,6 +178,18 @@ contains
     mock_point_in_image = ((pp(1) < dx) .and. (pp(1) > -dx) .and. (pp(2) < dx) .and. (pp(2) > -dx))
     return
   end function mock_point_in_image
+
+  function mock_point_in_cube(pp,idir)
+    ! just test that projected position is in image range (don't test wavelength)
+    implicit none
+    logical  :: mock_point_in_cube
+    real(kind=8),intent(in) :: pp(2)
+    integer(kind=4),intent(in) :: idir
+    real(kind=8) :: dx
+    dx = 0.5d0*mock(idir)%cube_side
+    mock_point_in_cube = ((pp(1) < dx) .and. (pp(1) > -dx) .and. (pp(2) < dx) .and. (pp(2) > -dx))
+    return
+  end function mock_point_in_cube
 
   
   subroutine mock_projected_pos(pos,pp,idir)
@@ -224,12 +247,35 @@ contains
     return
   end subroutine peel_to_spec
 
+  subroutine peel_to_cube(pp,peel_nu,peel_contribution,idir)
+    implicit none
+    real(kind=8),intent(in)    :: pp(2),peel_nu,peel_contribution
+    integer(kind=4),intent(in) :: idir
+    real(kind=8)               :: lambda, dx
+    integer(kind=4)            :: ix,iy,n,i
+
+    dx = mock(idir)%cube_side
+    n  = mock(idir)%cube_image_npix
+    ix = int((pp(1) + 0.5d0 * dx) /dx * n)
+    iy = int((pp(2) + 0.5d0 * dx) /dx * n)
+    if (ix>0 .and. ix<=n .and. iy>0 .and. iy<=n) then 
+       lambda = clight / peel_nu * 1d8 ! [Angstrom]
+       i = int( (lambda - mock(idir)%spec_lmin) / (mock(idir)%spec_lmax - mock(idir)%spec_lmin) * mock(idir)%spec_npix)
+       if ((i > 0) .and. (i<=mock(idir)%spec_npix)) then
+          mock(idir)%cube(i,ix,iy) = mock(idir)%cube(i,ix,iy) + peel_contribution
+       end if
+    end if
+    
+    return
+  end subroutine peel_to_cube
+  
+
   subroutine dump_mocks(rank)
     implicit none
     integer(kind=4),intent(in) :: rank
     character(2000)            :: filename
-    integer(kind=4)            :: i,j,iunit=133,sunit=134,funit=135,idir
-    logical :: iopen=.false.,sopen=.false.,fopen=.false.
+    integer(kind=4)            :: i,j,k, iunit=133,sunit=134,funit=135,cunit=136,idir
+    logical :: iopen=.false.,sopen=.false.,fopen=.false.,copen=.false.
 
     
     do idir = 1,nDirections
@@ -263,11 +309,24 @@ contains
           write(iunit) (mock(idir)%center(i),i=1,3)
           write(iunit) ((mock(idir)%image(i,j),i=1,mock(idir)%image_npix),j=1,mock(idir)%image_npix)
        end if
+       ! save cube
+       if (mock(idir)%compute_cube) then 
+          if (.not. copen) then 
+             write(filename,'(a,a,i5.5)') trim(mock_outputfilename),'_cube.',rank
+             open(unit=cunit,file=filename,form='unformatted',status='unknown')
+             iopen = .true.
+          end if
+          write(cunit) mock(idir)%cube_lbda_npix, mock(idir)%cube_image_npix
+          write(cunit) mock(idir)%cube_lmin,mock(idir)%cube_lmax,mock(idir)%image_side
+          write(cunit) (mock(idir)%center(i),i=1,3)
+          write(cunit) (((mock(idir)%cube(k,i,j),k=1,mock(idir)%cube_lbda_npix),i=1,mock(idir)%cube_image_npix),j=1,mock(idir)%cube_image_npix)
+       end if
     end do
     
     if (iopen) close(iunit)
     if (sopen) close(sunit)
     if (fopen) close(funit)
+    if (copen) close(cunit)
 
     return
   end subroutine dump_mocks
