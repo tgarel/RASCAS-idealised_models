@@ -20,10 +20,13 @@ program LyaPhotonsFromGas
   real(kind=8),allocatable     :: x_leaf(:,:),ramses_var(:,:),recomb_em(:),coll_em(:),v_leaf(:,:),HIDopWidth(:),cell_volume_vs_level(:)
   real(kind=8),allocatable     :: coolingTime(:)
   real(kind=8)                 :: r1, r2, dx, dv, nu, scalar, recomb_total,coll_total,k(3), boxsize,maxrec,maxcol
-  real(kind=8)                 :: start_photpacket,end_photpacket,x(3),dt
+  real(kind=8)                 :: start_photpacket,end_photpacket,x(3),dt,xmin,xmax,ymin,ymax,zmin,zmax
   logical                      :: ok 
   integer(kind=4),allocatable :: iseed_array(:)
   real(kind=8),allocatable :: nu_em(:),x_em(:,:),k_em(:,:),nu_cell(:)
+  integer(kind=4),dimension(:),allocatable :: cpu_list
+  integer(kind=4) :: ncpu_read
+
   ! ---------------------------------------------------------------------------
   ! user-defined parameters - read from section [CreateDomDump] of the parameter file
   ! ---------------------------------------------------------------------------
@@ -88,7 +91,11 @@ program LyaPhotonsFromGas
   
   ! ---- Read/select leaf cells and compute their luminositites ----------------
   if (verbose) print*,'start reading cells ... '
-  call read_leaf_cells(repository, snapnum, nleaftot, nvar, x_leaf, ramses_var, leaf_level)
+  ! define max extent of emission domain 
+  call domain_get_bounding_box(emission_domain,xmin,xmax,ymin,ymax,zmin,zmax)
+  call get_cpu_list_periodic(repository, snapnum, xmin,xmax,ymin,ymax,zmin,zmax, ncpu_read, cpu_list)
+  call read_leaf_cells_omp(repository, snapnum, ncpu_read, cpu_list, nleaftot, nvar, x_leaf, ramses_var, leaf_level)
+  !call read_leaf_cells(repository, snapnum, nleaftot, nvar, x_leaf, ramses_var, leaf_level)
   if (verbose) print*,'done reading'
   call select_in_domain(emission_domain,nleaftot,x_leaf,emitting_cells)
   nsel = size(emitting_cells)
@@ -128,10 +135,33 @@ program LyaPhotonsFromGas
 
   !print*,'coll_total,recomb_total = ',coll_total,recomb_total
   print*,'coll_total,recomb_total = ',coll_total*(planck*nu_0),recomb_total*(planck*nu_0)
-
   
   recomb_em = recomb_em / maxrec
   coll_em   = coll_em / maxcol
+
+  print*,'nsel = ',nsel
+  print*,'tot recomb_em, coll_em = ',sum(recomb_em),sum(coll_em)
+  maxrec = 0.; maxcol = 0.
+  do i=1,nsel
+     if (recomb_em(i) > 1e-6) maxrec = maxrec+recomb_em(i)
+     if (coll_em(i) > 1e-6) maxcol = maxcol+coll_em(i)
+  end do
+  print*,'selecting > 1e-6 : ',maxrec,maxcol
+  maxrec = 0.; maxcol = 0.
+  do i=1,nsel
+     if (recomb_em(i) > 1e-5) maxrec = maxrec+recomb_em(i)
+     if (coll_em(i)> 1e-5) maxcol = maxcol+coll_em(i)
+  end do
+  print*,'selecting > 1e-5 : ',maxrec,maxcol
+  maxrec = 0.; maxcol = 0.
+  do i=1,nsel
+     if (recomb_em(i) > 1e-4) maxrec = maxrec+recomb_em(i)
+     if (coll_em(i) > 1e-4) maxcol = maxcol+coll_em(i)
+  end do
+  print*,'selecting > 1e-4 : ',maxrec,maxcol
+  stop
+  
+  
   allocate(v_leaf(3,nleaftot))
   call ramses_get_velocity_cgs(repository,snapnum,nleaftot,nvar,ramses_var,v_leaf)
   deallocate(ramses_var)
