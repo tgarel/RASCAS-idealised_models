@@ -260,8 +260,8 @@ contains
     iy = int((pp(2) + 0.5d0 * dx) /dx * n)
     if (ix>0 .and. ix<=n .and. iy>0 .and. iy<=n) then 
        lambda = clight / peel_nu * 1d8 ! [Angstrom]
-       i = int( (lambda - mock(idir)%spec_lmin) / (mock(idir)%spec_lmax - mock(idir)%spec_lmin) * mock(idir)%spec_npix)
-       if ((i > 0) .and. (i<=mock(idir)%spec_npix)) then
+       i = int( (lambda - mock(idir)%cube_lmin) / (mock(idir)%cube_lmax - mock(idir)%cube_lmin) * mock(idir)%cube_lbda_npix)
+       if ((i > 0) .and. (i<=mock(idir)%cube_lbda_npix)) then
           mock(idir)%cube(i,ix,iy) = mock(idir)%cube(i,ix,iy) + peel_contribution
        end if
     end if
