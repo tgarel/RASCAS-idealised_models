@@ -251,8 +251,8 @@ program LyaPhotonsFromGas
 !!$        end do
 !!$        iseed_array(OMP_get_thread_num()) = iseed
 !!$     end do
+     iseed = ranseed
      do iphot = 1,nphotons
-        iseed = ranseed
         ok = .false.
         do while (.not. ok) 
            r1 = ran3(iseed)
@@ -335,65 +335,114 @@ program LyaPhotonsFromGas
         write(*,*) "> Starting to sample collisional emissivity" 
         call cpu_time(start_photpacket)
      end if
-     ! --------------------------------------------------------------------------------------
-     !$OMP PARALLEL &
-     !$OMP DEFAULT(PRIVATE) &
-     !$OMP SHARED(coll_em,emitting_cells,leaf_level,x_em,x_leaf,k_em,nu_cell,HIDopWidth,nu_em,v_leaf,iseed_array, &
-     !$OMP        ranseed,nphotons,nsel,emission_domain) 
-     !$OMP MASTER
-     allocate(iseed_array(0:OMP_get_num_threads()-1))
-     do i=0,OMP_get_num_threads()-1
-        iseed_array(i) = ranseed - i
-     end do
-     write(*,*) 'iseed array : '
-     do i = 0,OMP_get_num_threads()-1
-        write(*,*) iseed_array(i),ranseed
-     end do
-     !$OMP END MASTER
-     !$OMP BARRIER
-     !$OMP DO SCHEDULE(DYNAMIC, 10)
+     ! NewScheme -
+     iseed = ranseed
      do iphot = 1,nphotons
-        iseed = iseed_array(OMP_get_thread_num())
         ok = .false.
         do while (.not. ok) 
-           i = int(ran3(iseed) * nsel)+1
-           if (i > nsel) i = nsel
            r1 = ran3(iseed)
-           if (r1 <= coll_em(i)) then
-              ! success : draw photon's ICs
-              j  = emitting_cells(i)
-              dx = 1.d0 / 2**leaf_level(j)
-              ! draw photon position in cell 
-              x(1)  = (ran3(iseed)-0.5d0) * dx + x_leaf(j,1)
-              x(2)  = (ran3(iseed)-0.5d0) * dx + x_leaf(j,2)
-              x(3)  = (ran3(iseed)-0.5d0) * dx + x_leaf(j,3)
-              ! check that photon is inside emission domain and if so keep it. 
-              ! (it may happen that a cell is only partly included ...)
-              if (domain_contains_point(x,emission_domain)) then 
-                 x_em(:,iphot)  = x(:)
-                 ! draw propagation direction
-                 call isotropic_direction(k,iseed)
-                 k_em(:,iphot) = k
-                 ! compute frequency in cell frame
-                 r1 = ran3(iseed)
-                 r2 = ran3(iseed)
-                 nu = sqrt(-2.*log(r1)) * cos(2.0d0*pi*r2)
-                 nu_cell(iphot) = (HIDopWidth(i) * nu_0 / clight) * nu + nu_0
-                 ! compute frequency in exteral frame 
-                 scalar = k(1)*v_leaf(1,j) + k(2)*v_leaf(2,j) + k(3)*v_leaf(3,j)
-                 nu_em(iphot)  = nu_cell(iphot) / (1d0 - scalar/clight)
-                 ok = .true.
+           ! binary search
+           iup = nsel
+           ilow = 1
+           do while (iup - ilow > 1)
+              imid = (iup+ilow)/2
+              mid  = low_prob_col(imid)
+              if (r1 >= mid) then 
+                 ilow = imid
+              else
+                 iup = imid
               end if
+           end do
+           ! check
+           if (.not. (r1 >= low_prob_col(ilow) .and. r1 < low_prob_col(iup) )) then
+              print*,'hi Harley ;) '
+           end if
+           ! draw photon's ICs from cell ilow
+           j  = emitting_cells(ilow)
+           dx = 1.d0 / 2**leaf_level(j)
+           ! draw photon position in cell
+           x(1)  = (ran3(iseed)-0.5d0) * dx + x_leaf(j,1)
+           x(2)  = (ran3(iseed)-0.5d0) * dx + x_leaf(j,2)
+           x(3)  = (ran3(iseed)-0.5d0) * dx + x_leaf(j,3)
+           ! check that photon is inside emission domain and if so keep it. 
+           ! (it may happen that a cell is only partly included ...)
+           if (domain_contains_point(x,emission_domain)) then 
+              x_em(:,iphot)  = x(:)
+              ! draw propagation direction
+              call isotropic_direction(k,iseed)
+              k_em(:,iphot) = k
+              ! compute frequency in cell frame
+              r1 = ran3(iseed)
+              r2 = ran3(iseed)
+              nu = sqrt(-2.*log(r1)) * cos(2.0d0*pi*r2)
+              nu_cell(iphot) = (HIDopWidth(ilow) * nu_0 / clight) * nu + nu_0
+              ! compute frequency in exteral frame 
+              scalar = k(1)*v_leaf(1,j) + k(2)*v_leaf(2,j) + k(3)*v_leaf(3,j)
+              nu_em(iphot)  = nu_cell(iphot) / (1d0 - scalar/clight)
+              ok = .true.
            end if
         end do
-        iseed_array(OMP_get_thread_num()) = iseed
      end do
-     !$OMP END DO
-     !$OMP BARRIER
-     !$OMP MASTER
-     deallocate(iseed_array)
-     !$OMP END MASTER
-     !$OMP END PARALLEL
+!!$     ! --------------------------------------------------------------------------------------
+!!$     !$OMP PARALLEL &
+!!$     !$OMP DEFAULT(PRIVATE) &
+!!$     !$OMP SHARED(coll_em,emitting_cells,leaf_level,x_em,x_leaf,k_em,nu_cell,HIDopWidth,nu_em,v_leaf,iseed_array, &
+!!$     !$OMP        ranseed,nphotons,nsel,emission_domain) 
+!!$     !$OMP MASTER
+!!$     allocate(iseed_array(0:OMP_get_num_threads()-1))
+!!$     do i=0,OMP_get_num_threads()-1
+!!$        iseed_array(i) = ranseed - i
+!!$     end do
+!!$     write(*,*) 'iseed array : '
+!!$     do i = 0,OMP_get_num_threads()-1
+!!$        write(*,*) iseed_array(i),ranseed
+!!$     end do
+!!$     !$OMP END MASTER
+!!$     !$OMP BARRIER
+!!$     !$OMP DO SCHEDULE(DYNAMIC, 10)
+!!$     do iphot = 1,nphotons
+!!$        iseed = iseed_array(OMP_get_thread_num())
+!!$        ok = .false.
+!!$        do while (.not. ok) 
+!!$           i = int(ran3(iseed) * nsel)+1
+!!$           if (i > nsel) i = nsel
+!!$           r1 = ran3(iseed)
+!!$           if (r1 <= coll_em(i)) then
+!!$              ! success : draw photon's ICs
+!!$              j  = emitting_cells(i)
+!!$              dx = 1.d0 / 2**leaf_level(j)
+!!$              ! draw photon position in cell 
+!!$              x(1)  = (ran3(iseed)-0.5d0) * dx + x_leaf(j,1)
+!!$              x(2)  = (ran3(iseed)-0.5d0) * dx + x_leaf(j,2)
+!!$              x(3)  = (ran3(iseed)-0.5d0) * dx + x_leaf(j,3)
+!!$              ! check that photon is inside emission domain and if so keep it. 
+!!$              ! (it may happen that a cell is only partly included ...)
+!!$              if (domain_contains_point(x,emission_domain)) then 
+!!$                 x_em(:,iphot)  = x(:)
+!!$                 ! draw propagation direction
+!!$                 call isotropic_direction(k,iseed)
+!!$                 k_em(:,iphot) = k
+!!$                 ! compute frequency in cell frame
+!!$                 r1 = ran3(iseed)
+!!$                 r2 = ran3(iseed)
+!!$                 nu = sqrt(-2.*log(r1)) * cos(2.0d0*pi*r2)
+!!$                 nu_cell(iphot) = (HIDopWidth(i) * nu_0 / clight) * nu + nu_0
+!!$                 ! compute frequency in exteral frame 
+!!$                 scalar = k(1)*v_leaf(1,j) + k(2)*v_leaf(2,j) + k(3)*v_leaf(3,j)
+!!$                 nu_em(iphot)  = nu_cell(iphot) / (1d0 - scalar/clight)
+!!$                 ok = .true.
+!!$              end if
+!!$           end if
+!!$        end do
+!!$        iseed_array(OMP_get_thread_num()) = iseed
+!!$     end do
+!!$     !$OMP END DO
+!!$     !$OMP BARRIER
+!!$     !$OMP MASTER
+!!$     deallocate(iseed_array)
+!!$     !$OMP END MASTER
+!!$     !$OMP END PARALLEL
+     ! - NewScheme
      ! --------------------------------------------------------------------------------------
      ! write ICs
      ! --------------------------------------------------------------------------------------
