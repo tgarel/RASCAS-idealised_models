@@ -1,27 +1,61 @@
+import lya_utils as ly
+import jphot as jp
+
+
 class mockobs(object):
-    def __init__(self,Dir,FileName,ncpu,load_spectrum=False,load_image=False,load_cube=False):
+    def __init__(self,Dir,FileName,ncpu,load_spectrum=False,load_image=False,load_cube=False,unit_l_arcsec=1.0,lumdist_cm=1.0,redshift=0.0):
         self.Dir      = Dir
         self.FileName = FileName 
         self.ncpu     = ncpu
-
-        import jphot as jp
         ICFile = FileName.replace('result.','')
         p = jp.photonlist("%s/%s"%(self.Dir,ICFile),'',load=False)
-        p.load_ic()
-        self.nPhotPerPacket = p.nRealPhotons / p.nphoton
-        import lya_utils as ly
+        nRealPhotons = p.get_nRealPhotons()
+        nPhotons     = p.get_nphoton()
+        self.nPhotPerPacket = nRealPhotons / nphoton
         self.LumPerPacket = self.nPhotPerPacket * ly.h_cgs * ly.nu0 
 
         if load_image:
             self.imsize_cu, self.image_npix, self.imtot = self.__read_image()
             self.imtot = self.imtot * self.LumPerPacket # [erg/s]
 
-        if load_spectrum:
-            self.lmin,self.lmax,self.spec_npix,self.spectot = self.__read_spectrum()
+        if load_spectrum:  # restframe spectrum
+            self.spec_lmin,self.spec_lmax,self.spec_npix,self.spec = self.__read_spectrum()
+            dl = (self.spec_lmax - self.spec_lmin) / self.spec_npix  # [A] 
+            l = np.arange(self.spec_lmin,self.spec_lmax,dl) + 0.5*dl  # [A]
+            self.spec_lbda_Angstrom  = l
+            self.spec_dlbda_Angstrom = dl
+            l = l * 1e-8  # [cm]
+            energy = ly.h_cgs * ly.clight / l      # [erg]
+            energy = energy * self.nPhotPerPacket  # [erg / s / phot packet]
+            energy = energy / dl                   # [erg / s / A / phot packet]
+            self.spec = energy * self.spec         # [erg / s/ A]
 
-        if load_cube:
-            self.nlbda,self.nxy,self.lmin,self.lmax,self.imsize,self.cubetot = self.__read_cube()
-        
+        if load_cube:  # obs-frame cube 
+            self.cube_nlbda,self.cube_nxy,self.cube_lmin,self.cube_lmax,self.cube_imsize,self.cube = self.__read_cube()
+            self.cube_lmin = self.cube_lmin * (1+redshift)
+            self.cube_lmax = self.cube_lmax * (1+redshift)
+            dl = (self.cube_lmax - self.cube_lmin) / self.cube_nlbda  # [A] 
+            l = np.arange(self.cube_lmin,self.cube_lmax,dl) + 0.5*dl  # [A]
+            self.cube_lbda_Angstrom  = l 
+            self.cube_dlbda_Angstrom = dl
+            l = l * 1e-8  # [cm]
+            energy = ly.h_cgs * ly.clight / l      # [erg]
+            energy = energy * self.nPhotPerPacket  # [erg / s / phot packet]
+            energy = energy / dl                   # [erg / s / A / phot packet]
+            energy = energy / (self.imsize*unit_l_arcsec/self.nxy)**2 # [erg / s / A / arcsec2 / phot packet]
+            energy = energy / (4. * np.pi * lumdist_cm**2)  # [erg / s/ A / arcsec2 / cm2 / phot packet] 
+            self.cube = energy * self.cube   # [erg / s / A / arcsec2 / cm2 ]
+            x = np.arange(-0.5*self.cube_imsize,0.5*self.cube_imsize,self.cube_imsize/self.cube_nxy) + 0.5 * self.cube_imsize/self.cube_nxy
+            self.cube_x_arcsec = x * unit_l_arcsec
+            self.cube_y_arcsec = x * unit_l_arcsec
+            self.cube_xmin_arcsec = -0.5 * self.cube_imsize * unit_l_arcsec
+            self.cube_xmax_arcsec = 0.5 * self.cube_imsize * unit_l_arcsec
+            self.cube_ymin_arcsec = -0.5 * self.cube_imsize * unit_l_arcsec
+            self.cube_ymax_arcsec = 0.5 * self.cube_imsize * unit_l_arcsec
+            self.cube_dx_arcsec = self.cube_imsize * unit_l_arcsec /self.cube_nxy
+            
+            
+            
     def __read_cube(self):
         from scipy.io import FortranFile as ff
         first = True
@@ -40,6 +74,7 @@ class mockobs(object):
                 cubetot = cubetot + cube
         return nlbda,nxy,lmin,lmax,imsize,cubetot
 
+    
     def __read_image(self):
         from scipy.io import FortranFile as ff
         first = True
@@ -87,6 +122,7 @@ class mockobs(object):
             plt.colorbar()    
         plt.savefig(plotFile)
 
+        
     def show_spectrum(self,plotFile):
         import lya_utils as ly
         import matplotlib
@@ -98,5 +134,34 @@ class mockobs(object):
         plt.plot(l,self.spectot)
         plt.savefig(plotFile)
 
+        
+    def write_fits_cube(self,filename):
+        import astropy.io.fits as fits
+        import astropy.wcs as pywcs
+        from datetime import datetime
+        # write a datacube into a FITS file readable by HSIM
+        # primary header + 1 DATA extension
+        primary_header=fits.Header()
+        data_header=fits.Header()
+        wcs = pywcs.WCS(naxis=3)
+        wcs.wcs.crpix = np.array([(self.cube_nxy+1)/2.,(self.cube_nxy+1)/2.,1.0])
+        wcs.wcs.crval = np.array([0.,0.,self.cube_lmin])
+        wcs.wcs.ctype = ['x', 'y','wavelength']
+        wcs.wcs.cunit = ['arcsec', 'arcsec','Angstrom']
+        wcs.wcs.crota=[0.0,0.0,0.0]
+        wcs.wcs.cdelt=[self.cube_dx_arcsec,self.cube_dx_arcsec,self.cube_dlbda_Angstrom]
+        hdrwcs = wcs.to_header()
+        primary_header['date'] = (str(datetime.now()), 'creation date')
+        primary_header['author'] = ('HSIMREADY', 'origin of the file')
+        hdulist = fits.HDUList([fits.PrimaryHDU(header=primary_header)])
+        keys = set(data_header.keys()) - set(hdrwcs.keys())
+        for card in data_header.cards:
+           if card.keyword not in keys:
+               continue
+           hdrwcs[card.keyword] = (card.value, card.comment)
+
+        hdrwcs['FUNITS']='erg/s/cm2/A/arcsec2'
+        hdulist.append(fits.ImageHDU(name='DATA',data=self.cube,header=hdrwcs))
+        hdulist.writeto(filename, clobber=True, output_verify='silentfix')
 
 

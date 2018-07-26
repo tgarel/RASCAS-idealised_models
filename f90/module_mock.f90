@@ -221,8 +221,8 @@ contains
     real(kind=8) :: dx
     dx = mock(idir)%image_side
     n  = mock(idir)%image_npix
-    ix = int((pp(1) + 0.5d0 * dx) /dx * n)
-    iy = int((pp(2) + 0.5d0 * dx) /dx * n)
+    ix = int((pp(1) + 0.5d0 * dx) /dx * n) + 1
+    iy = int((pp(2) + 0.5d0 * dx) /dx * n) + 1
     if (ix>0 .and. ix<=n .and. iy>0 .and. iy<=n) mock(idir)%image(ix,iy) = mock(idir)%image(ix,iy) + peel_contribution
     
     return
@@ -239,7 +239,7 @@ contains
     integer(kind=4) :: i
 
     lambda = clight / peel_nu * 1d8 ! [Angstrom]
-    i = int( (lambda - mock(idir)%spec_lmin) / (mock(idir)%spec_lmax - mock(idir)%spec_lmin) * mock(idir)%spec_npix)
+    i = int( (lambda - mock(idir)%spec_lmin) / (mock(idir)%spec_lmax - mock(idir)%spec_lmin) * mock(idir)%spec_npix) + 1
     if ((i > 0) .and. (i<=mock(idir)%spec_npix)) then
        mock(idir)%spectrum(i) = mock(idir)%spectrum(i) + peel_contribution
     end if
@@ -256,11 +256,11 @@ contains
 
     dx = mock(idir)%cube_side
     n  = mock(idir)%cube_image_npix
-    ix = int((pp(1) + 0.5d0 * dx) /dx * n)
-    iy = int((pp(2) + 0.5d0 * dx) /dx * n)
+    ix = int((pp(1) + 0.5d0 * dx) /dx * n) + 1
+    iy = int((pp(2) + 0.5d0 * dx) /dx * n) + 1
     if (ix>0 .and. ix<=n .and. iy>0 .and. iy<=n) then 
        lambda = clight / peel_nu * 1d8 ! [Angstrom]
-       i = int( (lambda - mock(idir)%cube_lmin) / (mock(idir)%cube_lmax - mock(idir)%cube_lmin) * mock(idir)%cube_lbda_npix)
+       i = int( (lambda - mock(idir)%cube_lmin) / (mock(idir)%cube_lmax - mock(idir)%cube_lmin) * mock(idir)%cube_lbda_npix) + 1
        if ((i > 0) .and. (i<=mock(idir)%cube_lbda_npix)) then
           mock(idir)%cube(i,ix,iy) = mock(idir)%cube(i,ix,iy) + peel_contribution
        end if

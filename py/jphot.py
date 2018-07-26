@@ -25,6 +25,14 @@ class photonlist(object):
         f.close()
         return nRealPhotons
 
+    def get_nphoton(self):
+        # usefull to get luminosity from ICs without reading the full thing. 
+        f = ff(self.icFile) 
+        [nphoton]  = f.read_ints()
+        f.close()
+        return nphoton
+
+
     
     def load_ic(self,stars=False):
         # read photn IC file
