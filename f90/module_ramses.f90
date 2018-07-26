@@ -85,6 +85,7 @@ module module_ramses
   logical                  :: use_initial_mass  = .false.  ! if true, use initial masses of star particles instead of mass at output time
   logical                  :: cosmo             = .true.   ! if false, assume idealised simulation
   logical                  :: use_proper_time   = .false.  ! if true, use proper time instead of conformal time for cosmo runs. 
+  logical                  :: QuadHilbert       = .false.  ! if true, do not use hilbert indexes for now ... 
   ! miscelaneous
   logical                  :: verbose        = .false. ! display some run-time info on this module
   ! RT variable indices
@@ -418,6 +419,15 @@ contains
     real(kind=8),dimension(:),allocatable :: bound_key
     logical,dimension(:),allocatable      :: cpu_read
     integer(kind=4),dimension(:),allocatable,intent(out)      :: cpu_list
+
+    if (QuadHilbert) then
+       ncpu_read = get_ncpu(repository,snapnum)
+       allocate(cpu_list(ncpu_read))
+       do i = 1,ncpu_read
+          cpu_list(i) = i
+       end do
+       return
+    end if
     
     lmax = nint(get_param_real(repository,snapnum,'levelmax'))
     ncpu = get_ncpu(repository,snapnum)
@@ -536,7 +546,16 @@ contains
     real(kind=8),dimension(:),allocatable :: bound_key
     logical,dimension(:),allocatable      :: cpu_read
     integer(kind=4),dimension(:),allocatable,intent(out)      :: cpu_list
-    
+
+    if (QuadHilbert) then
+       ncpu_read = get_ncpu(repository,snapnum)
+       allocate(cpu_list(ncpu_read))
+       do i = 1,ncpu_read
+          cpu_list(i) = i
+       end do
+       return
+    end if
+
     lmax = nint(get_param_real(repository,snapnum,'levelmax'))
     ncpu = get_ncpu(repository,snapnum)
     
@@ -3169,6 +3188,8 @@ contains
              read(value,*) iheii
           case('iheiii') ! index of HeIII fraction 
              read(value,*) iheiii
+          case('QuadHilbert') ! True if simulation was run with -DQUADHILBERT option  
+             read(value,*) QuadHilbert
           end select
        end do
     end if
@@ -3196,6 +3217,7 @@ contains
        write(unit,'(a,L1)') '  use_initial_mass  = ',use_initial_mass
        write(unit,'(a,L1)') '  cosmo             = ',cosmo
        write(unit,'(a,L1)') '  use_proper_time   = ',use_proper_time
+       write(unit,'(a,L1)') '  QuadHilbert       = ',QuadHilbert
        write(unit,'(a,L1)') '  verbose           = ',verbose
        write(unit,'(a,i2)') '  itemp             = ', itemp
        write(unit,'(a,i2)') '  imetal            = ', imetal
@@ -3210,6 +3232,7 @@ contains
        write(*,'(a,L1)') '  use_initial_mass  = ',use_initial_mass
        write(*,'(a,L1)') '  cosmo             = ',cosmo
        write(*,'(a,L1)') '  use_proper_time   = ',use_proper_time
+       write(*,'(a,L1)') '  QuadHilbert       = ',QuadHilbert
        write(*,'(a,L1)') '  verbose           = ',verbose
        write(*,'(a,i2)') '  itemp             = ', itemp
        write(*,'(a,i2)') '  imetal            = ', imetal
