@@ -76,6 +76,7 @@ module module_ramses
   ! user-defined parameters - read from section [ramses] of the parameter file
   ! --------------------------------------------------------------------------
   ! ramses options (not guessable from outputs)
+  logical                  :: Teyssier_version  = .false.  ! if true, changes the way to read the number and parameters of stellar particles, and change the treatment of initial mass
   logical                  :: self_shielding    = .true.   ! if true, reproduce self-shielding approx made in ramses to compute nHI. 
   logical                  :: ramses_rt         = .false.  ! if true, read ramses-RT output and compute nHI and T accordingly.
   logical                  :: read_rt_variables = .false.  ! if true, read RT variables (e.g. to compute heating terms)
@@ -1133,6 +1134,7 @@ contains
           nSiII(i) = 0.0d0
        end if
     end do
+    !print*, 'test ramses_T : ', minval(temp(:)), maxval(temp(:))
     
     return
 
@@ -2103,7 +2105,7 @@ contains
     integer(kind=4),intent(in) :: snapnum
     character(*),intent(in)    :: param
     logical(kind=4)            :: not_ok
-    character(512)             :: nomfich
+    character(1000)             :: nomfich
     character(512)             :: line,name,value
     integer(kind=4)            :: i
     integer(kind=4),parameter  :: param_unit = 13
@@ -2313,6 +2315,12 @@ contains
     integer(kind=4),allocatable            :: id(:)
     real(kind=8),allocatable               :: age(:),m(:),x(:,:),v(:,:),mets(:),skipy(:),imass(:)
     real(kind=8)                           :: temp(3)
+
+    !Val--   To convert mass into initial mass. (Problem with using Romain Teyssier's version of Ramses)
+    real(kind=8)                           :: t_sne_Myr
+
+    t_sne_Myr = 1d1
+    !--Val
         
     ! get cosmological parameters to convert conformal time into ages
     call read_cosmo_params(repository,snapnum,omega_0,lambda_0,little_h)
@@ -2350,50 +2358,101 @@ contains
     do icpu = 1, ncpu
        write(filename,'(a,a,i5.5,a,i5.5,a,i5.5)') trim(repository), '/output_', snapnum, '/part_', snapnum, '.out', icpu
        open(unit=11,file=filename,status='old',form='unformatted')
-       read(11)
-       read(11)
-       read(11)npart
-       read(11)
-       read(11)
-       read(11)
-       read(11)
-       read(11)
-       allocate(age(1:npart))
-       allocate(x(1:npart,1:ndim),m(npart),imass(npart))
-       allocate(id(1:npart))
-       allocate(mets(1:npart))
-       allocate(v(1:npart,1:ndim))
-       allocate(skipy(1:npart))
-       do ifield = 1,nfields
-          select case(trim(ParticleFields(ifield)))
-          case('pos')
-             do i = 1,ndim
-                read(11) x(1:npart,i)
-             end do
-          case('vel')
-             do i = 1,ndim 
-                read(11) v(1:npart,i)
-             end do
-          case('mass')
-             read(11) m(1:npart)
-          case('iord') 
-             read(11) id(1:npart)
-          case('level')
-             read(11)
-          case('tform')
-             read(11) age(1:npart)
-          case('metal')
-             read(11) mets(1:npart)
-          case('imass')
-             read(11) imass(1:npart)
-          case default
-             ! Note: we presume here that the unknown field is an 1d array of size 1:npart
-             read(11) skipy(1:npart)
-             print*,'Error, Field unknown: ',trim(ParticleFields(ifield))
-          end select
-       end do
-       close(11)
 
+       
+       !Val--
+       if(Teyssier_version) then
+
+          read(11) !ncpu2
+          read(11) !ndim2
+          read(11) npart
+          read(11) !localseed
+          read(11) !nstar_tot
+          read(11) !mstar_tot
+          read(11) !mstar_lost
+          read(11) !nsink
+
+          allocate(age(1:npart))
+          allocate(x(1:npart,1:ndim),m(npart),imass(npart))
+          allocate(id(1:npart))
+          allocate(mets(1:npart))
+          allocate(v(1:npart,1:ndim))
+          allocate(skipy(1:npart))
+
+
+          ! Read position
+          do i=1,ndim
+             read(11) x(1:npart,i)
+          end do
+          ! Read velocity
+          do i=1,ndim
+             read(11) v(1:ndim,i)
+          end do
+          ! Read mass
+          read(11) m(1:npart)
+          ! Read identity
+          read(11) id(1:npart)
+          ! Read level
+          read(11)
+          ! Read family
+          read(11)
+          ! Read tag
+          read(11)
+          ! Read birth epoch
+          read(11) age(1:npart)
+          ! Read metallicity
+          read(11) mets(1:npart)
+
+       !Normal way
+       else
+          read(11)
+          read(11)
+          read(11)npart
+          read(11)
+          read(11)
+          read(11)
+          read(11)
+          read(11)
+          allocate(age(1:npart))
+          allocate(x(1:npart,1:ndim),m(npart),imass(npart))
+          allocate(id(1:npart))
+          allocate(mets(1:npart))
+          allocate(v(1:npart,1:ndim))
+          allocate(skipy(1:npart))
+          do ifield = 1,nfields
+             select case(trim(ParticleFields(ifield)))
+             case('pos')
+                do i = 1,ndim
+                   read(11) x(1:npart,i)
+                end do
+             case('vel')
+                do i = 1,ndim 
+                   read(11) v(1:npart,i)
+                end do
+             case('mass')
+                read(11) m(1:npart)
+             case('iord') 
+                read(11) id(1:npart)
+             case('level')
+                read(11)
+             case('tform')
+                read(11) age(1:npart)
+             case('metal')
+                read(11) mets(1:npart)
+             case('imass')
+                read(11) imass(1:npart)
+             case default
+                ! Note: we presume here that the unknown field is an 1d array of size 1:npart
+                read(11) skipy(1:npart)
+                print*,'Error, Field unknown: ',trim(ParticleFields(ifield))
+             end select
+          end do
+
+       end if
+       close(11)
+       !--Val
+
+       
        if(.not.cosmo)then
           x=x/boxsize
        endif
@@ -2414,8 +2473,15 @@ contains
                    ! convert from tborn to age in Myr
                    star_age(ilast)   = max(0.d0, (time_cu - age(i)) * dp_scale_t / (365.d0*24.d0*3600.d0*1.d6))
                 endif
-                if (use_initial_mass) then 
-                   star_mass(ilast) = imass(i) * dp_scale_m ! [g]
+                if (use_initial_mass) then
+                   !Val--  From Romain Teyssier version : have to divide mass by 1-eta_sn
+                   if(Teyssier_version) then
+                      star_mass(ilast) = m(i) * dp_scale_m ! [g]
+                      if(star_age(ilast) > t_sne_Myr) star_mass(ilast) = m(i) * dp_scale_m / 8d-1
+                   else
+                      star_mass(ilast) = imass(i) * dp_scale_m ! [g]
+                   end if
+                   !--Val
                 else
                    star_mass(ilast) = m(i)     * dp_scale_m ! [g]
                 end if
@@ -2483,18 +2549,34 @@ contains
 
     integer(kind=4),intent(in) :: ts
     character(1000),intent(in) :: dir
-    character(2000)            :: nomfich
+    !Val--
+    character(2000)            :: nomfich, useless
+    !--Val
     integer(kind=4)            :: get_tot_nstars
 
     get_tot_nstars = 0
     write(nomfich,'(a,a,i5.5,a,i5.5,a)') trim(dir),'/output_',ts,'/header_',ts,'.txt'
     open(unit=50,file=nomfich,status='old',action='read',form='formatted')
-    read(50,*) ! total nb of particles
-    read(50,*)
-    read(50,*) ! nb of DM particles
-    read(50,*)
-    read(50,*) ! nb of star particles 
-    read(50,*) get_tot_nstars
+    !Val--
+    if(Teyssier_version) then
+       read(50,*) ! total nb of particles
+       read(50,*)
+       read(50,*) ! nb of DM particles
+       read(50,*)
+       read(50,*) ! nb of star particles 
+       read(50,*) ! nb of DM particles
+       read(50,*)
+       read(50,*) ! nb of star particles 
+       read(50,*) useless, get_tot_nstars
+    else
+       read(50,*) ! total nb of particles
+       read(50,*)
+       read(50,*) ! nb of DM particles
+       read(50,*)
+       read(50,*) ! nb of star particles 
+       read(50,*) get_tot_nstars
+    end if
+    !--Val
     close(50)
 
     return
@@ -2753,6 +2835,8 @@ contains
           i = scan(value,'!')
           if (i /= 0) value = trim(adjustl(value(:i-1)))
           select case (trim(name))
+          case('Teyssier_version')
+             read(value,*) Teyssier_version
           case ('self_shielding')
              read(value,*) self_shielding
           case ('ramses_rt')
@@ -2797,6 +2881,7 @@ contains
 
     if (present(unit)) then 
        write(unit,'(a,a,a)') '[ramses]'
+       write(unit,'(a,L1)') '  Teyssier_version  = ',Teyssier_version
        write(unit,'(a,L1)') '  self_shielding    = ',self_shielding
        write(unit,'(a,L1)') '  ramses_rt         = ',ramses_rt
        write(unit,'(a,L1)') '  read_rt_variables = ',read_rt_variables
@@ -2811,6 +2896,7 @@ contains
        write(unit,'(a,i2)') '  iheiii            = ', iheiii
     else
        write(*,'(a,a,a)') '[ramses]'
+       write(*,'(a,L1)') '  Teyssier_version  = ',Teyssier_version
        write(*,'(a,L1)') '  self_shielding    = ',self_shielding
        write(*,'(a,L1)') '  ramses_rt         = ',ramses_rt
        write(*,'(a,L1)') '  read_rt_variables = ',read_rt_variables

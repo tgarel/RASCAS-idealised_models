@@ -2,10 +2,10 @@
 
 !--------------------------------------------------------------------------------
 [RASCAS]
-  DomDumpDir   = directory_where_domain_and_mesh_files_are
+  DomDumpDir   = /Users/mauerhof/Documents/RascasFiles/G8_250Myr/Output/Cloudy_WrongDensity
   DomDumpFile  = domain_decomposition_params.dat
-  PhotonICFile = path_to_the_photonsIC_file
-  fileout      = path_to_the_photons_results_file
+  PhotonICFile = /Users/mauerhof/Documents/RascasFiles/G8_250Myr/Output/Cloudy_WrongDensity/output_PFS.out
+  fileout      = /Users/mauerhof/Documents/RascasFiles/G8_250Myr/Output/Cloudy_WrongDensity/output_Cloudy_WrongDensity.out
   nbuffer      = 10
   verbose      = T
 !--------------------------------------------------------------------------------
@@ -19,8 +19,8 @@
 [master]
   verbose = T
   restart       = F
-  PhotonBakFile = path_to_the_photons_backup_file
-  dt_backup     = time_in_seconds_between_2_backups
+  PhotonBakFile = /Users/mauerhof/Documents/RascasFiles/G8_250Myr/Output/Krome/output_rascas.bak
+  dt_backup     = 1000
 !--------------------------------------------------------------------------------
 
 !--------------------------------------------------------------------------------
@@ -32,20 +32,10 @@
 # overwrite parameters
   gas_overwrite       = F
 # miscelaneous parameters
-  verbose             = T
+  verbose             = F
 !--------------------------------------------------------------------------------
 
-!--------------------------------------------------------------------------------
-[HI]
-  recoil    = T
-  isotropic = F
-!--------------------------------------------------------------------------------
 
-!--------------------------------------------------------------------------------
-[Deuterium]
-  recoil    = T
-  isotropic = F
-!--------------------------------------------------------------------------------
 
 !--------------------------------------------------------------------------------
 [dust]
@@ -60,3 +50,14 @@
   xForGaussian  = 8.
 !--------------------------------------------------------------------------------
 
+!--------------------------------------------------------------------------------
+[mock] 
+  mock_center = 0.5, 0.5, 0.5
+  kobs = 0., 0., 1.
+  npix = 500 
+  mock_image_side = 0.12
+  npix_spec = 500 
+  spec_lmin = 1250 
+  spec_lmax = 1270
+  mock_outputfilename = /Users/mauerhof/Documents/RascasFiles/G8_250Myr/Output/Cloudy_WrongDensity/output_Cloudy_WrongDensity
+!--------------------------------------------------------------------------------

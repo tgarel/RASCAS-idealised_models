@@ -1,10 +1,10 @@
 #############################################################################
 # Fortran compiler options and directives
 
-SYSTYPE="CCF"
+#SYSTYPE="CCF"
 #SYSTYPE="lyocral"
 #SYSTYPE="lyocralP"
-#SYSTYPE="mac"
+SYSTYPE="macP"
 #SYSTYPE="macP"
 #SYSTYPE="ccage"
 
@@ -43,7 +43,7 @@ endif
 ifeq ($(SYSTYPE),"mac")
 #F90         = gfortran-mp-4.7 -ffree-line-length-none -ffree-form  ###-fopenmp
 F90         = gfortran-mp-6 -ffree-line-length-none -ffree-form  ###-fopenmp
-FFLAGS      = -g -fcheck=all -ftrapv -fbacktrace -Wall -fbounds-check
+FFLAGS      = -g -fcheck=all -ftrapv -fbacktrace -fbounds-check
 #FFLAGS      = -O2
 FFLAGS += $(OPTIONS)
 LDFLAGS     = 
@@ -51,9 +51,10 @@ endif
 
 
 ifeq ($(SYSTYPE),"macP")
-F90         = mpif90-openmpi-mp
-FFLAGS      = -g -fcheck=all -ffree-line-length-none -ffree-form -ftrapv -fbounds-check -fbacktrace -Wall
-#FFLAGS      = -O3
+#F90         = mpif90-openmpi-mp
+F90			= mpif90 -ffree-line-length-none -ffree-form 
+#FFLAGS      = -g -fcheck=all -ftrapv -fbounds-check -fbacktrace
+FFLAGS      = -O3
 FFLAGS += $(OPTIONS)
 LDFLAGS     = #-lmpi
 endif
@@ -73,7 +74,7 @@ endif
 
 # choose the gas mix you want to use
 # 1/ HI, D, and dust
-COMPOBJS = module_dust_model.o module_D_model.o module_HI_model.o module_gas_composition_HI_D_dust.o
+#COMPOBJS = module_dust_model.o module_D_model.o module_HI_model.o module_gas_composition_HI_D_dust.o
 # 2/ HI and dust
 #COMPOBJS = module_dust_model.o module_HI_model.o module_gas_composition_HI_dust.o
 # 3/ pure HI
@@ -88,6 +89,8 @@ COMPOBJS = module_dust_model.o module_D_model.o module_HI_model.o module_gas_com
 #COMPOBJS = module_MgII_2796_model.o module_MgII_2804_model.o module_gas_composition_MgII.o
 # 8/ MgII and dust
 #COMPOBJS = module_dust_model.o module_MgII_2796_model.o module_MgII_2804_model.o module_gas_composition_MgII_dust.o
+COMPOBJS = module_dust_model.o module_SiII_1260_model.o module_gas_composition_SiII1260_dust.o
+
 
 
 GASOBJS = module_constants.o module_random.o module_utils.o module_domain.o module_ramses.o module_uparallel.o $(COMPOBJS)
@@ -115,8 +118,8 @@ PhotonsFromSourceModel: $(OBJSPHO) PhotonsFromSourceModel.o
 PhotonsFromStars: $(OBJSPHO) PhotonsFromStars.o
 	$(F90) $(FFLAGS) $(LDFLAGS) -o $@ $(OBJSPHO) PhotonsFromStars.o
 
-CreateDomDump: $(OBJSDOM) CreateDomDump.o
-	$(F90) $(FFLAGS) $(LDFLAGS) -o $@ $(OBJSDOM) CreateDomDump.o
+CreateDomDump: $(OBJSDOM) CreateDomDump.o #_Val.o
+	$(F90) $(FFLAGS) $(LDFLAGS) -o $@ $(OBJSDOM) CreateDomDump.o #_Val.o
 
 ExtractSubvol: $(OBJSDOM) ExtractSubvol.o
 	$(F90) $(FFLAGS) $(LDFLAGS) -o $@ $(OBJSDOM) ExtractSubvol.o
