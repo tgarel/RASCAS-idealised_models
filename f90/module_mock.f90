@@ -317,7 +317,7 @@ contains
              iopen = .true.
           end if
           write(cunit) mock(idir)%cube_lbda_npix, mock(idir)%cube_image_npix
-          write(cunit) mock(idir)%cube_lmin,mock(idir)%cube_lmax,mock(idir)%image_side
+          write(cunit) mock(idir)%cube_lmin,mock(idir)%cube_lmax,mock(idir)%cube_image_side
           write(cunit) (mock(idir)%center(i),i=1,3)
           write(cunit) (((mock(idir)%cube(k,i,j),k=1,mock(idir)%cube_lbda_npix),i=1,mock(idir)%cube_image_npix),j=1,mock(idir)%cube_image_npix)
        end if
