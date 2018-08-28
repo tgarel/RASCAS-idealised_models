@@ -5,7 +5,7 @@ pro angular_redistribution,iso=iso,dip=dip,ray=ray
   if keyword_set(ray) then choice = 'Rayleigh'
 
   temp = '1.E+04'
-  startpdf,'plots/tests_hi_test_angular_redist_T'+temp+'K_'+choice+''
+  startpdf,'plots/tests_hi_test_angular_redist_T'+temp+'K_'+choice+'_bis'
   loadct,39
 
   ;; mycol = [cgcolor('cg3'),cgcolor('chartreuse'),cgcolor('ygb3'),210,cgcolor('red4'),cgcolor('violet'),cgcolor('gray')]
@@ -98,7 +98,7 @@ pro angular_redistribution,iso=iso,dip=dip,ray=ray
         ;; Rayleigh
         cost = dindgen(1000) / 999. * 2. - 1.
         pp = 3./4. * (1.+cost*cost) / 2. ; / !pi
-        oplot,cost,pp,linestyle=2,thick=6
+       ; oplot,cost,pp,linestyle=2,thick=6
      endif
      
   endfor

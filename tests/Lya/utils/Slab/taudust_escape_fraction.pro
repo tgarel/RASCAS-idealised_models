@@ -73,9 +73,10 @@ pro taudust_escape_fraction
 
   legendold,['RASCAS','Neufeld90'],box=0,/left,/bottom,charsize=1.5,spacing=2.1,colors=[0,254],textcolors=[0,254]
 
+ 
   PS_End, /PDF, /Delete_PS
   
-  print,xxx
-  print,alog10(fesc)
+
+
   
 end
