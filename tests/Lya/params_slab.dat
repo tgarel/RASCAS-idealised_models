@@ -1,6 +1,6 @@
 !--------------------------------------------------------------------------------
 [PhotonsFromSourceModel]
-  outputfile              = /scratch/garel/Rascas/output/Lya_tests/slab/tauH4_temp1d2_xin0_leocorr/ICs_photons.dat
+  outputfile              = /scratch/garel/Rascas/output/Lya_tests/slab/tauH4_temp1d2_xin0_paperVersion/ICs_photons.dat
   source_pos              = 0.00195312, 0.00195312, 0.00195312
   source_type             = pointlike
   ranseed                 = -100
@@ -12,12 +12,12 @@
   spec_powlaw_lmax_Ang    = 1222.0  ! A
   spec_powlaw_l0_Ang      = 1215.67 ! A
   spec_powlaw_beta        = 0.0     ! 0=flat
-  nphot                   = 1000000
+  nphot                   = 2000000
   
 !--------------------------------------------------------------------------------
 [CreateDomDump]
 # input outputs:
-  DataDir    = /scratch/garel/Rascas/output/Lya_tests/slab/tauH4_temp1d2_xin0_leocorr/
+  DomDumpDir = /scratch/garel/Rascas/output/Lya_tests/slab/tauH4_temp1d2_xin0_paperVersion/
   repository = /scratch/dansac/Grid_for_RT/
   snapnum    = 00001
 
@@ -42,10 +42,10 @@
 
 !--------------------------------------------------------------------------------
 [RASCAS]
-  DataDir      = /scratch/garel/Rascas/output/Lya_tests/slab/tauH4_temp1d2_xin0_leocorr/
+  DomDumpDir   = /scratch/garel/Rascas/output/Lya_tests/slab/tauH4_temp1d2_xin0_paperVersion/
   DomDumpFile  = domain_decomposition_params.dat
-  PhotonICFile = ICs_photons.dat
-  fileout      = /scratch/garel/Rascas/output/Lya_tests/slab/tauH4_temp1d2_xin0_leocorr/photons_out.dat
+  PhotonICFile = /scratch/garel/Rascas/output/Lya_tests/slab/tauH4_temp1d2_xin0_paperVersion/ICs_photons.dat
+  fileout      = /scratch/garel/Rascas/output/Lya_tests/slab/tauH4_temp1d2_xin0_paperVersion/photons_out.dat
   nbuffer      = 10
   verbose      = T
   
