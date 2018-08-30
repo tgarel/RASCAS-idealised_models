@@ -580,7 +580,7 @@ contains
           increment_image = mock(idir)%compute_image .and. mock_point_in_image(projpos,idir)
           increment_cube  = mock(idir)%compute_cube .and. mock_point_in_cube(projpos,idir)
           tau = tau_max
-          if (increment_flux .or. increment_spec .or. increment_image) then
+          if (increment_flux .or. increment_spec .or. increment_image .or. increment_cube) then
              if (PeelBuffer(ipeel)%scatter_flag > 0) then 
                 ileaf    = - domesh%son(PeelBuffer(ipeel)%icell)
                 cell_gas = domesh%gas(ileaf)
