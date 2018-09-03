@@ -170,7 +170,7 @@ contains
   end subroutine read_FeII_2344_params
 
 
-  subroutine print_FeII_2244_params(unit)
+  subroutine print_FeII_2344_params(unit)
     
     ! ---------------------------------------------------------------------------------
     ! write parameter values to std output or to an open file if argument unit is
@@ -187,6 +187,6 @@ contains
     
     return
     
-  end subroutine print_FeII_2244_params
+  end subroutine print_FeII_2344_params
   
 end module module_FeII_2344_model
