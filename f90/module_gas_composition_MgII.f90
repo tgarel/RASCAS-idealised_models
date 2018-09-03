@@ -300,31 +300,35 @@ contains
 
     if (present(unit)) then 
        write(unit,'(a,a,a)') '[gas_composition]'
-       write(unit,'(a)')       '# overwrite parameters'
-       write(unit,'(a,L1)')    '  gas_overwrite         = ',gas_overwrite
+       write(unit,'(a)')        '# overwrite parameters'
+       write(unit,'(a,L1)')     '  gas_overwrite         = ',gas_overwrite
        write(unit,'(a,ES10.3)') '  fix_nMgII            = ',fix_nMgII
        write(unit,'(a,ES10.3)') '  fix_vth              = ',fix_vth
        write(unit,'(a,ES10.3)') '  fix_vel              = ',fix_vel
        write(unit,'(a,ES10.3)') '  fix_box_size_cm      = ',fix_box_size_cm
-       write(unit,'(a)')       '# miscelaneous parameters'
-       write(unit,'(a,L1)')    '  verbose               = ',verbose
+       write(unit,'(a)')        '# miscelaneous parameters'
+       write(unit,'(a,L1)')     '  verbose               = ',verbose
        write(unit,'(a)')             ' '
        call print_ramses_params(unit)
+       write(unit,'(a)')             ' '
        call print_MgII_2796_params(unit)
+       write(unit,'(a)')             ' '
        call print_MgII_2804_params(unit)
     else
        write(*,'(a,a,a)') '[gas_composition]'
-       write(*,'(a)')       '# overwrite parameters'
-       write(*,'(a,L1)')    '  gas_overwrite         = ',gas_overwrite
+       write(*,'(a)')        '# overwrite parameters'
+       write(*,'(a,L1)')     '  gas_overwrite         = ',gas_overwrite
        write(*,'(a,ES10.3)') '  fix_nMgII            = ',fix_nMgII
        write(*,'(a,ES10.3)') '  fix_vth              = ',fix_vth
        write(*,'(a,ES10.3)') '  fix_vel              = ',fix_vel
        write(*,'(a,ES10.3)') '  fix_box_size_cm      = ',fix_box_size_cm
-       write(*,'(a)')       '# miscelaneous parameters'
-       write(*,'(a,L1)')    '  verbose               = ',verbose
+       write(*,'(a)')        '# miscelaneous parameters'
+       write(*,'(a,L1)')     '  verbose               = ',verbose
        write(*,'(a)')             ' '
        call print_ramses_params
+       write(*,'(a)')             ' '
        call print_MgII_2796_params
+       write(*,'(a)')             ' '
        call print_MgII_2804_params
     end if
 
