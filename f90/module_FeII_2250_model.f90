@@ -177,8 +177,5 @@ contains
     return
     
   end subroutine print_FeII_2250_params
-
-
-
   
 end module module_FeII_2250_model
