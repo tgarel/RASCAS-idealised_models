@@ -18,9 +18,8 @@ module module_gas_composition
   type, public :: gas
      ! fluid
      real(kind=8) :: v(3)      ! gas velocity [cm/s]
-     ! FeII
-     ! -> density is computed as 2.8d-5 * nHI * metallicity / solar_metallicity
      real(kind=8) :: nFeII     ! numerical density of FeII  [#/cm3]
+                               ! FeII -> density is computed as abundance_number_FeII * nHI * metallicity / solar_metallicity
      real(kind=8) :: dopwidth  ! Doppler width [cm/s]
   end type gas
   real(kind=8),public :: box_size_cm   ! size of simulation box in cm. 
@@ -55,7 +54,7 @@ contains
     real(kind=8),intent(in)           :: ramses_var(nvar,nleaf)
     type(gas),dimension(:),allocatable,intent(out) :: g
     integer(kind=4)                   :: ileaf
-    real(kind=8),allocatable          :: v(:,:), T(:), nFeII(:), nHI(:), nHII(:), metallicity(:)
+    real(kind=8),allocatable          :: v(:,:), T(:), nFeII(:)
 
     ! allocate gas-element array
     allocate(g(nleaf))
@@ -125,7 +124,7 @@ contains
     ! Decide whether a scattering event occurs, and if so, on which element
     ! --------------------------------------------------------------------------
     ! INPUTS:
-    ! - cell_gas : FeII (with two absorption channels) and dust
+    ! - cell_gas : FeII (with two absorption channels)
     ! - distance_to_border_cm : the maximum distance the photon may travel (before leaving the cell)
     ! - nu_cell : photon frequency in cell's frame [ Hz ]
     ! - tau_abs : optical depth at which the next scattering event will occur
@@ -147,7 +146,6 @@ contains
     ! compute optical depths for different components of the gas.
     tau_FeII_2587 = get_tau_FeII_2587(cell_gas%nFeII, cell_gas%dopwidth, distance_to_border_cm, nu_cell)
     tau_FeII_2600 = get_tau_FeII_2600(cell_gas%nFeII, cell_gas%dopwidth, distance_to_border_cm, nu_cell)
-
     tau_cell      = tau_FeII_2587 + tau_FeII_2600
 
     if (tau_abs > tau_cell) then  ! photon is due for absorption outside the cell 
@@ -160,7 +158,6 @@ contains
     else  ! the scattering happens inside the cell
        ! decide if it is 2587 or 2600
        proba87 = tau_FeII_2587 / tau_cell
-       
        x = ran3(iran)
        if (x <= proba87) then
           gas_get_scatter_flag = 1 ! absorption by FeII-2587
@@ -184,7 +181,6 @@ contains
     real(kind=8), intent(inout)               :: nu_cell, nu_ext
     real(kind=8), dimension(3), intent(inout) :: k
     integer, intent(inout)                    :: iran
-    integer(kind=4)                           :: ilost 
 
     select case(flag)
     case(1)
@@ -223,9 +219,6 @@ contains
        read(unit) (g(i)%dopwidth,i=1,n)
        read(unit) box_size_cm 
     end if
-
-    if (verbose) print*,'min/max of nFeII : ',minval(g(:)%nFeII),maxval(g(:)%nFeII)
-
   end subroutine read_gas
 
   
@@ -292,7 +285,9 @@ contains
     close(10)
 
     call read_ramses_params(pfile)
-
+    call read_FeII_2587_params(pfile)
+    call read_FeII_2600_params(pfile)
+    
     return
 
   end subroutine read_gas_composition_params
@@ -310,28 +305,36 @@ contains
 
     if (present(unit)) then 
        write(unit,'(a,a,a)') '[gas_composition]'
-       write(unit,'(a)')       '# overwrite parameters'
-       write(unit,'(a,L1)')    '  gas_overwrite         = ',gas_overwrite
+       write(unit,'(a)')        '# overwrite parameters'
+       write(unit,'(a,L1)')     '  gas_overwrite         = ',gas_overwrite
        write(unit,'(a,ES10.3)') '  fix_nFeII            = ',fix_nFeII
        write(unit,'(a,ES10.3)') '  fix_vth              = ',fix_vth
        write(unit,'(a,ES10.3)') '  fix_vel              = ',fix_vel
        write(unit,'(a,ES10.3)') '  fix_box_size_cm      = ',fix_box_size_cm
-       write(unit,'(a)')       '# miscelaneous parameters'
-       write(unit,'(a,L1)')    '  verbose               = ',verbose
+       write(unit,'(a)')        '# miscelaneous parameters'
+       write(unit,'(a,L1)')     '  verbose               = ',verbose
        write(unit,'(a)')             ' '
        call print_ramses_params(unit)
+       write(unit,'(a)')             ' '
+       call print_FeII_2587_params(unit)
+       write(unit,'(a)')             ' '
+       call print_FeII_2600_params(unit)
     else
        write(*,'(a,a,a)') '[gas_composition]'
-       write(*,'(a)')       '# overwrite parameters'
-       write(*,'(a,L1)')    '  gas_overwrite         = ',gas_overwrite
+       write(*,'(a)')        '# overwrite parameters'
+       write(*,'(a,L1)')     '  gas_overwrite         = ',gas_overwrite
        write(*,'(a,ES10.3)') '  fix_nFeII            = ',fix_nFeII
        write(*,'(a,ES10.3)') '  fix_vth              = ',fix_vth
        write(*,'(a,ES10.3)') '  fix_vel              = ',fix_vel
        write(*,'(a,ES10.3)') '  fix_box_size_cm      = ',fix_box_size_cm
-       write(*,'(a)')       '# miscelaneous parameters'
-       write(*,'(a,L1)')    '  verbose               = ',verbose
+       write(*,'(a)')        '# miscelaneous parameters'
+       write(*,'(a,L1)')     '  verbose               = ',verbose
        write(*,'(a)')             ' '
        call print_ramses_params
+       write(*,'(a)')             ' '
+       call print_FeII_2587_params
+       write(*,'(a)')             ' '
+       call print_FeII_2600_params
     end if
 
     return
