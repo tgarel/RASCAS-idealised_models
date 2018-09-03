@@ -31,7 +31,7 @@ module module_gas_composition
   ! --------------------------------------------------------------------------
   ! user-defined parameters - read from section [gas_composition] of the parameter file
   ! --------------------------------------------------------------------------
-  ! mixture parameters 
+  ! mixture parameters
   real(kind=8)             :: f_ion           = 0.01   ! ndust = (n_HI + f_ion*n_HII) * Z/Zsun [Laursen+09]
   real(kind=8)             :: Zref            = 0.005  ! reference metallicity. Should be ~ 0.005 for SMC and ~ 0.01 for LMC. 
   ! possibility to overwrite ramses values with an ad-hoc model 
@@ -127,15 +127,7 @@ contains
     g(:)%nSiII    = fix_nSiII
     g(:)%dopwidth = fix_vth
     g(:)%ndust    = fix_ndust
-       
-#ifdef DEBUG
-    print*,'in overwrite_gas: allocated g?',shape(g)
-    print*,'in overwrite_gas: ',minval(g%nsiII),maxval(g%nsiII)
-    print*,'in overwrite_gas: ',minval(g%dopwidth),maxval(g%dopwidth)
-    print*,'in overwrite_gas: ',minval(g%v),maxval(g%v)
-    print*,'in overwrite_gas: ',box_size_cm
-#endif
-
+    
   end subroutine overwrite_gas
 
 
@@ -336,6 +328,8 @@ contains
 
     call read_ramses_params(pfile)
     call read_dust_params(pfile)
+    call read_SiII_1190_params(pfile)
+    call read_SiII_1193_params(pfile)
 
     return
 
@@ -369,6 +363,8 @@ contains
        call print_ramses_params(unit)
        write(unit,'(a)')             ' '
        call print_dust_params
+       call print_SiII_1190_params(unit)
+       call print_SiII_1193_params(unit)
     else
        write(*,'(a,a,a)') '[gas_composition]'
        write(*,'(a,ES10.3)') '  f_ion                = ',f_ion
@@ -386,6 +382,8 @@ contains
        call print_ramses_params
        write(*,'(a)')             ' '
        call print_dust_params
+       call print_SiII_1190_params
+       call print_SiII_1193_params
     end if
 
     return

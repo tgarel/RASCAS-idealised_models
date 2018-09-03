@@ -28,7 +28,7 @@ contains
     
     x2 = x**2
     z  = (x2 - 0.855d0) / (x2 + 3.42d0)
-    if (z > 0) then 
+    if (z > 0.0d0) then 
        q = z * (1.0d0 + 21.0d0/x2) * a / pi / (x2 + 1.0d0)
        q = q * (((5.674d0*z - 9.207d0)*z + 4.421d0)*z + 0.1117)
     else
@@ -58,7 +58,7 @@ contains
 
     real(kind=8),intent(out)      :: k(3)
     integer(kind=4),intent(inout) :: iran
-    real(kind=8)                  :: cos_theta,sin_theta,phi
+    real(kind=8)                  :: cos_theta,sin_theta,phi,knorm
     
     phi   = twopi*ran3(iran)
     cos_theta = 1.0d0 - 2.0d0 * ran3(iran)  ! in [-1,1]
@@ -66,7 +66,10 @@ contains
     k(1) = sin_theta * cos(phi)   !x
     k(2) = sin_theta * sin(phi)   !y
     k(3) = cos_theta              !z
-    
+    ! force normalisation at numerical precision
+    knorm = sqrt(k(1)*k(1)+k(2)*k(2)+k(3)*k(3))
+    k     = k / knorm
+
   end subroutine isotropic_direction
 
   
@@ -83,7 +86,7 @@ contains
     ! - iran : state of random number generator
     ! OUTPUTS:
     ! - kout : normalized direction vector of scattered photon
-    ! - mu   : dod-product between kin and kout (i.e. cos(theta))
+    ! - mu   : dot-product between kin and kout (i.e. cos(theta))
     ! - bu   : sin(theta) (i.e. sqrt(1-mu**2))
     ! - iran : updated state of random number generator
     ! 
@@ -103,20 +106,20 @@ contains
     real(kind=8),intent(out)      :: kout(3)
     real(kind=8),intent(out)      :: mu,bu
     integer(kind=4),intent(inout) :: iran
-    real(kind=8)                  :: phi,x,cti,sti,cpi,spi,ct1,st1,cp1,sp1
+    real(kind=8)                  :: phi,x,cti,sti,cpi,spi,ct1,st1,cp1,sp1,knorm
     
     phi = twopi * ran3(iran)
     x   = ran3(iran)
-    mu = ((-0.703204*x + 1.054807)* x + 1.643182) * x - 0.997392  
+    mu = ((-0.703204d0*x + 1.054807d0)* x + 1.643182d0) * x - 0.997392d0  
     ! angular description of kin in external frame (box coordinates)
     cti = kin(3)
-    sti = sqrt(1.d0 - cti**2)  ! sin(theta) is positive for theta in [0,pi]. 
+    sti = sqrt(1.0d0 - cti**2)  ! sin(theta) is positive for theta in [0,pi]. 
     if (sti > 0) then 
        cpi = kin(1)/sti
        spi = kin(2)/sti
     else
-       cpi = 1.
-       spi = 0.
+       cpi = 1.0d0
+       spi = 0.0d0
     end if
     ! angular description of kout (relative to k)
     ct1 = mu
@@ -128,7 +131,10 @@ contains
     kout(1) = cti*cpi*st1*cp1 + sti*cpi*ct1 - spi*st1*sp1
     kout(2) = cti*spi*st1*cp1 + sti*spi*ct1 + cpi*st1*sp1
     kout(3) = -sti*st1*cp1 + cti*ct1
-
+    ! force normalisation at numerical precision
+    knorm = sqrt(kout(1)*kout(1)+kout(2)*kout(2)+kout(3)*kout(3))
+    kout  = kout / knorm
+    
   end subroutine anisotropic_direction_HIcore
 
   
@@ -145,7 +151,7 @@ contains
     ! - iran : state of random number generator
     ! OUTPUTS:
     ! - kout : normalized direction vector of scattered photon
-    ! - mu   : dod-product between kin and kout (i.e. cos(theta))
+    ! - mu   : dot-product between kin and kout (i.e. cos(theta))
     ! - bu   : sin(theta) (i.e. sqrt(1-mu**2))
     ! - iran : updated state of random number generator
     ! 
@@ -165,20 +171,20 @@ contains
     real(kind=8),intent(out)      :: kout(3)
     real(kind=8),intent(out)      :: mu,bu
     integer(kind=4),intent(inout) :: iran
-    real(kind=8)                  :: phi,x,cti,sti,cpi,spi,ct1,st1,cp1,sp1
+    real(kind=8)                  :: phi,x,cti,sti,cpi,spi,ct1,st1,cp1,sp1,knorm
 
     phi = twopi * ran3(iran)
     x   = ran3(iran)
-    mu = ((((((-24.901267*x + 87.154434)*x -114.220525)*x + 67.665227)*x -18.389694)*x + 3.496531)*x + 1.191722)*x -0.998214
+    mu = ((((((-24.901267d0*x + 87.154434d0)*x -114.220525d0)*x + 67.665227d0)*x -18.389694d0)*x + 3.496531d0)*x + 1.191722d0)*x -0.998214d0
     ! angular description of kin in external frame (box coordinates)
     cti = kin(3)
-    sti = sqrt(1.d0 - cti**2)  ! sin(theta) is positive for theta in [0,pi]. 
+    sti = sqrt(1.0d0 - cti**2)  ! sin(theta) is positive for theta in [0,pi]. 
     if (sti > 0) then 
        cpi = kin(1)/sti
        spi = kin(2)/sti
     else
-       cpi = 1.
-       spi = 0.
+       cpi = 1.0d0
+       spi = 0.0d0
     end if
     ! angular description of kout (relative to k)
     ct1 = mu
@@ -190,6 +196,9 @@ contains
     kout(1) = cti*cpi*st1*cp1 + sti*cpi*ct1 - spi*st1*sp1
     kout(2) = cti*spi*st1*cp1 + sti*spi*ct1 + cpi*st1*sp1
     kout(3) = -sti*st1*cp1 + cti*ct1
+    ! force normalisation at numerical precision
+    knorm = sqrt(kout(1)*kout(1)+kout(2)*kout(2)+kout(3)*kout(3))
+    kout  = kout / knorm
 
   end subroutine anisotropic_direction_Rayleigh
 
@@ -200,11 +209,12 @@ contains
     ! Returns new direction vector kout as a function of incident direction kin, for a phase function
     ! given by Henyey-Greenstein.
     ! INPUTS:
-    ! - kin  : normalized direction vector of incident photon
-    ! - iran : state of random number generator
+    ! - kin    : normalized direction vector of incident photon
+    ! - iran   : state of random number generator
+    ! - g_dust : g parameter of the Henyey-Greenstein phase function for dust scattering
     ! OUTPUTS:
     ! - kout : normalized direction vector of scattered photon
-    ! - mu   : dod-product between kin and kout (i.e. cos(theta))
+    ! - mu   : dot-product between kin and kout (i.e. cos(theta))
     ! - iran : updated state of random number generator
     ! -------------------------------------------------------------------------------------------------
 
@@ -214,16 +224,16 @@ contains
     real(kind=8),intent(out)      :: kout(3)
     real(kind=8),intent(out)      :: mu
     integer(kind=4),intent(inout) :: iran
-    real(kind=8)                  :: phi,cti,sti,cpi,spi,ct1,st1,cp1,sp1,ra
+    real(kind=8)                  :: phi,cti,sti,cpi,spi,ct1,st1,cp1,sp1,ra,knorm
     real(kind=8),intent(in)       :: g_dust
 
 
-    !! determine scattering angle (in atom's frame)
+    ! determine scattering angle (in atom's frame)
     ! use White 79 approximation for the "reciprocal" of cumulative Henyey-Greenstein phase fct:
     ra=ran3(iran) 
-    mu = (1.+g_dust*g_dust-((1.-g_dust*g_dust)/(1.-g_dust+2.*g_dust*ra))**2)/(2.*g_dust)
+    mu = (1.0d0+g_dust*g_dust-((1.0d0-g_dust*g_dust)/(1.0d0-g_dust+2.0d0*g_dust*ra))**2)/(2.0d0*g_dust)
 
-    !! angular description of kin in external frame (box coordinates)
+    ! angular description of kin in external frame (box coordinates)
     ! ---------------------------------------------------------------------------------
     ! kx = sin(theta) * cos(phi)
     ! ky = sin(theta) * sin(phi)
@@ -231,27 +241,30 @@ contains
     ! cti, sti, cpi, spi correspond to kin
     ! ---------------------------------------------------------------------------------
     cti = kin(3)              
-    sti = sqrt(1.d0 - cti**2)  ! sin(theta) is positive for theta in [0,pi]. 
+    sti = sqrt(1.0d0 - cti**2)  ! sin(theta) is positive for theta in [0,pi]. 
     if (sti > 0) then 
        cpi = kin(1)/sti       
        spi = kin(2)/sti       
     else
-       cpi = 1.
-       spi = 0.
+       cpi = 1.0d0
+       spi = 0.0d0
     end if
     
-    !! angular description of kout (relative to kin)
+    ! angular description of kout (relative to kin)
     ct1 = mu
     st1 = sqrt(1.0d0 - ct1*ct1)
     phi = twopi * ran3(iran)
     cp1 = cos(phi)
     sp1 = sin(phi)
     
-    !! vector kout (such that indeed kout . kin = ct1) in external frame (box coords.)
+    ! vector kout (such that indeed kout . kin = ct1) in external frame (box coords.)
     kout(1) = cti*cpi*st1*cp1 + sti*cpi*ct1 - spi*st1*sp1
     kout(2) = cti*spi*st1*cp1 + sti*spi*ct1 + cpi*st1*sp1
     kout(3) = -sti*st1*cp1 + cti*ct1
-    
+    ! force normalisation at numerical precision
+    knorm = sqrt(kout(1)*kout(1)+kout(2)*kout(2)+kout(3)*kout(3))
+    kout  = kout / knorm
+
   end subroutine anisotropic_direction_Dust
 
 
@@ -285,6 +298,37 @@ contains
     
   end subroutine locatedb
 
+
+  function path(pos,dir)
+
+    ! compute distance to border of a cube (of side 1), from position
+    ! pos (in cube units, i.e. [0,1]) and in direction dir (normalized). 
+    
+    implicit none
+
+    real(kind=8),intent(in) :: pos(3)   ! position of photon in cell units
+    real(kind=8),intent(in) :: dir(3)   ! propagation direction of photon
+    integer(kind=4)         :: i
+    real(kind=8)            :: dx(3)
+    real(kind=8)            :: path     ! distance from pos to exit point
+
+    do i = 1,3
+       if(dir(i) < 0.0d0) then
+          dx(i) = -pos(i) / dir(i)
+       else if (dir(i) > 0.0d0) then
+          dx(i) = (1.0d0 - pos(i)) / dir(i)
+       else ! dir(i) == 0
+          dx(i) = 10.0d0  ! larger than maximum extent of cell (sqrt(3)) in cell units
+       end if
+    end do
+    path = minval(dx)
+
+    return
+    
+  end function path
+
+
+  
 
 
 end module module_utils

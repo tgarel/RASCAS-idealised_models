@@ -98,15 +98,7 @@ contains
     g(:)%v(3)     = fix_vel
     g(:)%nHI      = fix_nhi
     g(:)%dopwidth = fix_vth
-       
-#ifdef DEBUG
-    print*,'in overwrite_gas: allocated g?',shape(g)
-    print*,'in overwrite_gas: ',minval(g%nhi),maxval(g%nhi)
-    print*,'in overwrite_gas: ',minval(g%dopwidth),maxval(g%dopwidth)
-    print*,'in overwrite_gas: ',minval(g%v),maxval(g%v)
-    print*,'in overwrite_gas: ',box_size_cm
-#endif
-
+    
   end subroutine overwrite_gas
 
 
@@ -152,7 +144,7 @@ contains
     if (tau_abs > tau_cell) then  ! photon is due for absorption outside the cell 
        gas_get_scatter_flag = 0
        tau_abs = tau_abs - tau_cell
-       if (tau_abs.lt.0.d0) then
+       if (tau_abs.lt.0.0d0) then
           print*, 'tau_abs est negatif'
           stop
        endif

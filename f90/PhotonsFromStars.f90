@@ -88,7 +88,6 @@ program PhotonsFromStars
   integer(kind=4)           :: nphot   = 1000000      ! number of photons to generate
   integer(kind=4)           :: ranseed = -100         ! seed for random generator
   logical                   :: verbose = .true.
-  logical                   :: cosmo   = .true.       ! cosmo flag
   ! --------------------------------------------------------------------------
 
 
@@ -131,7 +130,7 @@ program PhotonsFromStars
   ! read star particles within domain
   ! --------------------------------------------------------------------------------------
   if (verbose) write(*,*) '> reading star particles'
-  call ramses_read_stars_in_domain(repository,snapnum,emission_domain,star_pos,star_age,star_mass,star_vel,star_met,cosmo)
+  call ramses_read_stars_in_domain(repository,snapnum,emission_domain,star_pos,star_age,star_mass,star_vel,star_met)
   ! --------------------------------------------------------------------------------------
 
 
@@ -442,8 +441,6 @@ contains
              read(value,*) ranseed
           case ('verbose')
              read(value,*) verbose
-          case ('cosmo')
-             read(value,*) cosmo
           case default
              write(*,'(a,a,a)') '> WARNING: parameter ',trim(name),' unknown '
           end select
@@ -458,6 +455,9 @@ contains
        write(*,'(a,a,a,a)') '> ERROR: incompatible options : weight_type==',trim(weight_type),' and spec_type==',trim(spec_type)
        stop
     end if
+
+    call read_ramses_params(pfile)
+
     
     return
 
@@ -509,8 +509,8 @@ contains
        write(unit,'(a,i8)')          '  nphot           = ',nphot
        write(unit,'(a,i8)')          '  ranseed         = ',ranseed
        write(unit,'(a,L1)')          '  verbose         = ',verbose
-       write(unit,'(a,L1)')          '  cosmo           = ',cosmo
        write(unit,'(a)')             ' '
+       call print_ramses_params(unit)
     else
        write(*,'(a,a,a)')         '[PhotonsFromStars]'
        write(*,'(a)')             '# input / output parameters'
@@ -547,9 +547,8 @@ contains
        write(*,'(a,i8)')          '  nphot           = ',nphot
        write(*,'(a,i8)')          '  ranseed         = ',ranseed
        write(*,'(a,L1)')          '  verbose         = ',verbose
-       write(*,'(a,L1)')          '  cosmo           = ',cosmo
        write(*,'(a)')             ' '
-
+       call print_ramses_params
     end if
 
     return

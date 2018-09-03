@@ -20,8 +20,8 @@ module module_mesh
        reshape( (/1,3,5, 2,3,5, 1,4,5, 2,4,5, 1,3,6, 2,3,6, 1,4,6, 2,4,6/), (/3,8/) )  
 
   real(kind=8), dimension(1:3,1:8), parameter :: offset = &
-       reshape((/-.5,-.5,-.5, +.5,-.5,-.5, -.5,+.5,-.5, +.5,+.5,-.5, &
-                 -.5,-.5,+.5, +.5,-.5,+.5, -.5,+.5,+.5, +.5,+.5,+.5/), (/3,8/))
+       reshape((/-.5d0,-.5d0,-.5d0, +.5d0,-.5d0,-.5d0, -.5d0,+.5d0,-.5d0, +.5d0,+.5d0,-.5d0, &
+                 -.5d0,-.5d0,+.5d0, +.5d0,-.5d0,+.5d0, -.5d0,+.5d0,+.5d0, +.5d0,+.5d0,+.5d0/), (/3,8/))
 
   ! TODO: change shape of xoct,xleaf,nbor to optimize access xoct(1:noct,1:3) => xoct(1:3,1:noct)
 
@@ -124,7 +124,7 @@ module module_mesh
 
       ! first pass in the coarse cell
       ilastoct=0
-      xnew=(/0.5,0.5,0.5/)
+      xnew=(/0.5d0,0.5d0,0.5d0/)
       lfather=0
       ifathercell=1
       do i=1,nLeaf
@@ -307,9 +307,6 @@ module module_mesh
       inside  = ((abs(xc(1)-xpnew(1))<dx).and.(abs(xc(2)-xpnew(2))<dx).and.(abs(xc(3)-xpnew(3))<dx))
       
       if(inside)then
-#ifdef DEBUG
-         print*,'-WIPG case 1'
-#endif
          ! if yes -> dig
          icellnew = dig_in_cell(m,xpnew,ifather)
          ! check if icellnew is inside the domain
@@ -337,9 +334,6 @@ module module_mesh
                !dx     = 0.5d0**(level)
                inside = ((abs(xc(1)-xpnew(1))<dx).and.(abs(xc(2)-xpnew(2))<dx).and.(abs(xc(3)-xpnew(3))<dx))      
                if(inside)then
-#ifdef DEBUG
-                  print*,'-WIPG case 2'
-#endif
                   ! if yes -> dig
                   icellnew = dig_in_cell(m,xpnew,icell)
                   ! check if icellnew is inside the domain
@@ -355,9 +349,6 @@ module module_mesh
                xc       = xc + offset(1:3,indleaf)*dx*2   ! but then 2*dx for level l+1 
                inside   = ((abs(xc(1)-xpnew(1))<dx).and.(abs(xc(2)-xpnew(2))<dx).and.(abs(xc(3)-xpnew(3))<dx))      
                if(inside)then
-#ifdef DEBUG
-                  print*,'-WIPG case 2'
-#endif
                   icellnew=icell
                   if(ison==0)flagoutvol=.true.
                   return
@@ -365,9 +356,6 @@ module module_mesh
             endif
          enddo
          ! if not in the 3 neighbors, then dig from the top (escaped by an edge or a corner...)
-#ifdef DEBUG
-         print*,'-WIPG case 3'
-#endif
          icellnew = in_cell_finder(m,xpnew)
          ! test if son(icellnew)==0 -> outside of domain
          if(m%son(icellnew)==0) flagoutvol=.true.
@@ -466,18 +454,6 @@ module module_mesh
          write(*,*) '...writing mesh in file: ',trim(file)
          write(*,*)
       end if
-
-#ifdef DEBUG
-      print *,'--> check mesh dom'
-      print *,m%domain
-      print *,m%nCoarse,m%nOct,m%nLeaf,m%nCell
-      print *,minval(m%xoct(:,:)),maxval(m%xoct(:,:))
-      print *,minval(m%nbor(:,:)),maxval(m%nbor(:,:))
-      print *,minval(m%octlevel(:)),maxval(m%octlevel(:))
-      print *,minval(m%son(:)),maxval(m%son(:))
-      print *,minval(m%father(:)),maxval(m%father(:))
-#endif
-
 
       open(unit=13, file=file, status='unknown', form='unformatted', action='write')
 
@@ -889,8 +865,8 @@ module module_mesh
          write(*,*)'min max father       ',minval(father(:)),maxval(father(:))
          write(*,*)'min max octlevel     ',minval(octlevel(:)),maxval(octlevel(:))
          write(*,*)'min max xoct         ',minval(xoct(:,1)),maxval(xoct(:,1))
-         write(*,*)'min max yoct         ',minval(xoct(:,2)),maxval(xoct(:,3))
-         write(*,*)'min max zoct         ',minval(xoct(:,3)),maxval(xoct(:,2))
+         write(*,*)'min max yoct         ',minval(xoct(:,2)),maxval(xoct(:,2))
+         write(*,*)'min max zoct         ',minval(xoct(:,3)),maxval(xoct(:,3))
          write(*,*)'min max octlevel (>0)',minval(octlevel, mask=(octlevel >= 0)), maxval(octlevel, mask=(octlevel >= 0))
          write(*,*)'min max xoct (>0)    ',minval(xoct(:,1), mask=(xoct(:,1)>=0)),maxval(xoct(:,1), mask=(xoct(:,1)>=0))
          write(*,*)'min max yoct (>0)    ',minval(xoct(:,2), mask=(xoct(:,2)>=0)),maxval(xoct(:,2), mask=(xoct(:,2)>=0))
