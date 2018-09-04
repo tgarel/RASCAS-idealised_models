@@ -3,38 +3,42 @@ module module_voigt
   use module_constants, only : pi, sqrtpi
   
   private
-  
+
   character(20) :: method = 'tasitsiomi'  ! could be 'colt', 'tasitsiomi' or 'humlicek_w4'
+  logical       :: isRead=.False., isPrinted=.False. ! to avoid multiple reads and prints when called from different modules
   
-  public :: voigt_fit
+  public :: voigt_function, read_voigt_params, print_voigt_params
 
 contains
 
-  function voigt_fit(x,a)
+  function voigt_function(x,a)
 
     ! returns H(x,a) = a/pi * integral(exp(-z**2) dz / (a**2+(z-x)**2))
     
     implicit none
     
     real(kind=8),intent(in) :: x,a
-    real(kind=8)            :: voigt_fit 
+    real(kind=8)            :: voigt_function
 
     select case(trim(method))
     case('tasitsiomi')
-       voigt_fit = tasitsiomi_fit(x,a)
+       voigt_function = tasitsiomi_approx(x,a)
     case('colt')
-       voigt_fit = colt_approx(x,a)
+       voigt_function = colt_approx(x,a)
+    case('humlicek_w4')
+       voigt_function = humlicek_w4(x,a)
     end select
 
     return
 
-  end function voigt_fit
+  end function voigt_function
 
-  function tasitsiomi_fit(x,a)
-    ! Fit from Tasitsiomi 2006
+
+  function tasitsiomi_approx(x,a)
+    ! from Tasitsiomi 2006
     implicit none
     real(kind=8),intent(in) :: x,a
-    real(kind=8)            :: tasitsiomi_fit 
+    real(kind=8)            :: tasitsiomi_approx
     real(kind=8)            :: q,z,x2
     x2 = x**2
     z  = (x2 - 0.855d0) / (x2 + 3.42d0)
@@ -44,9 +48,9 @@ contains
     else
        q = 0.0d0 
     end if
-    tasitsiomi_fit = sqrtpi*q + exp(-x2)
+    tasitsiomi_approx = sqrtpi*q + exp(-x2)
     return
-  end function tasitsiomi_fit
+  end function tasitsiomi_approx
 
 
   function colt_approx(x,a)
