@@ -30,8 +30,8 @@ contains
        voigt_function = tasitsiomi_approx(x,a)
     case('colt')
        voigt_function = colt_approx(x,a)
-    !case('humlicek_w4')
-    !   voigt_function = humlicek_w4(x,a)
+    case('humlicek_w4')
+       voigt_function = humlicek_w4(x,a)
     end select
 
     return
@@ -97,6 +97,42 @@ contains
   end function colt_approx
 
 
+  function humlicek_w4(x,a)
+    ! From Humlicek82
+    real(kind=8), intent(in) :: x,a
+    complex(kind=8)          :: t, u, w4
+    real(kind=8)             :: s, absx, humlicek_w4, oneoversqrtpi
+    
+    t = cmplx(a,-x,8)
+    u = t*t
+    absx = abs(x)
+    s = absx+abs(a)
+    oneoversqrtpi = 1.d0/sqrtpi
+    
+    if(s >= 15.d0)then
+       ! region 1
+       w4 = t * oneoversqrtpi / (0.5d0 + u)
+    else
+       if(s >= 5.5)then
+          ! region 2
+          w4 = t*(1.410474d0+u*oneoversqrtpi)/(0.75d0+u*(3.d0+u))
+       else
+          if(abs(a) >= (0.195*absx-0.176)) then
+             ! region 3
+             w4 = (16.4955d0 + t*(20.20933d0 + t*(11.96482d0 + t*(3.778987d0 + t*oneoversqrtpi)))) / &
+                  (16.4955d0 + t*(38.82363d0 + t*(39.27121d0 + t*(21.69274d0 + t*(6.699398d0+t)))))
+          else
+             ! region 4
+             w4 = exp(u)-t*(36183.30536-u*(3321.990492-u*(1540.786893-u*(219.0312964-u*(35.76682780-u*(1.320521697-u*oneoversqrtpi)))))) / &
+                  (32066.59372-u*(24322.84021-u*(9022.227659-u*(2186.181081-u*(364.2190727-u*(61.57036588-u*(1.841438936-u)))))))
+          end if
+       end if
+    end if
+    humlicek_w4 = real(w4)
+    return
+  end function humlicek_w4
+
+  
   subroutine read_voigt_params(pfile)    
     ! ---------------------------------------------------------------------------------
     ! subroutine which reads parameters of current module in the parameter file pfile
