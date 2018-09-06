@@ -46,7 +46,7 @@ contains
     ! --------------------------------------------------------------------------
     
     real(kind=8),intent(in) :: nMgII,vth,distance_to_border_cm,nu_cell
-    real(kind=8)            :: delta_nu_doppler,x_cell,sigma,a,h,get_tau_MgII_2804
+    real(kind=8)            :: delta_nu_doppler,x_cell,sigma,a,h_cell,get_tau_MgII_2804
 
     ! compute Doppler width and a-parameter
     delta_nu_doppler = vth / lambda12_cm
@@ -54,8 +54,8 @@ contains
 
     ! cross section of MgII-2804
     x_cell = (nu_cell - nu12) / delta_nu_doppler
-    h      = voigt_fit(x_cell,a)
-    sigma  = sigma12_factor / delta_nu_doppler * h
+    h_cell = voigt_function(x_cell,a)
+    sigma  = sigma12_factor / delta_nu_doppler * h_cell
 
     get_tau_MgII_2804 = sigma * nMgII * distance_to_border_cm
    

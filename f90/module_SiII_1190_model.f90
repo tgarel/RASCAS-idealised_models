@@ -2,7 +2,7 @@ module module_SiII_1190_model
 
   ! This module describes the absorption of photons by SiII from level  3s^2 3p 2P^0 1/2 to level 3s 3p^2 2P 3/2.
   ! This transition is at 1190.42 A.
-  ! The module also implements the two decay channels (resonant and fluorescent) at 1193.28 A and 1197.39 A. 
+  ! The module also implements the two decay channels (resonant and fluorescent) at 1190.42 A and 1194.50 A. 
 
   use module_constants
   use module_utils, only : isotropic_direction
@@ -55,16 +55,16 @@ contains
     ! --------------------------------------------------------------------------
     
     real(kind=8),intent(in) :: nSiII,vth,distance_to_border_cm,nu_cell
-    real(kind=8)            :: delta_nu_doppler,x_cell,sigma,a,h,get_tau_SiII_1190
+    real(kind=8)            :: delta_nu_doppler,x_cell,sigma,a,h_cell,get_tau_SiII_1190
 
     ! compute Doppler width and a-parameter
     delta_nu_doppler = vth / lambda14_cm
-    a    = A41 / (fourpi *  delta_nu_doppler)
+    a = A41 / (fourpi *  delta_nu_doppler)
 
     ! cross section of SiII-1193.28
     x_cell = (nu_cell - nu14) / delta_nu_doppler
-    h      = voigt_fit(x_cell,a)
-    sigma  = sigma14_factor / delta_nu_doppler * h
+    h_cell = voigt_function(x_cell,a)
+    sigma  = sigma14_factor / delta_nu_doppler * h_cell
 
     get_tau_SiII_1190 = sigma * nSiII * distance_to_border_cm
    
