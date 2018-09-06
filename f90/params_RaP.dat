@@ -2,10 +2,10 @@
 
 !--------------------------------------------------------------------------------
 [RASCAS]
-  DataDir      = directory_where_domains_and_photons_files_are
+  DomDumpDir   = directory_where_domain_and_mesh_files_are
   DomDumpFile  = domain_decomposition_params.dat
-  PhotonICFile = name_of_the_photonsIC_file
-  fileout      = name_of_the_photons_results_file
+  PhotonICFile = path_to_the_photonsIC_file
+  fileout      = path_to_the_photons_results_file
   nbuffer      = 10
   verbose      = T
 !--------------------------------------------------------------------------------
@@ -19,7 +19,7 @@
 [master]
   verbose = T
   restart       = F
-  PhotonBakFile = name_of_the_photons_backup_file
+  PhotonBakFile = path_to_the_photons_backup_file
   dt_backup     = time_in_seconds_between_2_backups
 !--------------------------------------------------------------------------------
 
