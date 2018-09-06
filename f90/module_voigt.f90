@@ -7,7 +7,7 @@ module module_voigt
   ! --------------------------------------------------------------------------
   ! user-defined parameters - read from section [voigt] in the parameter file 
   ! --------------------------------------------------------------------------
-  character(20) :: method = 'tasitsiomi'  ! could be 'colt', 'tasitsiomi' or 'humlicek_w4'
+  character(20) :: method = 'COLT'  ! could be 'COLT', 'Tasitsiomi' or 'Humlicek_w4'
   ! --------------------------------------------------------------------------
 
   logical       :: isRead=.False., isPrinted=.False. ! to avoid multiple reads and prints when called from different modules
@@ -26,11 +26,11 @@ contains
     real(kind=8)            :: voigt_function
 
     select case(trim(method))
-    case('tasitsiomi')
+    case('Tasitsiomi')
        voigt_function = tasitsiomi_approx(x,a)
-    case('colt')
+    case('COLT')
        voigt_function = colt_approx(x,a)
-    case('humlicek_w4')
+    case('Humlicek_w4')
        voigt_function = humlicek_w4(x,a)
     end select
 
