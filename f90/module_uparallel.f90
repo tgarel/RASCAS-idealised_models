@@ -5,8 +5,12 @@ module module_uparallel
 
   private
 
+  ! --------------------------------------------------------------------------
+  ! user-defined parameters - read from section [uparallel] in the parameter file 
+  ! --------------------------------------------------------------------------
   character(20) :: method = 'RASCAS'   ! may be 'Smith', 'Semelin', or 'RASCAS'
   real(kind=8)  :: xForGaussian = 8.0  ! above this value, use a Gaussian to draw u_parallel
+  ! --------------------------------------------------------------------------
 
   logical       :: isRead=.False., isPrinted=.False. ! to avoid multiple reads and prints when called from different modules
 
