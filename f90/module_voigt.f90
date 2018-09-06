@@ -4,7 +4,12 @@ module module_voigt
   
   private
 
+  ! --------------------------------------------------------------------------
+  ! user-defined parameters - read from section [voigt] in the parameter file 
+  ! --------------------------------------------------------------------------
   character(20) :: method = 'tasitsiomi'  ! could be 'colt', 'tasitsiomi' or 'humlicek_w4'
+  ! --------------------------------------------------------------------------
+
   logical       :: isRead=.False., isPrinted=.False. ! to avoid multiple reads and prints when called from different modules
   
   public :: voigt_function, read_voigt_params, print_voigt_params
@@ -25,8 +30,8 @@ contains
        voigt_function = tasitsiomi_approx(x,a)
     case('colt')
        voigt_function = colt_approx(x,a)
-    case('humlicek_w4')
-       voigt_function = humlicek_w4(x,a)
+    !case('humlicek_w4')
+    !   voigt_function = humlicek_w4(x,a)
     end select
 
     return
@@ -91,4 +96,75 @@ contains
     return
   end function colt_approx
 
+
+  subroutine read_voigt_params(pfile)    
+    ! ---------------------------------------------------------------------------------
+    ! subroutine which reads parameters of current module in the parameter file pfile
+    !
+    ! default parameter values are set at declaration (head of module)
+    ! ---------------------------------------------------------------------------------
+    character(*),intent(in) :: pfile
+    character(1000)         :: line,name,value
+    integer(kind=4)         :: err,i
+    logical                 :: section_present
+    if(.not.(isRead)) then
+       section_present = .false.
+       open(unit=10,file=trim(pfile),status='old',form='formatted')
+       ! search for section start
+       do
+          read (10,'(a)',iostat=err) line
+          if(err/=0) exit
+          if (line(1:7) == '[voigt]') then
+             section_present = .true.
+             exit
+          end if
+       end do
+       ! read section if present
+       if (section_present) then 
+          do
+             read (10,'(a)',iostat=err) line
+             if(err/=0) exit
+             if (line(1:1) == '[') exit ! next section starting... -> leave
+             i = scan(line,'=')
+             if (i==0 .or. line(1:1)=='#' .or. line(1:1)=='!') cycle  ! skip blank or commented lines
+             name=trim(adjustl(line(:i-1)))
+             value=trim(adjustl(line(i+1:)))
+             i = scan(value,'!')
+             if (i /= 0) value = trim(adjustl(value(:i-1)))
+             select case (trim(name))
+             case ('method')
+                write(method,'(a)') trim(value)
+             end select
+          end do
+       end if
+       close(10)
+    endif
+    isRead = .True.
+    return
+  end subroutine read_voigt_params
+
+
+  subroutine print_voigt_params(unit)
+    ! ---------------------------------------------------------------------------------
+    ! write parameter values to std output or to an open file if argument unit is
+    ! present.
+    ! ---------------------------------------------------------------------------------
+    integer(kind=4),optional,intent(in) :: unit
+    if(.not.(isPrinted)) then
+       if (present(unit)) then
+          write(unit,'(a)') ''
+          write(unit,'(a,a,a)')    '[voigt]'
+          write(unit,'(a,a)')      '  method       = ',method
+          !write(unit,'(a)') ''
+       else
+          write(*,*) ''
+          write(*,'(a,a,a)')    '[voigt]'
+          write(*,'(a,a)')      '  method       = ',method
+          !write(*,*) ''
+       end if
+    end if
+    isPrinted = .True.
+    return
+  end subroutine print_voigt_params
+  
 end module module_voigt
