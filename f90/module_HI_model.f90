@@ -196,6 +196,7 @@ contains
     close(10)
 
     call read_uparallel_params(pfile)
+    call read_voigt_params(pfile)
 
     return
 
@@ -217,13 +218,14 @@ contains
        write(unit,'(a,L1)') '  recoil    = ',recoil
        write(unit,'(a,L1)') '  isotropic = ',isotropic
        call print_uparallel_params(unit)
+       call print_voigt_params(unit)
     else
        write(*,'(a,a,a)') '[HI]'
        write(*,'(a,L1)') '  recoil    = ',recoil
        write(*,'(a,L1)') '  isotropic = ',isotropic
        call print_uparallel_params()
+       call print_voigt_params()
     end if
-
     
     return
     

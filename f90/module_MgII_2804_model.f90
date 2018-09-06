@@ -137,6 +137,7 @@ contains
     character(*),intent(in) :: pfile
     
     call read_uparallel_params(pfile)
+    call read_voigt_params(pfile)
     
     return
     
@@ -155,8 +156,10 @@ contains
     
     if (present(unit)) then 
        call print_uparallel_params(unit)
+       call print_voigt_params(unit)
     else
        call print_uparallel_params()
+       call print_voigt_params()
     end if
     
     return
