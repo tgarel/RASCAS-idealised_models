@@ -93,15 +93,13 @@ module module_ramses
   ! Solar abundance ratio
   ! Si
   ! abundance_Si_mass == abundance_Si_number * 28.085
-  ! Fe
-  ! abundance_Fe_mass == abundance_Fe_number * 55.845
-  real(kind=8),parameter    :: abundance_Fe_mass = 1.58d-3 ! From Scarlata (private comm.): abundance_Fe_number = 2.82d-5   
-=======
   real(kind=8),parameter    :: abundance_Si_number = 3.24d-5 ! From Scarlata (private comm.)
   ! Mg
   ! abundance_Mg_mass == abundance_Mg_number * 24.305
   real(kind=8),parameter    :: abundance_Mg_number = 3.39d-5 ! From Scarlata (private comm.)
->>>>>>> master
+  ! Fe
+  ! abundance_Fe_mass == abundance_Fe_number * 55.845
+  real(kind=8),parameter    :: abundance_Fe_number = 2.82d-5 ! From Scarlata (private comm.)
   ! --------------------------------------------------------------------------
   
   
@@ -1365,7 +1363,7 @@ contains
     ! - Fe+ - Fe++ : 16.19920 eV = 2,56348d-18 J (NIST data)
     do i = 1,nleaf
        if (temp(i) >= 9.1704362d4 .and. temp(i) <= 1.87983d5) then
-          nFeII(i) = ramses_var(1,i) * dp_scale_d * ramses_var(imetal,i) * dp_scale_zsun * abundance_Fe_mass / mFe   ! [#/cm3]
+          nFeII(i) = ramses_var(1,i) * dp_scale_d * ramses_var(imetal,i) * dp_scale_zsun * abundance_Fe_number   ! [#/cm3]
        else
           nFeII(i) = 0.0d0
        end if
