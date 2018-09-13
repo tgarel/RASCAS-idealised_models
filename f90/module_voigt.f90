@@ -7,7 +7,7 @@ module module_voigt
   ! --------------------------------------------------------------------------
   ! user-defined parameters - read from section [voigt] in the parameter file 
   ! --------------------------------------------------------------------------
-  character(20) :: method = 'COLT'  ! could be 'COLT', 'Tasitsiomi' or 'Humlicek_w4'
+  character(20) :: approximation = 'COLT'  ! could be 'COLT', 'Tasitsiomi' or 'Humlicek_w4'
   ! --------------------------------------------------------------------------
 
   logical       :: isRead=.False., isPrinted=.False. ! to avoid multiple reads and prints when called from different modules
@@ -25,7 +25,7 @@ contains
     real(kind=8),intent(in) :: x,a
     real(kind=8)            :: voigt_function
 
-    select case(trim(method))
+    select case(trim(approximation))
     case('Tasitsiomi')
        voigt_function = tasitsiomi_approx(x,a)
     case('COLT')
@@ -168,8 +168,8 @@ contains
              i = scan(value,'!')
              if (i /= 0) value = trim(adjustl(value(:i-1)))
              select case (trim(name))
-             case ('method')
-                write(method,'(a)') trim(value)
+             case ('approximation')
+                write(approximation,'(a)') trim(value)
              end select
           end do
        end if
@@ -190,12 +190,12 @@ contains
        if (present(unit)) then
           write(unit,'(a)') ''
           write(unit,'(a,a,a)')    '[voigt]'
-          write(unit,'(a,a)')      '  method       = ',method
+          write(unit,'(a,a)')      '  approximation = ',approximation
           !write(unit,'(a)') ''
        else
           write(*,*) ''
           write(*,'(a,a,a)')    '[voigt]'
-          write(*,'(a,a)')      '  method       = ',method
+          write(*,'(a,a)')      '  approximation = ',approximation
           !write(*,*) ''
        end if
     end if
