@@ -2,12 +2,13 @@ module module_SiII_1190_model
 
   ! This module describes the absorption of photons by SiII from level  3s^2 3p 2P^0 1/2 to level 3s 3p^2 2P 3/2.
   ! This transition is at 1190.42 A.
-  ! The module also implements the two decay channels (resonant and fluorescent) at 1190.242 A and 1194.50 A. 
+  ! The module also implements the two decay channels (resonant and fluorescent) at 1190.42 A and 1194.50 A. 
 
   use module_constants
-  use module_utils, only : voigt_fit, isotropic_direction
+  use module_utils, only : isotropic_direction
   use module_uparallel
   use module_random
+  use module_voigt
 
   implicit none
 
@@ -20,18 +21,18 @@ module module_SiII_1190_model
   ! level 4 is 3s 3p^2 2P 3/2
 
   ! transition between levels 1 and 4
-  real(kind=8),parameter :: lambda14       = 1190.42d0                ! transition wavelength [A]
-  real(kind=8),parameter :: lambda14_cm    = lambda14 / cmtoA         ! [cm]
-  real(kind=8),parameter :: nu14           = clight / lambda14_cm     ! [Hz]
-  real(kind=8),parameter :: f14            = 0.277d0                  ! oscillator strength
-  real(kind=8),parameter :: sigma14_factor = pi*e_ch**2*f14/me/clight ! multiply by Voigt(x,a)/delta_nu_doppler to get sigma.
-  real(kind=8),parameter :: A41            = 6.53d8                   ! spontaneous decay [/s]
+  real(kind=8),parameter :: lambda14       = 1190.42d0                    ! transition wavelength [A]
+  real(kind=8),parameter :: lambda14_cm    = lambda14 / cmtoA             ! [cm]
+  real(kind=8),parameter :: nu14           = clight / lambda14_cm         ! [Hz]
+  real(kind=8),parameter :: f14            = 0.277d0                      ! oscillator strength
+  real(kind=8),parameter :: sigma14_factor = sqrtpi*e_ch**2*f14/me/clight ! multiply by Voigt(x,a)/delta_nu_doppler to get sigma.
+  real(kind=8),parameter :: A41            = 6.53d8                       ! spontaneous decay [/s]
 
   ! transition between levels 2 and 4
-  real(kind=8),parameter :: lambda24       = 1194.50d0                ! transition wavelength [A]
-  real(kind=8),parameter :: lambda24_cm    = lambda24 / cmtoA         ! [cm]
-  real(kind=8),parameter :: nu24           = clight / lambda24_cm     ! [Hz]
-  real(kind=8),parameter :: A42            = 3.45d9                   ! spontaneous decay [/s]
+  real(kind=8),parameter :: lambda24       = 1194.50d0                    ! transition wavelength [A]
+  real(kind=8),parameter :: lambda24_cm    = lambda24 / cmtoA             ! [cm]
+  real(kind=8),parameter :: nu24           = clight / lambda24_cm         ! [Hz]
+  real(kind=8),parameter :: A42            = 3.45d9                       ! spontaneous decay [/s]
 
   real(kind=8),parameter :: A41_over_A41_plus_A42 = A41 / (A41+A42)
   
@@ -54,16 +55,16 @@ contains
     ! --------------------------------------------------------------------------
     
     real(kind=8),intent(in) :: nSiII,vth,distance_to_border_cm,nu_cell
-    real(kind=8)            :: delta_nu_doppler,x_cell,sigma,a,h,get_tau_SiII_1190
+    real(kind=8)            :: delta_nu_doppler,x_cell,sigma,a,h_cell,get_tau_SiII_1190
 
     ! compute Doppler width and a-parameter
     delta_nu_doppler = vth / lambda14_cm
-    a    = A41 / (fourpi *  delta_nu_doppler)
+    a = A41 / (fourpi *  delta_nu_doppler)
 
     ! cross section of SiII-1193.28
     x_cell = (nu_cell - nu14) / delta_nu_doppler
-    h      = voigt_fit(x_cell,a)
-    sigma  = sigma14_factor / delta_nu_doppler * h
+    h_cell = voigt_function(x_cell,a)
+    sigma  = sigma14_factor / delta_nu_doppler * h_cell
 
     get_tau_SiII_1190 = sigma * nSiII * distance_to_border_cm
    
@@ -152,6 +153,7 @@ contains
     character(*),intent(in) :: pfile
 
     call read_uparallel_params(pfile)
+    call read_voigt_params(pfile)
 
     return
 
@@ -169,8 +171,10 @@ contains
 
     if (present(unit)) then 
        call print_uparallel_params(unit)
+       call print_voigt_params(unit)
     else
        call print_uparallel_params()
+       call print_voigt_params()
     end if
     
     return

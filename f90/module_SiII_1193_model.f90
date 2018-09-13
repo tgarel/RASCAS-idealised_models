@@ -5,9 +5,10 @@ module module_SiII_1193_model
   ! The module also implements the two decay channels (resonant and fluorescent) at 1193.28 A and 1197.39 A. 
   
   use module_constants
-  use module_utils, only : voigt_fit, isotropic_direction
+  use module_utils, only : isotropic_direction
   use module_uparallel
   use module_random
+  use module_voigt
 
   implicit none
 
@@ -20,18 +21,18 @@ module module_SiII_1193_model
   ! level 3 is 3s 3p^2 2P 1/2
 
   ! transition between levels 1 and 3 
-  real(kind=8),parameter :: lambda13       = 1193.28d0                ! transition wavelength [A]
-  real(kind=8),parameter :: lambda13_cm    = lambda13 / cmtoA         ! [cm]
-  real(kind=8),parameter :: nu13           = clight / lambda13_cm     ! [Hz]
-  real(kind=8),parameter :: f13            = 0.575d0                  ! oscillator strength
-  real(kind=8),parameter :: sigma13_factor = pi*e_ch**2*f13/me/clight ! multiply by Voigt(x,a)/delta_nu_doppler to get sigma.
-  real(kind=8),parameter :: A31            = 2.69d9                   ! spontaneous decay [/s]
+  real(kind=8),parameter :: lambda13       = 1193.28d0                    ! transition wavelength [A]
+  real(kind=8),parameter :: lambda13_cm    = lambda13 / cmtoA             ! [cm]
+  real(kind=8),parameter :: nu13           = clight / lambda13_cm         ! [Hz]
+  real(kind=8),parameter :: f13            = 0.575d0                      ! oscillator strength
+  real(kind=8),parameter :: sigma13_factor = sqrtpi*e_ch**2*f13/me/clight ! multiply by Voigt(x,a)/delta_nu_doppler to get sigma.
+  real(kind=8),parameter :: A31            = 2.69d9                       ! spontaneous decay [/s]
 
   ! transition between levels 2 and 3
-  real(kind=8),parameter :: lambda23       = 1197.39d0                ! transition wavelength [A]
-  real(kind=8),parameter :: lambda23_cm    = lambda23 / cmtoA         ! [cm]
-  real(kind=8),parameter :: nu23           = clight / lambda23_cm     ! [Hz]
-  real(kind=8),parameter :: A32            = 1.4d9                    ! spontaneous decay [/s]
+  real(kind=8),parameter :: lambda23       = 1197.39d0                    ! transition wavelength [A]
+  real(kind=8),parameter :: lambda23_cm    = lambda23 / cmtoA             ! [cm]
+  real(kind=8),parameter :: nu23           = clight / lambda23_cm         ! [Hz]
+  real(kind=8),parameter :: A32            = 1.4d9                        ! spontaneous decay [/s]
   
   real(kind=8),parameter :: A31_over_A31_plus_A32 = A31 / (A31+A32)
 
@@ -54,16 +55,16 @@ contains
     ! --------------------------------------------------------------------------
     
     real(kind=8),intent(in) :: nSiII,vth,distance_to_border_cm,nu_cell
-    real(kind=8)            :: delta_nu_doppler,x_cell,sigma,a,h,get_tau_SiII_1193
+    real(kind=8)            :: delta_nu_doppler,x_cell,sigma,a,h_cell,get_tau_SiII_1193
 
     ! compute Doppler width and a-parameter
     delta_nu_doppler = vth / lambda13_cm
-    a    = A31 / (fourpi *  delta_nu_doppler)
+    a = A31 / (fourpi *  delta_nu_doppler)
 
     ! cross section of SiII-1193.28
     x_cell = (nu_cell - nu13) / delta_nu_doppler
-    h      = voigt_fit(x_cell,a)
-    sigma  = sigma13_factor / delta_nu_doppler * h
+    h_cell = voigt_function(x_cell,a)
+    sigma  = sigma13_factor / delta_nu_doppler * h_cell
 
     get_tau_SiII_1193 = sigma * nSiII * distance_to_border_cm
    
@@ -152,6 +153,7 @@ contains
     character(*),intent(in) :: pfile
 
     call read_uparallel_params(pfile)
+    call read_voigt_params(pfile)
 
     return
 
@@ -169,8 +171,10 @@ contains
 
     if (present(unit)) then 
        call print_uparallel_params(unit)
+       call print_voigt_params(unit)
     else
        call print_uparallel_params()
+       call print_voigt_params()
     end if
     
     return
