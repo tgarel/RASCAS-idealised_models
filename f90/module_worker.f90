@@ -17,17 +17,17 @@ module module_worker
   
 contains
 
-  subroutine worker(file_compute_dom, ndomain, mesh_file_list, nbuffer)
+  subroutine worker(file_compute_dom, ndomain, mesh_file_list, nbundle)
 
     implicit none
     
     character(2000),intent(in)                    :: file_compute_dom
     integer(kind=4),intent(in)                    :: ndomain
     character(2000),dimension(ndomain),intent(in) :: mesh_file_list
-    integer(kind=4),intent(in)                    :: nbuffer
+    integer(kind=4),intent(in)                    :: nbundle
     
     integer(kind=4)                               :: jdomain, mydom
-    type(photon_current),dimension(nbuffer)       :: photpacket
+    type(photon_current),dimension(nbundle)       :: photpacket
     type(mesh)                                    :: meshdom
     type(domain)                                  :: compute_dom
     real(kind=8)                                  :: start_photpacket,end_photpacket
@@ -57,33 +57,33 @@ contains
           
        endif
 
-       ! receive my list of photons to propagate
-       call MPI_RECV(photpacket(1)%id, nbuffer, MPI_TYPE_PHOTON, 0, MPI_ANY_TAG, MPI_COMM_WORLD, status, IERROR)
+       ! receive my list of photon packets to propagate
+       call MPI_RECV(photpacket(1)%id, nbundle, MPI_TYPE_PHOTON, 0, MPI_ANY_TAG, MPI_COMM_WORLD, status, IERROR)
 
-       if(verbose) write(*,'(a,i4.4,a)') ' [w',rank,'] : just receive a photpacket and start processing it...' 
+       !if(verbose) write(*,'(a,i4.4,a)') ' [w',rank,'] : just receive a photpacket and start processing it...' 
 
        call cpu_time(start_photpacket)
 
-       ! do the RT stuff. This is a single loop over photons in photpacket.
-       call MCRT(nbuffer,photpacket,meshdom,compute_dom)
+       ! do the RT stuff. This is a single loop over photon packets in the bundle photpacket.
+       call MCRT(nbundle,photpacket,meshdom,compute_dom)
 
        call cpu_time(end_photpacket)
 
        if(verbose)then
-          write(*,'(a,i4.4,a,f12.3,a)') ' [w',rank,'] : time to propagate photpacket = ',end_photpacket-start_photpacket,' seconds.'
-          write(*,'(a,i4.4,a)') ' [w',rank,'] : finish packet of photons, sending back to master ' 
+          write(*,'(a,i4.4,a,f12.8,a)') ' [w',rank,'] : time to propagate photpacket = ',end_photpacket-start_photpacket,' seconds.'
+          !write(*,'(a,i4.4,a)') ' [w',rank,'] : finish packet of photons, sending back to master ' 
        endif
 
        ! send my results
-       call MPI_SEND(nbuffer, 1, MPI_INTEGER, 0, tag , MPI_COMM_WORLD, code)
+       call MPI_SEND(nbundle, 1, MPI_INTEGER, 0, tag , MPI_COMM_WORLD, code)
 
-       call MPI_SEND(photpacket(1)%id, nbuffer, MPI_TYPE_PHOTON, 0, tag , MPI_COMM_WORLD, code)
+       call MPI_SEND(photpacket(1)%id, nbundle, MPI_TYPE_PHOTON, 0, tag , MPI_COMM_WORLD, code)
 
     enddo
 
     if(verbose) write(*,'(a,i4.4,a)') ' [w',rank,'] : exit of loop...'
 
-    ! synchronization, for profiling purposes
+    ! final synchronization, for profiling purposes
     call MPI_BARRIER(MPI_COMM_WORLD,code)
 
 
