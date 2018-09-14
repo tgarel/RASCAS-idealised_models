@@ -60,7 +60,7 @@ contains
        ! receive my list of photon packets to propagate
        call MPI_RECV(photpacket(1)%id, nbundle, MPI_TYPE_PHOTON, 0, MPI_ANY_TAG, MPI_COMM_WORLD, status, IERROR)
 
-       !if(verbose) write(*,'(a,i4.4,a)') ' [w',rank,'] : just receive a photpacket and start processing it...' 
+       !if(verbose) write(*,'(a,i4.4,a)') ' [w',rank,'] : just receive a bundle of photon packets and start processing it...' 
 
        call cpu_time(start_photpacket)
 
@@ -70,8 +70,8 @@ contains
        call cpu_time(end_photpacket)
 
        if(verbose)then
-          write(*,'(a,i4.4,a,f12.8,a)') ' [w',rank,'] : time to propagate photpacket = ',end_photpacket-start_photpacket,' seconds.'
-          !write(*,'(a,i4.4,a)') ' [w',rank,'] : finish packet of photons, sending back to master ' 
+          write(*,'(a,i4.4,a,f12.6,a)') ' [w',rank,'] : time to propagate a bundle of photon packets = ',end_photpacket-start_photpacket,' seconds.'
+          !write(*,'(a,i4.4,a)') ' [w',rank,'] : finish bundle of photon packets, sending back to master ' 
        endif
 
        ! send my results

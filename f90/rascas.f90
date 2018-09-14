@@ -52,7 +52,7 @@ program main
   if (rank == 0 .and. verbose) print*,'--> Nworker =',nslave
 
   ! -------------------- Read domain list from CreateDomDump param file --------------------
-  if (verbose .and. rank==0) print *,'--> reading domain and mesh...'
+  if (verbose .and. rank==0) print *,'--> reading domain list'
   open(unit=18,file=DomDumpFile,status='old',form='formatted')
   read(18,'(a)') line ; i = scan(line,'=') ; file_compute_dom = trim(DomDumpDir)//trim(adjustl(line(i+1:)))
   read(18,'(a)') line ; i = scan(line,'=') ; read(line(i+1:),*) ndomain
@@ -84,6 +84,7 @@ program main
   call finish_mpi
   call cpu_time(finish)
   if(verbose .and. rank==0)then
+     print*,' '
      print*,'--> work done, MPI finalized'
      print '(" --> Time = ",f12.3," seconds.")',finish-start
      print*,' '
