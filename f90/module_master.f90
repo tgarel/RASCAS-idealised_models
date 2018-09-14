@@ -373,7 +373,7 @@ contains
     !   write(*,*)'[master] init nqueue(j)',nqueue(:)
     !endif
     if(verbose)then
-       write(*,*)'[master] init load-balancing'
+       write(*,*)'[master] initial mapping workers <--> domains'
        write(*,*)' domain   Nqueue   Ncpu   delta'
        write(*,*)' ------------------------------'
        do j=1,ndomain
@@ -426,7 +426,7 @@ contains
           !   write(*,*)'[master] updated cpu mapping',cpu(:)
           !endif
           if(verbose)then
-             write(*,*)'[master] updated load-balancing'
+             write(*,*)'[master] updated mapping workers <--> domains'
              write(*,*)' domain   Nqueue   Ncpu   delta'
              write(*,*)' ------------------------------'
              do j=1,ndomain
