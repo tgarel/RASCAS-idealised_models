@@ -125,7 +125,7 @@ contains
        if(verbose) print '(" [master] allocates domain ",i5," to cpu ",i5)',j,icpu
        
        ! construct a list of photon packets to send
-       call fill_buffer(j,photpacket,nbundle)
+       call fill_bundle(j,photpacket,nbundle)
 
        ! Send the mesh domain number to the worker
        call MPI_SEND(j, 1, MPI_INTEGER, icpu, tag , MPI_COMM_WORLD, code)
@@ -220,7 +220,7 @@ contains
           call MPI_SEND(j, 1, MPI_INTEGER, idcpu, tag, MPI_COMM_WORLD, code)
 
           ! Construct a new bundle of photon packets
-          call fill_buffer(j,photpacket,nbundle)
+          call fill_bundle(j,photpacket,nbundle)
 
           !if (verbose) print*,'[master] sending a new bundle of photpackets to worker/domain ',idcpu,j
           !if (verbose) print*,'[master] status RT ',nphottodo, nphot
@@ -463,8 +463,8 @@ contains
 
 
 
-  subroutine fill_buffer(j,photpacket,nbundle)
-    ! fill photpacket(nbundle)
+  subroutine fill_bundle(j,photpacket,nbundle)
+    ! fill bundle of photon packets photpacket(nbundle)
 
     implicit none
     integer(kind=4), intent(in)                           :: j
@@ -474,7 +474,7 @@ contains
 
     i=1
     if(first(j)==-1)then
-       print*,'ERROR: cannot fill buffer...'
+       print*,'ERROR: cannot fill bundle...'
        call stop_mpi
     endif
     photpacket(:)%ID=0
@@ -488,7 +488,7 @@ contains
        if (i>nbundle.or.first(j)==-1)exit
     end do
 
-  end subroutine fill_buffer
+  end subroutine fill_bundle
 
 
 
