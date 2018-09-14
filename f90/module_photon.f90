@@ -41,17 +41,17 @@ module module_photon
 contains
 
 
-  subroutine MCRT(nbuffer,photpacket,mesh_dom,compute_dom)
+  subroutine MCRT(npp,photpacket,mesh_dom,compute_dom)
 
     ! this is the Monte Carlo Radiative transfer routine... but also a single loop over photons...
 
-    integer(kind=4),intent(in)                            :: nbuffer
-    type(photon_current),dimension(nbuffer),intent(inout) :: photpacket
-    type(mesh),intent(in)                                 :: mesh_dom
-    type(domain),intent(in)                               :: compute_dom
-    integer(kind=4)                                       :: i
+    integer(kind=4),intent(in)                        :: npp
+    type(photon_current),dimension(npp),intent(inout) :: photpacket
+    type(mesh),intent(in)                             :: mesh_dom
+    type(domain),intent(in)                           :: compute_dom
+    integer(kind=4)                                   :: i
 
-    do i=1,nbuffer
+    do i=1,npp
        ! case of photpacket not fully filled...
        if (photpacket(i)%ID>0) then
           call propagate(photpacket(i),mesh_dom,compute_dom)
