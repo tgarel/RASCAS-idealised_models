@@ -6,7 +6,7 @@
   DomDumpFile  = domain_decomposition_params.dat
   PhotonICFile = path_to_the_photonsIC_file
   fileout      = path_to_the_photons_results_file
-  nbuffer      = 10
+  nbundle      = 10
   verbose      = T
 !--------------------------------------------------------------------------------
 

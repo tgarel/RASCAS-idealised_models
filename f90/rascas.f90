@@ -21,7 +21,7 @@ program main
   ! --- outputs
   character(2000)           :: fileout = 'photons_done.dat'   ! output file ... 
   ! --- miscelaneous
-  integer(kind=4)           :: nbuffer = 1000
+  integer(kind=4)           :: nbundle = 1000
   logical                   :: verbose = .false.
   ! --------------------------------------------------------------------------
 
@@ -70,10 +70,10 @@ program main
   ! Master - Worker separation
   if (rank == 0) then
      ! Master section, will dispatch the jobs.
-     call master(file_compute_dom, ndomain, domain_file_list, PhotonICFile, nbuffer, fileout)
+     call master(file_compute_dom, ndomain, domain_file_list, PhotonICFile, nbundle, fileout)
   else
      ! Worker section, will mostly do radiative transfer (MCRT)
-     call worker(file_compute_dom, ndomain, mesh_file_list, nbuffer)
+     call worker(file_compute_dom, ndomain, mesh_file_list, nbundle)
   end if
 
   ! write results: this is done by master
@@ -139,8 +139,8 @@ contains
              write(DomDumpFile,'(a)') trim(value)
           case ('fileout')
              write(fileout,'(a)') trim(value)
-          case ('nbuffer')
-             read(value,*) nbuffer
+          case ('nbundle')
+             read(value,*) nbundle
           end select
        end do
     end if
@@ -172,7 +172,7 @@ contains
        write(unit,'(a,a)')           '  PhotonICFile   = ',trim(PhotonICFile)
        write(unit,'(a,a)')           '  DomDumpFile    = ',trim(DomDumpFile)
        write(unit,'(a,a)')           '  fileout        = ',trim(fileout)
-       write(unit,'(a,i8)')          '  nbuffer        = ',nbuffer
+       write(unit,'(a,i8)')          '  nbundle        = ',nbundle
        write(unit,'(a,L1)')          '  verbose        = ',verbose
        write(unit,'(a)')             ' '
        call print_master_params(unit)
@@ -186,7 +186,7 @@ contains
        write(*,'(a,a)')           '  PhotonICFile   = ',trim(PhotonICFile)
        write(*,'(a,a)')           '  DomDumpFile    = ',trim(DomDumpFile)
        write(*,'(a,a)')           '  fileout        = ',trim(fileout)
-       write(*,'(a,i8)')          '  nbuffer        = ',nbuffer
+       write(*,'(a,i8)')          '  nbundle        = ',nbundle
        write(*,'(a,L1)')          '  verbose        = ',verbose
        write(*,'(a)')             ' '       
        call print_master_params
