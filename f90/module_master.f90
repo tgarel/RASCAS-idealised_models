@@ -31,7 +31,7 @@ module module_master
   
 contains
 
-  subroutine master(file_compute_dom, ndomain, domain_file_list, file_ICs, nbuffer, fileout)
+  subroutine master(file_compute_dom, ndomain, domain_file_list, file_ICs, nbundle, fileout)
 
     implicit none
     
@@ -39,7 +39,7 @@ contains
     integer(kind=4),intent(in)                    :: ndomain
     character(2000),dimension(ndomain),intent(in) :: domain_file_list
     character(2000),intent(in)                    :: file_ICs
-    integer(kind=4),intent(in)                    :: nbuffer
+    integer(kind=4),intent(in)                    :: nbundle
     character(2000),intent(in)                    :: fileout
     integer(kind=4)                               :: i,j,icpu,idcpu,jnewdom,nphottodo,ncpuended,ntest
     logical                                       :: everything_not_done
@@ -66,18 +66,18 @@ contains
     endif
 
     ! some sanity checks
-    if(nbuffer*nslave>nphottodo)then
-       print *,'ERROR: decrease nbuffer and/or ncpu'
+    if(nbundle*nslave>nphottodo)then
+       print *,'ERROR: decrease nbundle and/or ncpu'
        call stop_mpi
     endif
     ! guidance for a good load-balancing
-    if(4*nbuffer*nslave>nphottodo)then
-       print *,'ERROR: decrease nbuffer for a good load-balancing of the code'
-       print *,'--> suggested nbuffer =', nphottodo/nslave/10
+    if(4*nbundle*nslave>nphottodo)then
+       print *,'ERROR: decrease nbundle for a good load-balancing of the code'
+       print *,'--> suggested nbundle =', nphottodo/nslave/10
        call stop_mpi
     endif
 
-    allocate(photpacket(nbuffer))
+    allocate(photpacket(nbundle))
     allocate(cpu(1:nslave))
     allocate(first(ndomain),last(ndomain),nqueue(ndomain),ncpuperdom(ndomain))
     allocate(next(nphot,ndomain))
@@ -109,7 +109,7 @@ contains
     enddo
 
     ! according to the distribution of photons in domains, ditribute cpus to each domain
-    call init_loadb(nbuffer,ndomain)
+    call init_loadb(nbundle,ndomain)
 
     call cpu_time(end_initphot)
     if (verbose) print '(" [master] --> time to initialize photons in master = ",f12.3," seconds.")',end_initphot-start_initphot
@@ -124,13 +124,13 @@ contains
        if(verbose) print '(" [master] allocates domain ",i5," to cpu ",i5)',j,icpu
        
        ! construct a list of photons to send
-       call fill_buffer(j,photpacket,nbuffer)
+       call fill_buffer(j,photpacket,nbundle)
 
        ! Send the mesh domain number to the worker
        call MPI_SEND(j, 1, MPI_INTEGER, icpu, tag , MPI_COMM_WORLD, code)
 
        ! Send the photon buffer to the worker
-       call MPI_SEND(photpacket(1)%id, nbuffer, MPI_TYPE_PHOTON, icpu, tag , MPI_COMM_WORLD, code)
+       call MPI_SEND(photpacket(1)%id, nbundle, MPI_TYPE_PHOTON, icpu, tag , MPI_COMM_WORLD, code)
        
     end do
 
@@ -155,13 +155,13 @@ contains
 
        idcpu = status(MPI_SOURCE)
 
-       call MPI_RECV(photpacket(1)%id, nbuffer, MPI_TYPE_PHOTON, idcpu, DONE_TAG, MPI_COMM_WORLD, status, IERROR)
+       call MPI_RECV(photpacket(1)%id, nbundle, MPI_TYPE_PHOTON, idcpu, DONE_TAG, MPI_COMM_WORLD, status, IERROR)
 
-       if (verbose) print*,'[master] receive a packet of',nbuffer,' photons from worker',idcpu
+       if (verbose) print*,'[master] receive a packet of',nbundle,' photons from worker',idcpu
 
        ! By construction, photons that arrive here are not going to go back to the same domain, 
        !   i.e they are either dead (status=1or2) either in transit (status=0)
-       do i=1,nbuffer
+       do i=1,nbundle
 
           if((photpacket(i)%status==0).and.(ndomain==1))then
              print*,'ERROR: pb with photon buffer in master...'
@@ -212,19 +212,19 @@ contains
           ! keep sending photons
 
           ! check load-balancing and re-allocate CPU to a new domain if needed
-          call update_domain(idcpu,nbuffer,ndomain)
+          call update_domain(idcpu,nbundle,ndomain)
 
           j=cpu(idcpu)
 
           call MPI_SEND(j, 1, MPI_INTEGER, idcpu, tag, MPI_COMM_WORLD, code)
 
           ! Construct a new list of photons
-          call fill_buffer(j,photpacket,nbuffer)
+          call fill_buffer(j,photpacket,nbundle)
 
           if (verbose) print*,'[master] sending a new photpacket to worker ',j
 
           ! send it
-          call MPI_SEND(photpacket(1)%id, nbuffer, MPI_TYPE_PHOTON, idcpu, tag , MPI_COMM_WORLD, code)
+          call MPI_SEND(photpacket(1)%id, nbundle, MPI_TYPE_PHOTON, idcpu, tag , MPI_COMM_WORLD, code)
 
        endif
 
@@ -322,11 +322,11 @@ contains
 
 
 
-  subroutine init_loadb(nbuffer,ndomain)
+  subroutine init_loadb(nbundle,ndomain)
     ! give cpus to domains, according to the number of photons to deal with in each domain (=nqueue)
 
     implicit none
-    integer(kind=4), intent(in)  :: nbuffer
+    integer(kind=4), intent(in)  :: nbundle
     integer(kind=4), intent(in)  :: ndomain
     integer(kind=4)              :: nphottot,icpu,ndom,j
     integer(kind=4),dimension(1) :: jtoo
@@ -354,7 +354,7 @@ contains
        icpu=icpu+ndom
 
        ! we also have to initialize delta(j)
-       delta(j) = real(nqueue(j))/nbuffer/(ncpuperdom(j)+1.)
+       delta(j) = real(nqueue(j))/nbundle/(ncpuperdom(j)+1.)
 
     end do
 
@@ -369,11 +369,11 @@ contains
 
 
 
-  subroutine update_domain(icpu,nbuffer,ndomain)
+  subroutine update_domain(icpu,nbundle,ndomain)
 
     implicit none
     integer(kind=4), intent(in)   :: icpu
-    integer(kind=4), intent(in)   :: nbuffer
+    integer(kind=4), intent(in)   :: nbundle
     integer(kind=4), intent(in)   :: ndomain
     integer(kind=4)               :: j,jold,nphot
     integer(kind=4), dimension(1) :: jtarget, jnew
@@ -382,7 +382,7 @@ contains
 
     ! need to update delta for all domains
     do j=1,ndomain
-       delta(j) = real(nqueue(j))/nbuffer/(ncpuperdom(j)+1.)
+       delta(j) = real(nqueue(j))/nbundle/(ncpuperdom(j)+1.)
     enddo
 
     j=cpu(icpu)
@@ -436,13 +436,13 @@ contains
 
 
 
-  subroutine fill_buffer(j,photpacket,nbuffer)
-    ! fill photpacket(nbuffer)
+  subroutine fill_buffer(j,photpacket,nbundle)
+    ! fill photpacket(nbundle)
 
     implicit none
     integer(kind=4), intent(in)                           :: j
-    integer(kind=4), intent(in)                           :: nbuffer
-    type(photon_current), dimension(nbuffer), intent(out) :: photpacket
+    integer(kind=4), intent(in)                           :: nbundle
+    type(photon_current), dimension(nbundle), intent(out) :: photpacket
     integer(kind=4)                                       :: i,fsave
 
     i=1
@@ -458,7 +458,7 @@ contains
        next(fsave,j)=-1
        i=i+1
        nqueue(j)=nqueue(j)-1
-       if (i>nbuffer.or.first(j)==-1)exit
+       if (i>nbundle.or.first(j)==-1)exit
     end do
 
   end subroutine fill_buffer
