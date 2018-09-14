@@ -67,19 +67,19 @@ contains
     nphotdonebefore = nphot - nphottodo
     
     ! some sanity checks
-    if(nbundle*nslave>nphottodo)then
+    if(nbundle*nworker>nphottodo)then
        print *,'ERROR: decrease nbundle and/or ncpu'
        call stop_mpi
     endif
     ! guidance for a good load-balancing
-    if(4*nbundle*nslave>nphottodo)then
+    if(4*nbundle*nworker>nphottodo)then
        print *,'ERROR: decrease nbundle for a good load-balancing of the code'
-       print *,'--> suggested nbundle =', nphottodo/nslave/10
-       !call stop_mpi
+       print *,'--> suggested nbundle =', nphottodo/nworker/10
+       call stop_mpi
     endif
 
     allocate(photpacket(nbundle))
-    allocate(cpu(1:nslave))
+    allocate(cpu(1:nworker))
     allocate(first(ndomain),last(ndomain),nqueue(ndomain),ncpuperdom(ndomain))
     allocate(next(nphot,ndomain))
     allocate(delta(ndomain))
@@ -118,7 +118,7 @@ contains
     time_last_backup = end_initphot
 
     ! send a first bundle of photon packets to each worker
-    do icpu=1,nslave
+    do icpu=1,nworker
 
        ! identify the mesh domain of the targeted worker
        j=cpu(icpu)
@@ -201,7 +201,7 @@ contains
 
           ! first count ended cpu, to not skip last working cpu...
           ncpuended=ncpuended+1
-          if(ncpuended==nslave)then
+          if(ncpuended==nworker)then
              everything_not_done=.false.
           endif
           if (verbose) print*,'[master] no more photon to send to worker ',idcpu
@@ -234,7 +234,7 @@ contains
        nphotdone = count(mask=(photgrid(:)%status/=0))
        if(nphotdone/=nphotdonebefore)then
           !print*,'[master] progress report RT, number of photon packets done = ',nphotdone,real(nphotdone)/nphot*100.
-          print '(" [master] --> Number of photon packets done = ",i8," (",f5.1," %)")',nphotdone,real(nphotdone)/nphot*100.
+          print '(" [master] --> number of photon packets done = ",i8," (",f5.1," %)")',nphotdone,real(nphotdone)/nphot*100.
           nphotdonebefore=nphotdone
        endif
        
@@ -341,20 +341,20 @@ contains
     integer(kind=4),dimension(1) :: jtoo
     
     nphottot=sum(nqueue)
-    ! due to limitation in integer precision (default is kind=4), nslave*nqueue could easily give an overflow...
-    ncpuperdom(:)=int(real(nslave)*real(nqueue(:))/nphottot)
+    ! due to limitation in integer precision (default is kind=4), nworker*nqueue could easily give an overflow...
+    ncpuperdom(:)=int(real(nworker)*real(nqueue(:))/nphottot)
 
     ! assign cpus left over by rounding error to the domain which has the max nb of photons.
     ! (This is best guess and will be balanced dynamically later).
-    if (sum(ncpuperdom) < nslave) then
+    if (sum(ncpuperdom) < nworker) then
        jtoo=maxloc(ncpuperdom)
-       ncpuperdom(jtoo) = ncpuperdom(jtoo) + nslave - sum(ncpuperdom)
-    else if (sum(ncpuperdom) > nslave) then 
+       ncpuperdom(jtoo) = ncpuperdom(jtoo) + nworker - sum(ncpuperdom)
+    else if (sum(ncpuperdom) > nworker) then 
        write(*,*) '[master] ERROR in init_loadb ... aborting'
        call stop_mpi
     end if
 
-    !if(verbose) write(*,*)'[master] init load-balancing',nslave,sum(ncpuperdom),ncpuperdom(:)
+    !if(verbose) write(*,*)'[master] init load-balancing',nworker,sum(ncpuperdom),ncpuperdom(:)
 
     icpu=1
     do j=1,ndomain

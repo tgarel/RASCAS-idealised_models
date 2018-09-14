@@ -31,8 +31,8 @@ program main
   call start_mpi
   call define_mpi_type
 
-  nslave=nb_cpus-1
-  if(nslave==0)then
+  nworker=nb_cpus-1
+  if(nworker==0)then
      print*,'rascas is a parallel code, you should run it with MPI'
      stop
   end if
@@ -49,7 +49,7 @@ program main
   if(verbose .and. rank==0) call print_rascas_params
   ! ------------------------------------------------------------------------------------------  
 
-  if (rank == 0 .and. verbose) print*,'--> Nworker =',nslave
+  if (rank == 0 .and. verbose) print*,'--> Nworker =',nworker
 
   ! -------------------- Read domain list from CreateDomDump param file --------------------
   if (verbose .and. rank==0) print *,'--> reading domain list'
