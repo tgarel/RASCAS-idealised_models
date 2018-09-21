@@ -2,7 +2,7 @@
 [CreateDomDump]
 # input outputs:
   Val_way    = T
-  DomDumpDir = /Users/mauerhof/Documents/RascasFiles/G8_250Myr/Output/Cloudy_WrongDensity
+  DomDumpDir = /Users/mauerhof/Documents/rascas/RascasFiles/G8_250Myr/dust/domain/test
   repository = /Users/mauerhof/Documents/RamsesFiles/idealized/G8/newRamses/Dust/
   snapnum    = 12
   reading_method = fullbox
@@ -48,13 +48,15 @@
 !--------------------------------------------------------------------------------
 [gas_composition] 
 # mixture parameters
-  input_ramses_file   = /Users/mauerhof/Documents/RascasFiles/G8_250Myr/Inputs/input_ramses
-  SiII_file           = /Users/mauerhof/Documents/RascasFiles/G8_250Myr/Inputs/SiII_cloudy_WrongDensity
   f_ion               = 0.01
   Zref                = 0.005   ! OK for LMC dust model.
 # overwrite parameters
   gas_overwrite       = F
 # miscelaneous parameters
   verbose             = T
+
+#if Val_way :
+  input_ramses_file   = /Users/mauerhof/Documents/rascas/RascasFiles/G8_250Myr/SiII/Inputs/input_ramses
+  SiII_file           = /Users/mauerhof/Documents/rascas/RascasFiles/G8_250Myr/SiII/Inputs/SiII_cloudy_WrongDensity
 !--------------------------------------------------------------------------------
 

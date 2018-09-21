@@ -24,14 +24,11 @@ program CreateDomDump
   real(kind=8) :: xmin,xmax,ymin,ymax,zmin,zmax
   integer(kind=4),dimension(:),allocatable :: cpu_list
   integer(kind=4) :: ncpu_read
-  
+
   ! --------------------------------------------------------------------------
   ! user-defined parameters - read from section [CreateDomDump] of the parameter file
   ! --------------------------------------------------------------------------
   ! --- input / outputs
-  !Val--
-  logical                   :: Val_way = .false.          ! Whether the data from Ramses should be read in an external file, written with ***.py. To use when using ionization fractions of a metal, computed with a program like Cloudy
-  !--Val
   character(2000)           :: DomDumpDir = 'test/'       ! directory to which outputs will be written
   character(2000)           :: repository = './'          ! ramses run directory (where all output_xxxxx dirs are).
   integer(kind=4)           :: snapnum = 1                ! ramses output number to use
@@ -58,9 +55,9 @@ program CreateDomDump
   ! --- miscelaneous
   logical                   :: verbose = .false.
   ! --------------------------------------------------------------------------
-  
+
   call cpu_time(start)
-  
+
   ! -------------------- read parameters --------------------
   narg = command_argument_count()
   if(narg .lt. 1)then
@@ -73,7 +70,7 @@ program CreateDomDump
   if (verbose) call print_CreateDomDump_params
   ! ------------------------------------------------------------
 
-  
+
   ! Define the computational domain. This domain describes the volume in which photons fly.
   select case(comput_dom_type)
   case('sphere')
@@ -94,7 +91,7 @@ program CreateDomDump
      computdom_max = comput_dom_thickness
   end select
 
-  
+
   ! Read all the leaf cells
   nOctSnap = get_nGridTot(repository,snapnum)
   if (reading_method == 'fullbox') then
@@ -174,123 +171,93 @@ program CreateDomDump
   close(10)
 
 
-  !Val--
-  if(Val_way .and. decomp_dom_ndomain > 1) then
-     print*, 'Problem !  When using Val_way, decomp_dom_ndomain must be equal to 1'
-     print*, 'Stopping the program'
-     stop
-  end if
-  !--Val
+  ! building of the meshes
+  do i = 1,decomp_dom_ndomain
+     if (reading_method == 'hilbert') then
+        call cpu_time(intermed)
+        ! read leaf cells in domain on the fly...
+        ! define max extent of domain i
+        select case(decomp_dom_type)
+        case('sphere')
+           xmax = decomp_dom_xc(i) + decomp_dom_rsp(i)
+           xmin = decomp_dom_xc(i) - decomp_dom_rsp(i)
+           ymax = decomp_dom_yc(i) + decomp_dom_rsp(i)
+           ymin = decomp_dom_yc(i) - decomp_dom_rsp(i)
+           zmax = decomp_dom_zc(i) + decomp_dom_rsp(i)
+           zmin = decomp_dom_zc(i) - decomp_dom_rsp(i)
+        case('shell')
+           xmax = decomp_dom_xc(i) + decomp_dom_rout(i)
+           xmin = decomp_dom_xc(i) - decomp_dom_rout(i)
+           ymax = decomp_dom_yc(i) + decomp_dom_rout(i)
+           ymin = decomp_dom_yc(i) - decomp_dom_rout(i)
+           zmax = decomp_dom_zc(i) + decomp_dom_rout(i)
+           zmin = decomp_dom_zc(i) - decomp_dom_rout(i)
+        case('cube')
+           xmax = decomp_dom_xc(i) + decomp_dom_size(i)*0.5d0
+           xmin = decomp_dom_xc(i) - decomp_dom_size(i)*0.5d0
+           ymax = decomp_dom_yc(i) + decomp_dom_size(i)*0.5d0
+           ymin = decomp_dom_yc(i) - decomp_dom_size(i)*0.5d0
+           zmax = decomp_dom_zc(i) + decomp_dom_size(i)*0.5d0
+           zmin = decomp_dom_zc(i) - decomp_dom_size(i)*0.5d0
+        case('slab')
+           xmax = 1.0d0
+           xmin = 0.0d0
+           ymax = 1.0d0
+           ymin = 0.0d0
+           zmax = decomp_dom_zc(i) + decomp_dom_thickness(i)*0.5d0
+           zmin = decomp_dom_zc(i) - decomp_dom_thickness(i)*0.5d0
+        end select
+        call get_cpu_list_periodic(repository, snapnum, xmin,xmax,ymin,ymax,zmin,zmax, ncpu_read, cpu_list)
+        call read_leaf_cells_omp(repository, snapnum, ncpu_read, cpu_list, nleaftot, nvar, x_leaf, ramses_var, leaf_level)
+        ! Extract and convert properties of cells into gas mix properties
+        call gas_from_ramses_leaves(repository,snapnum,nleaftot,nvar,ramses_var, gas_leaves)
+        call cpu_time(finish)
+        print '(" --> Time to read leaves in hilbert domain = ",f12.3," seconds.")',finish-intermed
+     endif
 
-  !Val--
-  if(Val_way) then
-     !Read the leaf cells from Valentin's outputs
-     call gas_from_ValentinsCells(nleaftot, x_leaf, leaf_level, gas_leaves)
+     ! another last option would be to read all cpu files but to select cells on the fly to maintain low memory
+     ! this would be for zoom-in simulations with -Dquadhilbert
+     if (reading_method == 'select_onthefly') then
+        ncpu_read = get_ncpu(repository,snapnum)
+        allocate(cpu_list(1:ncpu_read))
+        do j=1,ncpu_read
+           cpu_list(j)=j
+        end do
+        call read_leaf_cells_in_domain(repository, snapnum, domain_list(i), ncpu_read, cpu_list, &
+             & nleaftot, nvar, x_leaf, ramses_var, leaf_level)
+        print*,'in CreateDomDump: nleaf_sel = ',nleaftot, size(leaf_level)
+        ! Extract and convert properties of cells into gas mix properties
+        call gas_from_ramses_leaves(repository,snapnum,nleaftot,nvar,ramses_var, gas_leaves)
+        call cpu_time(finish)
+        print '(" --> Time to read leaves in domain = ",f12.3," seconds.")',finish-intermed
+        ! and then no need for selection, but to adapt the call to mesh_from_leaves
+        call mesh_from_leaves(nOctSnap,domain_list(i),nleaftot, &
+             gas_leaves,x_leaf,leaf_level,domain_mesh)
+     else
+        call select_in_domain(domain_list(i), nleaftot, x_leaf, ind_sel)
+        print*,'in CreateDomDump: ind_sel = ',size(ind_sel)
+        call select_from_domain(arr_in=x_leaf,     ind_sel=ind_sel, arr_out=xleaf_sel)
+        call select_from_domain(arr_in=leaf_level, ind_sel=ind_sel, arr_out=leaflevel_sel)
+        call select_from_domain(arr_in=gas_leaves, ind_sel=ind_sel, arr_out=selected_leaves)
+        nleaf_sel = size(ind_sel)
+        print*,'in CreateDomDump: nleaf_sel = ',nleaf_sel
+        print*, 'test cell_pos : ', x_leaf(1,1), x_leaf(nleaftot, 1)
 
-     ! construct octree
-     call mesh_from_leaves(nOctSnap,domain_list(1),nleaftot,gas_leaves,x_leaf,leaf_level,domain_mesh)  
+        call mesh_from_leaves(nOctSnap,domain_list(i),nleaf_sel, &
+             selected_leaves,xleaf_sel,leaflevel_sel,domain_mesh)
+     endif
 
-     call cpu_time(finish)
-     print '(" --> Time to read leaves in domain = ",f12.3," seconds.")',finish-intermed
-
-     fichier = trim(DomDumpDir)//trim(mesh_file_list(1))
+     fichier = trim(DomDumpDir)//trim(mesh_file_list(i))
      call dump_mesh(domain_mesh, fichier)
      call mesh_destructor(domain_mesh)
-     
-     
-  !Normal way
-  else
-
-     ! building of the meshes
-     do i = 1,decomp_dom_ndomain
-        if (reading_method == 'hilbert') then
-           call cpu_time(intermed)
-           ! read leaf cells in domain on the fly...
-           ! define max extent of domain i
-           select case(decomp_dom_type)
-           case('sphere')
-              xmax = decomp_dom_xc(i) + decomp_dom_rsp(i)
-              xmin = decomp_dom_xc(i) - decomp_dom_rsp(i)
-              ymax = decomp_dom_yc(i) + decomp_dom_rsp(i)
-              ymin = decomp_dom_yc(i) - decomp_dom_rsp(i)
-              zmax = decomp_dom_zc(i) + decomp_dom_rsp(i)
-              zmin = decomp_dom_zc(i) - decomp_dom_rsp(i)
-           case('shell')
-              xmax = decomp_dom_xc(i) + decomp_dom_rout(i)
-              xmin = decomp_dom_xc(i) - decomp_dom_rout(i)
-              ymax = decomp_dom_yc(i) + decomp_dom_rout(i)
-              ymin = decomp_dom_yc(i) - decomp_dom_rout(i)
-              zmax = decomp_dom_zc(i) + decomp_dom_rout(i)
-              zmin = decomp_dom_zc(i) - decomp_dom_rout(i)
-           case('cube')
-              xmax = decomp_dom_xc(i) + decomp_dom_size(i)*0.5d0
-              xmin = decomp_dom_xc(i) - decomp_dom_size(i)*0.5d0
-              ymax = decomp_dom_yc(i) + decomp_dom_size(i)*0.5d0
-              ymin = decomp_dom_yc(i) - decomp_dom_size(i)*0.5d0
-              zmax = decomp_dom_zc(i) + decomp_dom_size(i)*0.5d0
-              zmin = decomp_dom_zc(i) - decomp_dom_size(i)*0.5d0
-           case('slab')
-              xmax = 1.0d0
-              xmin = 0.0d0
-              ymax = 1.0d0
-              ymin = 0.0d0
-              zmax = decomp_dom_zc(i) + decomp_dom_thickness(i)*0.5d0
-              zmin = decomp_dom_zc(i) - decomp_dom_thickness(i)*0.5d0
-           end select
-           call get_cpu_list_periodic(repository, snapnum, xmin,xmax,ymin,ymax,zmin,zmax, ncpu_read, cpu_list)
-           call read_leaf_cells_omp(repository, snapnum, ncpu_read, cpu_list, nleaftot, nvar, x_leaf, ramses_var, leaf_level)
-           ! Extract and convert properties of cells into gas mix properties
-           call gas_from_ramses_leaves(repository,snapnum,nleaftot,nvar,ramses_var, gas_leaves)
-           call cpu_time(finish)
-           print '(" --> Time to read leaves in hilbert domain = ",f12.3," seconds.")',finish-intermed
-        endif
-
-        ! another last option would be to read all cpu files but to select cells on the fly to maintain low memory
-        ! this would be for zoom-in simulations with -Dquadhilbert
-        if (reading_method == 'select_onthefly') then
-           ncpu_read = get_ncpu(repository,snapnum)
-           allocate(cpu_list(1:ncpu_read))
-           do j=1,ncpu_read
-              cpu_list(j)=j
-           end do
-           call read_leaf_cells_in_domain(repository, snapnum, domain_list(i), ncpu_read, cpu_list, &
-                & nleaftot, nvar, x_leaf, ramses_var, leaf_level)
-           print*,'in CreateDomDump: nleaf_sel = ',nleaftot, size(leaf_level)
-           ! Extract and convert properties of cells into gas mix properties
-           call gas_from_ramses_leaves(repository,snapnum,nleaftot,nvar,ramses_var, gas_leaves)
-           call cpu_time(finish)
-           print '(" --> Time to read leaves in domain = ",f12.3," seconds.")',finish-intermed
-           ! and then no need for selection, but to adapt the call to mesh_from_leaves
-           call mesh_from_leaves(nOctSnap,domain_list(i),nleaftot, &
-                gas_leaves,x_leaf,leaf_level,domain_mesh)
-        else
-           call select_in_domain(domain_list(i), nleaftot, x_leaf, ind_sel)
-           print*,'in CreateDomDump: ind_sel = ',size(ind_sel)
-           call select_from_domain(arr_in=x_leaf,     ind_sel=ind_sel, arr_out=xleaf_sel)
-           call select_from_domain(arr_in=leaf_level, ind_sel=ind_sel, arr_out=leaflevel_sel)
-           call select_from_domain(arr_in=gas_leaves, ind_sel=ind_sel, arr_out=selected_leaves)
-           nleaf_sel = size(ind_sel)
-           print*,'in CreateDomDump: nleaf_sel = ',nleaf_sel
-           print*, 'test cell_pos : ', x_leaf(1,1), x_leaf(nleaftot, 1)
-
-           call mesh_from_leaves(nOctSnap,domain_list(i),nleaf_sel, &
-                selected_leaves,xleaf_sel,leaflevel_sel,domain_mesh)
-        endif
-
-        fichier = trim(DomDumpDir)//trim(mesh_file_list(i))
-        call dump_mesh(domain_mesh, fichier)
-        call mesh_destructor(domain_mesh)
-     enddo
-
-  end if
-  !--Val
+  enddo
 
   call cpu_time(finish)
   print '(" --> Time = ",f12.3," seconds.")',finish-start
   print*,' '
-  
+
 contains
-  
+
   subroutine read_CreateDomDump_params(pfile)
 
     ! ---------------------------------------------------------------------------------
@@ -305,7 +272,7 @@ contains
     integer(kind=4) :: err,i
     logical         :: section_present
     logical         :: ndomain_present 
-    
+
     section_present = .false.
     ndomain_present = .false.
     open(unit=10,file=trim(pfile),status='old',form='formatted')
@@ -331,10 +298,6 @@ contains
           i = scan(value,'!')
           if (i /= 0) value = trim(adjustl(value(:i-1)))
           select case (trim(name))
-          !Val--
-          case('Val_way')
-             read(value,*) Val_way
-          !--Val
           case('comput_dom_type')
              write(comput_dom_type,'(a)') trim(value)
           case ('comput_dom_pos')
@@ -400,14 +363,14 @@ contains
 
     ! make sure DomDumpDir ends with a /
     DomDumpDir = trim(DomDumpDir)//"/"
-    
+
     call read_mesh_params(pfile)
-    
+
     return
 
   end subroutine read_CreateDomDump_params
 
-  
+
   subroutine print_CreateDomDump_params(unit)
 
     ! ---------------------------------------------------------------------------------
@@ -421,9 +384,6 @@ contains
     if (present(unit)) then 
        write(unit,'(a,a,a)')         '[CreateDomDump]'
        write(unit,'(a)')             '# input / output parameters'
-       !Val--
-       write(unit,'(a,L1)')          '  Val_way         = ',Val_way
-       !--Val
        write(unit,'(a,a)')           '  DomDumpDir      = ',trim(DomDumpDir)
        write(unit,'(a,a)')           '  repository      = ',trim(repository)
        write(unit,'(a,i5)')          '  snapnum         = ',snapnum
@@ -469,9 +429,6 @@ contains
        write(*,'(a)')             ' '
        write(*,'(a,a,a)')         '[CreateDomDump]'
        write(*,'(a)')             '# input / output parameters'
-       !Val--
-       write(*,'(a,L1)')          '  Val_way         = ',Val_way
-       !--Val
        write(*,'(a,a)')           '  DomDumpDir = ',trim(DomDumpDir)
        write(*,'(a,a)')           '  repository = ',trim(repository)
        write(*,'(a,i5)')          '  snapnum    = ',snapnum
