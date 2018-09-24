@@ -1,9 +1,10 @@
 !--------------------------------------------------------------------------------
 [PhotonsFromStars]
 # input / output parameters
+  sed_dir = /Users/mauerhof/Documents/seds/bpass100
   repository = /Users/mauerhof/Documents/RamsesFiles/idealized/G8/newRamses/Dust
   snapnum    = 12
-  outputfile = /Users/mauerhof/Documents/RascasFiles/G8_250Myr/Output/Cloudy_WrongDensity/output_PFS.out
+  outputfile = /Users/mauerhof/Documents/rascas/RascasFiles/G8_250Myr/dust/domain/test/star_infos
 
 # computational domain parameters
   star_dom_type      = sphere
@@ -14,19 +15,8 @@
 #  star_dom_rout      = 3.000E-01
 #  star_dom_thickness = 1.000E-01
 
-# Particle weights 
-  weight_type        = PowLaw
-  weight_input_file  = /Users/mauerhof/Documents/rascas/RascasFiles/G8_250Myr/SiII/Output/Krome/SiII1260_PowLaWConstTable.dat
-
-# Spectral shape 
-  spec_type               = PowLaw
-  spec_powlaw_lmin_Ang = 1256
-  spec_powlaw_lmax_Ang = 1267
-#Also try 1267
 
 # miscelaneous parameters
-  nphot           = 2000000
-  ranseed         = -100
   verbose         = T
 !--------------------------------------------------------------------------------
 

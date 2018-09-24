@@ -1,0 +1,15 @@
+
+!--------------------------------------------------------------------------------
+[OPTICAL_BIN]
+  DomDumpDir   = /Users/mauerhof/Documents/rascas/RascasFiles/G8_250Myr/dust/domain/test
+  DomDumpFile  = domain_decomposition_params.dat
+  star_infos_file = /Users/mauerhof/Documents/rascas/RascasFiles/G8_250Myr/dust/domain/test/star_infos
+  fileout      = /Users/mauerhof/Documents/rascas/RascasFiles/G8_250Myr/dust/domain/test/flux.dat
+  verbose      = T
+!--------------------------------------------------------------------------------
+
+
+
+
+
+

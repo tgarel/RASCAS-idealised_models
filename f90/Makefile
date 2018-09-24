@@ -100,7 +100,7 @@ GASOBJS = module_constants.o module_random.o module_utils.o module_domain.o modu
 
 OBJSDOM = $(GASOBJS) module_select.o module_mesh.o
 
-OBJSPHO = $(GASOBJS) module_mesh.o module_mock.o module_photon.o 
+OBJSPHO = $(GASOBJS)# module_mesh.o module_mock.o module_photon.o 
 
 OBJSMPI = $(OBJSPHO) module_parallel_mpi.o module_worker.o module_master.o
 
@@ -121,6 +121,9 @@ PhotonsFromSourceModel: $(OBJSPHO) PhotonsFromSourceModel.o
 PhotonsFromStars: $(OBJSPHO) PhotonsFromStars.o
 	$(F90) $(FFLAGS) $(LDFLAGS) -o $@ $(OBJSPHO) PhotonsFromStars.o
 
+star_luminosities: $(OBJSPHO) star_luminosities.o
+	$(F90) $(FFLAGS) $(LDFLAGS) -o $@ $(OBJSPHO) star_luminosities.o
+
 CreateDomDump: $(OBJSDOM) CreateDomDump.o #_Val.o
 	$(F90) $(FFLAGS) $(LDFLAGS) -o $@ $(OBJSDOM) CreateDomDump.o #_Val.o
 
@@ -132,6 +135,9 @@ rascas-serial: $(OBJSPHO) rascas-serial.o
 
 rascas: $(OBJSMPI) rascas.o
 	$(F90) $(FFLAGS) $(LDFLAGS) -o $@ $(OBJSMPI) rascas.o
+
+optical_bin: $(OBJSDOM) optical_bin.o
+	$(F90) $(FFLAGS) $(LDFLAGS) -o $@ $(OBJSDOM) optical_bin.o
 
 clean:
 	rm -f $(OBJSDOM) $(OBJSPHO) $(OBJSMPI) *.o *.mod
