@@ -50,20 +50,20 @@ contains
 
     ! read ICs photons or restore from backup
     if(restart)then
-       if (verbose) print *,'[master] --> restoring photons from file: ',trim(PhotonBakFile)
+       if (verbose) print *,'[master] restoring photons from file: ',trim(PhotonBakFile)
        call restore_photons(PhotonBakFile,photgrid)
        nphot = size(photgrid)
        nphottodo = count(mask=(photgrid(:)%status==0))
        if (verbose)then
-          print *,'[master] --> Nphoton =',nphot
-          print *,'[master] --> Nphoton to do =',nphottodo
+          print *,'[master] Nphoton =',nphot
+          print *,'[master] Nphoton to do =',nphottodo
        endif
     else
-       if (verbose) print *,'[master] --> reading ICs photons in file: ',trim(file_ICs)
+       if (verbose) print *,'[master] reading ICs photons in file: ',trim(file_ICs)
        call init_photons_from_file(file_ICs,photgrid)
        nphot = size(photgrid)
        nphottodo = nphot
-       if (verbose) print *,'[master] --> Nphoton =',nphot
+       if (verbose) print *,'[master] Nphoton =',nphot
     endif
     percentBefore = real(nphot-nphottodo)/nphot*100.
     
@@ -86,16 +86,18 @@ contains
     allocate(delta(ndomain))
     allocate(domain_list(ndomain))
 
-    if (verbose) print *,'[master] --> reading domain and mesh...'
+    if (verbose) print *,'[master] reading domains'
     ! Get domain properties
     call domain_constructor_from_file(file_compute_dom,compute_dom)
-    if (verbose) print *,'[master] --> Ndomain =',ndomain
-    if (verbose) print *,'[master] --> |_ ',trim(file_compute_dom)
-
+    if (verbose) then
+       print *,'[master] Ndomain =',ndomain
+       print *,'   |_ ',trim(file_compute_dom)
+    end if
+    
     ! get list of domains and their properties
     do i=1,ndomain
        call domain_constructor_from_file(domain_file_list(i),domain_list(i))
-       if (verbose) print *,'[master] --> |_ ',trim(domain_file_list(i))
+       if (verbose) print *,'   |_ ',trim(domain_file_list(i))
     end do
 
     ! initialize the queue for each domain
@@ -114,7 +116,7 @@ contains
     call init_loadb(nbundle,ndomain)
 
     call cpu_time(end_initphot)
-    if (verbose) print '(" [master] --> time to initialize photons in master = ",f12.3," seconds.")',end_initphot-start_initphot
+    if (verbose) print '(" [master] time to initialize photons in master = ",f12.3," seconds.")',end_initphot-start_initphot
     if (verbose) print*,'[master] send a first bundle of photon packets to each worker'
     time_last_backup = end_initphot
 
@@ -140,7 +142,7 @@ contains
 
     ncpuended=0
     
-    if(verbose) print*,'[master] starting waiting/receiving/sending cycle...'
+    if(verbose) print*,'[master] starting waiting/receiving/sending cycle'
 
     ! Receive and append to pertinent domain list
     do while(everything_not_done)
@@ -205,9 +207,9 @@ contains
           if(ncpuended==nworker)then
              everything_not_done=.false.
           endif
-          if (verbose) print*,'[master] no more photon to send to worker ',idcpu
-
-          if (verbose) print*,'[master] sending exit code to',idcpu
+          if(verbose) print '(" [master] no more photon to send to worker ",i5," then send exit code.")',idcpu
+          !if (verbose) print*,'[master] no more photon to send to worker ',idcpu
+          !if (verbose) print*,'[master] sending exit code to',idcpu
           call MPI_SEND(idcpu, 1, MPI_INTEGER, idcpu, exi_tag , MPI_COMM_WORLD, code)
 
        else
@@ -240,7 +242,7 @@ contains
        !   nphotdonebefore=nphotdone
        !endif
        if(percentdone>=percentBefore+1.)then
-          print '(" [master] --> number of photon packets done = ",i8," (",f4.1," %)")',nphotdone,percentDone
+          print '(" [master] number of photon packets done = ",i8," (",f4.1," %)")',nphotdone,percentDone
           percentBefore = percentDone + 1.
        endif
 
@@ -251,8 +253,8 @@ contains
 
     if(verbose)then
        call print_diagnostics
-       print *,' '
-       print *,'[master] --> writing results in file: ',trim(fileout)
+       !print *,' '
+       print *,'[master] writing results in file: ',trim(fileout)
     endif
     call dump_photons(fileout,photgrid)
 
@@ -290,7 +292,7 @@ contains
     ! => restart from the grid, need to reconstruct all the queues, but can restart with any number of CPU
     call save_photons(PhotonBakFile,photgrid)
 
-    if (verbose) print *,'[master] --> backup done'
+    if (verbose) print *,'[master] backup done'
 
   end subroutine backup_run
 
@@ -301,35 +303,35 @@ contains
     implicit none
     integer(kind=4) :: i
 
-    write(*,*)'[master] --> check results routine...'
+    write(*,*)'[master] some quick checks on the results...'
 
     ! test status of photons
     do i=1,nphot
        if(photgrid(i)%status == 0)print*,'ERROR: problem with photon status...',i,photgrid(i)%status
     enddo
     ! Some stats on photon status
-    print *,' '
-    print *,'[master] --> photon status:'
-    print *,'# of photons             =',size(photgrid(:)%status)
-    print *,'# of status=1 (escaped)  =',count(mask=(photgrid(:)%status==1))
-    print *,'# of status=2 (absorbed) =',count(mask=(photgrid(:)%status==2))
-    print *,' '
+    !print *,' '
+    print *,'   photon status:'
+    print *,'   # of photons             =',size(photgrid(:)%status)
+    print *,'   # of status=1 (escaped)  =',count(mask=(photgrid(:)%status==1))
+    print *,'   # of status=2 (absorbed) =',count(mask=(photgrid(:)%status==2))
+    !print *,' '
     ! write results                                                                                               
     ! some check
     if(verbose)then
-       print *,'[master] --> Some diagnostics:'
-       print *,'min max status      =',minval(photgrid%status),maxval(photgrid%status)
-       print *,'min max pos x       =',minval(photgrid%xcurr(1)),maxval(photgrid%xcurr(1))
-       print *,'min max pos y       =',minval(photgrid%xcurr(2)),maxval(photgrid%xcurr(2))
-       print *,'min max pos z       =',minval(photgrid%xcurr(3)),maxval(photgrid%xcurr(3))
-       print *,'min max nb scatt    =',minval(photgrid%nb_abs),maxval(photgrid%nb_abs)
-       print *,'min max nu          =',minval(photgrid%nu_ext),maxval(photgrid%nu_ext)
-       print *,'min max lambda      =',clight/maxval(photgrid%nu_ext)*cmtoA,clight/minval(photgrid%nu_ext)*cmtoA
-       print *,'min max travel time =',minval(photgrid%time),maxval(photgrid%time)
-       print *,'Last scattering:'
-       print *,'min max pos x       =',minval(photgrid%xlast(1)),maxval(photgrid%xlast(1))
-       print *,'min max pos y       =',minval(photgrid%xlast(2)),maxval(photgrid%xlast(2))
-       print *,'min max pos z       =',minval(photgrid%xlast(3)),maxval(photgrid%xlast(3))
+       print *,'   some diagnostics:'
+       print *,'   min max status      =',minval(photgrid%status),maxval(photgrid%status)
+       print *,'   min max pos x       =',minval(photgrid%xcurr(1)),maxval(photgrid%xcurr(1))
+       print *,'   min max pos y       =',minval(photgrid%xcurr(2)),maxval(photgrid%xcurr(2))
+       print *,'   min max pos z       =',minval(photgrid%xcurr(3)),maxval(photgrid%xcurr(3))
+       print *,'   min max nb scatt    =',minval(photgrid%nb_abs),maxval(photgrid%nb_abs)
+       print *,'   min max nu          =',minval(photgrid%nu_ext),maxval(photgrid%nu_ext)
+       print *,'   min max lambda      =',clight/maxval(photgrid%nu_ext)*cmtoA,clight/minval(photgrid%nu_ext)*cmtoA
+       print *,'   min max travel time =',minval(photgrid%time),maxval(photgrid%time)
+       print *,'   Last scattering:'
+       print *,'   min max pos x       =',minval(photgrid%xlast(1)),maxval(photgrid%xlast(1))
+       print *,'   min max pos y       =',minval(photgrid%xlast(2)),maxval(photgrid%xlast(2))
+       print *,'   min max pos z       =',minval(photgrid%xlast(3)),maxval(photgrid%xlast(3))
     endif
 
   end subroutine print_diagnostics
@@ -380,12 +382,13 @@ contains
     !endif
     if(verbose)then
        write(*,*)'[master] initial mapping workers <--> domains'
-       write(*,*)' domain   Nqueue   Ncpu   delta'
-       write(*,*)' ------------------------------'
+       write(*,*)'   ------------------------------'
+       write(*,*)'   domain   Nqueue   Ncpu   delta'
+       write(*,*)'   ------------------------------'
        do j=1,ndomain
-          write(*,'(i6,i10,i6,f10.3)') j, nqueue(j), ncpuperdom(j), delta(j)
+          write(*,'(i8,i10,i6,f10.3)') j, nqueue(j), ncpuperdom(j), delta(j)
        enddo
-       write(*,*)
+       write(*,*)'   ------------------------------'
     endif
     
   end subroutine init_loadb
@@ -433,12 +436,13 @@ contains
           !endif
           if(verbose)then
              write(*,*)'[master] updated mapping workers <--> domains'
-             write(*,*)' domain   Nqueue   Ncpu   delta'
-             write(*,*)' ------------------------------'
+             write(*,*)'   ------------------------------'
+             write(*,*)'   domain   Nqueue   Ncpu   delta'
+             write(*,*)'   ------------------------------'
              do j=1,ndomain
-                write(*,'(i6,i10,i6,f10.3)') j, nqueue(j), ncpuperdom(j), delta(j)
+                write(*,'(i8,i10,i6,f10.3)') j, nqueue(j), ncpuperdom(j), delta(j)
              enddo
-             write(*,*)
+             write(*,*)'   ------------------------------'
            endif
        endif
 
