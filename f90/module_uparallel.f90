@@ -213,17 +213,17 @@ contains
 
     if(.not.(isPrinted)) then
        if (present(unit)) then
-          write(unit,'(a)') ''
+          !write(unit,'(a)') ''
           write(unit,'(a,a,a)')    '[uparallel]'
           write(unit,'(a,a)')      '  method       = ',method
           write(unit,'(a,ES10.3)') '  xForGaussian = ',xForGaussian
-          !write(unit,'(a)') ''
+          write(unit,'(a)') ''
        else
-          write(*,*) ''
+          !write(*,*) ''
           write(*,'(a,a,a)')    '[uparallel]'
           write(*,'(a,a)')      '  method       = ',method
           write(*,'(a,ES10.3)') '  xForGaussian = ',xForGaussian
-          !write(*,*) ''
+          write(*,*) ''
        end if
     end if
 

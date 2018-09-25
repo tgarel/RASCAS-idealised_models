@@ -188,12 +188,12 @@ contains
     integer(kind=4),optional,intent(in) :: unit
     if(.not.(isPrinted)) then
        if (present(unit)) then
-          write(unit,'(a)') ''
+          !write(unit,'(a)') ''
           write(unit,'(a,a,a)')    '[voigt]'
           write(unit,'(a,a)')      '  approximation = ',approximation
           !write(unit,'(a)') ''
        else
-          write(*,*) ''
+          !write(*,*) ''
           write(*,'(a,a,a)')    '[voigt]'
           write(*,'(a,a)')      '  approximation = ',approximation
           !write(*,*) ''

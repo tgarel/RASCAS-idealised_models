@@ -217,12 +217,14 @@ contains
        write(unit,'(a,a,a)') '[HI]'
        write(unit,'(a,L1)') '  recoil    = ',recoil
        write(unit,'(a,L1)') '  isotropic = ',isotropic
+       write(unit,'(a)') ''
        call print_uparallel_params(unit)
        call print_voigt_params(unit)
     else
        write(*,'(a,a,a)') '[HI]'
        write(*,'(a,L1)') '  recoil    = ',recoil
        write(*,'(a,L1)') '  isotropic = ',isotropic
+       write(*,'(a)') ''
        call print_uparallel_params()
        call print_voigt_params()
     end if
