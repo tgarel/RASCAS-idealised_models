@@ -41,10 +41,11 @@ contains
     character(2000),intent(in)                    :: file_ICs
     integer(kind=4),intent(in)                    :: nbundle
     character(2000),intent(in)                    :: fileout
-    integer(kind=4)                               :: i,j,icpu,idcpu,jnewdom,nphottodo,ncpuended,ntest,nphotdonebefore,nphotdone
+    integer(kind=4)                               :: i,j,icpu,idcpu,jnewdom,nphottodo,ncpuended,ntest,nphotdone
     logical                                       :: everything_not_done
     real(kind=8)                                  :: start_initphot, end_initphot, time_now, dt_since_last_backup, time_last_backup
-
+    real(kind=8)                                  :: percentDone, percentBefore
+    
     call cpu_time(start_initphot)
 
     ! read ICs photons or restore from backup
@@ -64,7 +65,7 @@ contains
        nphottodo = nphot
        if (verbose) print *,'[master] --> Nphoton =',nphot
     endif
-    nphotdonebefore = nphot - nphottodo
+    percentBefore = real(nphot-nphottodo)/nphot*100.
     
     ! some sanity checks
     if(nbundle*nworker>nphottodo)then
@@ -232,12 +233,17 @@ contains
 
        ! print progress
        nphotdone = count(mask=(photgrid(:)%status/=0))
-       if(nphotdone/=nphotdonebefore)then
-          !print*,'[master] progress report RT, number of photon packets done = ',nphotdone,real(nphotdone)/nphot*100.
-          print '(" [master] --> number of photon packets done = ",i8," (",f5.1," %)")',nphotdone,real(nphotdone)/nphot*100.
-          nphotdonebefore=nphotdone
+       percentdone = real(nphotdone)/nphot*100.
+       !if(nphotdone/=nphotdonebefore)then
+       !   !print*,'[master] progress report RT, number of photon packets done = ',nphotdone,real(nphotdone)/nphot*100.
+       !   print '(" [master] --> number of photon packets done = ",i8," (",f5.1," %)")',nphotdone,real(nphotdone)/nphot*100.
+       !   nphotdonebefore=nphotdone
+       !endif
+       if(percentdone>=percentBefore+1.)then
+          print '(" [master] --> number of photon packets done = ",i8," (",f4.1," %)")',nphotdone,percentDone
+          percentBefore = percentDone + 1.
        endif
-       
+
     enddo
 
     ! finale synchronization, for profiling purposes
