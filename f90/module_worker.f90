@@ -47,20 +47,20 @@ contains
        ! if necessary read domain data
        if(jdomain/=mydom)then
 
-          if(verbose) write(*,'(a,i4.4,a,i4)') ' [w',rank,'] : loading new domain',jdomain
+          if(verbose) write(*,'(a,i5.5,a,i4)') ' [w',rank,'] loading new domain',jdomain
 
           call mesh_from_file(mesh_file_list(jdomain),meshdom) ! -> overwrites gas props if parameters are set to. 
 
           mydom=jdomain
 
-          if(verbose) write(*,'(a,i4.4,a)') ' [w',rank,'] : done loading new domain'
+          if(verbose) write(*,'(a,i5.5,a)') ' [w',rank,'] done loading new domain'
           
        endif
 
        ! receive my list of photon packets to propagate
        call MPI_RECV(photpacket(1)%id, nbundle, MPI_TYPE_PHOTON, 0, MPI_ANY_TAG, MPI_COMM_WORLD, status, IERROR)
 
-       !if(verbose) write(*,'(a,i4.4,a)') ' [w',rank,'] : just receive a bundle of photon packets and start processing it...' 
+       !if(verbose) write(*,'(a,i5.5,a)') ' [w',rank,'] just receive a bundle of photon packets and start processing it...' 
 
        call cpu_time(start_photpacket)
 
@@ -70,8 +70,8 @@ contains
        call cpu_time(end_photpacket)
 
        if(verbose)then
-          write(*,'(a,i4.4,a,f12.6,a)') ' [w',rank,'] : time to propagate a bundle of photon packets = ',end_photpacket-start_photpacket,' seconds.'
-          !write(*,'(a,i4.4,a)') ' [w',rank,'] : finish bundle of photon packets, sending back to master ' 
+          write(*,'(a,i5.5,a,f12.6,a)') ' [w',rank,'] time to propagate a bundle of photon packets = ',end_photpacket-start_photpacket,' seconds.'
+          !write(*,'(a,i5.5,a)') ' [w',rank,'] finish bundle of photon packets, sending back to master ' 
        endif
 
        ! send my results
@@ -81,7 +81,7 @@ contains
 
     enddo
 
-    if(verbose) write(*,'(a,i4.4,a)') ' [w',rank,'] : exit of loop...'
+    if(verbose) write(*,'(a,i5.5,a)') ' [w',rank,'] received exit code, then exit the do while loop'
 
     ! final synchronization, for profiling purposes
     call MPI_BARRIER(MPI_COMM_WORLD,code)
