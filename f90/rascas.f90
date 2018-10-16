@@ -46,13 +46,14 @@ program main
   end if
   call get_command_argument(1, parameter_file)
   call read_rascas_params(parameter_file)
+  if(verbose .and. rank==0) call print_rascas_header
   if(verbose .and. rank==0) call print_rascas_params
   ! ------------------------------------------------------------------------------------------  
 
-  if (rank == 0 .and. verbose) print*,'--> Nworker =',nworker
+  if (rank == 0 .and. verbose) print*,'--> Working with Nworker =',nworker
 
   ! -------------------- Read domain list from CreateDomDump param file --------------------
-  if (verbose .and. rank==0) print *,'--> reading domain list'
+  if (verbose .and. rank==0) print *,'--> Reading domain list'
   open(unit=18,file=DomDumpFile,status='old',form='formatted')
   read(18,'(a)') line ; i = scan(line,'=') ; file_compute_dom = trim(DomDumpDir)//trim(adjustl(line(i+1:)))
   read(18,'(a)') line ; i = scan(line,'=') ; read(line(i+1:),*) ndomain
@@ -63,7 +64,9 @@ program main
   end do
   close(18)
   ! ------------------------------------------------------------------------------------------
-
+  
+  if (rank == 0 .and. verbose) print*,'--> Starting master/workers pattern'
+  if (rank == 0 .and. verbose) print*,' '
   
   call MPI_BARRIER(MPI_COMM_WORLD,code)
 
@@ -193,13 +196,28 @@ contains
        call print_master_params
        write(*,'(a)')             ' '
        call print_worker_params
-       write(*,'(a)')             ' '
        write(*,'(a)')             '--------------------------------------------------------------------------------'
+       write(*,'(a)')             ' '
     end if
 
     return
 
   end subroutine print_rascas_params
 
+
+  subroutine print_rascas_header
+    
+    write(*,'(a)') '                                             '
+    write(*,'(a)') '    _____  _____  _____  _____  _____  _____ '
+    write(*,'(a)') '   / ___ \/ ___ \/ ____\/   __\/ ___ \/ ____\'
+    write(*,'(a)') '   | \_/ || \_/ |\ \___ |  /   | \_/ |\ \___ '
+    write(*,'(a)') '   |    _/|  _  | \___ \|  |   |  _  | \___ \'
+    write(*,'(a)') '   | |\ \ | | | |_____/ |  \___| | | |____/ |'
+    write(*,'(a)') '   |_| \_\|_| |_|\_____/\_____/|_| |_|\_____/'
+    write(*,'(a)') '                                             '
+    write(*,'(a)') '                                             '
+
+  end subroutine print_rascas_header
   
+
 end program main
