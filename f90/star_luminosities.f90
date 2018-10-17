@@ -3,9 +3,9 @@ program star_luminosities
   ! generate photons emitted by star particles within a given domain
 
   ! use module_photon
-  use module_utils
+  !use module_utils
   use module_domain
-  use module_random
+  !use module_random
   use module_constants
   use module_ramses
 
@@ -14,29 +14,14 @@ program star_luminosities
   type(domain)    :: emission_domain
   character(2000) :: parameter_file
   real(kind=8),allocatable :: star_pos(:,:),star_age(:),star_mass(:),star_vel(:,:),star_met(:), star_L(:,:)
-  integer(kind=4) :: iran,i,nstars,narg
-  integer(kind=8) :: ilast,j
-  real(kind=8)    :: scalar,nu,r1,r2
-  !type(photon_init),dimension(:),allocatable :: photgrid
-  ! for analysis purposes (a posteriori weighting) we want to save the emitter-frame
-  ! frequency (here the freq. in the emitting stellar particle's frame)
-  real(kind=8),allocatable    :: nu_star(:)
-  ! SED-related variables
-  integer(kind=4)             :: sed_nage,sed_nmet,imet,iage
-  integer(kind=8)             :: nflux,n,ix
-  real(kind=8),allocatable    :: sed_age(:),sed_met(:),sweight(:),sed_nphot(:,:),sed_F_0(:,:),sed_beta(:,:)
-  integer(kind=8),allocatable :: cum_flux_prob(:)
-  integer(kind=4),allocatable :: star_iage(:),star_imet(:)
-  real(kind=8),allocatable    :: star_beta(:) 
-  real(kind=8)                :: total_flux,minflux,check_flux,f0,beta,betaplus2,lambda,x,dx1,dx2,dx
+  integer(kind=4) :: i,nstars,narg
+
   real(kind=8),allocatable,dimension(:,:,:,:)::SED_table
   real(kind=8),allocatable,dimension(:)::SED_ages, SED_zeds
   real(kind=8),parameter::SED_dlgA=0.02d0
   real(kind=8)::SED_dlgZ
   real(kind=8)::SED_lgA0, SED_lgZ0
   integer::SED_nA, SED_nZ=8           ! Number of age bins and Z bins
-  integer::nSEDgroups=1
-  real(kind=8)::l0=5.139, l1=13.599
 
   ! --------------------------------------------------------------------------
   ! user-defined parameters - read from section [PhotonsFromStars] of the parameter file
@@ -46,6 +31,8 @@ program star_luminosities
   character(2000)           :: outputfile = 'PhotICs.dat' ! file to which outputs will be written
   character(2000)           :: repository = './'          ! ramses run directory (where all output_xxxxx dirs are).
   integer(kind=4)           :: snapnum = 1                ! ramses output number to use
+  integer(kind=4)           :: nSEDgroups = 1             ! number of photon groups
+  real(kind=8),allocatable  :: group_decomp(:)            ! energy intervals of the photon groups, in eV
 
   ! --- domain whithin which star particles will be selected (should be within computational domain used for RT). 
   character(10)             :: star_dom_type      = 'sphere'         ! shape type of domain  // default is sphere.
@@ -101,19 +88,24 @@ program star_luminosities
   ! --------------------------------------------------------------------------------------
   ! Initialize SED properties and compute luminosities of stellar particles
   ! --------------------------------------------------------------------------------------
-
   call init_SED_table(SED_table, SED_ages, SED_zeds)
+  ! --------------------------------------------------------------------------------------
 
   nstars = size(star_age)
   allocate(star_L(nSEDgroups,nstars))
   do i=1,nstars
      call inp_sed_table(star_age(i), star_met(i), 1, .false., star_L(:,i))
+     star_L(:,i) = star_L(:,i)*star_mass(i)/msun
   end do
+
+  print*, nSEDgroups
+
 
   ! --------------------------------------------------------------------------------------
   ! Write on file
   ! --------------------------------------------------------------------------------------
   open(unit=10, file=trim(outputfile), status='replace', form='unformatted', action='write')
+  write(10) nSEDgroups
   write(10) nstars
   write(10) star_pos
   write(10) star_L
@@ -206,7 +198,7 @@ contains
     allocate(tbl(nAges,nZs,nv))
     do ip = 1,nSEDgroups                                ! Loop photon groups
        tbl=0.
-       pL0 = l0 ; pL1 = l1! eV interval of photon group ip
+       pL0 = group_decomp(ip) ; pL1 = group_decomp(ip+1)! eV interval of photon group ip
        do iz = 1, nzs                                     ! Loop metallicity
           do ia = 1,nAges                                ! Loop age
              tbl(ia,iz,1) = getSEDLuminosity(Ls,SEDs(:,ia,iz),nLs,pL0,pL1)
@@ -489,7 +481,6 @@ contains
     ! func   => Function which is integrated (of X, Y, species)
     !-------------------------------------------------------------------------
     use module_constants,only:clight,evtoerg, hp
-    !use amr_commons,only:myid
     real(kind=8):: integrateSpectrum, X(N), Y(N), e0, e1
     integer :: N, species
     interface
@@ -616,6 +607,11 @@ contains
              write(repository,'(a)') trim(value)
           case ('snapnum')
              read(value,*) snapnum
+          case('nSEDgroups')
+             read(value,*) nSEDgroups
+          allocate(group_decomp(nSEDgroups+1))
+          case('group_decomp')
+             read(value,*) group_decomp
           case ('star_dom_type')
              write(star_dom_type,'(a)') trim(value)
           case ('star_dom_pos')
@@ -663,6 +659,8 @@ contains
        write(unit,'(a,a)')           '  outputfile      = ',trim(outputfile)
        write(unit,'(a,a)')           '  repository      = ',trim(repository)
        write(unit,'(a,i5)')          '  snapnum         = ',snapnum
+       write(unit,'(a,i5)')          '  nSEDgroups      = ',nSEDgroups
+       write(unit,2000)              '  group_decomp    = ',group_decomp
        write(unit,'(a)')             '# computational domain parameters'
        write(unit,'(a,a)')           '  star_dom_type      = ',trim(star_dom_type)
        write(unit,'(a,3(ES10.3,1x))') '  star_dom_pos       = ',star_dom_pos(1),star_dom_pos(2),star_dom_pos(3)
@@ -687,6 +685,8 @@ contains
        write(*,'(a,a)')           '  outputfile      = ',trim(outputfile)
        write(*,'(a,a)')           '  repository      = ',trim(repository)
        write(*,'(a,i5)')          '  snapnum         = ',snapnum
+       write(*,'(a,i5)')          '  nSEDgroups      = ',nSEDgroups
+       write(*,2000)              '  group_decomp    = ',group_decomp
        write(*,'(a)')             '# computational domain parameters'
        write(*,'(a,a)')           '  star_dom_type      = ',trim(star_dom_type)
        write(*,'(a,3(ES10.3,1x))') '  star_dom_pos       = ',star_dom_pos(1),star_dom_pos(2),star_dom_pos(3)
@@ -705,6 +705,7 @@ contains
        write(*,'(a)')             ' '
        call print_ramses_params
     end if
+    2000 format (a,1000(ES10.3,1x))
 
     return
 

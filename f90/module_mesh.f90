@@ -45,7 +45,7 @@ module module_mesh
   ! --------------------------------------------------------------------------
   
   public :: mesh_from_leaves, mesh_from_file, mesh_destructor, dump_mesh, whereisphotongoing, dig_in_cell, &
-       in_cell_finder, get_cell_corner, read_mesh_params, print_mesh_params
+       in_cell_finder, get_cell_corner, get_cell_center, read_mesh_params, print_mesh_params
   private :: add_oct_domain, make_nbor_array, xcson, get_nleaflocal, get_ileaflocal, icell2icell
 
   contains
@@ -440,6 +440,21 @@ module module_mesh
 
       return
     end function get_cell_corner
+
+
+    function get_cell_center(xoct, ind, cell_level) 
+      ! return position of cell center, in box units.
+      
+      real(kind=8),dimension(3),intent(in) :: xoct
+      integer(kind=4),intent(in)           :: ind, cell_level
+      real(kind=8),dimension(3)            :: get_cell_center, xcell
+      real(kind=8)                         :: dx
+
+      dx              = 0.5d0**cell_level
+      get_cell_center = xoct + offset(1:3,ind)*dx
+
+      return
+    end function get_cell_center
 
 
 

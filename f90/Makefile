@@ -78,7 +78,7 @@ endif
 # 2/ HI and dust
 #COMPOBJS = module_dust_model.o module_HI_model.o module_gas_composition_HI_dust.o
 # 3/ pure HI
-#COMPOBJS = module_HI_model.o module_gas_composition_HI.o
+COMPOBJS = module_HI_model.o module_gas_composition_HI.o
 # 4/ pure RAMSES hydro variables
 #COMPOBJS = module_gas_composition_ramses.o
 # 5/ SiII
@@ -92,7 +92,7 @@ endif
 # 9/ SiII_1260 and dust
 #COMPOBJS = module_dust_model.o module_SiII_1260_model.o module_gas_composition_SiII1260_dust.o
 # 10/ dust only
-COMPOBJS = module_dust_model.o module_gas_composition_dust.o
+#COMPOBJS = module_dust_model.o module_gas_composition_dust.o
 
 
 
@@ -100,7 +100,7 @@ GASOBJS = module_constants.o module_random.o module_utils.o module_domain.o modu
 
 OBJSDOM = $(GASOBJS) module_select.o module_mesh.o
 
-OBJSPHO = $(GASOBJS)# module_mesh.o module_mock.o module_photon.o 
+OBJSPHO = $(GASOBJS) module_mesh.o module_mock.o module_gray_ray.o module_photon.o
 
 OBJSMPI = $(OBJSPHO) module_parallel_mpi.o module_worker.o module_master.o
 
@@ -136,8 +136,11 @@ rascas-serial: $(OBJSPHO) rascas-serial.o
 rascas: $(OBJSMPI) rascas.o
 	$(F90) $(FFLAGS) $(LDFLAGS) -o $@ $(OBJSMPI) rascas.o
 
-optical_bin: $(OBJSDOM) optical_bin.o
-	$(F90) $(FFLAGS) $(LDFLAGS) -o $@ $(OBJSDOM) optical_bin.o
+optical_bin: $(OBJSPHO) optical_bin.o
+	$(F90) $(FFLAGS) $(LDFLAGS) -o $@ $(OBJSPHO) optical_bin.o
+
+column_density: $(OBJSPHO) column_density.o
+	$(F90) $(FFLAGS) $(LDFLAGS) -o $@ $(OBJSPHO) column_density.o
 
 clean:
 	rm -f $(OBJSDOM) $(OBJSPHO) $(OBJSMPI) *.o *.mod

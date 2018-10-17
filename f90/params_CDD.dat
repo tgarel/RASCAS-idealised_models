@@ -2,7 +2,7 @@
 [CreateDomDump]
 # input outputs:
   Val_way    = T
-  DomDumpDir = /Users/mauerhof/Documents/rascas/RascasFiles/G8_250Myr/dust/domain/test
+  DomDumpDir = /Users/mauerhof/Documents/rascas/RascasFiles/simu_Jeremy/SiII/domdump
   repository = /Users/mauerhof/Documents/RamsesFiles/idealized/G8/newRamses/Dust/
   snapnum    = 12
   reading_method = fullbox
@@ -10,7 +10,7 @@
 # computational domain parameters
   comput_dom_type      = sphere
   comput_dom_pos       =  0.5, 0.5, 0.5
-  comput_dom_rsp       =  0.051
+  comput_dom_rsp       =  0.06
 
 # domain decomposition parameters
   decomp_dom_type      = sphere
@@ -18,7 +18,7 @@
   decomp_dom_xc        =  0.5
   decomp_dom_yc        =  0.5
   decomp_dom_zc        =  0.5
-  decomp_dom_rsp       =  0.06
+  decomp_dom_rsp       =  0.065
 
 # miscelaneous :
   verbose    = T

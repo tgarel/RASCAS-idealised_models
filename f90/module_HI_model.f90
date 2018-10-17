@@ -39,7 +39,7 @@ module module_HI_model
   !--LEEP--
 
   !--CORESKIP--
-  public :: HI_core_skip 
+  !public :: HI_core_skip 
   !--PIKSEROC-- 
   
 contains
@@ -79,8 +79,8 @@ contains
 
   
   !--CORESKIP--
-  subroutine scatter_HI(vcell,vth,nu_cell,k,nu_ext,iran,xcrit)
-  !subroutine scatter_HI(vcell,vth,nu_cell,k,nu_ext,iran)
+  !subroutine scatter_HI(vcell,vth,nu_cell,k,nu_ext,iran,xcrit)
+  subroutine scatter_HI(vcell,vth,nu_cell,k,nu_ext,iran)
   !--PIKSEROC--
     
     ! ---------------------------------------------------------------------------------
@@ -112,8 +112,8 @@ contains
     real(kind=8),dimension(3),intent(in)    :: vcell
     real(kind=8),intent(in)                 :: vth
     !--CORESKIP--
-    real(kind=8),intent(in)                 :: xcrit
-    real(kind=8)                            :: xc
+    !real(kind=8),intent(in)                 :: xcrit
+    !real(kind=8)                            :: xc
     !--PIKSEROC--
     integer(kind=4),intent(inout)           :: iran
     real(kind=8)                            :: delta_nu_doppler, a, x_cell, upar, ruper
@@ -122,11 +122,11 @@ contains
     real(kind=8),dimension(3)               :: knew
 
     !--CORESKIP--  sanity check ... 
-    if (.not. HI_core_skip .and. xcrit .ne. 0.0d0) then
-       print*,'ERROR: core skipping is on but xcrit is not zero ... '
-       stop
-    end if
-    if (HI_core_skip) xc = min(xcrit,xcritmax)
+    ! if (.not. HI_core_skip .and. xcrit .ne. 0.0d0) then
+    !    print*,'ERROR: core skipping is on but xcrit is not zero ... '
+    !    stop
+    ! end if
+    ! if (HI_core_skip) xc = min(xcrit,xcritmax)
     !--PIKSEROC-- 
     
     ! define x_cell & a
@@ -143,7 +143,7 @@ contains
     ruper  = ran3(iran)
     r2     = ran3(iran)
     !--CORESKIP--
-    uper   = sqrt(xc**2-log(ruper))*cos(twopi*r2)
+    ! uper   = sqrt(xc**2-log(ruper))*cos(twopi*r2)
     !--PIKSEROC--
     uper   = uper * vth  ! from x to velocity
 
@@ -305,10 +305,10 @@ contains
           case ('isotropic')
              read(value,*) isotropic
           !--CORESKIP--
-          case ('HI_core_skip') 
-             read(value,*) HI_core_skip
-          case ('xcritmax')
-             read(value,*) xcritmax
+          !case ('HI_core_skip') 
+           !  read(value,*) HI_core_skip
+          !case ('xcritmax')
+          !   read(value,*) xcritmax
           !--PIKSEROC--
           end select
        end do
@@ -347,8 +347,8 @@ contains
        write(*,'(a,L1)') '  recoil    = ',recoil
        write(*,'(a,L1)') '  isotropic = ',isotropic
        !--CORESKIP--
-       write(*,'(a,L1)')     '  HI_core_skip = ',HI_core_skip
-       write(*,'(a,ES10.3)') '  xcritmax     = ',xcritmax
+       !write(*,'(a,L1)')     '  HI_core_skip = ',HI_core_skip
+       !write(*,'(a,ES10.3)') '  xcritmax     = ',xcritmax
        !--PIKSEROC--
        call print_uparallel_params()
     end if

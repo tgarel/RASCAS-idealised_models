@@ -5,11 +5,13 @@
   repository = /Users/mauerhof/Documents/RamsesFiles/idealized/G8/newRamses/Dust
   snapnum    = 12
   outputfile = /Users/mauerhof/Documents/rascas/RascasFiles/G8_250Myr/dust/domain/test/star_infos
+  nSEDgroups = 4
+  group_decomp = 5.139, 7.646, 8.152, 11.26, 13.599 
 
 # computational domain parameters
   star_dom_type      = sphere
   star_dom_pos       = 5.000E-01 5.000E-01 5.000E-01
-  star_dom_rsp       = 0.051
+  star_dom_rsp       = 0.06
 #  star_dom_size      = 3.000E-01
 #  star_dom_rin       = 0.000E+00
 #  star_dom_rout      = 3.000E-01

@@ -21,7 +21,7 @@ module module_dust_model
   character(20) :: dust_model = 'SMC' 
   ! --------------------------------------------------------------------------
   
-  public get_tau_dust, scatter_dust, read_dust_params, print_dust_params
+  public get_tau_dust, get_tau_dust_gray, scatter_dust, read_dust_params, print_dust_params
   !--PEEL--
   public dust_peeloff_weight
   !--LEEP--
@@ -52,6 +52,28 @@ contains
     return
 
   end function get_tau_dust
+
+
+    function get_tau_dust_gray(ndust, distance)
+
+    ! ---------------------------------------------------------------------------------
+    ! compute wavelength-dependent optical depth of dust 
+    ! ---------------------------------------------------------------------------------
+    ! INPUTS :
+    ! - ndust    : dust pseudo-density [/cm3]
+    ! - distance : distance over which to compute tau [cm]
+    ! OUTPUTS :
+    ! - tau : optical depth of dust. 
+    ! ---------------------------------------------------------------------------------
+    
+    real(kind=8),intent(in) :: ndust,distance
+    real(kind=8)            :: get_tau_dust_gray,lbda_A
+    
+    get_tau_dust_gray = 8d-22 * ndust * distance
+    
+    return
+
+  end function get_tau_dust_gray
 
 
 

@@ -38,6 +38,10 @@ module module_gas_composition
   public :: gas_from_ramses_leaves,get_gas_velocity,gas_get_scatter_flag,gas_scatter,dump_gas
   public :: read_gas,gas_destructor,read_gas_composition_params,print_gas_composition_params
 
+  !--PEEL--
+  public :: gas_peeloff_weight,gas_get_tau,gas_get_tau_gray
+  !--LEEP--
+
 contains
   
 
@@ -84,6 +88,82 @@ contains
 
   end subroutine gas_from_ramses_leaves
 
+
+
+  !--PEEL--
+  function  gas_get_tau(cell_gas, distance_cm, nu_cell)
+
+    ! --------------------------------------------------------------------------
+    ! compute total opacity of gas accross distance_cm at freq. nu_cell
+    ! --------------------------------------------------------------------------
+    ! INPUTS:
+    ! - cell_gas : H alone
+    ! - distance_cm : the distance along which to compute tau [cm]
+    ! - nu_cell : photon frequency in cell's frame [ Hz ]
+    ! OUTPUTS:
+    ! - gas_get_tau : the total optical depth
+    ! --------------------------------------------------------------------------
+
+    ! check whether scattering occurs within cell (scatter_flag > 0) or not (scatter_flag==0)
+    type(gas),intent(in)    :: cell_gas
+    real(kind=8),intent(in) :: distance_cm
+    real(kind=8),intent(in) :: nu_cell
+    real(kind=8)            :: gas_get_tau
+    real(kind=8)            :: tau_HI
+
+    ! compute optical depths for different components of the gas.
+    tau_HI   = get_tau_HI(cell_gas%nHI, cell_gas%dopwidth, distance_cm, nu_cell)
+    !tau_dust = get_tau_dust(cell_gas%ndust, distance_cm, nu_cell)
+    !tau_D    = get_tau_D(cell_gas%nHI * deut2H_nb_ratio, cell_gas%dopwidth * sqrt_H2Deut_mass_ratio,distance_cm, nu_cell)
+    gas_get_tau = tau_HI
+
+    return
+    
+  end function gas_get_tau
+  ! --------------------------------------------------------------------------
+  !--LEEP--
+
+  !--PEEL--
+  function  gas_get_tau_gray(cell_gas, distance_cm)
+
+    real(kind=8), intent(in) :: distance_cm
+    type(gas),intent(in)     :: cell_gas
+    real(kind=8)             :: gas_get_tau_gray
+
+    print*, 'Warning : Using gas_get_tau_gray for gas with hydrogen only. Should use it for dust. Returning tau=0'
+
+    gas_get_tau_gray = 0d0
+
+    return
+    
+  end function gas_get_tau_gray
+  ! --------------------------------------------------------------------------
+  !--LEEP--
+
+
+
+
+  !--PEEL--
+  function gas_peeloff_weight(flag,cell_gas,nu_ext,kin,kout,iran)
+
+    integer(kind=4),intent(in)            :: flag
+    type(gas),intent(in)                  :: cell_gas
+    real(kind=8),intent(inout)            :: nu_ext
+    real(kind=8),dimension(3), intent(in) :: kin, kout
+    integer(kind=4),intent(inout)         :: iran
+    real(kind=8)                          :: gas_peeloff_weight
+
+    select case(flag)
+    case(1)
+       gas_peeloff_weight = HI_peeloff_weight(cell_gas%v, cell_gas%dopwidth, nu_ext, kin, kout, iran)
+    case default
+       print*,'ERROR in module_gas_composition_HI.f90:gas_peeloff_weight - unknown case : ',flag 
+       stop
+    end select
+
+  end function gas_peeloff_weight
+  !--LEEP--
+  
   
 
   subroutine overwrite_gas(g)

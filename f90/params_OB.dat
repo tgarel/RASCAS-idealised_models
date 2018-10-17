@@ -1,10 +1,10 @@
 
 !--------------------------------------------------------------------------------
 [OPTICAL_BIN]
-  DomDumpDir   = /Users/mauerhof/Documents/rascas/RascasFiles/G8_250Myr/dust/domain/test
+  DomDumpDir   = /Users/mauerhof/Documents/rascas/RascasFiles/G8_250Myr/compute_N
   DomDumpFile  = domain_decomposition_params.dat
-  star_infos_file = /Users/mauerhof/Documents/rascas/RascasFiles/G8_250Myr/dust/domain/test/star_infos
-  fileout      = /Users/mauerhof/Documents/rascas/RascasFiles/G8_250Myr/dust/domain/test/flux.dat
+  #star_infos_file = /Users/mauerhof/Documents/rascas/RascasFiles/G8_250Myr/dust/domain/test/star_infos
+  fileout      = /Users/mauerhof/Documents/rascas/RascasFiles/G8_250Myr/compute_N/column_densities
   verbose      = T
 !--------------------------------------------------------------------------------
 
