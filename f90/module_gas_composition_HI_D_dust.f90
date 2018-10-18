@@ -356,11 +356,13 @@ contains
        write(unit,'(a,ES10.3)') '  Zref            = ',Zref
        write(unit,'(a)')        '# overwrite parameters'
        write(unit,'(a,L1)')     '  gas_overwrite   = ',gas_overwrite
-       write(unit,'(a,ES10.3)') '  fix_nhi         = ',fix_nhi
-       write(unit,'(a,ES10.3)') '  fix_vth         = ',fix_vth
-       write(unit,'(a,ES10.3)') '  fix_ndust       = ',fix_ndust
-       write(unit,'(a,ES10.3)') '  fix_vel         = ',fix_vel
-       write(unit,'(a,ES10.3)') '  fix_box_size_cm = ',fix_box_size_cm
+       if(gas_overwrite)then
+          write(unit,'(a,ES10.3)') '  fix_nhi         = ',fix_nhi
+          write(unit,'(a,ES10.3)') '  fix_vth         = ',fix_vth
+          write(unit,'(a,ES10.3)') '  fix_ndust       = ',fix_ndust
+          write(unit,'(a,ES10.3)') '  fix_vel         = ',fix_vel
+          write(unit,'(a,ES10.3)') '  fix_box_size_cm = ',fix_box_size_cm
+       endif
        write(unit,'(a)')        '# miscelaneous parameters'
        write(unit,'(a,L1)')     '  verbose         = ',verbose
        write(unit,'(a)')             ' '
@@ -377,11 +379,13 @@ contains
        write(*,'(a,ES10.3)') '  Zref            = ',Zref
        write(*,'(a)')        '# overwrite parameters'
        write(*,'(a,L1)')     '  gas_overwrite   = ',gas_overwrite
-       write(*,'(a,ES10.3)') '  fix_nhi         = ',fix_nhi
-       write(*,'(a,ES10.3)') '  fix_vth         = ',fix_vth
-       write(*,'(a,ES10.3)') '  fix_ndust       = ',fix_ndust
-       write(*,'(a,ES10.3)') '  fix_vel         = ',fix_vel
-       write(*,'(a,ES10.3)') '  fix_box_size_cm = ',fix_box_size_cm
+       if(gas_overwrite)then
+          write(*,'(a,ES10.3)') '  fix_nhi         = ',fix_nhi
+          write(*,'(a,ES10.3)') '  fix_vth         = ',fix_vth
+          write(*,'(a,ES10.3)') '  fix_ndust       = ',fix_ndust
+          write(*,'(a,ES10.3)') '  fix_vel         = ',fix_vel
+          write(*,'(a,ES10.3)') '  fix_box_size_cm = ',fix_box_size_cm
+       endif
        write(*,'(a)')        '# miscelaneous parameters'
        write(*,'(a,L1)')     '  verbose         = ',verbose
        write(*,'(a)')             ' '
