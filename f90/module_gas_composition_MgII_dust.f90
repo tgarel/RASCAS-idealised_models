@@ -340,6 +340,7 @@ contains
 
     if (present(unit)) then 
        write(unit,'(a,a,a)') '[gas_composition]'
+       write(unit,'(a)')        '# mixture parameters'
        write(unit,'(a,ES10.3)') '  f_ion                = ',f_ion
        write(unit,'(a,ES10.3)') '  Zref                 = ',Zref
        write(unit,'(a)')        '# overwrite parameters'
@@ -359,6 +360,7 @@ contains
        call print_MgII_2804_params(unit)
     else
        write(*,'(a,a,a)') '[gas_composition]'
+       write(*,'(a)')        '# mixture parameters'
        write(*,'(a,ES10.3)') '  f_ion                = ',f_ion
        write(*,'(a,ES10.3)') '  Zref                 = ',Zref
        write(*,'(a)')        '# overwrite parameters'
