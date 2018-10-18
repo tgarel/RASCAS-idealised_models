@@ -8,7 +8,6 @@ module module_gas_composition
   use module_FeII_2587_model
   use module_FeII_2600_model
   use module_random
-  use module_ramses
   use module_constants
 
   implicit none
@@ -33,8 +32,6 @@ module module_gas_composition
   real(kind=8)             :: fix_vth             = 1.0d5   ! ad-hoc thermal velocity (cm/s)
   real(kind=8)             :: fix_vel             = 0.0d0   ! ad-hoc cell velocity (cm/s) -> NEED BETTER PARAMETERIZATION for more than static... 
   real(kind=8)             :: fix_box_size_cm     = 1.0d8   ! ad-hoc box size in cm.
-  ! miscelaneous
-  logical                  :: verbose             = .true. ! display some run-time info on this module
   ! --------------------------------------------------------------------------
 
   ! public functions:
@@ -47,6 +44,8 @@ contains
   subroutine gas_from_ramses_leaves(repository,snapnum,nleaf,nvar,ramses_var, g)
 
     ! define gas contents from ramses raw data
+
+    use module_ramses
 
     character(2000),intent(in)        :: repository 
     integer(kind=4),intent(in)        :: snapnum
@@ -66,7 +65,7 @@ contains
        box_size_cm = ramses_get_box_size_cm(repository,snapnum)
 
        ! compute velocities in cm / s
-       if (verbose) write(*,*) '-- module_gas_composition_FeII_UV1 : extracting velocities from ramses '
+       write(*,*) '-- module_gas_composition_FeII_UV1 : extracting velocities from ramses '
        allocate(v(3,nleaf))
        call ramses_get_velocity_cgs(repository,snapnum,nleaf,nvar,ramses_var,v)
        do ileaf = 1,nleaf
@@ -75,7 +74,7 @@ contains
        deallocate(v)
 
        ! get nFeII and temperature from ramses
-       if (verbose) write(*,*) '-- module_gas_composition_FeII_UV1 : extracting nFeII from ramses '
+       write(*,*) '-- module_gas_composition_FeII_UV1 : extracting nFeII from ramses '
        allocate(T(nleaf),nFeII(nleaf))
        call ramses_get_T_nFeII_cgs(repository,snapnum,nleaf,nvar,ramses_var,T,nFeII)
        g(:)%nFeII = nFeII(:)
@@ -84,7 +83,7 @@ contains
        g(:)%dopwidth = sqrt(2.0d0*kb/mFe*T) ! [ cm/s ]
        deallocate(T,nFeII)
 
-       if (verbose) print*,'min/max of nFeII : ',minval(g(:)%nFeII),maxval(g(:)%nFeII)
+       print*,'min/max of nFeII : ',minval(g(:)%nFeII),maxval(g(:)%nFeII)
        
     end if
 
@@ -275,8 +274,6 @@ contains
              read(value,*) fix_vth
           case ('fix_vel')
              read(value,*) fix_vel
-          case ('verbose')
-             read(value,*) verbose
           case ('fix_box_size_cm')
              read(value,*) fix_box_size_cm
           end select
@@ -284,7 +281,6 @@ contains
     end if
     close(10)
 
-    call read_ramses_params(pfile)
     call read_FeII_2587_params(pfile)
     call read_FeII_2600_params(pfile)
     
@@ -306,15 +302,13 @@ contains
     if (present(unit)) then 
        write(unit,'(a,a,a)') '[gas_composition]'
        write(unit,'(a)')        '# overwrite parameters'
-       write(unit,'(a,L1)')     '  gas_overwrite         = ',gas_overwrite
-       write(unit,'(a,ES10.3)') '  fix_nFeII            = ',fix_nFeII
-       write(unit,'(a,ES10.3)') '  fix_vth              = ',fix_vth
-       write(unit,'(a,ES10.3)') '  fix_vel              = ',fix_vel
-       write(unit,'(a,ES10.3)') '  fix_box_size_cm      = ',fix_box_size_cm
-       write(unit,'(a)')        '# miscelaneous parameters'
-       write(unit,'(a,L1)')     '  verbose               = ',verbose
-       write(unit,'(a)')             ' '
-       call print_ramses_params(unit)
+       write(unit,'(a,L1)')     '  gas_overwrite        = ',gas_overwrite
+       if(gas_overwrite)then
+          write(unit,'(a,ES10.3)') '  fix_nFeII            = ',fix_nFeII
+          write(unit,'(a,ES10.3)') '  fix_vth              = ',fix_vth
+          write(unit,'(a,ES10.3)') '  fix_vel              = ',fix_vel
+          write(unit,'(a,ES10.3)') '  fix_box_size_cm      = ',fix_box_size_cm
+       endif
        write(unit,'(a)')             ' '
        call print_FeII_2587_params(unit)
        write(unit,'(a)')             ' '
@@ -322,15 +316,13 @@ contains
     else
        write(*,'(a,a,a)') '[gas_composition]'
        write(*,'(a)')        '# overwrite parameters'
-       write(*,'(a,L1)')     '  gas_overwrite         = ',gas_overwrite
-       write(*,'(a,ES10.3)') '  fix_nFeII            = ',fix_nFeII
-       write(*,'(a,ES10.3)') '  fix_vth              = ',fix_vth
-       write(*,'(a,ES10.3)') '  fix_vel              = ',fix_vel
-       write(*,'(a,ES10.3)') '  fix_box_size_cm      = ',fix_box_size_cm
-       write(*,'(a)')        '# miscelaneous parameters'
-       write(*,'(a,L1)')     '  verbose               = ',verbose
-       write(*,'(a)')             ' '
-       call print_ramses_params
+       write(*,'(a,L1)')     '  gas_overwrite        = ',gas_overwrite
+       if(gas_overwrite)then
+          write(*,'(a,ES10.3)') '  fix_nFeII            = ',fix_nFeII
+          write(*,'(a,ES10.3)') '  fix_vth              = ',fix_vth
+          write(*,'(a,ES10.3)') '  fix_vel              = ',fix_vel
+          write(*,'(a,ES10.3)') '  fix_box_size_cm      = ',fix_box_size_cm
+       endif
        write(*,'(a)')             ' '
        call print_FeII_2587_params
        write(*,'(a)')             ' '
