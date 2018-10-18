@@ -46,8 +46,6 @@ module module_gas_composition
   real(kind=8)             :: fix_ndust           = 0.0d0   ! ad-hoc dust number density (/cm3)
   real(kind=8)             :: fix_vel             = 0.0d0   ! ad-hoc cell velocity (cm/s) -> NEED BETTER PARAMETERIZATION for more than static... 
   real(kind=8)             :: fix_box_size_cm     = 1.0d8   ! ad-hoc box size in cm. 
-  ! miscelaneous
-  logical                  :: verbose             = .false. ! display some run-time info on this module
   ! --------------------------------------------------------------------------
 
   ! public functions:
@@ -82,7 +80,7 @@ contains
        box_size_cm = ramses_get_box_size_cm(repository,snapnum)
 
        ! compute velocities in cm / s
-       if (verbose) write(*,*) '-- module_gas_composition_HI_D_dust : extracting velocities from ramses '
+       write(*,*) '-- module_gas_composition_HI_D_dust : extracting velocities from ramses '
        allocate(v(3,nleaf))
        call ramses_get_velocity_cgs(repository,snapnum,nleaf,nvar,ramses_var,v)
        do ileaf = 1,nleaf
@@ -91,7 +89,7 @@ contains
        deallocate(v)
 
        ! get nHI and temperature from ramses
-       if (verbose) write(*,*) '-- module_gas_composition_HI_D_dust : extracting nHI and T from ramses '
+       write(*,*) '-- module_gas_composition_HI_D_dust : extracting nHI and T from ramses '
        allocate(T(nleaf),nhi(nleaf))
        call ramses_get_T_nhi_cgs(repository,snapnum,nleaf,nvar,ramses_var,T,nhi)
        g(:)%nHI = nhi(:)
@@ -100,7 +98,7 @@ contains
        g(:)%dopwidth = sqrt((2.0d0*kb/mp)*T) ! [ cm/s ]
 
        ! get ndust (pseudo dust density from Laursen, Sommer-Larsen, Andersen 2009)
-       if (verbose) write(*,*) '-- module_gas_composition_HI_D_dust : extracting ndust from ramses '
+       write(*,*) '-- module_gas_composition_HI_D_dust : extracting ndust from ramses '
        allocate(metallicity(nleaf),nhii(nleaf))
        call ramses_get_metallicity(nleaf,nvar,ramses_var,metallicity)
        call ramses_get_nh_cgs(repository,snapnum,nleaf,nvar,ramses_var,nhii)
@@ -320,8 +318,6 @@ contains
              read(value,*) fix_ndust
           case ('fix_vel')
              read(value,*) fix_vel
-          case ('verbose')
-             read(value,*) verbose
           case ('fix_box_size_cm')
              read(value,*) fix_box_size_cm
           end select
@@ -363,8 +359,6 @@ contains
           write(unit,'(a,ES10.3)') '  fix_vel         = ',fix_vel
           write(unit,'(a,ES10.3)') '  fix_box_size_cm = ',fix_box_size_cm
        endif
-       write(unit,'(a)')        '# miscelaneous parameters'
-       write(unit,'(a,L1)')     '  verbose         = ',verbose
        write(unit,'(a)')             ' '
        call print_HI_params(unit)
        write(unit,'(a)')             ' '
@@ -386,8 +380,6 @@ contains
           write(*,'(a,ES10.3)') '  fix_vel         = ',fix_vel
           write(*,'(a,ES10.3)') '  fix_box_size_cm = ',fix_box_size_cm
        endif
-       write(*,'(a)')        '# miscelaneous parameters'
-       write(*,'(a,L1)')     '  verbose         = ',verbose
        write(*,'(a)')             ' '
        call print_HI_params
        write(*,'(a)')             ' '
