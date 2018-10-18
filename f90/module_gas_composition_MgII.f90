@@ -298,10 +298,12 @@ contains
        write(unit,'(a,a,a)') '[gas_composition]'
        write(unit,'(a)')        '# overwrite parameters'
        write(unit,'(a,L1)')     '  gas_overwrite         = ',gas_overwrite
-       write(unit,'(a,ES10.3)') '  fix_nMgII            = ',fix_nMgII
-       write(unit,'(a,ES10.3)') '  fix_vth              = ',fix_vth
-       write(unit,'(a,ES10.3)') '  fix_vel              = ',fix_vel
-       write(unit,'(a,ES10.3)') '  fix_box_size_cm      = ',fix_box_size_cm
+       if(gas_overwrite)then
+          write(unit,'(a,ES10.3)') '  fix_nMgII            = ',fix_nMgII
+          write(unit,'(a,ES10.3)') '  fix_vth              = ',fix_vth
+          write(unit,'(a,ES10.3)') '  fix_vel              = ',fix_vel
+          write(unit,'(a,ES10.3)') '  fix_box_size_cm      = ',fix_box_size_cm
+       endif
        write(unit,'(a)')             ' '
        call print_MgII_2796_params(unit)
        write(unit,'(a)')             ' '
@@ -310,10 +312,12 @@ contains
        write(*,'(a,a,a)') '[gas_composition]'
        write(*,'(a)')        '# overwrite parameters'
        write(*,'(a,L1)')     '  gas_overwrite         = ',gas_overwrite
-       write(*,'(a,ES10.3)') '  fix_nMgII            = ',fix_nMgII
-       write(*,'(a,ES10.3)') '  fix_vth              = ',fix_vth
-       write(*,'(a,ES10.3)') '  fix_vel              = ',fix_vel
-       write(*,'(a,ES10.3)') '  fix_box_size_cm      = ',fix_box_size_cm
+       if(gas_overwrite)then
+          write(*,'(a,ES10.3)') '  fix_nMgII            = ',fix_nMgII
+          write(*,'(a,ES10.3)') '  fix_vth              = ',fix_vth
+          write(*,'(a,ES10.3)') '  fix_vel              = ',fix_vel
+          write(*,'(a,ES10.3)') '  fix_box_size_cm      = ',fix_box_size_cm
+       endif
        write(*,'(a)')             ' '
        call print_MgII_2796_params
        write(*,'(a)')             ' '
