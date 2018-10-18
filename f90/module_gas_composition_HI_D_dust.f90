@@ -10,7 +10,6 @@ module module_gas_composition
   use module_D_model
   use module_dust_model
   use module_random
-  use module_ramses
   use module_constants
 
   implicit none
@@ -62,6 +61,8 @@ contains
 
     ! define gas contents from ramses raw data
 
+    use module_ramses
+    
     character(2000),intent(in)                     :: repository 
     integer(kind=4),intent(in)                     :: snapnum
     integer(kind=4),intent(in)                     :: nleaf,nvar
@@ -328,7 +329,6 @@ contains
     end if
     close(10)
 
-    call read_ramses_params(pfile)
     call read_HI_params(pfile)
     call read_D_params(pfile)
     call read_dust_params(pfile)
@@ -364,8 +364,6 @@ contains
        write(unit,'(a)')        '# miscelaneous parameters'
        write(unit,'(a,L1)')     '  verbose         = ',verbose
        write(unit,'(a)')             ' '
-       call print_ramses_params(unit)
-       write(unit,'(a)')             ' '
        call print_HI_params(unit)
        write(unit,'(a)')             ' '
        call print_D_params(unit)
@@ -386,8 +384,6 @@ contains
        write(*,'(a,ES10.3)') '  fix_box_size_cm = ',fix_box_size_cm
        write(*,'(a)')        '# miscelaneous parameters'
        write(*,'(a,L1)')     '  verbose         = ',verbose
-       write(*,'(a)')             ' '
-       call print_ramses_params
        write(*,'(a)')             ' '
        call print_HI_params
        write(*,'(a)')             ' '
