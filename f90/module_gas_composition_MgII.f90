@@ -6,7 +6,6 @@ module module_gas_composition
   use module_MgII_2796_model
   use module_MgII_2804_model
   use module_random
-  use module_ramses
   use module_constants
 
   implicit none
@@ -31,8 +30,6 @@ module module_gas_composition
   real(kind=8)             :: fix_vth             = 1.0d5   ! ad-hoc thermal velocity (cm/s)
   real(kind=8)             :: fix_vel             = 0.0d0   ! ad-hoc cell velocity (cm/s) -> NEED BETTER PARAMETERIZATION for more than static... 
   real(kind=8)             :: fix_box_size_cm     = 1.0d8   ! ad-hoc box size in cm. 
-  ! miscelaneous
-  logical                  :: verbose             = .false. ! display some run-time info on this module
   ! --------------------------------------------------------------------------
   
   ! public functions:
@@ -45,6 +42,8 @@ contains
   subroutine gas_from_ramses_leaves(repository,snapnum,nleaf,nvar,ramses_var, g)
 
     ! define gas contents from ramses raw data
+
+    use module_ramses
 
     character(2000),intent(in)        :: repository 
     integer(kind=4),intent(in)        :: snapnum
@@ -64,7 +63,7 @@ contains
        box_size_cm = ramses_get_box_size_cm(repository,snapnum)
 
        ! compute velocities in cm / s
-       if (verbose) write(*,*) '-- module_gas_composition_MgII : extracting velocities from ramses '
+       write(*,*) '-- module_gas_composition_MgII : extracting velocities from ramses '
        allocate(v(3,nleaf))
        call ramses_get_velocity_cgs(repository,snapnum,nleaf,nvar,ramses_var,v)
        do ileaf = 1,nleaf
@@ -73,7 +72,7 @@ contains
        deallocate(v)
 
        ! get nMgII and temperature from ramses
-       if (verbose) write(*,*) '-- module_gas_composition_MgII : extracting nMgII from ramses '
+       write(*,*) '-- module_gas_composition_MgII : extracting nMgII from ramses '
        allocate(T(nleaf),nMgII(nleaf))
        call ramses_get_T_nMgII_cgs(repository,snapnum,nleaf,nvar,ramses_var,T,nMgII)
        g(:)%nMgII = nMgII(:)
@@ -270,8 +269,6 @@ contains
              read(value,*) fix_vth
           case ('fix_vel')
              read(value,*) fix_vel
-          case ('verbose')
-             read(value,*) verbose
           case ('fix_box_size_cm')
              read(value,*) fix_box_size_cm
           end select
@@ -279,7 +276,6 @@ contains
     end if
     close(10)
 
-    call read_ramses_params(pfile)
     call read_MgII_2796_params(pfile)
     call read_MgII_2804_params(pfile)
 
@@ -306,10 +302,6 @@ contains
        write(unit,'(a,ES10.3)') '  fix_vth              = ',fix_vth
        write(unit,'(a,ES10.3)') '  fix_vel              = ',fix_vel
        write(unit,'(a,ES10.3)') '  fix_box_size_cm      = ',fix_box_size_cm
-       write(unit,'(a)')        '# miscelaneous parameters'
-       write(unit,'(a,L1)')     '  verbose               = ',verbose
-       write(unit,'(a)')             ' '
-       call print_ramses_params(unit)
        write(unit,'(a)')             ' '
        call print_MgII_2796_params(unit)
        write(unit,'(a)')             ' '
@@ -322,10 +314,6 @@ contains
        write(*,'(a,ES10.3)') '  fix_vth              = ',fix_vth
        write(*,'(a,ES10.3)') '  fix_vel              = ',fix_vel
        write(*,'(a,ES10.3)') '  fix_box_size_cm      = ',fix_box_size_cm
-       write(*,'(a)')        '# miscelaneous parameters'
-       write(*,'(a,L1)')     '  verbose               = ',verbose
-       write(*,'(a)')             ' '
-       call print_ramses_params
        write(*,'(a)')             ' '
        call print_MgII_2796_params
        write(*,'(a)')             ' '
