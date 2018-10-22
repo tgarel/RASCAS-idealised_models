@@ -43,7 +43,7 @@ contains
     integer(kind=4)               :: ctloc
 
     if(a < 1.d-6) then
-       print*,'Error using module_uparallel.f90:PROB_FUNC: a too small'
+       print*,'Error using module_uparallel.f90: get_uparallel: a too small'
        STOP
     endif
 
@@ -78,7 +78,7 @@ contains
                   + x*(0.110987+0.070103*la+0.011557*la2 + x*(-0.005200-0.003240*la-0.000519*la2)))))
           end if
        case default
-          print*,'ERROR: method not known in module_uparallel.f90:PROB_FUNC : ',trim(method)
+          print*,'ERROR: method not known in module_uparallel.f90: get_uparallel: ',trim(method)
           stop
        end select
        ! Perform the rejection method given u_0
