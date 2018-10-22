@@ -31,8 +31,6 @@
   Zref                = 0.005   ! OK for LMC dust model.
 # overwrite parameters
   gas_overwrite       = F
-# miscelaneous parameters
-  verbose             = T
 !--------------------------------------------------------------------------------
 
 !--------------------------------------------------------------------------------
