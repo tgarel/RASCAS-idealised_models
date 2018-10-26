@@ -1,14 +1,16 @@
 !--------------------------------------------------------------------------------
 [PhotonsFromStars]
 # input / output parameters
-  repository = /Users/mauerhof/Documents/RamsesFiles/idealized/G8/newRamses/Dust
+  repository = .
   snapnum    = 12
-  outputfile = /Users/mauerhof/Documents/RascasFiles/G8_250Myr/Output/Cloudy_WrongDensity/output_PFS.out
+  outputfile = /Users/mauerhof/Documents/rascas/RascasFiles/simu_Jeremy/SiII/PFS/output_PFS.out
 
 # computational domain parameters
   star_dom_type      = sphere
-  star_dom_pos       = 5.000E-01 5.000E-01 5.000E-01
-  star_dom_rsp       = 0.051
+  star_dom_pos       = 0.48449135, 0.5013419, 0.51207155
+  star_dom_rsp       = 0.002015
+#  comput_dom_pos       =  0.5, 0.5, 0.5
+#  comput_dom_rsp       =  1
 #  star_dom_size      = 3.000E-01
 #  star_dom_rin       = 0.000E+00
 #  star_dom_rout      = 3.000E-01
@@ -31,6 +33,7 @@
 !--------------------------------------------------------------------------------
 
 [ramses]
- Teyssier_version = T
- cosmo = F
+ star_reading_method = fromlist
+ star_info_file = /Users/mauerhof/Documents/RamsesFiles/idealized/simu_Jeremy/readH5/star_info_rascas
+ cosmo = T
  use_initial_mass = T

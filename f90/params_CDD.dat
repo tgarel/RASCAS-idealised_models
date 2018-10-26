@@ -1,24 +1,30 @@
 !--------------------------------------------------------------------------------
 [CreateDomDump]
 # input outputs:
-  Val_way    = T
   DomDumpDir = /Users/mauerhof/Documents/rascas/RascasFiles/simu_Jeremy/SiII/domdump
-  repository = /Users/mauerhof/Documents/RamsesFiles/idealized/G8/newRamses/Dust/
-  snapnum    = 12
-  reading_method = fullbox
+  repository = ./
+  snapnum    = 1
+  reading_method = fromlist
 
 # computational domain parameters
   comput_dom_type      = sphere
-  comput_dom_pos       =  0.5, 0.5, 0.5
-  comput_dom_rsp       =  0.06
+  comput_dom_pos       =  0.48449135, 0.5013419, 0.51207155
+  comput_dom_rsp       =  0.002019
+#  comput_dom_pos       =  0.5, 0.5, 0.5
+#  comput_dom_rsp       =  1
+
 
 # domain decomposition parameters
   decomp_dom_type      = sphere
   decomp_dom_ndomain   = 1
-  decomp_dom_xc        =  0.5
-  decomp_dom_yc        =  0.5
-  decomp_dom_zc        =  0.5
-  decomp_dom_rsp       =  0.065
+  decomp_dom_xc        =  0.48449135
+  decomp_dom_yc        =  0.5013419
+  decomp_dom_zc        =  0.51207155
+  decomp_dom_rsp       =  0.00201903
+#  decomp_dom_xc        =  0.5
+#  decomp_dom_yc        =  0.5
+#  decomp_dom_zc        =  0.5
+#  decomp_dom_rsp       =  1.01
 
 # miscelaneous :
   verbose    = T
@@ -31,7 +37,7 @@
 
 !--------------------------------------------------------------------------------
 [ramses]
-  Teyssier_version = T
+  Teyssier_version = F
   self_shielding   = F
   ramses_rt        = T
   verbose          = T
@@ -55,8 +61,8 @@
 # miscelaneous parameters
   verbose             = T
 
-#if Val_way :
-  input_ramses_file   = /Users/mauerhof/Documents/rascas/RascasFiles/G8_250Myr/SiII/Inputs/input_ramses
-  SiII_file           = /Users/mauerhof/Documents/rascas/RascasFiles/G8_250Myr/SiII/Inputs/SiII_cloudy_WrongDensity
+#Necessary only when reading_method = fromlist
+  input_ramses_file   = /Users/mauerhof/Documents/RamsesFiles/idealized/simu_Jeremy/readH5/data_rascas_format
+  SiII_file           = /Users/mauerhof/Documents/RamsesFiles/idealized/simu_Jeremy/Si_fractions_fewerChargeTransfer/outputs/Save_equ_12.10.18/SiII_rascas_format
 !--------------------------------------------------------------------------------
 

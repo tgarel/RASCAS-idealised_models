@@ -32,7 +32,7 @@ module module_ramses
 
   ! conversion factors (units)
   logical                        :: conversion_scales_are_known = .False. 
-  real(kind=8)                   :: dp_scale_l,dp_scale_d,dp_scale_t,dp_scale_T2,dp_scale_zsun,dp_scale_nh,dp_scale_v,dp_scale_m
+  real(kind=8)                   :: dp_scale_l,dp_scale_d,dp_scale_t,dp_scale_T2,dp_scale_zsun,dp_scale_nh,dp_scale_v,dp_scale_m,dp_scale_pf
 
   ! cooling-related stuff -------------------------------------------------------------
   type cooling_table
@@ -76,13 +76,18 @@ module module_ramses
   ! user-defined parameters - read from section [ramses] of the parameter file
   ! --------------------------------------------------------------------------
   ! ramses options (not guessable from outputs)
-  logical                  :: Teyssier_version  = .false.  ! if true, changes the way to read the number and parameters of stellar particles, and change the treatment of initial mass
-  logical                  :: self_shielding    = .true.   ! if true, reproduce self-shielding approx made in ramses to compute nHI. 
-  logical                  :: ramses_rt         = .false.  ! if true, read ramses-RT output and compute nHI and T accordingly.
-  logical                  :: read_rt_variables = .false.  ! if true, read RT variables (e.g. to compute heating terms)
-  logical                  :: use_initial_mass  = .false.  ! if true, use initial masses of star particles instead of mass at output time
-  logical                  :: cosmo             = .true.   ! if false, assume idealised simulation
-  logical                  :: use_proper_time   = .false.  ! if true, use proper time instead of conformal time for cosmo runs. 
+  !Val--
+  character(20)            :: star_reading_method  = 'default'  ! "default" : like originally in rascas,  "teyssier" : like in Romain's github Ramses version, and changes minit,  "fromlist", from an external list
+  character(200)           :: star_info_file       = '.'        ! Where the file with star lists is, in case star_reading_method = 'fromlist'
+  real(kind=8)             :: t_sne_Myr            = 1d1        ! Time before supernovae in Romain's version of Ramses
+  real(kind=8)             :: eta_sn               = 2d-1       ! In Teyssier version :  if(t > t_sne_myr), minit = m/(1 - eta_sn)
+  !--laV
+  logical                  :: self_shielding       = .true.     ! if true, reproduce self-shielding approx made in ramses to compute nHI. 
+  logical                  :: ramses_rt            = .false.    ! if true, read ramses-RT output and compute nHI and T accordingly.
+  logical                  :: read_rt_variables    = .false.    ! if true, read RT variables (e.g. to compute heating terms)
+  logical                  :: use_initial_mass     = .false.    ! if true, use initial masses of star particles instead of mass at output time
+  logical                  :: cosmo                = .true.     ! if false, assume idealised simulation
+  logical                  :: use_proper_time      = .false.    ! if true, use proper time instead of conformal time for cosmo runs. 
   ! miscelaneous
   logical                  :: verbose        = .false. ! display some run-time info on this module
   ! RT variable indices
@@ -102,8 +107,8 @@ module module_ramses
   
   
   public :: read_leaf_cells, read_leaf_cells_omp, read_leaf_cells_in_domain
-  public :: get_ngridtot, ramses_get_box_size_cm, get_cpu_list, get_cpu_list_periodic, get_ncpu
-  public :: ramses_get_velocity_cgs, ramses_get_T_nhi_cgs, ramses_get_metallicity,  ramses_get_nh_cgs, ramses_get_T_nSiII_cgs, ramses_get_T_nMgII_cgs
+  public :: get_ngridtot, ramses_get_box_size_cm, get_cpu_list, get_cpu_list_periodic, get_ncpu, get_nSEDgroups, get_xH
+  public :: ramses_get_velocity_cgs, ramses_get_T_nhi_cgs, ramses_get_metallicity, ramses_get_nh_cgs, ramses_get_T_nSiII_cgs, ramses_get_T_nMgII_cgs, ramses_get_he_fractions, ramses_get_flux
   public :: ramses_read_stars_in_domain
   public :: read_ramses_params, print_ramses_params, dump_ramses_info
   
@@ -1022,6 +1027,52 @@ contains
     return
 
   end subroutine ramses_get_metallicity
+
+
+
+  !Val--
+  subroutine ramses_get_he_fractions(nleaf,nvar,ramses_var,xheii,xheiii)
+
+    implicit none
+
+    integer(kind=4),intent(in)  :: nleaf, nvar
+    real(kind=8),intent(in)     :: ramses_var(nvar,nleaf) ! one cell only
+    real(kind=8),intent(inout)  :: xheii(nleaf), xheiii(nleaf)
+
+    xheii = ramses_var(iheii,:)
+    xheiii = ramses_var(iheiii,:)
+
+    return
+
+  end subroutine ramses_get_he_fractions
+
+
+  subroutine ramses_get_flux(repository,snapnum,nleaf,nvar,nGroups,ramses_var,flux)
+
+    implicit none
+
+    character(1000),intent(in)  :: repository
+    integer(kind=4),intent(in)  :: snapnum
+    integer(kind=4),intent(in)  :: nleaf, nvar, nGroups
+    real(kind=8),intent(in)     :: ramses_var(nvar,nleaf) ! one cell only
+    real(kind=8),intent(inout)  :: flux(nGroups,nleaf)
+    integer(kind=4)             :: i
+
+    ! get conversion factors if necessary
+    if (.not. conversion_scales_are_known) then 
+       call read_conversion_scales(repository,snapnum)
+       conversion_scales_are_known = .True.
+    end if
+
+    do i=1,nGroups
+       flux(i,:) = ramses_var(iheiii+1+4*(i-1),:)*dp_scale_pf
+    end do
+
+    return
+
+  end subroutine ramses_get_flux
+  !--laV
+  
 
   
   subroutine ramses_get_T_nSiII_cgs(repository,snapnum,nleaf,nvar,ramses_var,temp,nSiII)
@@ -2095,6 +2146,35 @@ contains
   end function get_ncpu
 
 
+  !Val--
+  function get_nSEDgroups(repository,snapnum)
+
+    implicit none
+
+    integer(kind=4)            :: get_nSEDgroups
+    character(512),intent(in)  :: repository
+    integer(kind=4),intent(in) :: snapnum
+
+    get_nSEDgroups = nint(get_param_rt_real(repository,snapnum,'nGroups'))
+
+    return
+  end function get_nSEDgroups
+
+
+  function get_xH(repository,snapnum)
+
+    implicit none
+
+    real(kind=8)               :: get_xH
+    character(512),intent(in)  :: repository
+    integer(kind=4),intent(in) :: snapnum
+
+    get_xH = get_param_rt_real(repository,snapnum,'X_fraction')
+
+    return
+  end function get_xH
+  !--laV
+
 
   function get_param_real(repository,snapnum,param)
 
@@ -2140,6 +2220,55 @@ contains
 
   end function get_param_real
 
+
+  !Val--
+  function get_param_rt_real(repository,snapnum,param)
+
+    implicit none
+
+    real(kind=8)               :: get_param_rt_real
+    character(512),intent(in)  :: repository
+    integer(kind=4),intent(in) :: snapnum
+    character(*),intent(in)    :: param
+    logical(kind=4)            :: not_ok
+    character(1000)            :: nomfich
+    character(512)             :: line,name,value
+    integer(kind=4)            :: i
+    integer(kind=4),parameter  :: param_unit = 13
+
+    not_ok = .true.
+    write(nomfich,'(a,a,i5.5,a,i5.5,a)') trim(repository),'/output_',snapnum,'/info_rt_',snapnum,'.txt'
+    open(unit=param_unit,file=nomfich,status='old',form='formatted')
+    do 
+       read(param_unit,'(a)',end=2) line
+       i = scan(line,'=')
+       if (i==0 .or. line(1:1)=='#') cycle
+       name=trim(adjustl(line(:i-1)))
+       value=trim(adjustl(line(i+1:)))
+       ! check for a comment at end of line !
+       i = scan(value,'!')
+       if (i /= 0) value = trim(adjustl(value(:i-1)))
+
+       if (trim(name) .eq. trim(param)) then 
+          read(value,*) get_param_rt_real
+          not_ok = .false.
+       end if
+
+    end do
+2   close (param_unit)  
+
+    if (not_ok) then 
+       write(6,*) '> parameter not found in infoxxx.txt :',trim(param)
+       stop
+    end if
+
+    return
+
+  end function get_param_rt_real
+  !--laV
+
+  
+
   subroutine read_conversion_scales(repository,snapnum)
 
     implicit none 
@@ -2151,6 +2280,7 @@ contains
     dp_scale_l    = get_param_real(repository,snapnum,'unit_l')
     dp_scale_d    = get_param_real(repository,snapnum,'unit_d')
     dp_scale_t    = get_param_real(repository,snapnum,'unit_t')
+    dp_scale_pf   = get_param_rt_real(repository,snapnum,'unit_pf')
     dp_scale_nH   = XH/mp * dp_scale_d      ! convert mass density (code units) to numerical density of H atoms [/cm3]
     dp_scale_v    = dp_scale_l/dp_scale_t   ! -> converts velocities into cm/s
     dp_scale_T2   = mp/kB * dp_scale_v**2   ! -> converts P/rho to T/mu, in K
@@ -2316,228 +2446,287 @@ contains
     real(kind=8),allocatable               :: age(:),m(:),x(:,:),v(:,:),mets(:),skipy(:),imass(:)
     real(kind=8)                           :: temp(3)
 
-    !Val--   To convert mass into initial mass. (Problem with using Romain Teyssier's version of Ramses)
-    real(kind=8)                           :: t_sne_Myr
 
-    t_sne_Myr = 1d1
-    !--Val
-        
-    ! get cosmological parameters to convert conformal time into ages
-    call read_cosmo_params(repository,snapnum,omega_0,lambda_0,little_h)
-    omega_k = 0.0d0
-    h0      = little_h * 100.0d0
-    call ct_init_cosmo(omega_0,lambda_0,omega_k,h0)
-    ! compute cosmic time of simulation output (Myr)
-    aexp  = get_param_real(repository,snapnum,'aexp') ! exp. factor of output
-    stime = ct_aexp2time(aexp) ! cosmic time
-    ! read units
-    if (.not. conversion_scales_are_known) then 
-       call read_conversion_scales(repository,snapnum)
-       conversion_scales_are_known = .True.
-    end if
-
-    if(.not.cosmo)then
-       ! read time
-       time_cu = get_param_real(repository,snapnum,'time') ! code unit
-       write(*,*)'Time simu [Myr] =',time_cu, time_cu*dp_scale_t/(365.*24.*3600.*1d6)
-       boxsize = get_param_real(repository,snapnum,'boxlen') !!!* dp_scale_l  ! [ cm ]
-       write(*,*)'boxlen =',boxsize
-    endif
-
-    ! read stars 
-    nstars = get_tot_nstars(repository,snapnum)
-    if (nstars == 0) then
-       write(*,*) 'ERROR : no star particles in output '
-       stop
-    end if
-    allocate(star_pos(3,nstars),star_age(nstars),star_mass(nstars),star_vel(3,nstars),star_met(nstars))
-    ! get list of particle fields in outputs 
-    call get_fields_from_header(repository,snapnum,nfields)
-    ncpu  = get_ncpu(repository,snapnum)
-    ilast = 1
-    do icpu = 1, ncpu
-       write(filename,'(a,a,i5.5,a,i5.5,a,i5.5)') trim(repository), '/output_', snapnum, '/part_', snapnum, '.out', icpu
-       open(unit=11,file=filename,status='old',form='unformatted')
-
+    !Val--
+    if(star_reading_method == 'fromlist') then
        
-       !Val--
-       if(Teyssier_version) then
+       open(unit=20, file=star_info_file, status='old', form='unformatted')
 
-          read(11) !ncpu2
-          read(11) !ndim2
-          read(11) npart
-          read(11) !localseed
-          read(11) !nstar_tot
-          read(11) !mstar_tot
-          read(11) !mstar_lost
-          read(11) !nsink
-
-          allocate(age(1:npart))
-          allocate(x(1:npart,1:ndim),m(npart),imass(npart))
-          allocate(id(1:npart))
-          allocate(mets(1:npart))
-          allocate(v(1:npart,1:ndim))
-          allocate(skipy(1:npart))
-
-
-          ! Read position
-          do i=1,ndim
-             read(11) x(1:npart,i)
-          end do
-          ! Read velocity
-          do i=1,ndim
-             read(11) v(1:ndim,i)
-          end do
-          ! Read mass
-          read(11) m(1:npart)
-          ! Read identity
-          read(11) id(1:npart)
-          ! Read level
-          read(11)
-          ! Read family
-          read(11)
-          ! Read tag
-          read(11)
-          ! Read birth epoch
-          read(11) age(1:npart)
-          ! Read metallicity
-          read(11) mets(1:npart)
-
-       !Normal way
+       read(20) nstars
+       allocate(star_pos(3,nstars), star_age(nstars), star_mass(nstars), star_vel(3,nstars), star_met(nstars))
+   
+       read(20) star_pos(1,:) !code units
+       read(20) star_pos(2,:)
+       read(20) star_pos(3,:)
+       read(20) star_age(:)   !Myr
+       if(use_initial_mass) then
+          read(20) star_mass(:)  !g
+          read(20)
        else
-          read(11)
-          read(11)
-          read(11)npart
-          read(11)
-          read(11)
-          read(11)
-          read(11)
-          read(11)
-          allocate(age(1:npart))
-          allocate(x(1:npart,1:ndim),m(npart),imass(npart))
-          allocate(id(1:npart))
-          allocate(mets(1:npart))
-          allocate(v(1:npart,1:ndim))
-          allocate(skipy(1:npart))
-          do ifield = 1,nfields
-             select case(trim(ParticleFields(ifield)))
-             case('pos')
-                do i = 1,ndim
-                   read(11) x(1:npart,i)
-                end do
-             case('vel')
-                do i = 1,ndim 
-                   read(11) v(1:npart,i)
-                end do
-             case('mass')
-                read(11) m(1:npart)
-             case('iord') 
-                read(11) id(1:npart)
-             case('level')
-                read(11)
-             case('tform')
-                read(11) age(1:npart)
-             case('metal')
-                read(11) mets(1:npart)
-             case('imass')
-                read(11) imass(1:npart)
-             case default
-                ! Note: we presume here that the unknown field is an 1d array of size 1:npart
-                read(11) skipy(1:npart)
-                print*,'Error, Field unknown: ',trim(ParticleFields(ifield))
-             end select
-          end do
-
+          read(20)
+          read(20) star_mass(:)  !g
        end if
-       close(11)
-       !--Val
+       read(20) star_vel(1,:) ! cm/s
+       read(20) star_vel(2,:)
+       read(20) star_vel(3,:)
+       read(20) star_met(:)   !M fraction of metals
+       close(20)
 
-       
-       if(.not.cosmo)then
-          x=x/boxsize
-       endif
+       ! select particles in domain
+       allocate(x(3,nstars), age(nstars), m(nstars), v(3,nstars), mets(nstars))
+       ilast = 1
+       do i=1,nstars
+          temp = star_pos(:,i)
+          if (domain_contains_point(temp,selection_domain)) then ! it is inside the domain
+             x(:,ilast) = star_pos(:,i)
+             age(ilast) = star_age(i)
+             m(ilast) = star_mass(i)
+             v(:,ilast) = star_vel(:,i)
+             mets(ilast) = star_met(i)
 
-       ! save star particles within selection region
-       do i = 1,npart
-          if (age(i).ne.0.0d0) then ! This is a star
-             temp(:) = x(i,:)
-             if (domain_contains_point(temp,selection_domain)) then ! it is inside the domain
-                if(cosmo)then
-                   if (use_proper_time) then
-                      star_age(ilast) = (stime - ct_proptime2time(age(i),h0))*1.d-6 ! Myr
-                   else
-                      ! Convert from conformal time to age in Myr
-                      star_age(ilast) = (stime - ct_conftime2time(age(i)))*1.d-6 ! Myr
-                   end if
-                else
-                   ! convert from tborn to age in Myr
-                   star_age(ilast)   = max(0.d0, (time_cu - age(i)) * dp_scale_t / (365.d0*24.d0*3600.d0*1.d6))
-                endif
-                if (use_initial_mass) then
-                   !Val--  From Romain Teyssier version : have to divide mass by 1-eta_sn
-                   if(Teyssier_version) then
-                      star_mass(ilast) = m(i) * dp_scale_m ! [g]
-                      if(star_age(ilast) > t_sne_Myr) star_mass(ilast) = m(i) * dp_scale_m / 8d-1
-                   else
-                      star_mass(ilast) = imass(i) * dp_scale_m ! [g]
-                   end if
-                   !--Val
-                else
-                   star_mass(ilast) = m(i)     * dp_scale_m ! [g]
-                end if
-                star_pos(:,ilast) = x(i,:)              ! [code units]
-                star_vel(:,ilast) = v(i,:) * dp_scale_v ! [cm/s]
-                star_met(ilast) = mets(i) 
-                ilast = ilast + 1
-             end if
+             ilast = ilast+1
           end if
        end do
-          
-       deallocate(age,m,x,id,mets,v,skipy,imass)
 
-    end do
+       !Change size of star_xxx
+       deallocate(star_pos, star_age, star_mass, star_vel, star_met)
+       nstars = ilast - 1
+       allocate(star_pos(3,nstars), star_age(nstars), star_mass(nstars), star_vel(3,nstars), star_met(nstars))
+      
+       do i=1,3
+          star_pos(i,:) = x(i,1:nstars)
+          star_vel(i,:) = v(i,1:nstars)
+       end do
+       star_age(:) = age(1:nstars)
+       star_mass(:) = m(1:nstars)
+       star_met(:) = mets(1:nstars)
+       
+       deallocate(x, age, m, v, mets)
+      
+    !--laV
 
-    ! resize star arrays
-    nstars = ilast-1
-    ! ages
-    allocate(age(nstars))
-    age = star_age(1:nstars)
-    deallocate(star_age)
-    allocate(star_age(nstars))
-    star_age = age
-    deallocate(age)
-    ! masses
-    allocate(m(nstars))
-    m = star_mass(1:nstars)
-    deallocate(star_mass)
-    allocate(star_mass(nstars))
-    star_mass = m
-    deallocate(m)
-    ! positions
-    allocate(x(3,nstars))
-    do i = 1,nstars 
-       x(:,i) = star_pos(:,i)
-    end do
-    deallocate(star_pos)
-    allocate(star_pos(3,nstars))
-    star_pos = x
-    deallocate(x)
-    ! velocities
-    allocate(v(3,nstars))
-    do i = 1,nstars 
-       v(:,i) = star_vel(:,i)
-    end do
-    deallocate(star_vel)
-    allocate(star_vel(3,nstars))
-    star_vel = v
-    deallocate(v)
-    ! metals
-    allocate(mets(nstars))
-    mets = star_met(1:nstars)
-    deallocate(star_met)
-    allocate(star_met(nstars))
-    star_met = mets
-    deallocate(mets)
+    else
+
+       ! get cosmological parameters to convert conformal time into ages
+       call read_cosmo_params(repository,snapnum,omega_0,lambda_0,little_h)
+       omega_k = 0.0d0
+       h0      = little_h * 100.0d0
+       call ct_init_cosmo(omega_0,lambda_0,omega_k,h0)
+       ! compute cosmic time of simulation output (Myr)
+       aexp  = get_param_real(repository,snapnum,'aexp') ! exp. factor of output
+       stime = ct_aexp2time(aexp) ! cosmic time
+       ! read units
+       if (.not. conversion_scales_are_known) then 
+          call read_conversion_scales(repository,snapnum)
+          conversion_scales_are_known = .True.
+       end if
+
+       if(.not.cosmo)then
+          ! read time
+          time_cu = get_param_real(repository,snapnum,'time') ! code unit
+          write(*,*)'Time simu [Myr] =',time_cu, time_cu*dp_scale_t/(365.*24.*3600.*1d6)
+          boxsize = get_param_real(repository,snapnum,'boxlen') !!!* dp_scale_l  ! [ cm ]
+          write(*,*)'boxlen =',boxsize
+       endif
+
+       ! read stars 
+       nstars = get_tot_nstars(repository,snapnum)
+       if (nstars == 0) then
+          write(*,*) 'ERROR : no star particles in output '
+          stop
+       end if
+       allocate(star_pos(3,nstars),star_age(nstars),star_mass(nstars),star_vel(3,nstars),star_met(nstars))
+       ! get list of particle fields in outputs 
+       call get_fields_from_header(repository,snapnum,nfields)
+       ncpu  = get_ncpu(repository,snapnum)
+       ilast = 1
+       do icpu = 1, ncpu
+          write(filename,'(a,a,i5.5,a,i5.5,a,i5.5)') trim(repository), '/output_', snapnum, '/part_', snapnum, '.out', icpu
+          open(unit=11,file=filename,status='old',form='unformatted')
+
+
+          !Val--
+          if(star_reading_method == 'Teyssier') then
+
+             read(11) !ncpu2
+             read(11) !ndim2
+             read(11) npart
+             read(11) !localseed
+             read(11) !nstar_tot
+             read(11) !mstar_tot
+             read(11) !mstar_lost
+             read(11) !nsink
+
+             allocate(age(1:npart))
+             allocate(x(1:npart,1:ndim),m(npart),imass(npart))
+             allocate(id(1:npart))
+             allocate(mets(1:npart))
+             allocate(v(1:npart,1:ndim))
+             allocate(skipy(1:npart))
+
+
+             ! Read position
+             do i=1,ndim
+                read(11) x(1:npart,i)
+             end do
+             ! Read velocity
+             do i=1,ndim
+                read(11) v(1:ndim,i)
+             end do
+             ! Read mass
+             read(11) m(1:npart)
+             ! Read identity
+             read(11) id(1:npart)
+             ! Read level
+             read(11)
+             ! Read family
+             read(11)
+             ! Read tag
+             read(11)
+             ! Read birth epoch
+             read(11) age(1:npart)
+             ! Read metallicity
+             read(11) mets(1:npart)
+
+          !--laV
+
+          !By default,  like originally in Rascas
+          else
+             read(11)
+             read(11)
+             read(11)npart
+             read(11)
+             read(11)
+             read(11)
+             read(11)
+             read(11)
+             allocate(age(1:npart))
+             allocate(x(1:npart,1:ndim),m(npart),imass(npart))
+             allocate(id(1:npart))
+             allocate(mets(1:npart))
+             allocate(v(1:npart,1:ndim))
+             allocate(skipy(1:npart))
+             do ifield = 1,nfields
+                select case(trim(ParticleFields(ifield)))
+                case('pos')
+                   do i = 1,ndim
+                      read(11) x(1:npart,i)
+                   end do
+                case('vel')
+                   do i = 1,ndim 
+                      read(11) v(1:npart,i)
+                   end do
+                case('mass')
+                   read(11) m(1:npart)
+                case('iord') 
+                   read(11) id(1:npart)
+                case('level')
+                   read(11)
+                case('tform')
+                   read(11) age(1:npart)
+                case('metal')
+                   read(11) mets(1:npart)
+                case('imass')
+                   read(11) imass(1:npart)
+                case default
+                   ! Note: we presume here that the unknown field is an 1d array of size 1:npart
+                   read(11) skipy(1:npart)
+                   print*,'Error, Field unknown: ',trim(ParticleFields(ifield))
+                end select
+             end do
+
+          end if
+          close(11)
+
+
+          if(.not.cosmo)then
+             x=x/boxsize
+          endif
+
+          ! save star particles within selection region
+          do i = 1,npart
+             if (age(i).ne.0.0d0) then ! This is a star
+                temp(:) = x(i,:)
+                if (domain_contains_point(temp,selection_domain)) then ! it is inside the domain
+                   if(cosmo)then
+                      if (use_proper_time) then
+                         star_age(ilast) = (stime - ct_proptime2time(age(i),h0))*1.d-6 ! Myr
+                      else
+                         ! Convert from conformal time to age in Myr
+                         star_age(ilast) = (stime - ct_conftime2time(age(i)))*1.d-6 ! Myr
+                      end if
+                   else
+                      ! convert from tborn to age in Myr
+                      star_age(ilast)   = max(0.d0, (time_cu - age(i)) * dp_scale_t / (365.d0*24.d0*3600.d0*1.d6))
+                   endif
+                   if (use_initial_mass) then
+                      !Val--  From Romain Teyssier version : have to divide mass by 1-eta_sn
+                      if(star_reading_method == 'Teyssier') then
+                         star_mass(ilast) = m(i) * dp_scale_m ! [g]
+                         if(star_age(ilast) > t_sne_Myr) star_mass(ilast) = m(i) * dp_scale_m / (1d0 - eta_sn)
+                      !laV--
+                      !Normal way, like initially in Rascas
+                      else
+                         star_mass(ilast) = imass(i) * dp_scale_m ! [g]
+                      end if
+                   else
+                      star_mass(ilast) = m(i)     * dp_scale_m ! [g]
+                   end if
+                   star_pos(:,ilast) = x(i,:)              ! [code units]
+                   star_vel(:,ilast) = v(i,:) * dp_scale_v ! [cm/s]
+                   star_met(ilast) = mets(i) 
+                   ilast = ilast + 1
+                end if
+             end if
+          end do
+
+          deallocate(age,m,x,id,mets,v,skipy,imass)
+
+       end do
+
+       ! resize star arrays
+       nstars = ilast-1
+       ! ages
+       allocate(age(nstars))
+       age = star_age(1:nstars)
+       deallocate(star_age)
+       allocate(star_age(nstars))
+       star_age = age
+       deallocate(age)
+       ! masses
+       allocate(m(nstars))
+       m = star_mass(1:nstars)
+       deallocate(star_mass)
+       allocate(star_mass(nstars))
+       star_mass = m
+       deallocate(m)
+       ! positions
+       allocate(x(3,nstars))
+       do i = 1,nstars 
+          x(:,i) = star_pos(:,i)
+       end do
+       deallocate(star_pos)
+       allocate(star_pos(3,nstars))
+       star_pos = x
+       deallocate(x)
+       ! velocities
+       allocate(v(3,nstars))
+       do i = 1,nstars 
+          v(:,i) = star_vel(:,i)
+       end do
+       deallocate(star_vel)
+       allocate(star_vel(3,nstars))
+       star_vel = v
+       deallocate(v)
+       ! metals
+       allocate(mets(nstars))
+       mets = star_met(1:nstars)
+       deallocate(star_met)
+       allocate(star_met(nstars))
+       star_met = mets
+       deallocate(mets)
+
+    end if
     
     return
   end subroutine ramses_read_stars_in_domain
@@ -2558,7 +2747,7 @@ contains
     write(nomfich,'(a,a,i5.5,a,i5.5,a)') trim(dir),'/output_',ts,'/header_',ts,'.txt'
     open(unit=50,file=nomfich,status='old',action='read',form='formatted')
     !Val--
-    if(Teyssier_version) then
+    if(star_reading_method == 'Teyssier') then
        read(50,*) ! total nb of particles
        read(50,*)
        read(50,*) ! nb of DM particles
@@ -2568,6 +2757,7 @@ contains
        read(50,*)
        read(50,*) ! nb of star particles 
        read(50,*) useless, get_tot_nstars
+    !--laV
     else
        read(50,*) ! total nb of particles
        read(50,*)
@@ -2576,7 +2766,7 @@ contains
        read(50,*) ! nb of star particles 
        read(50,*) get_tot_nstars
     end if
-    !--Val
+
     close(50)
 
     return
@@ -2835,8 +3025,16 @@ contains
           i = scan(value,'!')
           if (i /= 0) value = trim(adjustl(value(:i-1)))
           select case (trim(name))
-          case('Teyssier_version')
-             read(value,*) Teyssier_version
+          !Val--
+          case('star_reading_method')
+             read(value,*) star_reading_method
+          case('star_info_file')
+            write(star_info_file,'(a)') trim(value)
+          case('t_sne_Myr')
+             read(value,*) t_sne_Myr
+          case('eta_sn')
+             read(value,*) eta_sn
+          !--laV
           case ('self_shielding')
              read(value,*) self_shielding
           case ('ramses_rt')
@@ -2881,34 +3079,44 @@ contains
 
     if (present(unit)) then 
        write(unit,'(a,a,a)') '[ramses]'
-       write(unit,'(a,L1)') '  Teyssier_version  = ',Teyssier_version
-       write(unit,'(a,L1)') '  self_shielding    = ',self_shielding
-       write(unit,'(a,L1)') '  ramses_rt         = ',ramses_rt
-       write(unit,'(a,L1)') '  read_rt_variables = ',read_rt_variables
-       write(unit,'(a,L1)') '  use_initial_mass  = ',use_initial_mass
-       write(unit,'(a,L1)') '  cosmo             = ',cosmo
-       write(unit,'(a,L1)') '  use_proper_time   = ',use_proper_time
-       write(unit,'(a,L1)') '  verbose           = ',verbose
-       write(unit,'(a,i2)') '  itemp             = ', itemp
-       write(unit,'(a,i2)') '  imetal            = ', imetal
-       write(unit,'(a,i2)') '  ihii              = ', ihii
-       write(unit,'(a,i2)') '  iheii             = ', iheii
-       write(unit,'(a,i2)') '  iheiii            = ', iheiii
+       !Val--
+       write(unit,'(a,a)')      '  star_reading_method  = ', star_reading_method
+       write(unit,'(a,a)')      '  star_info_file       = ', trim(star_info_file)
+       write(unit,'(a,ES10.3)') '  t_sne_Myr       = ', t_sne_Myr
+       write(unit,'(a,ES10.3)') '  eta_sn          = ', eta_sn
+       !--laV
+       write(unit,'(a,L1)')     '  self_shielding       = ', self_shielding
+       write(unit,'(a,L1)')     '  ramses_rt            = ', ramses_rt
+       write(unit,'(a,L1)')     '  read_rt_variables    = ', read_rt_variables
+       write(unit,'(a,L1)')     '  use_initial_mass     = ', use_initial_mass
+       write(unit,'(a,L1)')     '  cosmo                = ', cosmo
+       write(unit,'(a,L1)')     '  use_proper_time      = ', use_proper_time
+       write(unit,'(a,L1)')     '  verbose              = ', verbose
+       write(unit,'(a,i2)')     '  itemp                = ', itemp
+       write(unit,'(a,i2)')     '  imetal               = ', imetal
+       write(unit,'(a,i2)')     '  ihii                 = ', ihii
+       write(unit,'(a,i2)')     '  iheii                = ', iheii
+       write(unit,'(a,i2)')     '  iheiii               = ', iheiii
     else
        write(*,'(a,a,a)') '[ramses]'
-       write(*,'(a,L1)') '  Teyssier_version  = ',Teyssier_version
-       write(*,'(a,L1)') '  self_shielding    = ',self_shielding
-       write(*,'(a,L1)') '  ramses_rt         = ',ramses_rt
-       write(*,'(a,L1)') '  read_rt_variables = ',read_rt_variables
-       write(*,'(a,L1)') '  use_initial_mass  = ',use_initial_mass
-       write(*,'(a,L1)') '  cosmo             = ',cosmo
-       write(*,'(a,L1)') '  use_proper_time   = ',use_proper_time
-       write(*,'(a,L1)') '  verbose           = ',verbose
-       write(*,'(a,i2)') '  itemp             = ', itemp
-       write(*,'(a,i2)') '  imetal            = ', imetal
-       write(*,'(a,i2)') '  ihii              = ', ihii
-       write(*,'(a,i2)') '  iheii             = ', iheii
-       write(*,'(a,i2)') '  iheiii            = ', iheiii
+       !Val--
+       write(*,'(a,a)')      '  star_reading_method  = ', star_reading_method
+       write(*,'(a,a)')      '  star_info_file       = ', trim(star_info_file)
+       write(*,'(a,ES10.3)') '  t_sne_Myr       = ', t_sne_Myr
+       write(*,'(a,ES10.3)') '  eta_sn          = ', eta_sn
+       !--laV
+       write(*,'(a,L1)')     '  self_shielding       = ', self_shielding
+       write(*,'(a,L1)')     '  ramses_rt            = ', ramses_rt
+       write(*,'(a,L1)')     '  read_rt_variables    = ', read_rt_variables
+       write(*,'(a,L1)')     '  use_initial_mass     = ', use_initial_mass
+       write(*,'(a,L1)')     '  cosmo                = ', cosmo
+       write(*,'(a,L1)')     '  use_proper_time      = ', use_proper_time
+       write(*,'(a,L1)')     '  verbose              = ', verbose
+       write(*,'(a,i2)')     '  itemp                = ', itemp
+       write(*,'(a,i2)')     '  imetal               = ', imetal
+       write(*,'(a,i2)')     '  ihii                 = ', ihii
+       write(*,'(a,i2)')     '  iheii                = ', iheii
+       write(*,'(a,i2)')     '  iheiii               = ', iheiii
     end if
     
     return

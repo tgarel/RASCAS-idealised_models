@@ -36,7 +36,7 @@ module module_photon
      integer(kind=4)           :: iran     ! state of the random generator
   end type photon_init
 
-  logical::HI_core_skip=.false.
+  !logical::HI_core_skip=.false.
   !--PEEL--
   type peel
      real(kind=8)              :: nu ! frequency before scattering, converted to after virtual scat. towards dir. of observation. 

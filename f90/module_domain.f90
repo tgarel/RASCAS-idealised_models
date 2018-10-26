@@ -463,6 +463,10 @@ contains
     enddo
     if(dmax<0.0d0 .or. imax==0)then
        print *,'ERROR: problem with get_my_new_domain'
+       print*,x,db
+       print*,i,ndom
+       print*,liste_domaines(1)%sp%center(:)
+       print*,liste_domaines(1)%sp%radius
        stop
     endif
     get_my_new_domain = imax

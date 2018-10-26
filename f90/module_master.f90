@@ -96,6 +96,10 @@ contains
        if (verbose) print *,'[master] --> |_ ',trim(domain_file_list(i))
     end do
 
+    !print*, 'module_master : ', domain_list(1)%sp%center(:)
+    !print*,'module_master : ', domain_list(1)%sp%radius
+
+
     ! initialize the queue for each domain
     next(:,:)=-1
     first(:)=-1

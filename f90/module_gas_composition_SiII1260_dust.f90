@@ -48,10 +48,10 @@ module module_gas_composition
   ! --------------------------------------------------------------------------
 
   ! public functions:
-  public :: gas_from_ramses_leaves, gas_from_ValentinsCells, get_gas_velocity,gas_get_scatter_flag,gas_scatter,dump_gas
+  public :: gas_from_ramses_leaves, gas_from_list, get_gas_velocity,gas_get_scatter_flag,gas_scatter,dump_gas
   public :: read_gas,gas_destructor,read_gas_composition_params,print_gas_composition_params
     !--PEEL--
-  public :: gas_peeloff_weight,gas_get_tau
+  public :: gas_peeloff_weight,gas_get_tau,gas_get_tau_gray
   !--LEEP--
   
   public :: HI_core_skip
@@ -60,7 +60,7 @@ module module_gas_composition
 contains
   
   !Val --
-  subroutine gas_from_ValentinsCells(ncells, cell_pos, cell_l, gas_leaves)
+  subroutine gas_from_list(ncells, cell_pos, cell_l, gas_leaves)
 
     integer(kind=4), intent(out)		:: ncells
     integer(kind=4), allocatable, intent(out)	:: cell_l(:)
@@ -96,15 +96,14 @@ contains
     
     gas_leaves%ndust = metallicity / Zref * ( nhi + f_ion*nhii )   ! [ /cm3 ]
     
-
+    
     !Try temperature cut
-!!$    do i=1,ncells
-!!$       if((gas_leaves(i)%dopwidth/2433.25)**2 >= 6.306571d4 .and. (gas_leaves(i)%dopwidth/2433.25)**2 <= 1.2646d5) then
-!!$          gas_leaves(i)%nSiII = 10**-4.49*(nhi(i)+nhii(i))*metallicity(i)/0.02
-!!$       else
-!!$          gas_leaves(i)%nSiII = 0d0
-!!$       end if
-!!$    end do
+    ! do i=1,ncells
+    !    if((gas_leaves(i)%dopwidth/2433.25)**2 >= 6.306571d4 .and. (gas_leaves(i)%dopwidth/2433.25)**2 <= 1.2646d5) then
+    !    else
+    !       gas_leaves(i)%nSiII = 0d0
+    !    end if
+    ! end do
 
 
     if (verbose) print*,'boxsize in cm : ', box_size_cm
@@ -112,7 +111,7 @@ contains
     if (verbose) print*,'min/max of ndust : ',minval(gas_leaves(:)%ndust),maxval(gas_leaves(:)%ndust)
 
 
-  end subroutine gas_from_ValentinsCells
+  end subroutine gas_from_list
   !--Val
   
   
@@ -179,6 +178,33 @@ contains
     return
 
   end subroutine gas_from_ramses_leaves
+
+
+  function gas_get_tau_gray(cell_gas, distance_cm)
+
+    ! --------------------------------------------------------------------------
+    ! compute opacity due to dust accross distance_cm
+    ! --------------------------------------------------------------------------
+    ! INPUTS:
+    ! - cell_gas : a mix of SiII and dust
+    ! - distance_cm : the distance along which to compute tau [cm]
+    ! OUTPUTS:
+    ! - gas_get_tau_gray : the total optical depth
+
+    ! --------------------------------------------------------------------------
+
+    ! check whether scattering occurs within cell (scatter_flag > 0) or not (scatter_flag==0)
+    type(gas),intent(in)    :: cell_gas
+    real(kind=8),intent(in) :: distance_cm
+    real(kind=8)            :: gas_get_tau_gray
+
+    ! compute optical depths for different components of the gas.
+    gas_get_tau_gray = get_tau_dust_gray(cell_gas%ndust, distance_cm)
+
+    return
+
+  end function gas_get_tau_gray
+  ! --------------------------------------------------------------------------
   
 
   subroutine overwrite_gas(g)

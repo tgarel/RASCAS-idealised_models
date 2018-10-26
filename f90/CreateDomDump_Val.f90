@@ -24,14 +24,11 @@ program CreateDomDump
   real(kind=8) :: xmin,xmax,ymin,ymax,zmin,zmax
   integer(kind=4),dimension(:),allocatable :: cpu_list
   integer(kind=4) :: ncpu_read
-  
+
   ! --------------------------------------------------------------------------
   ! user-defined parameters - read from section [CreateDomDump] of the parameter file
   ! --------------------------------------------------------------------------
   ! --- input / outputs
-  !Val--
-  logical                   :: Val_way = .false.          ! Whether the data from Ramses should be read in an external file, written with ***.py. To use when using ionization fractions of a metal, computed with a program like Cloudy
-  !--laV
   character(2000)           :: DomDumpDir = 'test/'       ! directory to which outputs will be written
   character(2000)           :: repository = './'          ! ramses run directory (where all output_xxxxx dirs are).
   integer(kind=4)           :: snapnum = 1                ! ramses output number to use
@@ -58,9 +55,9 @@ program CreateDomDump
   ! --- miscelaneous
   logical                   :: verbose = .false.
   ! --------------------------------------------------------------------------
-  
+
   call cpu_time(start)
-  
+
   ! -------------------- read parameters --------------------
   narg = command_argument_count()
   if(narg .lt. 1)then
@@ -73,7 +70,7 @@ program CreateDomDump
   if (verbose) call print_CreateDomDump_params
   ! ------------------------------------------------------------
 
-  
+
   ! Define the computational domain. This domain describes the volume in which photons fly.
   select case(comput_dom_type)
   case('sphere')
@@ -94,9 +91,11 @@ program CreateDomDump
      computdom_max = comput_dom_thickness
   end select
 
-  
+
   ! Read all the leaf cells
-  nOctSnap = get_nGridTot(repository,snapnum)
+  !Val-----
+  if(reading_method /= 'fromlist') nOctSnap = get_nGridTot(repository,snapnum)
+  !laV-----
   if (reading_method == 'fullbox') then
      call read_leaf_cells(repository, snapnum, nleaftot, nvar, x_leaf, ramses_var, leaf_level)
      ! Extract and convert properties of cells into gas mix properties
@@ -174,21 +173,23 @@ program CreateDomDump
   close(10)
 
 
-  !Val--
-  if(Val_way .and. decomp_dom_ndomain > 1) then
-     print*, 'Problem !  When using Val_way, decomp_dom_ndomain must be equal to 1'
-     print*, 'Stopping the program'
-     stop
-  end if
-  !--laV
 
   !Val--
-  if(Val_way) then
+  if(reading_method=='fromlist') then
+
+     !Check that there is only 1 domain
+     if(decomp_dom_ndomain > 1) then
+        print*, 'Problem !  When using "fromlist" reading_method, decomp_dom_ndomain must be equal to 1'
+        print*, 'Stopping the program'
+        stop
+     end if
+
      !Read the leaf cells from Valentin's outputs
-     call gas_from_ValentinsCells(nleaftot, x_leaf, leaf_level, gas_leaves)
+     call gas_from_list(nleaftot, x_leaf, leaf_level, gas_leaves)
 
      ! construct octree
-     call mesh_from_leaves(nOctSnap,domain_list(1),nleaftot,gas_leaves,x_leaf,leaf_level,domain_mesh)  
+     !Don't have nOctSnap,  so I try with nleaftot
+     call mesh_from_leaves(nleaftot,domain_list(1),nleaftot,gas_leaves,x_leaf,leaf_level,domain_mesh)  
 
      call cpu_time(finish)
      print '(" --> Time to read leaves in domain = ",f12.3," seconds.")',finish-intermed
@@ -197,8 +198,8 @@ program CreateDomDump
      call dump_mesh(domain_mesh, fichier)
      call mesh_destructor(domain_mesh)
      
-     
-  !Normal way
+     !laV--    
+
   else
 
      ! building of the meshes
@@ -283,14 +284,13 @@ program CreateDomDump
      enddo
 
   end if
-  !--laV
 
   call cpu_time(finish)
   print '(" --> Time = ",f12.3," seconds.")',finish-start
   print*,' '
-  
+
 contains
-  
+
   subroutine read_CreateDomDump_params(pfile)
 
     ! ---------------------------------------------------------------------------------
@@ -305,7 +305,7 @@ contains
     integer(kind=4) :: err,i
     logical         :: section_present
     logical         :: ndomain_present 
-    
+
     section_present = .false.
     ndomain_present = .false.
     open(unit=10,file=trim(pfile),status='old',form='formatted')
@@ -331,10 +331,6 @@ contains
           i = scan(value,'!')
           if (i /= 0) value = trim(adjustl(value(:i-1)))
           select case (trim(name))
-          !Val--
-          case('Val_way')
-             read(value,*) Val_way
-          !--laV
           case('comput_dom_type')
              write(comput_dom_type,'(a)') trim(value)
           case ('comput_dom_pos')
@@ -400,14 +396,14 @@ contains
 
     ! make sure DomDumpDir ends with a /
     DomDumpDir = trim(DomDumpDir)//"/"
-    
+
     call read_mesh_params(pfile)
-    
+
     return
 
   end subroutine read_CreateDomDump_params
 
-  
+
   subroutine print_CreateDomDump_params(unit)
 
     ! ---------------------------------------------------------------------------------
@@ -421,9 +417,6 @@ contains
     if (present(unit)) then 
        write(unit,'(a,a,a)')         '[CreateDomDump]'
        write(unit,'(a)')             '# input / output parameters'
-       !Val--
-       write(unit,'(a,L1)')          '  Val_way         = ',Val_way
-       !--laV
        write(unit,'(a,a)')           '  DomDumpDir      = ',trim(DomDumpDir)
        write(unit,'(a,a)')           '  repository      = ',trim(repository)
        write(unit,'(a,i5)')          '  snapnum         = ',snapnum
@@ -469,9 +462,6 @@ contains
        write(*,'(a)')             ' '
        write(*,'(a,a,a)')         '[CreateDomDump]'
        write(*,'(a)')             '# input / output parameters'
-       !Val--
-       write(*,'(a,L1)')          '  Val_way         = ',Val_way
-       !--laV
        write(*,'(a,a)')           '  DomDumpDir = ',trim(DomDumpDir)
        write(*,'(a,a)')           '  repository = ',trim(repository)
        write(*,'(a,i5)')          '  snapnum    = ',snapnum

@@ -171,10 +171,10 @@ contains
   function  gas_get_tau_gray(cell_gas, distance_cm)
 
     ! --------------------------------------------------------------------------
-    ! compute total opacity of gas accross distance_cm at freq. nu_cell
+    ! compute opacity due to dust accross distance_cm
     ! --------------------------------------------------------------------------
     ! INPUTS:
-    ! - cell_gas : a mix of H, D, and dust
+    ! - cell_gas : only dust
     ! - distance_cm : the distance along which to compute tau [cm]
     ! OUTPUTS:
     ! - gas_get_tau_gray : the total optical depth

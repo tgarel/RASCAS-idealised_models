@@ -2,24 +2,24 @@
 
 !--------------------------------------------------------------------------------
 [RASCAS]
-  DomDumpDir   = /Users/mauerhof/Documents/RascasFiles/G8_250Myr/Output/Cloudy_WrongDensity
+  DomDumpDir   = /Users/mauerhof/Documents/rascas/RascasFiles/simu_Jeremy/SiII/domdump
   DomDumpFile  = domain_decomposition_params.dat
-  PhotonICFile = /Users/mauerhof/Documents/RascasFiles/G8_250Myr/Output/Cloudy_WrongDensity/output_PFS.out
-  fileout      = /Users/mauerhof/Documents/RascasFiles/G8_250Myr/Output/Cloudy_WrongDensity/output_Cloudy_WrongDensity.out
+  PhotonICFile = /Users/mauerhof/Documents/rascas/RascasFiles/simu_Jeremy/SiII/PFS/output_PFS.out
+  fileout      = /Users/mauerhof/Documents/rascas/RascasFiles/simu_Jeremy/SiII/output/output_Krome_noCT.out
   nbuffer      = 10
   verbose      = T
 !--------------------------------------------------------------------------------
 
 !--------------------------------------------------------------------------------
 [worker]
-  verbose = T
+  verbose = F
 !--------------------------------------------------------------------------------
 
 !--------------------------------------------------------------------------------
 [master]
-  verbose = T
+  verbose = F
   restart       = F
-  PhotonBakFile = /Users/mauerhof/Documents/RascasFiles/G8_250Myr/Output/Krome/output_rascas.bak
+  PhotonBakFile = /Users/mauerhof/Documents/rascas/RascasFiles/simu_Jeremy/SiII/output/output_rascas.bak
   dt_backup     = 1000
 !--------------------------------------------------------------------------------
 
@@ -52,12 +52,12 @@
 
 !--------------------------------------------------------------------------------
 [mock] 
-  mock_center = 0.5, 0.5, 0.5
+  mock_center = 0.48449135, 0.5013419, 0.51207155
   kobs = 0., 0., 1.
   npix = 500 
   mock_image_side = 0.12
   npix_spec = 500 
   spec_lmin = 1250 
   spec_lmax = 1270
-  mock_outputfilename = /Users/mauerhof/Documents/RascasFiles/G8_250Myr/Output/Cloudy_WrongDensity/output_Cloudy_WrongDensity
+  mock_outputfilename = /Users/mauerhof/Documents/rascas/RascasFiles/simu_Jeremy/SiII/output/output_Krome_noCT
 !--------------------------------------------------------------------------------
