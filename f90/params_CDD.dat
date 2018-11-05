@@ -1,30 +1,24 @@
 !--------------------------------------------------------------------------------
 [CreateDomDump]
 # input outputs:
-  DomDumpDir = /Users/mauerhof/Documents/rascas/RascasFiles/simu_Jeremy/SiII/domdump
+  DomDumpDir = /Users/mauerhof/Documents/RamsesFiles/SIMULATIONS/P13-20h-1Mpc-MUSIC/Zoom-7-10508/SPHINX_run/Halos/00136/Rascas/domdump/SiI
   repository = ./
   snapnum    = 1
   reading_method = fromlist
 
 # computational domain parameters
-  comput_dom_type      = sphere
-  comput_dom_pos       =  0.48449135, 0.5013419, 0.51207155
-  comput_dom_rsp       =  0.002019
-#  comput_dom_pos       =  0.5, 0.5, 0.5
-#  comput_dom_rsp       =  1
+  comput_dom_type      =  sphere
+  comput_dom_pos       =  0.47916505, 0.49580705, 0.5177275
+  comput_dom_rsp       =  0.003764
 
 
 # domain decomposition parameters
   decomp_dom_type      = sphere
   decomp_dom_ndomain   = 1
-  decomp_dom_xc        =  0.48449135
-  decomp_dom_yc        =  0.5013419
-  decomp_dom_zc        =  0.51207155
-  decomp_dom_rsp       =  0.00201903
-#  decomp_dom_xc        =  0.5
-#  decomp_dom_yc        =  0.5
-#  decomp_dom_zc        =  0.5
-#  decomp_dom_rsp       =  1.01
+  decomp_dom_xc        =  0.47916505
+  decomp_dom_yc        =  0.49580705
+  decomp_dom_zc        =  0.5177275
+  decomp_dom_rsp       =  0.0037640375
 
 # miscelaneous :
   verbose    = T
@@ -62,7 +56,7 @@
   verbose             = T
 
 #Necessary only when reading_method = fromlist
-  input_ramses_file   = /Users/mauerhof/Documents/RamsesFiles/idealized/simu_Jeremy/readH5/data_rascas_format
-  SiII_file           = /Users/mauerhof/Documents/RamsesFiles/idealized/simu_Jeremy/Si_fractions_fewerChargeTransfer/outputs/Save_equ_12.10.18/SiII_rascas_format
+  input_ramses_file   = /Users/mauerhof/Documents/RamsesFiles/SIMULATIONS/P13-20h-1Mpc-MUSIC/Zoom-7-10508/SPHINX_run/Halos/00136/data_rascas
+  SiII_file           = /Users/mauerhof/Documents/RamsesFiles/SIMULATIONS/P13-20h-1Mpc-MUSIC/Zoom-7-10508/SPHINX_run/Halos/00136/Krome/noCT/outputs/SiI_onlyT/SiI
 !--------------------------------------------------------------------------------
 

@@ -40,7 +40,7 @@ module module_SiII_1260_model
   
   logical                  :: HI_core_skip    = .false.     ! if true, skip scatterings in the core of the line (as in Smith+15).
 
-  public :: get_tau_SiII_1260, scatter_SiII_1260, read_SiII_1260_params, print_SiII_1260_params
+  public :: get_tau_SiII_1260, get_tau_SiI_photoionization, scatter_SiII_1260, read_SiII_1260_params, print_SiII_1260_params
   !--PEEL--
   public :: SiII_1260_peeloff_weight
   !--LEEP--
@@ -78,10 +78,42 @@ contains
     get_tau_SiII_1260 = sigma * nSiII * distance_to_border_cm
    
     return
-
+    
   end function get_tau_SiII_1260
 
-  
+
+
+  !Not really well placed
+  function get_tau_SiI_photoionization(nSiI, distance, nu_cell)
+
+    real(kind=8)      :: nSiI, distance, nu_cell, get_tau_SiI_photoionization
+    real(kind=8)      :: E, E0, cs0, P, ya, yw, y0, y1, x, y
+    !------------------------------------------------------------------------
+    E = planck * nu_cell / evtoerg      ! photon energy in ev
+    if ( E .lt. 8.15168 ) then            ! below ionization energy
+       get_tau_SiI_photoionization = 0d0
+       RETURN
+    endif
+
+    E0 = 2.317d1    ; cs0 = 2.506d-17  ; P  = 3.546 
+    ya = 20.57      ; yw  = 2.837d-1   ; y0 = 1.627d-5  ; y1 = 4.207d-1
+
+
+    x = E/E0 - y0
+    y = sqrt(x**2+y1**2)
+
+    get_tau_SiI_photoionization = &
+         cs0 * ((x-1.)**2 + yw**2) * y**(0.5*P-5.5)/(1.+sqrt(y/ya))**P
+
+    get_tau_SiI_photoionization = get_tau_SiI_photoionization*nSiI*distance
+
+    return
+
+  end function get_tau_SiI_photoionization
+
+
+
+
   subroutine scatter_SiII_1260(vcell,vth,nu_cell,k,nu_ext,iran)
 
     ! ---------------------------------------------------------------------------------

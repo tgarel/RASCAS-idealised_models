@@ -52,7 +52,7 @@ endif
 
 ifeq ($(SYSTYPE),"macP")
 #F90         = mpif90-openmpi-mp
-F90			= mpif90 -ffree-line-length-none -ffree-form 
+F90	= mpif90 -ffree-line-length-none -ffree-form 
 #FFLAGS      = -g -fcheck=all -ftrapv -fbounds-check -fbacktrace
 FFLAGS      = -O3
 FFLAGS += $(OPTIONS)
@@ -100,7 +100,7 @@ GASOBJS = module_constants.o module_random.o module_utils.o module_domain.o modu
 
 OBJSDOM = $(GASOBJS) module_select.o module_mesh.o
 
-OBJSPHO = $(GASOBJS) module_mesh.o module_mock.o module_photon.o #module_gray_ray.o
+OBJSPHO = $(GASOBJS) module_mesh.o module_mock.o module_photon.o module_opt_ray.o module_spectra.o
 
 OBJSMPI = $(OBJSPHO) module_parallel_mpi.o module_worker.o module_master.o
 
@@ -113,7 +113,7 @@ OBJSMPI = $(OBJSPHO) module_parallel_mpi.o module_worker.o module_master.o
 	$(F90) $(FFLAGS) -c $^ -o $@
 
 #############################################################################
-all: clean CreateDomDump PhotonsFromSourceModel PhotonsFromStars rascas-serial
+all: clean CreateDomDump PhotonsFromStars rascas
 
 PhotonsFromSourceModel: $(OBJSPHO) PhotonsFromSourceModel.o
 	$(F90) $(FFLAGS) $(LDFLAGS) -o $@ $(OBJSPHO) PhotonsFromSourceModel.o

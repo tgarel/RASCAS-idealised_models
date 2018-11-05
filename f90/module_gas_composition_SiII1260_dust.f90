@@ -32,8 +32,8 @@ module module_gas_composition
   ! user-defined parameters - read from section [gas_composition] of the parameter file
   ! --------------------------------------------------------------------------
   ! mixture parameters
-  character(150)          :: input_ramses_file  !Path to the file 'input_ramses', with all the info on the simulation (ncells, box_size, positions, velocities, nHI, nHII, Z, dopwidth
-  character(150)          :: SiII_file         !Path to the file with the SiII densities
+  character(300)          :: input_ramses_file  !Path to the file 'input_ramses', with all the info on the simulation (ncells, box_size, positions, velocities, nHI, nHII, Z, dopwidth
+  character(300)          :: SiII_file         !Path to the file with the SiII densities
   real(kind=8)             :: f_ion           = 0.01   ! ndust = (n_HI + f_ion*n_HII) * Z/Zsun [Laursen+09]
   real(kind=8)             :: Zref            = 0.005  ! reference metallicity. Should be ~ 0.005 for SMC and ~ 0.01 for LMC. 
   ! possibility to overwrite ramses values with an ad-hoc model 
@@ -95,15 +95,6 @@ contains
     close(20) ; close(21)
     
     gas_leaves%ndust = metallicity / Zref * ( nhi + f_ion*nhii )   ! [ /cm3 ]
-    
-    
-    !Try temperature cut
-    ! do i=1,ncells
-    !    if((gas_leaves(i)%dopwidth/2433.25)**2 >= 6.306571d4 .and. (gas_leaves(i)%dopwidth/2433.25)**2 <= 1.2646d5) then
-    !    else
-    !       gas_leaves(i)%nSiII = 0d0
-    !    end if
-    ! end do
 
 
     if (verbose) print*,'boxsize in cm : ', box_size_cm
@@ -112,7 +103,7 @@ contains
 
 
   end subroutine gas_from_list
-  !--Val
+  !--laV
   
   
 
@@ -180,7 +171,8 @@ contains
   end subroutine gas_from_ramses_leaves
 
 
-  function gas_get_tau_gray(cell_gas, distance_cm)
+  !Bad
+  function gas_get_tau_gray(cell_gas, distance_cm, nu_cell)
 
     ! --------------------------------------------------------------------------
     ! compute opacity due to dust accross distance_cm
@@ -195,11 +187,12 @@ contains
 
     ! check whether scattering occurs within cell (scatter_flag > 0) or not (scatter_flag==0)
     type(gas),intent(in)    :: cell_gas
-    real(kind=8),intent(in) :: distance_cm
+    real(kind=8),intent(in) :: distance_cm, nu_cell
     real(kind=8)            :: gas_get_tau_gray
 
     ! compute optical depths for different components of the gas.
-    gas_get_tau_gray = get_tau_dust_gray(cell_gas%ndust, distance_cm)
+    gas_get_tau_gray = get_tau_dust(cell_gas%ndust, distance_cm, nu_cell) + get_tau_SiI_photoionization(cell_gas%nSiII, distance_cm, nu_cell)
+
 
     return
 

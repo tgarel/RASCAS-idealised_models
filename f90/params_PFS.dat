@@ -3,14 +3,12 @@
 # input / output parameters
   repository = .
   snapnum    = 12
-  outputfile = /Users/mauerhof/Documents/rascas/RascasFiles/simu_Jeremy/SiII/PFS/output_PFS.out
+  outputfile = /Users/mauerhof/Documents/RamsesFiles/SIMULATIONS/P13-20h-1Mpc-MUSIC/Zoom-7-10508/SPHINX_run/Halos/00136/Rascas/PFS/output_PFS.out
 
 # computational domain parameters
   star_dom_type      = sphere
-  star_dom_pos       = 0.48449135, 0.5013419, 0.51207155
-  star_dom_rsp       = 0.002015
-#  comput_dom_pos       =  0.5, 0.5, 0.5
-#  comput_dom_rsp       =  1
+  star_dom_pos       = 0.47916505, 0.49580705, 0.5177275
+  star_dom_rsp       = 0.0003764
 #  star_dom_size      = 3.000E-01
 #  star_dom_rin       = 0.000E+00
 #  star_dom_rout      = 3.000E-01
@@ -24,7 +22,6 @@
   spec_type               = PowLaw
   spec_powlaw_lmin_Ang = 1256
   spec_powlaw_lmax_Ang = 1267
-#Also try 1267
 
 # miscelaneous parameters
   nphot           = 2000000
@@ -34,6 +31,6 @@
 
 [ramses]
  star_reading_method = fromlist
- star_info_file = /Users/mauerhof/Documents/RamsesFiles/idealized/simu_Jeremy/readH5/star_info_rascas
+ star_info_file = /Users/mauerhof/Documents/RamsesFiles/SIMULATIONS/P13-20h-1Mpc-MUSIC/Zoom-7-10508/SPHINX_run/Halos/00136/star_info_rascas
  cosmo = T
  use_initial_mass = T

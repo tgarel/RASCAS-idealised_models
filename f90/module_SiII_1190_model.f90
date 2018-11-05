@@ -2,7 +2,7 @@ module module_SiII_1190_model
 
   ! This module describes the absorption of photons by SiII from level  3s^2 3p 2P^0 1/2 to level 3s 3p^2 2P 3/2.
   ! This transition is at 1190.42 A.
-  ! The module also implements the two decay channels (resonant and fluorescent) at 1193.28 A and 1197.39 A. 
+  ! The module also implements the two decay channels (resonant and fluorescent) at 1190.42 A and 1194.50 A. 
 
   use module_constants
   use module_utils, only : voigt_fit, isotropic_direction

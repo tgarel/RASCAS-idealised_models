@@ -1,12 +1,31 @@
 
 !--------------------------------------------------------------------------------
 [OPTICAL_BIN]
-  DomDumpDir   = /Users/mauerhof/Documents/rascas/RascasFiles/G8_250Myr/compute_N
+  DomDumpDir   = /Users/mauerhof/Documents/RamsesFiles/SIMULATIONS/P13-20h-1Mpc-MUSIC/Zoom-7-10508/SPHINX_run/Halos/00136/Rascas/domdump/SiI
   DomDumpFile  = domain_decomposition_params.dat
-  #star_infos_file = /Users/mauerhof/Documents/rascas/RascasFiles/G8_250Myr/dust/domain/test/star_infos
-  fileout      = /Users/mauerhof/Documents/rascas/RascasFiles/G8_250Myr/compute_N/column_densities
+  repository   = .
+  snapnum      = 2
+  fileout      = /Users/mauerhof/Documents/RamsesFiles/SIMULATIONS/P13-20h-1Mpc-MUSIC/Zoom-7-10508/SPHINX_run/Halos/00136/Rascas/non_ionizing/rates
   verbose      = T
 !--------------------------------------------------------------------------------
+
+!--------------------------------------------------------------------------------
+[ramses]
+ star_reading_method = fromlist
+ star_info_file = /Users/mauerhof/Documents/RamsesFiles/SIMULATIONS/P13-20h-1Mpc-MUSIC/Zoom-7-10508/SPHINX_run/Halos/00136/star_info_rascas
+ cosmo = T
+ use_initial_mass = T
+ ramses_rt = T
+ !--------------------------------------------------------------------------------
+
+
+!---------------------------------------------------------------------------------
+[spectra]
+  sed_dir = /Users/mauerhof/Documents/seds/bpass100
+  nSEDgroups = 11
+  group_decomp = 8.152, 8.5, 9, 9.5, 10, 10.5, 11, 11.5, 12, 12.5, 13, 13.599
+  verbose         = T
+!---------------------------------------------------------------------------------
 
 
 
