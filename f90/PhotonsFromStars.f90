@@ -455,6 +455,9 @@ contains
        write(*,'(a,a,a,a)') '> ERROR: incompatible options : weight_type==',trim(weight_type),' and spec_type==',trim(spec_type)
        stop
     end if
+
+    call read_ramses_params(pfile)
+
     
     return
 
@@ -507,6 +510,7 @@ contains
        write(unit,'(a,i8)')          '  ranseed         = ',ranseed
        write(unit,'(a,L1)')          '  verbose         = ',verbose
        write(unit,'(a)')             ' '
+       call print_ramses_params(unit)
     else
        write(*,'(a,a,a)')         '[PhotonsFromStars]'
        write(*,'(a)')             '# input / output parameters'
@@ -544,7 +548,7 @@ contains
        write(*,'(a,i8)')          '  ranseed         = ',ranseed
        write(*,'(a,L1)')          '  verbose         = ',verbose
        write(*,'(a)')             ' '
-
+       call print_ramses_params
     end if
 
     return

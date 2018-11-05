@@ -93,13 +93,13 @@ module module_ramses
   ! Solar abundance ratio
   ! Si
   ! abundance_Si_mass == abundance_Si_number * 28.085
-  real(kind=8),parameter    :: abundance_Si_mass = 9.1d-4 ! From Scarlata (private comm.): abundance_Si_number = 3.24d-5
+  real(kind=8),parameter    :: abundance_Si_number = 3.24d-5 ! From Scarlata (private comm.)
   ! Mg
   ! abundance_Mg_mass == abundance_Mg_number * 24.305
-  real(kind=8),parameter    :: abundance_Mg_mass = 8.24d-4 ! From Scarlata (private comm.): abundance_Mg_number = 3.39d-5
-  ! Fe
-  ! abundance_Fe_mass == abundance_Fe_number * 55.845
+
   real(kind=8),parameter    :: abundance_Fe_mass = 1.58d-3 ! From Scarlata (private comm.): abundance_Fe_number = 2.82d-5   
+  real(kind=8),parameter    :: abundance_Mg_number = 3.39d-5 ! From Scarlata (private comm.)
+
   ! --------------------------------------------------------------------------
   
   
@@ -1131,7 +1131,7 @@ contains
     ! - Si+-Si++ : 16.34585 eV
     do i = 1,nleaf
        if (temp(i) >= 6.306571d4 .and. temp(i) <= 1.2646d5) then
-          nSiII(i) = ramses_var(1,i) * dp_scale_d * ramses_var(imetal,i) * dp_scale_zsun * abundance_Si_mass / mSi   ! [#/cm3]
+          nSiII(i) = ramses_var(1,i) * dp_scale_d * ramses_var(imetal,i) * dp_scale_zsun * abundance_Si_number   ! [#/cm3]
        else
           nSiII(i) = 0.0d0
        end if
@@ -1246,7 +1246,7 @@ contains
     ! - Mg+ - Mg++ : 15.03527 eV
     do i = 1,nleaf
        if (temp(i) >= 5.915393d4 .and. temp(i) <= 1.163181d5) then
-          nMgII(i) = ramses_var(1,i) * dp_scale_d * ramses_var(imetal,i) * dp_scale_zsun * abundance_Mg_mass / mMg   ! [#/cm3]
+          nMgII(i) = ramses_var(1,i) * dp_scale_d * ramses_var(imetal,i) * dp_scale_zsun * abundance_Mg_number   ! [#/cm3]
        else
           nMgII(i) = 0.0d0
        end if
