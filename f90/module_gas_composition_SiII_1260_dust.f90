@@ -163,7 +163,7 @@ contains
     real(kind=8),intent(inout)            :: tau_abs                ! tau at which scattering is set to occur.
     integer,intent(inout)                 :: iran 
     integer(kind=4)                       :: gas_get_scatter_flag 
-    real(kind=8)                          :: tau_SiII_1190, tau_SiII_1193, tau_dust, tau_cell, proba1, x
+    real(kind=8)                          :: tau_SiII_1260, tau_dust, tau_cell, proba1, x
     
     ! compute optical depths for different components of the gas.
     tau_SiII_1260 = get_tau_SiII_1260(cell_gas%nSiII, cell_gas%dopwidth, distance_to_border_cm, nu_cell)
@@ -321,8 +321,7 @@ contains
 
     call read_ramses_params(pfile)
     call read_dust_params(pfile)
-    call read_SiII_1190_params(pfile)
-    call read_SiII_1193_params(pfile)
+    call read_SiII_1260_params(pfile)
 
     return
 
