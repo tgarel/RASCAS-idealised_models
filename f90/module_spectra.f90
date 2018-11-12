@@ -155,27 +155,52 @@ CONTAINS
        RETURN
     endif
     select case (species)
-    case (1) ! HI
-       E0 = 4.298d-1 ; cs0 = 5.475d-14    ; P  = 2.963 
-       ya = 32.88    ; yw  = 0            ; y0 = 0         ; y1 = 0
-    case (2) ! HeI
-       E0 = 1.361d1    ; cs0 = 9.492d-16  ; P  = 3.188 
-       ya = 1.469      ; yw  = 2.039      ; y0 = 0.4434    ; y1 = 2.136
-    case (3) ! HeII
-       E0 = 1.720      ; cs0 = 1.369d-14  ; P  = 2.963 
-       ya = 32.88      ; yw  = 0          ; y0 = 0         ; y1 = 0
-    case (4) ! SiI
-       E0 = 2.317d1    ; cs0 = 2.506d-17  ; P  = 3.546 
-       ya = 20.57      ; yw  = 2.837d-1   ; y0 = 1.627d-5  ; y1 = 4.207d-1
-    case (5) ! SiII
-       E0 = 25.56      ; cs0 = 4.14d-18   ; P  = 11.91 
-       ya = 13.37      ; yw  = 1.57       ; y0 = 6.634     ; y1 = 1.272d-1
-    case (6) ! SiIII
-       E0 = 1.659d-1   ; cs0 = 5.79d-22   ; P  = 13.36 
-       ya = 1.474d2    ; yw  = 8.626d-1   ; y0 = 9.613d1   ; y1 = 6.442d-1
-    case (7) ! SiIV
-       E0 = 12.88      ; cs0 = 6.083d-18  ; P  = 3.353 
-       ya = 1.356d6    ; yw  = 0          ; y0 = 0         ; y1 = 0
+    case(1)  !HI
+       E0 = 4.298d-01 ; cs0 = 5.475d-14 ; P = 2.963d+00
+       ya = 3.288d+01 ; yw = 0.000d+00 ; y0 = 0.000d+00 ; y1 = 0.000d+00
+    case(2)  !HeI
+       E0 = 1.361d+01 ; cs0 = 9.492d-16 ; P = 3.188d+00
+       ya = 1.469d+00 ; yw = 2.039d+00 ; y0 = 4.434d-01 ; y1 = 2.136d+00
+    case(3)  !HeII
+       E0 = 1.720d+00 ; cs0 = 1.369d-14 ; P = 2.963d+00
+       ya = 3.288d+01 ; yw = 0.000d+00 ; y0 = 0.000d+00 ; y1 = 0.000d+00
+    case(4)  !CI
+       E0 = 2.144d+00 ; cs0 = 5.027d-16 ; P = 5.101d+00
+       ya = 6.216d+01 ; yw = 9.157d-02 ; y0 = 1.133d+00 ; y1 = 1.607d+00
+    case(5)  !CII
+       E0 = 4.058d-01 ; cs0 = 8.709d-18 ; P = 8.578d+00
+       ya = 1.261d+02 ; yw = 2.093d+00 ; y0 = 4.929d+01 ; y1 = 3.234d+00
+    case(6)  !CIII
+       E0 = 4.614d+00 ; cs0 = 1.539d-14 ; P = 1.593d+01
+       ya = 1.737d+00 ; yw = 5.922d+00 ; y0 = 4.378d-03 ; y1 = 2.528d-02
+    case(7)  !CIV
+       E0 = 3.506d+00 ; cs0 = 1.068d-16 ; P = 7.457d+00
+       ya = 1.436d+01 ; yw = 0.000d+00 ; y0 = 0.000d+00 ; y1 = 0.000d+00
+    case(8)  !MgI
+       E0 = 1.197d+01 ; cs0 = 1.372d-10 ; P = 1.574d+01
+       ya = 2.228d-01 ; yw = 2.805d-01 ; y0 = 0.000d+00 ; y1 = 0.000d+00
+    case(9)  !MgII
+       E0 = 8.139d+00 ; cs0 = 3.278d-18 ; P = 3.610d+00
+       ya = 4.341d+07 ; yw = 0.000d+00 ; y0 = 0.000d+00 ; y1 = 0.000d+00
+    case(10)  !MgIII
+       E0 = 1.086d+01 ; cs0 = 5.377d-16 ; P = 7.117d+00
+       ya = 9.779d+00 ; yw = 2.604d+00 ; y0 = 4.860d+00 ; y1 = 3.722d+00
+    case(11)  !MgIV
+       E0 = 2.912d+01 ; cs0 = 1.394d-15 ; P = 6.487d+00
+       ya = 2.895d+00 ; yw = 4.326d-02 ; y0 = 9.402d-01 ; y1 = 1.135d-01
+    case(12)  !SiI
+       E0 = 2.317d+01 ; cs0 = 2.506d-17 ; P = 3.546d+00
+       ya = 2.057d+01 ; yw = 2.837d-01 ; y0 = 1.672d-05 ; y1 = 4.207d-01
+    case(13)  !SiII
+       E0 = 2.556d+00 ; cs0 = 4.140d-18 ; P = 1.191d+01
+       ya = 1.337d+01 ; yw = 1.570d+00 ; y0 = 6.634d+00 ; y1 = 1.272d-01
+    case(14)  !SiIII
+       E0 = 1.659d-01 ; cs0 = 5.790d-22 ; P = 1.336d+01
+       ya = 1.474d+02 ; yw = 8.626d-01 ; y0 = 9.613d+01 ; y1 = 6.442d-01
+    case(15)  !SiIV
+       E0 = 1.288d+01 ; cs0 = 6.083d-18 ; P = 3.353d+00
+       ya = 1.356d+06 ; yw = 0.000d+00 ; y0 = 0.000d+00 ; y1 = 0.000d+00
+
     end select
 
     x = E/E0 - y0
@@ -201,7 +226,7 @@ module module_spectra
 
   implicit none
 
-  public init_SED_table, inp_SED_table, get_nOptBins, read_spectra_params, print_spectra_params
+  public init_SED_table, inp_SED_table, get_nOptBins, deallocate_table, read_spectra_params, print_spectra_params
 
   private
 
@@ -244,7 +269,7 @@ contains
     use spectrum_integrator_module
 
     integer:: nAges, nzs, nLs              ! # of bins of age, z, wavelength
-    integer,parameter::nIons=7             !BAD !!! This is hardcoded,   should think about that
+    integer,parameter::nIons=15             !BAD !!! This is hardcoded,   should think about that
     real(kind=8),allocatable::ages(:), Zs(:), Ls(:), rebAges(:)
     real(kind=8),allocatable::SEDs(:,:,:)           ! SEDs f(lambda,age,met)
     real(kind=8),allocatable::tbl(:,:,:), tbl2(:,:,:), reb_tbl(:,:,:)
@@ -362,9 +387,72 @@ contains
     deallocate(zs)
     deallocate(Ls)
 
-
   end subroutine init_SED_table
   !#################################################################################################
+
+
+    !*************************************************************************
+  SUBROUTINE inp_SED_table(age, Z, nProp, same, ret)!, na, nz, SED_ages, SED_zeds)
+
+    ! Compute SED property by interpolation from table.
+    ! input/output:
+    ! age   => Star population age [Gyrs]
+    ! Z     => Star population metallicity [m_metals/m_tot]
+    ! nprop => Number of property to fetch
+    !          1=log(photon # intensity [# Msun-1 s-1]),
+    !          2=log(cumulative photon # intensity [# Msun-1]),
+    !          3=avg_egy, 2+2*iIon=avg_csn, 3+2*iIon=avg_cse
+    ! same  => If true then assume same age and Z as used in last call.
+    !          In this case the interpolation indexes can be recycled.
+    ! ret   => The interpolated values of the sed property for every photon
+    !          group
+    !-------------------------------------------------------------------------
+    use module_constants
+    real(kind=8), intent(in):: age, Z
+    !integer(kind=4), intent(in):: na, nz
+    !real(kind=8), intent(in):: SED_ages(na), SED_zeds(nz)
+    real(kind=8):: lgAge, lgZ
+    integer:: nProp
+    logical:: same
+    real(kind=8),dimension(:):: ret
+    integer,save:: ia, iz
+    real(kind=8),save:: da, da0, da1, dz, dz0, dz1
+    !-------------------------------------------------------------------------
+    ! ia, iz: lower indexes: 0<ia<sed_nA etc.
+    ! da0, da1, dz0, dz1: proportional distances from edges:
+    ! 0<=da0<=1, 0<=da1<=1 etc.
+
+    if(.not. same) then
+       if(age.le.0d0) then
+          lgAge=-4d0
+       else
+          lgAge = log10(age)
+       endif
+
+       lgZ=log10(Z)
+       ia = min(max(floor((lgAge-SED_lgA0)/SED_dlgA ) + 2, 1  ),  SED_nA-1 )
+       da = SED_ages(ia+1)-SED_ages(ia)
+       da0= min( max(   (age-SED_ages(ia)) /da,       0. ), 1.          )
+       da1= min( max(  (SED_ages(ia+1)-age)/da,       0. ), 1.          )
+
+       iz = min(max(floor((lgZ-SED_lgZ0)/SED_dlgZ ) + 1,   1  ),  SED_nZ-1 )
+       dz = sed_Zeds(iz+1)-SED_Zeds(iz)
+       dz0= min( max(   (Z-SED_zeds(iz)) /dz,         0. ),  1.         )
+       dz1= min( max(  (SED_Zeds(iz+1)-Z)/dz,         0. ),  1.         )
+
+       if (abs(da0+da1-1.0d0) > 1.0d-5 .or. abs(dz0+dz1-1.0d0) > 1.0d-5) then
+          write(*,*) 'Screwed up the sed interpolation ... '
+          write(*,*) da0+da1,dz0+dz1
+          stop
+       end if
+    endif
+
+    ret = da0 * dz0 * SED_table(ia+1, iz+1, :, nProp) + &
+         da1 * dz0 * SED_table(ia,   iz+1, :, nProp) + &
+         da0 * dz1 * SED_table(ia+1, iz,   :, nProp) + &
+         da1 * dz1 * SED_table(ia,   iz,   :, nProp)
+
+  END SUBROUTINE inp_SED_table
 
 
   !#################################################################################################
@@ -379,6 +467,17 @@ contains
     return
 
   end function get_nOptBins
+  !#################################################################################################
+  
+
+  !#################################################################################################
+  subroutine deallocate_table()
+
+    implicit none
+
+    deallocate(SED_table, SED_ages, SED_zeds)
+
+  end subroutine deallocate_table
   !#################################################################################################
 
 
@@ -671,69 +770,6 @@ contains
 
   END SUBROUTINE rebin_log
 
-
-  !*************************************************************************
-  SUBROUTINE inp_SED_table(age, Z, nProp, same, ret)!, na, nz, SED_ages, SED_zeds)
-
-    ! Compute SED property by interpolation from table.
-    ! input/output:
-    ! age   => Star population age [Gyrs]
-    ! Z     => Star population metallicity [m_metals/m_tot]
-    ! nprop => Number of property to fetch
-    !          1=log(photon # intensity [# Msun-1 s-1]),
-    !          2=log(cumulative photon # intensity [# Msun-1]),
-    !          3=avg_egy, 2+2*iIon=avg_csn, 3+2*iIon=avg_cse
-    ! same  => If true then assume same age and Z as used in last call.
-    !          In this case the interpolation indexes can be recycled.
-    ! ret   => The interpolated values of the sed property for every photon
-    !          group
-    !-------------------------------------------------------------------------
-    use module_constants
-    real(kind=8), intent(in):: age, Z
-    !integer(kind=4), intent(in):: na, nz
-    !real(kind=8), intent(in):: SED_ages(na), SED_zeds(nz)
-    real(kind=8):: lgAge, lgZ
-    integer:: nProp
-    logical:: same
-    real(kind=8),dimension(:):: ret
-    integer,save:: ia, iz
-    real(kind=8),save:: da, da0, da1, dz, dz0, dz1
-    !-------------------------------------------------------------------------
-    ! ia, iz: lower indexes: 0<ia<sed_nA etc.
-    ! da0, da1, dz0, dz1: proportional distances from edges:
-    ! 0<=da0<=1, 0<=da1<=1 etc.
-
-    if(.not. same) then
-       if(age.le.0d0) then
-          lgAge=-4d0
-       else
-          lgAge = log10(age)
-       endif
-
-       lgZ=log10(Z)
-       ia = min(max(floor((lgAge-SED_lgA0)/SED_dlgA ) + 2, 1  ),  SED_nA-1 )
-       da = SED_ages(ia+1)-SED_ages(ia)
-       da0= min( max(   (age-SED_ages(ia)) /da,       0. ), 1.          )
-       da1= min( max(  (SED_ages(ia+1)-age)/da,       0. ), 1.          )
-
-       iz = min(max(floor((lgZ-SED_lgZ0)/SED_dlgZ ) + 1,   1  ),  SED_nZ-1 )
-       dz = sed_Zeds(iz+1)-SED_Zeds(iz)
-       dz0= min( max(   (Z-SED_zeds(iz)) /dz,         0. ),  1.         )
-       dz1= min( max(  (SED_Zeds(iz+1)-Z)/dz,         0. ),  1.         )
-
-       if (abs(da0+da1-1.0d0) > 1.0d-5 .or. abs(dz0+dz1-1.0d0) > 1.0d-5) then
-          write(*,*) 'Screwed up the sed interpolation ... '
-          write(*,*) da0+da1,dz0+dz1
-          stop
-       end if
-    endif
-
-    ret = da0 * dz0 * SED_table(ia+1, iz+1, :, nProp) + &
-         da1 * dz0 * SED_table(ia,   iz+1, :, nProp) + &
-         da0 * dz1 * SED_table(ia+1, iz,   :, nProp) + &
-         da1 * dz1 * SED_table(ia,   iz,   :, nProp)
-
-  END SUBROUTINE inp_SED_table
 
 
   SUBROUTINE locate(xx,n,x,j)

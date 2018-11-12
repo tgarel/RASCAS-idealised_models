@@ -24,7 +24,6 @@ module module_constants
   real(kind=8),parameter :: mSi = 28.085d0 * amu              ![g] mass of Silicon
   real(kind=8),parameter :: mMg = 24.305d0 * amu              ![g] mass of Magnesium
   real(kind=8),parameter :: hp=6.6262d-27                     !Planck const   [erg sec ]
-  real(kind=8),parameter,dimension(7) :: ionEvs = (/ 13.598, 24.587, 54.418, 8.152, 16.346, 33.493, 45.142 /)
+  real(kind=8),parameter,dimension(15) :: ionEvs = (/ 13.598, 24.587, 54.418, 11.26, 24.3845, 47.888, 64.4935, 7.646, 15.035, 80.144, 109.2654, 8.152, 16.346, 33.493, 45.142 /)
 
 end module module_constants
-

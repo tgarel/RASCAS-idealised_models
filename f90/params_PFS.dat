@@ -20,11 +20,11 @@
 
 # Spectral shape 
   spec_type               = PowLaw
-  spec_powlaw_lmin_Ang = 1256
-  spec_powlaw_lmax_Ang = 1267
+  spec_powlaw_lmin_Ang = 1257
+  spec_powlaw_lmax_Ang = 1266.5
 
 # miscelaneous parameters
-  nphot           = 2000000
+  nphot           = 12000000
   ranseed         = -100
   verbose         = T
 !--------------------------------------------------------------------------------

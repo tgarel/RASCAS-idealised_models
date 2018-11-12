@@ -108,7 +108,7 @@ module module_ramses
   
   public :: read_leaf_cells, read_leaf_cells_omp, read_leaf_cells_in_domain
   public :: get_ngridtot, ramses_get_box_size_cm, get_cpu_list, get_cpu_list_periodic, get_ncpu, get_nSEDgroups, get_xH
-  public :: ramses_get_velocity_cgs, ramses_get_T_nhi_cgs, ramses_get_metallicity, ramses_get_nh_cgs, ramses_get_T_nSiII_cgs, ramses_get_T_nMgII_cgs, ramses_get_he_fractions, ramses_get_flux
+  public :: ramses_get_velocity_cgs, ramses_get_T_nhi_cgs, ramses_get_metallicity, ramses_get_nh_cgs, ramses_get_T_nSiII_cgs, ramses_get_T_nMgII_cgs, ramses_get_fractions, ramses_get_flux
   public :: ramses_read_stars_in_domain
   public :: read_ramses_params, print_ramses_params, dump_ramses_info
   
@@ -1031,20 +1031,21 @@ contains
 
 
   !Val--
-  subroutine ramses_get_he_fractions(nleaf,nvar,ramses_var,xheii,xheiii)
+  subroutine ramses_get_fractions(nleaf,nvar,ramses_var,x)
 
     implicit none
 
     integer(kind=4),intent(in)  :: nleaf, nvar
     real(kind=8),intent(in)     :: ramses_var(nvar,nleaf) ! one cell only
-    real(kind=8),intent(inout)  :: xheii(nleaf), xheiii(nleaf)
+    real(kind=8),intent(inout)  :: x(3,nleaf)
 
-    xheii = ramses_var(iheii,:)
-    xheiii = ramses_var(iheiii,:)
+    x(1,:) = ramses_var(ihii,:)
+    x(2,:) = ramses_var(iheii,:)
+    x(3,:) = ramses_var(iheiii,:)
 
     return
 
-  end subroutine ramses_get_he_fractions
+  end subroutine ramses_get_fractions
 
 
   subroutine ramses_get_flux(repository,snapnum,nleaf,nvar,nGroups,ramses_var,flux)

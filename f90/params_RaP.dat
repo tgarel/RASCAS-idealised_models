@@ -2,10 +2,10 @@
 
 !--------------------------------------------------------------------------------
 [RASCAS]
-  DomDumpDir   = /Users/mauerhof/Documents/RamsesFiles/SIMULATIONS/P13-20h-1Mpc-MUSIC/Zoom-7-10508/SPHINX_run/Halos/00136/Rascas/domdump
+  DomDumpDir   = /Users/mauerhof/Documents/RamsesFiles/SIMULATIONS/P13-20h-1Mpc-MUSIC/Zoom-7-10508/SPHINX_run/Halos/00136/Rascas/domdump/SiII/lowG
   DomDumpFile  = domain_decomposition_params.dat
   PhotonICFile = /Users/mauerhof/Documents/RamsesFiles/SIMULATIONS/P13-20h-1Mpc-MUSIC/Zoom-7-10508/SPHINX_run/Halos/00136/Rascas/PFS/output_PFS.out
-  fileout      = /Users/mauerhof/Documents/RamsesFiles/SIMULATIONS/P13-20h-1Mpc-MUSIC/Zoom-7-10508/SPHINX_run/Halos/00136/Rascas/output/output_Krome_noCT.out
+  fileout      = /Users/mauerhof/Documents/RamsesFiles/SIMULATIONS/P13-20h-1Mpc-MUSIC/Zoom-7-10508/SPHINX_run/Halos/00136/Rascas/output/SiII/lowG/output_rascas.out
   nbuffer      = 10
   verbose      = T
 !--------------------------------------------------------------------------------
@@ -19,7 +19,7 @@
 [master]
   verbose = F
   restart       = F
-  PhotonBakFile = /Users/mauerhof/Documents/rascas/RascasFiles/simu_Jeremy/SiII/output/output_rascas.bak
+  PhotonBakFile = /Users/mauerhof/Documents/RamsesFiles/SIMULATIONS/P13-20h-1Mpc-MUSIC/Zoom-7-10508/SPHINX_run/Halos/00136/Rascas/output/SiII/lowG/output_rascas.bak
   dt_backup     = 1000
 !--------------------------------------------------------------------------------
 
@@ -52,12 +52,7 @@
 
 !--------------------------------------------------------------------------------
 [mock] 
-  mock_center = 0.47916505, 0.49580705, 0.5177275
-  kobs = 0., 0., 1.
-  npix = 500 
-  mock_image_side = 0.12
-  npix_spec = 500 
-  spec_lmin = 1250 
-  spec_lmax = 1270
-  mock_outputfilename = /Users/mauerhof/Documents/RamsesFiles/SIMULATIONS/P13-20h-1Mpc-MUSIC/Zoom-7-10508/SPHINX_run/Halos/00136/Rascas/output/output_Krome_noCT
+  nDirections = 1
+  mock_parameter_file = params_mock.dat
+  mock_outputfilename = /Users/mauerhof/Documents/RamsesFiles/SIMULATIONS/P13-20h-1Mpc-MUSIC/Zoom-7-10508/SPHINX_run/Halos/00136/Rascas/output/SiII/lowG/output_rascas
 !--------------------------------------------------------------------------------

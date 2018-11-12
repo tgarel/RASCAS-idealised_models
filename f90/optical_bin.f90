@@ -11,7 +11,7 @@ program optical_bin
   integer(kind=4)	 	           :: ierr, rank, npsize, status0(MPI_STATUS_SIZE)
   integer(kind=4),allocatable              :: chunksize(:), disp(:)
   integer,parameter			   :: master=0
-  real(kind=8)	 			   :: t1=0d0, t2=0d0, t3=0d0
+  real(kind=8)	 			   :: t1=0d0, t2=0d0
   character*10     		       	   :: ranktxt
 
   character(2000)                          :: parameter_file, line, file_compute_dom
@@ -55,12 +55,6 @@ program optical_bin
   call MPI_COMM_SIZE(MPI_COMM_WORLD, npsize, ierr)
   allocate(chunksize(npsize), disp(npsize))
   t1=MPI_WTIME()						!Initialize time to display the total time of execution
-  ! open(unit=14,status='scratch')
-  ! rewind(14)
-  ! write (14,*) rank
-  ! rewind(14)							!5 lines to create a character of the rank of the core,  to put it in names of output files   (more straightforward way ?)
-  ! read  (14,*) ranktxt
-  ! close (14)
   ! ------------------------------------------------------------------------------------------------
 
 
@@ -115,11 +109,13 @@ program optical_bin
      !compute SED luminosities,  in #photons/s
      allocate(star_L(nSEDgroups,nstars), star_E(nSEDgroups,nstars), SiI_csn(nSEDgroups,nstars))
      do i=1,nstars
-        call inp_sed_table(star_age(i), star_met(i), 3, .false., star_E(:,i))
-        call inp_sed_table(star_age(i), star_met(i), 1, .false., star_L(:,i))    !Third variable :  1 for L[#photons/s],  3 for mean energy in bin,  2+2*Iion for mean cross-section,  Iion: 1:HI,2:HeI,3:HeII,4:SiI, etc
-        call inp_sed_table(star_age(i), star_met(i), 10, .false., SiI_csn(:,i))
+        call inp_sed_table(star_age(i)/1d3, star_met(i), 3, .false., star_E(:,i))  
+        call inp_sed_table(star_age(i)/1d3, star_met(i), 1, .false., star_L(:,i))    !Third variable :  1 for L[#photons/s],  3 for mean energy in bin,  2+2*Iion for mean cross-section,  Iion: 1:HI,2:HeI,3:HeII,4:SiI, etc
+        call inp_sed_table(star_age(i)/1d3, star_met(i), 26, .false., SiI_csn(:,i))
         star_L(:,i) = star_L(:,i)*star_mass(i)/msun
      end do
+
+     call deallocate_table()
      deallocate(star_age, star_met, star_mass)
   end if
   ! ------------------------------------------------------------------------------------------------
@@ -157,10 +153,11 @@ program optical_bin
   allocate(ray%E(nSEDgroups), ray%tau(nSEDgroups))
 
   t2=MPI_WTIME()
+  if(rank==master) write(*,*) 'Initilization finished,  beginning computations after time ', t2-t1
 
-  distance = 0.003 !code units
+  distance = 0.00376 !code units
 
-  n=4 ; allocate(photo_rate(2*n*n), photo_rate_sum(2*n*n), photo_rate_all(2*n*n)) ; photo_rate_sum = 0d0
+  n=20 ; allocate(photo_rate(2*n*n), photo_rate_sum(2*n*n), photo_rate_all(2*n*n)) ; photo_rate_sum = 0d0
   do istar=1,chunksize(rank+1)
      do i=1,n
         do j=1,2*n
@@ -173,14 +170,20 @@ program optical_bin
            ray%k_em = direction(:)/norm2(direction)
 
            call ray_advance(ray, meshdom, compute_dom, norm2(direction))
-           photo_rate(2*n*(i-1)+j) = 1/4d0/pi/ray%dist**2*sum(star_L_cpu(:,istar)*exp(-ray%tau(:))*SiI_csn_cpu(:,istar))
+           photo_rate(2*n*(i-1)+j) = 1/4d0/pi/(norm2(direction)*box_size_cm)**2*sum(star_L_cpu(:,istar)*SiI_csn_cpu(:,istar)*exp(-ray%tau(:)))
+
+           ! direction = compute_dom%sp%center(:) + (/ distance*sin(pi*i/n)*cos(pi*j/n), distance*sin(pi*i/n)*sin(pi*j/n), distance*cos(pi*i/n) /) - star_pos_cpu(:,istar)
+           ! photo_rate(2*n*(i-1)+j) = 1/4d0/pi/(norm2(direction)*box_size_cm)**2*sum(star_L_cpu(:,istar)*SiI_csn_cpu(:,istar))
         end do
      end do
+     
      photo_rate_sum(:) = photo_rate_sum(:) + photo_rate(:)
+     
+     if(modulo(istar,10)==0) print*, istar, minval(photo_rate_sum)
   end do
 
-  print*, rank, photo_rate_sum
-  
+  !print*, rank, photo_rate_sum
+
   call MPI_ALLREDUCE(photo_rate_sum, photo_rate_all, 2*n*n, MPI_DOUBLE_PRECISION, MPI_SUM, MPI_COMM_WORLD, ierr)
 
   open(unit=10, file=trim(fileout), form='formatted', action='write')
@@ -188,8 +191,8 @@ program optical_bin
   close(10)
 
 
-  t3=MPI_WTIME()
-  write(*,*) 'Rank : ', rank, ' Computation time : ', t3-t2
+  t1=MPI_WTIME()
+  write(*,*) 'Rank : ', rank, ' Computation time : ', t1-t2
 
   call MPI_FINALIZE(ierr)
 

@@ -1,7 +1,7 @@
 !--------------------------------------------------------------------------------
 [CreateDomDump]
 # input outputs:
-  DomDumpDir = /Users/mauerhof/Documents/RamsesFiles/SIMULATIONS/P13-20h-1Mpc-MUSIC/Zoom-7-10508/SPHINX_run/Halos/00136/Rascas/domdump/SiI
+  DomDumpDir = /Users/mauerhof/Documents/RamsesFiles/SIMULATIONS/P13-20h-1Mpc-MUSIC/Zoom-7-10508/SPHINX_run/Halos/00136/Rascas/domdump/SiII/lowG
   repository = ./
   snapnum    = 1
   reading_method = fromlist
@@ -9,7 +9,7 @@
 # computational domain parameters
   comput_dom_type      =  sphere
   comput_dom_pos       =  0.47916505, 0.49580705, 0.5177275
-  comput_dom_rsp       =  0.003764
+  comput_dom_rsp       =  0.0004
 
 
 # domain decomposition parameters
@@ -57,6 +57,6 @@
 
 #Necessary only when reading_method = fromlist
   input_ramses_file   = /Users/mauerhof/Documents/RamsesFiles/SIMULATIONS/P13-20h-1Mpc-MUSIC/Zoom-7-10508/SPHINX_run/Halos/00136/data_rascas
-  SiII_file           = /Users/mauerhof/Documents/RamsesFiles/SIMULATIONS/P13-20h-1Mpc-MUSIC/Zoom-7-10508/SPHINX_run/Halos/00136/Krome/noCT/outputs/SiI_onlyT/SiI
+  SiII_file           = /Users/mauerhof/Documents/RamsesFiles/SIMULATIONS/P13-20h-1Mpc-MUSIC/Zoom-7-10508/SPHINX_run/Halos/00136/Krome/noCT/outputs/SiII/lowG/Save/SiII
 !--------------------------------------------------------------------------------
 

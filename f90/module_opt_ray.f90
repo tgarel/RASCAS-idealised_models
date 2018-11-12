@@ -70,8 +70,7 @@ contains
     allocate(tau(nSEDgroups))
     allocate(tau_cell(nSEDgroups))
     tau   = 0.0d0      ! corresponding optical depth
-    maxdist_cm = maxdist * box_size_cm ! dist_tot is now provided in cm ... 
-
+    maxdist_cm = maxdist * box_size_cm ! dist_tot is now provided in cm ...
 
     ! check that the ray starts in the domain
     if (.not. domain_contains_point(ppos,domaine_calcul)) then
@@ -130,7 +129,8 @@ contains
        tau(:)  = tau(:) + tau_cell(:)
 
        if (dist > maxdist_cm) then
-          excess   = maxdist_cm - dist
+          excess   = dist - maxdist_cm
+          dist = dist - excess
           ray%dist = dist
           !do i=1,nSEDgroups
           ray%tau(:)  = tau(:) - (excess / distance_to_border_cm)*tau_cell(:)
@@ -151,7 +151,7 @@ contains
        if (.not.(in_domain)) then
           ray%dist = dist
           ray%tau(:)  = tau(:)
-          !print*,'WARNING: escaping domain before dist_tot or maxtau is reached... 1'
+          print*,'WARNING: escaping domain before dist_tot or maxtau is reached... 1'
           !print*,'initial distance to border of domain [cm] : ',domain_distance_to_border(ray%x_em,domaine_calcul)*box_size_cm
           !print*,'dist_tot [cm]                              : ',dist_tot_cm
           exit ray_propagation  ! ray is done 
@@ -198,7 +198,7 @@ contains
           if (.not.(in_domain)) then
              ray%dist = dist
              ray%tau(:)  = tau(:)
-             !print*,'WARNING: escaping domain before dist_tot or maxtau is reached... 2'
+             print*,'WARNING: escaping domain before dist_tot or maxtau is reached... 2'
              !print*,'initial distance to border of domain [cm] : ',domain_distance_to_border(ray%x_em,domaine_calcul)*box_size_cm
              !print*,'dist_tot [cm]                              : ',dist_tot_cm
              exit ray_propagation  ! ray is done 
