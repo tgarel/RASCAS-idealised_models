@@ -575,8 +575,7 @@ contains
        write(*,'(a,i8)')          '  ranseed         = ',ranseed
        write(*,'(a,L1)')          '  verbose         = ',verbose
        write(*,'(a)')             ' '
-       call print_ramses_params()
-       
+       call print_ramses_params
     end if
 
     return
