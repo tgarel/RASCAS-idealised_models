@@ -547,7 +547,7 @@ class RascasSurvey(object):
             f.write("module load mpt/2.10   \n")
             f.write("export OMP_NUM_THREADS=16 \n")
             f.write("set -x   \n")
-            f.write("/scratch/garel/test_rascas_sphinx/rascas/f90/CreateDomDump %s >& %s.log \n"%(cddParamFile,cddParamFile))
+            f.write("/scratch/garel/rascas_sphinx/f90/CreateDomDump %s >& %s.log \n"%(cddParamFile,cddParamFile))
             f.close()
             
 
@@ -662,7 +662,7 @@ class RascasSurvey(object):
         f.write("module load intel-mkl-11/11.1.3   \n")
         f.write("module load mpt/2.10   \n")
         f.write("set -x   \n")
-        f.write("/scratch/garel/test_rascas_sphinx/rascas/f90/PhotonsFromStars %s >& %s.log \n"%(pfsParamFile,pfsParamFile))
+        f.write("/scratch/garel/rascas_sphinx/f90/PhotonsFromStars %s >& %s.log \n"%(pfsParamFile,pfsParamFile))
         f.close()
 
         

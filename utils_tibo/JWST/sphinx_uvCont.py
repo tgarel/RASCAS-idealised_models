@@ -12,7 +12,7 @@ import nircam
 
 ################################################################################
 # RAScas dir. 
-rascas_directory = '/scratch/garel/test_rascas_sphinx/'
+rascas_directory = '/scratch/garel/rascas_sphinx/output/test_Mstar_gt1e-3/'
 
 ################################################################################
 
@@ -26,7 +26,7 @@ gas_composition_params  = OrderedDict([ ('f_ion','%.16e'%(0.01)),('Zref','%.16e'
 # RAMSES-SIMULATION STUFF 
 ################################################################################
 # RAMSES OUTPUT
-ramsesDir      = '/scratch/rosdahl/21_SPHINX/05_F1000/02_IC20_BP/'
+ramsesDir      = '/scratch/blaizot/sphinx/05_F1000/02_IC20_BP/'
 ramsesTimestep = 183 
 
 # CreateDomDump extra parameters
@@ -101,11 +101,15 @@ for i in range(len(mstar[ids])):
     DomDumpDir = 'CDD_HI_dust'   # directory inside rascasDir to contain all CDD outputs.
     
     # PHOTOMETRY parameters
-    sedDir = '/home/blaizot/seds/'
+    sedDir       = '/home/garel/seds/'
     photTableDir = '%s/photTables'%(rascas_directory)
-    
-    # define NIRCam surveys
-    # get NIRCam filters
+    sedModel     = 'bpass100'
+    spec_type    = 'Monochromatic'
+    nphot        = 1000000
+    dust_model   = 'SMC'
+
+    # define surveys
+    # get filters
     surveyName = ['1500A_rf']
     lambda_model = np.array([1500.])
     albedo_model = np.array([0.38])
@@ -124,19 +128,19 @@ for i in range(len(mstar[ids])):
         print('---> ',surveyName[j])
         a = RS.RascasSurvey(surveyName[j],rascasDir,DomDumpDir,ramsesDir,ramsesTimestep)
         PhotometricTableParams=OrderedDict([('sedDir',sedDir),
-                                            ('sedModel','bpass100'),
+                                            ('sedModel',sedModel),
                                             ('lbda0_Angstrom',lambda_model[j]),
                                             ('photTableDir',photTableDir),
-                                            ('method','Monochromatic'),
+                                            ('method',spec_type),
                                             ])
             # get pivot wavelength of the filter and interpolate albedo & g_dust (constant over the whole filter)
         albedo = albedo_model[j]
         g_dust = g_dust_model[j]
             
-        dust_model_params = OrderedDict([('albedo','%.16e'%(albedo)),('g_dust','%.16e'%(g_dust)),('dust_model','SMC')])
+        dust_model_params = OrderedDict([('albedo','%.16e'%(albedo)),('g_dust','%.16e'%(g_dust)),('dust_model',dust_model)])
         
         a.setup_broad_band_survey(PhotometricTableParams,ComputationalDomain,DomainDecomposition,StellarEmissionDomain,
-                                      nphotons=1000000,ramses_params=ramses_params,gas_composition_params=gas_composition_params,
+                                      nphotons=nphot,ramses_params=ramses_params,gas_composition_params=gas_composition_params,
                                       HI_model_params=HI_model_params,dust_model_params=dust_model_params)
 
 ################################################################################

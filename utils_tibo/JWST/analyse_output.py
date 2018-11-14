@@ -12,7 +12,7 @@ import nircam
 
 ################################################################################
 # RAScas dir. 
-rascas_directory = '/scratch/garel/test_rascas_sphinx/'
+rascas_directory = '/scratch/garel/output/test_Mstar_gt1e-3/'
 
 ################################################################################
 
@@ -31,6 +31,7 @@ redshift = hcat.info['redshift']
 ids = np.where(mstar > 1.e-3)
 
 m1500 = np.array(len(mstar[ids]))
+surveyName = ['1500A_rf']
 
 for i in range(len(mstar[ids])):
     print(' ')
@@ -43,13 +44,10 @@ for i in range(len(mstar[ids])):
     print( hcat.hnum[ids][i])
     if hcat.hnum[ids][i] != 6114:
         rascasDir  = '%s/%5.5i/halo%i'%(rascas_directory,ramsesTimestep,hcat.hnum[ids][i])
-        # if hcat.hnum[ids][i] == 41361:
-        #     rascasDir  = "%s_interp"%(rascasDir)
         print(rascasDir)
         print(DomDumpDir)
         print(ramsesDir)
         
-        surveyName = ['1500A_rf']
         lambda_model = np.array([1500.])
         albedo_model = np.array([0.38])
         g_dust_model = np.array([0.70])
@@ -60,7 +58,7 @@ for i in range(len(mstar[ids])):
             a = RS.RascasSurvey(surveyName[j],rascasDir,DomDumpDir,ramsesDir,ramsesTimestep)
             a.load(savePhots=True,maxRuns=1)
             print(a.noResults)
-           # print(a.abs_mag(),a.abs_mag(no_dust=True))
+            print(a.abs_mag())
             print(a.nRealPhotons)
            
 ################################################################################
