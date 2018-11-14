@@ -12,7 +12,7 @@ import nircam
 
 ################################################################################
 # RAScas dir. 
-rascas_directory = '/scratch/garel/output/test_Mstar_gt1e-3/'
+rascas_directory = '/scratch/garel/rascas_sphinx/output/test_Mstar_gt1e-3/'
 
 ################################################################################
 

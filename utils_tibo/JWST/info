@@ -1,1 +1,10 @@
 Prepare/launch a RASCAS run on Sphinx:
+
+- Edit Makefile and compile
+- Edit paths/params in sphinx_uvCont.py
+- ipython sphinx_uvCont.py to generate arborescence and params files and pbscripts
+- Edit run_qsub_*.py files
+- run pbscipts:
+ipython run_qsub_pfs.py
+ipython run_qsub_cdd.py
+ipython run_qsub_rascas.py
