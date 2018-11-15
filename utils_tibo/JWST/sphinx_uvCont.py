@@ -49,11 +49,8 @@ redshift = hcat.info['redshift']
 ids = np.where(mstar > 1.e-3)
 
 #TIBO------------
-# Save haloid list
-fff = "%s%5.5i /haloid_list.dat"%(rascas_directory,ramsesTimestep)
-f = open(fff,'w')
-f.write("Halo IDs")
-            
+# Create haloid list array
+haloid_list = np.array(len(mstar[ids]))
 #OBIT------------
 
 for i in range(len(mstar[ids])):
@@ -61,7 +58,7 @@ for i in range(len(mstar[ids])):
     print('=============')
     print('halo %i'%hcat.hnum[ids][i])
     # TIBO - Write to haloid list
-    f.write("%i8 "%(hcat.hnum[ids][i]))
+    haloid_list[i] = hcat.hnum[ids][i]
     # OBIT
     print('Mstar = %.8e'%(mstar[ids][i]*1.e11))
     print('coordinates = ', (hcat.x_cu[ids][i]), (hcat.y_cu[ids][i]), (hcat.z_cu[ids][i]))
@@ -155,7 +152,12 @@ for i in range(len(mstar[ids])):
                                       nphotons=nphot,ramses_params=ramses_params,gas_composition_params=gas_composition_params,
                                       HI_model_params=HI_model_params,dust_model_params=dust_model_params)
 
-# TIBO - close haloid list file
+# TIBO - write haloid list file
+fff = "%s%5.5i/haloid_list.dat"%(rascas_directory,ramsesTimestep)
+f = open(fff,'w')
+f.write("Halo IDs")
+for j in range(len(haloid_list)):
+    f.write("%i8 "%(haloid_list[j]))
 f.close()
 #OBIT
  
