@@ -84,7 +84,7 @@ contains
     ! adapt n_species name to each module_gas_composition
     g(:)%nSiII    = ngas_temp(:)
     ! Deal with m_atom here: adapt m_species name to each module_gas_composition
-    g(:)%dopwidth = dopwidth_temp(:) / sqrt(mSi)
+    g(:)%dopwidth = 30.0d5 ! dopwidth_temp(:) / sqrt(mSi)
     
     modelprops_file = 'modelprops_file'
     file = trim(outputdir)//trim(modelprops_file)
