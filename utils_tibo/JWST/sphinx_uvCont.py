@@ -12,7 +12,8 @@ import nircam
 
 ################################################################################
 # RAScas dir. 
-rascas_directory = '/scratch/garel/rascas_sphinx/output/test_Mstar_gt1e-3/'
+rascas_directory = '/scratch/garel/rascas_sphinx/output/test_Mstar_gt1e-3_bis/'
+rascas_f90       = '/scratch/garel/rascas_sphinx/f90/'
 
 ################################################################################
 
@@ -47,10 +48,21 @@ redshift = hcat.info['redshift']
 
 ids = np.where(mstar > 1.e-3)
 
+#TIBO------------
+# Save haloid list
+fff = "%s%5.5i /haloid_list.dat"%(rascas_directory,ramsesTimestep)
+f = open(fff,'w')
+f.write("Halo IDs")
+            
+#OBIT------------
+
 for i in range(len(mstar[ids])):
     print(' ')
     print('=============')
     print('halo %i'%hcat.hnum[ids][i])
+    # TIBO - Write to haloid list
+    f.write("%i8 "%(hcat.hnum[ids][i]))
+    # OBIT
     print('Mstar = %.8e'%(mstar[ids][i]*1.e11))
     print('coordinates = ', (hcat.x_cu[ids][i]), (hcat.y_cu[ids][i]), (hcat.z_cu[ids][i]))
     print('Rvir = ',hcat.rvir_cu[ids][i])
@@ -126,7 +138,7 @@ for i in range(len(mstar[ids])):
 
     for j in range(len(surveyName)):
         print('---> ',surveyName[j])
-        a = RS.RascasSurvey(surveyName[j],rascasDir,DomDumpDir,ramsesDir,ramsesTimestep)
+        a = RS.RascasSurvey(surveyName[j],rascasDir,DomDumpDir,ramsesDir,ramsesTimestep,rascas_f90)
         PhotometricTableParams=OrderedDict([('sedDir',sedDir),
                                             ('sedModel',sedModel),
                                             ('lbda0_Angstrom',lambda_model[j]),
@@ -143,5 +155,9 @@ for i in range(len(mstar[ids])):
                                       nphotons=nphot,ramses_params=ramses_params,gas_composition_params=gas_composition_params,
                                       HI_model_params=HI_model_params,dust_model_params=dust_model_params)
 
+# TIBO - close haloid list file
+f.close()
+#OBIT
+ 
 ################################################################################
 

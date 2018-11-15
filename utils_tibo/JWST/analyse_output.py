@@ -13,6 +13,7 @@ import nircam
 ################################################################################
 # RAScas dir. 
 rascas_directory = '/scratch/garel/rascas_sphinx/output/test_Mstar_gt1e-3/'
+rascas_f90       = '/scratch/garel/rascas_sphinx/f90/'
 
 ################################################################################
 
@@ -55,7 +56,7 @@ for i in range(len(mstar[ids])):
         
         for j in range(len(surveyName)):
             print('---> ',surveyName[j])
-            a = RS.RascasSurvey(surveyName[j],rascasDir,DomDumpDir,ramsesDir,ramsesTimestep)
+            a = RS.RascasSurvey(surveyName[j],rascasDir,DomDumpDir,ramsesDir,ramsesTimestep,rascas_f90)
             a.load(savePhots=True,maxRuns=1)
             print(a.noResults)
             print(a.abs_mag())

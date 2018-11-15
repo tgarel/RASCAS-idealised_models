@@ -20,6 +20,7 @@ class RascasSurvey(object):
         - whatelse...
         """
         self.rascasDir      = rascasDir      # where rascas runs
+        self.rascas_f90     = rascas_f90     # where rascas code/exec are
         self.surveyName     = surveyName     # name of survey
         self.surveyDir      = "%s/%s"%(self.rascasDir,self.surveyName) # outputs of RASCAS are in rascasDir/surveyName/
         self.DomDumpDir     = "%s/%s"%(self.rascasDir,DomDumpDir)      # outputs of CreateDomDump are in rascasDir/DomDumpDir/
@@ -547,7 +548,9 @@ class RascasSurvey(object):
             f.write("module load mpt/2.10   \n")
             f.write("export OMP_NUM_THREADS=16 \n")
             f.write("set -x   \n")
-            f.write("/scratch/garel/rascas_sphinx/f90/CreateDomDump %s >& %s.log \n"%(cddParamFile,cddParamFile))
+            #f.write("/scratch/garel/rascas_sphinx/f90/CreateDomDump %s >& %s.log \n"%(cddParamFile,cddParamFile))
+            f.write("%s CreateDomDump %s >& %s.log \n"%(rascas_f90,cddParamFile,cddParamFile))
+
             f.close()
             
 
@@ -662,7 +665,9 @@ class RascasSurvey(object):
         f.write("module load intel-mkl-11/11.1.3   \n")
         f.write("module load mpt/2.10   \n")
         f.write("set -x   \n")
-        f.write("/scratch/garel/rascas_sphinx/f90/PhotonsFromStars %s >& %s.log \n"%(pfsParamFile,pfsParamFile))
+        #f.write("/scratch/garel/rascas_sphinx/f90/PhotonsFromStars %s >& %s.log \n"%(pfsParamFile,pfsParamFile))
+        f.write("%s PhotonsFromStars %s >& %s.log \n"%(rascas_f90,pfsParamFile,pfsParamFile))
+
         f.close()
 
         
@@ -767,7 +772,9 @@ class RascasSurvey(object):
         f.write("module load intel-mkl-11/11.1.3   \n")
         f.write("module load mpt/2.10   \n")
         f.write("set -x   \n")
-        f.write("time mpiexec_mpt -np 64 dplace -s1 -c0-15 /scratch/garel/rascas_sphinx/f90/rascas %s >& %s.log \n"%(rascasParamFile,rascasParamFile))
+        #f.write("time mpiexec_mpt -np 64 dplace -s1 -c0-15 /scratch/garel/rascas_sphinx/f90/rascas %s >& %s.log \n"%(rascasParamFile,rascasParamFile))
+        f.write("time mpiexec_mpt -np 64 dplace -s1 -c0-15 %s rascas %s >& %s.log \n"%(rascas_f90,rascasParamFile,rascasParamFile))
+
         f.close()
             
 
