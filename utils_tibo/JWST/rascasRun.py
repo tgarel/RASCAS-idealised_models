@@ -14,7 +14,7 @@
 
 class RascasSurvey(object):
 
-    def __init__(self,surveyName,rascasDir,DomDumpDir,ramsesDir,ramsesTimestep):
+    def __init__(self,surveyName,rascasDir,DomDumpDir,ramsesDir,ramsesTimestep,rascas_f90):
         """
         - Generate directory structure for rascas run (if not already there)
         - whatelse...
@@ -549,7 +549,7 @@ class RascasSurvey(object):
             f.write("export OMP_NUM_THREADS=16 \n")
             f.write("set -x   \n")
             #f.write("/scratch/garel/rascas_sphinx/f90/CreateDomDump %s >& %s.log \n"%(cddParamFile,cddParamFile))
-            f.write("%s CreateDomDump %s >& %s.log \n"%(rascas_f90,cddParamFile,cddParamFile))
+            f.write("%sCreateDomDump %s >& %s.log \n"%(self.rascas_f90,cddParamFile,cddParamFile))
 
             f.close()
             
@@ -666,7 +666,7 @@ class RascasSurvey(object):
         f.write("module load mpt/2.10   \n")
         f.write("set -x   \n")
         #f.write("/scratch/garel/rascas_sphinx/f90/PhotonsFromStars %s >& %s.log \n"%(pfsParamFile,pfsParamFile))
-        f.write("%s PhotonsFromStars %s >& %s.log \n"%(rascas_f90,pfsParamFile,pfsParamFile))
+        f.write("%sPhotonsFromStars %s >& %s.log \n"%(self.rascas_f90,pfsParamFile,pfsParamFile))
 
         f.close()
 
@@ -773,7 +773,7 @@ class RascasSurvey(object):
         f.write("module load mpt/2.10   \n")
         f.write("set -x   \n")
         #f.write("time mpiexec_mpt -np 64 dplace -s1 -c0-15 /scratch/garel/rascas_sphinx/f90/rascas %s >& %s.log \n"%(rascasParamFile,rascasParamFile))
-        f.write("time mpiexec_mpt -np 64 dplace -s1 -c0-15 %s rascas %s >& %s.log \n"%(rascas_f90,rascasParamFile,rascasParamFile))
+        f.write("time mpiexec_mpt -np 64 dplace -s1 -c0-15 %srascas %s >& %s.log \n"%(self.rascas_f90,rascasParamFile,rascasParamFile))
 
         f.close()
             

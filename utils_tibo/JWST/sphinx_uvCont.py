@@ -12,7 +12,7 @@ import nircam
 
 ################################################################################
 # RAScas dir. 
-rascas_directory = '/scratch/garel/rascas_sphinx/output/test_Mstar_gt1e-3_bis/'
+rascas_directory = '/scratch/garel/rascas_sphinx/output/test_Mstar_gt1e-3_bis'
 rascas_f90       = '/scratch/garel/rascas_sphinx/f90/'
 
 ################################################################################
@@ -50,7 +50,9 @@ ids = np.where(mstar > 1.e-3)
 
 #TIBO------------
 # Create haloid list array
-haloid_list = np.array(len(mstar[ids]))
+haloid_list = [] #np.array([8,8,8,8,8,8,8,8,8,8])
+print('Halo list')
+print(haloid_list)
 #OBIT------------
 
 for i in range(len(mstar[ids])):
@@ -58,7 +60,9 @@ for i in range(len(mstar[ids])):
     print('=============')
     print('halo %i'%hcat.hnum[ids][i])
     # TIBO - Write to haloid list
-    haloid_list[i] = hcat.hnum[ids][i]
+    print(i)
+    haloid_list.append(hcat.hnum[ids][i])
+    #haloid_list[i] = hcat.hnum[ids][i]
     # OBIT
     print('Mstar = %.8e'%(mstar[ids][i]*1.e11))
     print('coordinates = ', (hcat.x_cu[ids][i]), (hcat.y_cu[ids][i]), (hcat.z_cu[ids][i]))
@@ -153,11 +157,11 @@ for i in range(len(mstar[ids])):
                                       HI_model_params=HI_model_params,dust_model_params=dust_model_params)
 
 # TIBO - write haloid list file
-fff = "%s%5.5i/haloid_list.dat"%(rascas_directory,ramsesTimestep)
+fff = "%s/%5.5i/haloid_list.dat"%(rascas_directory,ramsesTimestep)
 f = open(fff,'w')
-f.write("Halo IDs")
+f.write("Halo IDs \n")
 for j in range(len(haloid_list)):
-    f.write("%i8 "%(haloid_list[j]))
+    f.write("%i \n"%(haloid_list[j]))
 f.close()
 #OBIT
  
