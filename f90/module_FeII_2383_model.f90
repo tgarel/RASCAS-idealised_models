@@ -1,8 +1,8 @@
-module module_MgII_2804_model
+module module_FeII_2383_model ! Fe_II UV2
 
-  ! This module describes the absorption of photons by MgII from level 2p^6 3p 2P 1/2 to level 2p^6 3s 2S
-  ! This transition is 2803.53 A.
-  ! The module also implements one decay channel (resonant) at 2803.25 A.
+  ! This module describes the absorption of photons by FeII from level  3d^6 4s 9/2 to level 3d^6 4p 11/2.
+  ! This transition is at 2382.76 A. (named 2383)
+  ! The module implements the only decay channels (resonant) at 2382.76 A. 
 
   use module_constants
   use module_utils, only : isotropic_direction
@@ -14,60 +14,62 @@ module module_MgII_2804_model
 
   private
 
-  ! Atomic data, taken from Zhu et al., ApJ 815, 2015 (table 2)
+  ! Atomic data, taken from Zhu et al, 2015 (Table 2)
   ! In this module, we use the following convention :
-  ! level 1 is 2p^6 3s 2S
-  ! level 2 is 2p^6 3p 2P 1/2
+  ! level 1 is 3d^6 4s 9/2
+  ! level 3 is 3d^6 4p 11/2
 
-  ! transition between levels 2 and 1
-  real(kind=8),parameter :: lambda12       = 2803.53d0                    ! transition wavelength [A]
-  real(kind=8),parameter :: lambda12_cm    = lambda12 / cmtoA             ! [cm]
-  real(kind=8),parameter :: nu12           = clight / lambda12_cm         ! [Hz]
-  real(kind=8),parameter :: f12            = 0.303d0                      ! oscillator strength
-  real(kind=8),parameter :: sigma12_factor = sqrtpi*e_ch**2*f12/me/clight ! multiply by Voigt(x,a)/delta_nu_doppler to get sigma.
-  real(kind=8),parameter :: A21            = 2.57d8                       ! spontaneous decay [/s]
+  ! transition between levels 1 and 3
+  real(kind=8),parameter :: lambda13       = 2382.76d0                    ! transition wavelength [A]
+  real(kind=8),parameter :: lambda13_cm    = lambda13 / cmtoA             ! [cm]
+  real(kind=8),parameter :: nu13           = clight / lambda13_cm         ! [Hz]
+  real(kind=8),parameter :: f13            = 3.2d-1                       ! oscillator strength
+  real(kind=8),parameter :: sigma13_factor = sqrtpi*e_ch**2*f13/me/clight ! multiply by Voigt(x,a)/delta_nu_doppler to get sigma.
+  real(kind=8),parameter :: A31            = 3.13d8                       ! spontaneous decay [/s]
 
-  public :: get_tau_MgII_2804, scatter_MgII_2804, read_MgII_2804_params, print_MgII_2804_params
+  
+  public :: get_tau_FeII_2383, scatter_FeII_2383, read_FeII_2383_params, print_FeII_2383_params
 
 contains
 
-  function get_tau_MgII_2804(nMgII, vth, distance_to_border_cm, nu_cell)
+  function get_tau_FeII_2383(nFeII, vth, distance_to_border_cm, nu_cell)
 
     ! --------------------------------------------------------------------------
-    ! compute optical depth of MgII-2804 over a given distance
+    ! compute optical depth of FeII-2382.76 over a given distance
     ! --------------------------------------------------------------------------
     ! INPUTS:
-    ! - nMgII    : number density of MgII ions                              [ cm^-3 ]
-    ! - vth      : thermal (+ small-scale turbulence) velocity of SiII ions [ cm / s ]
+    ! - nFeII    : number density of FeII ions                              [ cm^-3 ]
+    ! - vth      : thermal (+ small-scale turbulence) velocity of FeII ions [ cm / s ]
     ! - distance_to_border_cm : distance over which we compute tau          [ cm ]
     ! - nu_cell  : photon's frequency in the frame of the cell              [ Hz ]
     ! OUTPUT :
-    ! - get_tau_MgII_2804 : optical depth of Magnesium's line over distance_to_border_cm
+    ! - get_tau_FeII_2383 : optical depth of Fer's line over distance_to_border_cm
     ! --------------------------------------------------------------------------
     
-    real(kind=8),intent(in) :: nMgII,vth,distance_to_border_cm,nu_cell
-    real(kind=8)            :: delta_nu_doppler,x_cell,sigma,a,h_cell,get_tau_MgII_2804
+    real(kind=8),intent(in) :: nFeII,vth,distance_to_border_cm,nu_cell
+    real(kind=8)            :: delta_nu_doppler,x_cell,sigma,a,h_cell,get_tau_FeII_2383
 
     ! compute Doppler width and a-parameter
-    delta_nu_doppler = vth / lambda12_cm
-    a = A21 / (fourpi * delta_nu_doppler)
+    delta_nu_doppler = vth / lambda13_cm
+    a = A31 / (fourpi * delta_nu_doppler)
 
-    ! cross section of MgII-2804
-    x_cell = (nu_cell - nu12) / delta_nu_doppler
+    ! cross section of FeII-2382.76
+    x_cell = (nu_cell - nu13) / delta_nu_doppler
     h_cell = voigt_function(x_cell,a)
-    sigma  = sigma12_factor / delta_nu_doppler * h_cell
+    sigma  = sigma13_factor / delta_nu_doppler * h_cell
 
-    get_tau_MgII_2804 = sigma * nMgII * distance_to_border_cm
+    get_tau_FeII_2383 = sigma * nFeII * distance_to_border_cm
    
     return
 
-  end function get_tau_MgII_2804
+  end function get_tau_FeII_2383
 
   
-  subroutine scatter_MgII_2804(vcell,vth,nu_cell,k,nu_ext,iran)
+  subroutine scatter_FeII_2383(vcell,vth,nu_cell,k,nu_ext,iran)
 
     ! ---------------------------------------------------------------------------------
-    ! perform scattering event on a MgII ion
+    ! perform scattering event on a FeII ion
+    ! The photon is absorbed in transition 1->3 and may decay as 3->1 
     ! ---------------------------------------------------------------------------------
     ! INPUTS :
     ! - vcell    : bulk velocity of the gas (i.e. cell velocity)       [ cm / s ] 
@@ -93,9 +95,9 @@ contains
     real(kind=8),dimension(3)               :: knew
 
     ! define x_cell & a
-    delta_nu_doppler = vth / lambda12_cm 
-    a = A21 / fourpi / delta_nu_doppler
-    x_cell = (nu_cell - nu12) / delta_nu_doppler
+    delta_nu_doppler = vth / lambda13_cm 
+    a = A31 / fourpi / delta_nu_doppler
+    x_cell = (nu_cell - nu13) / delta_nu_doppler
 
     ! 1/ component parallel to photon's propagation
     ! -> get velocity of interacting atom parallel to propagation
@@ -108,9 +110,10 @@ contains
     uper   = sqrt(-log(ruper))*cos(twopi*r2)
     uper   = uper * vth  ! from x to velocity
 
-    ! 3/ incoming frequency in atom's frame
-    nu_atom = nu_cell - nu_ext * upar/clight
-
+    ! 3/ chose de-excitation channel to determine output freq. in atom's frame
+    ! photon goes down to level 1 -> coherent scattering
+    nu_atom = nu_cell - nu_ext * upar/clight ! incoming frequency in atom's frame = outcoming freq in same frame
+    
     ! 4/ determine direction of scattered photon
     call isotropic_direction(knew,iran)
     mu = k(1)*knew(1) + k(2)*knew(2) + k(3)*knew(3)
@@ -119,14 +122,13 @@ contains
     ! 5/ compute atom freq. in external frame, after scattering
     scalar = knew(1) * vcell(1) + knew(2) * vcell(2) + knew(3)* vcell(3)
     nu_ext = nu_atom * (1.0d0 + scalar/clight + (upar*mu + bu*uper)/clight)
-    nu_cell = (1.0d0 - scalar/clight) * nu_ext 
+    nu_cell = (1.d0 - scalar/clight) * nu_ext 
     k = knew
 
-  end subroutine scatter_MgII_2804
+  end subroutine scatter_FeII_2383
 
 
-
-  subroutine read_MgII_2804_params(pfile)
+  subroutine read_FeII_2383_params(pfile)
     
     ! ---------------------------------------------------------------------------------
     ! subroutine which reads parameters of current module in the parameter file pfile
@@ -141,11 +143,10 @@ contains
     
     return
     
-  end subroutine read_MgII_2804_params
+  end subroutine read_FeII_2383_params
 
 
-
-  subroutine print_MgII_2804_params(unit)
+  subroutine print_FeII_2383_params(unit)
     
     ! ---------------------------------------------------------------------------------
     ! write parameter values to std output or to an open file if argument unit is
@@ -164,8 +165,6 @@ contains
     
     return
     
-  end subroutine print_MgII_2804_params
+  end subroutine print_FeII_2383_params
   
-  
-  
-end module module_MgII_2804_model
+end module module_FeII_2383_model

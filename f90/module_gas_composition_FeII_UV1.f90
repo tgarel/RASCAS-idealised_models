@@ -1,10 +1,12 @@
 module module_gas_composition
 
-  ! Pure MgII gas. 
-  ! This modules handles two transitions in absorption (2796 and 2804). 
+  ! Pure FeII gas. 
+  ! This modules handles two transitions in absorption by FeII (2587, 2600)  
+  ! and five decay channels (resonant and fluorescent) at 2587, 2600, 2612, 2626, and 2637. 
+  ! This corresponds to the multiplet UV1
 
-  use module_MgII_2796_model
-  use module_MgII_2804_model
+  use module_FeII_2587_model
+  use module_FeII_2600_model
   use module_random
   use module_ramses
   use module_constants
@@ -16,8 +18,8 @@ module module_gas_composition
   type, public :: gas
      ! fluid
      real(kind=8) :: v(3)      ! gas velocity [cm/s]
-     real(kind=8) :: nMgII     ! numerical density of MgII  [#/cm3]
-                               ! MgII -> density is computed as abundance_number_MgII * nHI * metallicity / solar_metallicity
+     real(kind=8) :: nFeII     ! numerical density of FeII  [#/cm3]
+                               ! FeII -> density is computed as abundance_number_FeII * nHI * metallicity / solar_metallicity
      real(kind=8) :: dopwidth  ! Doppler width [cm/s]
   end type gas
   real(kind=8),public :: box_size_cm   ! size of simulation box in cm. 
@@ -27,14 +29,14 @@ module module_gas_composition
   ! --------------------------------------------------------------------------
   ! possibility to overwrite ramses values with an ad-hoc model 
   logical                  :: gas_overwrite       = .false. ! if true, define cell values from following parameters 
-  real(kind=8)             :: fix_nMgII           = 0.0d0   ! ad-hoc HI density (H/cm3)
+  real(kind=8)             :: fix_nFeII           = 0.0d0   ! ad-hoc HI density (H/cm3)
   real(kind=8)             :: fix_vth             = 1.0d5   ! ad-hoc thermal velocity (cm/s)
   real(kind=8)             :: fix_vel             = 0.0d0   ! ad-hoc cell velocity (cm/s) -> NEED BETTER PARAMETERIZATION for more than static... 
-  real(kind=8)             :: fix_box_size_cm     = 1.0d8   ! ad-hoc box size in cm. 
+  real(kind=8)             :: fix_box_size_cm     = 1.0d8   ! ad-hoc box size in cm.
   ! miscelaneous
-  logical                  :: verbose             = .false. ! display some run-time info on this module
+  logical                  :: verbose             = .true. ! display some run-time info on this module
   ! --------------------------------------------------------------------------
-  
+
   ! public functions:
   public :: gas_from_ramses_leaves,get_gas_velocity,gas_get_scatter_flag,gas_scatter,dump_gas
   public :: read_gas,gas_destructor,read_gas_composition_params,print_gas_composition_params
@@ -52,7 +54,7 @@ contains
     real(kind=8),intent(in)           :: ramses_var(nvar,nleaf)
     type(gas),dimension(:),allocatable,intent(out) :: g
     integer(kind=4)                   :: ileaf
-    real(kind=8),allocatable          :: v(:,:), T(:), nMgII(:)
+    real(kind=8),allocatable          :: v(:,:), T(:), nFeII(:)
 
     ! allocate gas-element array
     allocate(g(nleaf))
@@ -64,7 +66,7 @@ contains
        box_size_cm = ramses_get_box_size_cm(repository,snapnum)
 
        ! compute velocities in cm / s
-       if (verbose) write(*,*) '-- module_gas_composition_MgII : extracting velocities from ramses '
+       if (verbose) write(*,*) '-- module_gas_composition_FeII_UV1 : extracting velocities from ramses '
        allocate(v(3,nleaf))
        call ramses_get_velocity_cgs(repository,snapnum,nleaf,nvar,ramses_var,v)
        do ileaf = 1,nleaf
@@ -72,15 +74,18 @@ contains
        end do
        deallocate(v)
 
-       ! get nMgII and temperature from ramses
-       if (verbose) write(*,*) '-- module_gas_composition_MgII : extracting nMgII from ramses '
-       allocate(T(nleaf),nMgII(nleaf))
-       call ramses_get_T_nMgII_cgs(repository,snapnum,nleaf,nvar,ramses_var,T,nMgII)
-       g(:)%nMgII = nMgII(:)
+       ! get nFeII and temperature from ramses
+       if (verbose) write(*,*) '-- module_gas_composition_FeII_UV1 : extracting nFeII from ramses '
+       allocate(T(nleaf),nFeII(nleaf))
+       call ramses_get_T_nFeII_cgs(repository,snapnum,nleaf,nvar,ramses_var,T,nFeII)
+       g(:)%nFeII = nFeII(:)
        ! compute thermal velocity 
        ! ++++++ TURBULENT VELOCITY >>>>> parameter to add and use here
-       g(:)%dopwidth = sqrt(2.0d0*kb/mMg*T) ! [ cm/s ]
-       deallocate(T,nMgII)
+       g(:)%dopwidth = sqrt(2.0d0*kb/mFe*T) ! [ cm/s ]
+       deallocate(T,nFeII)
+
+       if (verbose) print*,'min/max of nFeII : ',minval(g(:)%nFeII),maxval(g(:)%nFeII)
+       
     end if
 
     return
@@ -97,9 +102,9 @@ contains
     g(:)%v(1)     = fix_vel
     g(:)%v(2)     = fix_vel
     g(:)%v(3)     = fix_vel
-    g(:)%nMgII    = fix_nMgII
+    g(:)%nFeII    = fix_nFeII
     g(:)%dopwidth = fix_vth
-       
+
   end subroutine overwrite_gas
 
 
@@ -119,7 +124,7 @@ contains
     ! Decide whether a scattering event occurs, and if so, on which element
     ! --------------------------------------------------------------------------
     ! INPUTS:
-    ! - cell_gas : MgII (with two absorption channels)
+    ! - cell_gas : FeII (with two absorption channels)
     ! - distance_to_border_cm : the maximum distance the photon may travel (before leaving the cell)
     ! - nu_cell : photon frequency in cell's frame [ Hz ]
     ! - tau_abs : optical depth at which the next scattering event will occur
@@ -127,7 +132,7 @@ contains
     ! OUTPUTS:
     ! - distance_to_border_cm : comes out as the distance to scattering event (if there is an event)
     ! - tau_abs : 0 if a scatter occurs, decremented by tau_cell if photon escapes cell. 
-    ! - gas_get_scatter_flag : 0 [no scatter], 1 [MgII-2796 scatter], 2 [MgII-2804 scatter]
+    ! - gas_get_scatter_flag : 0 [no scatter], 1 [FeII-2587 scatter], 2 [FeII-2600 scatter]
     ! --------------------------------------------------------------------------
 
     type(gas),intent(in)                  :: cell_gas
@@ -136,28 +141,28 @@ contains
     real(kind=8),intent(inout)            :: tau_abs                ! tau at which scattering is set to occur.
     integer,intent(inout)                 :: iran 
     integer(kind=4)                       :: gas_get_scatter_flag 
-    real(kind=8)                          :: tau_MgII_2796, tau_MgII_2804, tau_cell, proba27, x 
-
+    real(kind=8)                          :: tau_FeII_2587, tau_FeII_2600 , tau_cell, proba87, x
+    
     ! compute optical depths for different components of the gas.
-    tau_MgII_2796 = get_tau_MgII_2796(cell_gas%nMgII, cell_gas%dopwidth, distance_to_border_cm, nu_cell)
-    tau_MgII_2804 = get_tau_MgII_2804(cell_gas%nMgII, cell_gas%dopwidth, distance_to_border_cm, nu_cell)
-    tau_cell      = tau_MgII_2796 + tau_MgII_2804
+    tau_FeII_2587 = get_tau_FeII_2587(cell_gas%nFeII, cell_gas%dopwidth, distance_to_border_cm, nu_cell)
+    tau_FeII_2600 = get_tau_FeII_2600(cell_gas%nFeII, cell_gas%dopwidth, distance_to_border_cm, nu_cell)
+    tau_cell      = tau_FeII_2587 + tau_FeII_2600
 
     if (tau_abs > tau_cell) then  ! photon is due for absorption outside the cell 
        gas_get_scatter_flag = 0
        tau_abs = tau_abs - tau_cell
-       if (tau_abs.lt.0.0d0) then
+       if (tau_abs.lt.0.d0) then
           print*, 'tau_abs est negatif'
           stop
        endif
     else  ! the scattering happens inside the cell
-       ! decide if it is 2796 or 2804.
-       proba27 = tau_MgII_2796 /  tau_cell
+       ! decide if it is 2587 or 2600
+       proba87 = tau_FeII_2587 / tau_cell
        x = ran3(iran)
-       if (x <= proba27) then
-          gas_get_scatter_flag = 1 ! absorption by MgII-2796
+       if (x <= proba87) then
+          gas_get_scatter_flag = 1 ! absorption by FeII-2587
        else
-          gas_get_scatter_flag = 2 ! absorption by MgII-2804
+          gas_get_scatter_flag = 2 ! absorption by FeII-2600
        end if
        ! and transform "distance_to_border_cm" in "distance_to_absorption_cm"
        distance_to_border_cm = distance_to_border_cm * (tau_abs / tau_cell)
@@ -170,7 +175,7 @@ contains
 
 
   subroutine gas_scatter(flag,cell_gas,nu_cell,k,nu_ext,iran)
-
+    
     integer, intent(inout)                    :: flag
     type(gas), intent(in)                     :: cell_gas
     real(kind=8), intent(inout)               :: nu_cell, nu_ext
@@ -179,11 +184,11 @@ contains
 
     select case(flag)
     case(1)
-       call scatter_MgII_2796(cell_gas%v, cell_gas%dopwidth, nu_cell, k, nu_ext, iran)
+       call scatter_FeII_2587(cell_gas%v, cell_gas%dopwidth, nu_cell, k, nu_ext, iran)
     case(2)
-       call scatter_MgII_2804(cell_gas%v, cell_gas%dopwidth, nu_cell, k, nu_ext, iran)
+       call scatter_FeII_2600(cell_gas%v, cell_gas%dopwidth, nu_cell, k, nu_ext, iran)
     end select
-    
+
   end subroutine gas_scatter
 
 
@@ -194,7 +199,7 @@ contains
     integer                           :: i,nleaf
     nleaf = size(g)
     write(unit) (g(i)%v(:), i=1,nleaf)
-    write(unit) (g(i)%nMgII, i=1,nleaf)
+    write(unit) (g(i)%nFeII, i=1,nleaf)
     write(unit) (g(i)%dopwidth, i=1,nleaf)
     write(unit) box_size_cm 
   end subroutine dump_gas
@@ -210,7 +215,7 @@ contains
        call overwrite_gas(g)
     else
        read(unit) (g(i)%v(:),i=1,n)
-       read(unit) (g(i)%nMgII,i=1,n)
+       read(unit) (g(i)%nFeII,i=1,n)
        read(unit) (g(i)%dopwidth,i=1,n)
        read(unit) box_size_cm 
     end if
@@ -264,8 +269,8 @@ contains
           select case (trim(name))
           case ('gas_overwrite')
              read(value,*) gas_overwrite
-          case ('fix_nMgII')
-             read(value,*) fix_nMgII
+          case ('fix_nFeII')
+             read(value,*) fix_nFeII
           case ('fix_vth')
              read(value,*) fix_vth
           case ('fix_vel')
@@ -280,9 +285,9 @@ contains
     close(10)
 
     call read_ramses_params(pfile)
-    call read_MgII_2796_params(pfile)
-    call read_MgII_2804_params(pfile)
-
+    call read_FeII_2587_params(pfile)
+    call read_FeII_2600_params(pfile)
+    
     return
 
   end subroutine read_gas_composition_params
@@ -302,7 +307,7 @@ contains
        write(unit,'(a,a,a)') '[gas_composition]'
        write(unit,'(a)')        '# overwrite parameters'
        write(unit,'(a,L1)')     '  gas_overwrite         = ',gas_overwrite
-       write(unit,'(a,ES10.3)') '  fix_nMgII            = ',fix_nMgII
+       write(unit,'(a,ES10.3)') '  fix_nFeII            = ',fix_nFeII
        write(unit,'(a,ES10.3)') '  fix_vth              = ',fix_vth
        write(unit,'(a,ES10.3)') '  fix_vel              = ',fix_vel
        write(unit,'(a,ES10.3)') '  fix_box_size_cm      = ',fix_box_size_cm
@@ -311,14 +316,14 @@ contains
        write(unit,'(a)')             ' '
        call print_ramses_params(unit)
        write(unit,'(a)')             ' '
-       call print_MgII_2796_params(unit)
+       call print_FeII_2587_params(unit)
        write(unit,'(a)')             ' '
-       call print_MgII_2804_params(unit)
+       call print_FeII_2600_params(unit)
     else
        write(*,'(a,a,a)') '[gas_composition]'
        write(*,'(a)')        '# overwrite parameters'
        write(*,'(a,L1)')     '  gas_overwrite         = ',gas_overwrite
-       write(*,'(a,ES10.3)') '  fix_nMgII            = ',fix_nMgII
+       write(*,'(a,ES10.3)') '  fix_nFeII            = ',fix_nFeII
        write(*,'(a,ES10.3)') '  fix_vth              = ',fix_vth
        write(*,'(a,ES10.3)') '  fix_vel              = ',fix_vel
        write(*,'(a,ES10.3)') '  fix_box_size_cm      = ',fix_box_size_cm
@@ -327,9 +332,9 @@ contains
        write(*,'(a)')             ' '
        call print_ramses_params
        write(*,'(a)')             ' '
-       call print_MgII_2796_params
+       call print_FeII_2587_params
        write(*,'(a)')             ' '
-       call print_MgII_2804_params
+       call print_FeII_2600_params
     end if
 
     return

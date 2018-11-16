@@ -88,9 +88,13 @@ COMPOBJS = module_dust_model.o module_D_model.o module_HI_model.o module_gas_com
 #COMPOBJS = module_MgII_2796_model.o module_MgII_2804_model.o module_gas_composition_MgII.o
 # 8/ MgII and dust
 #COMPOBJS = module_dust_model.o module_MgII_2796_model.o module_MgII_2804_model.o module_gas_composition_MgII_dust.o
+# 9/ FeII UV1
+#COMPOBJS = module_FeII_2587_model.o module_FeII_2600_model.o module_gas_composition_FeII_UV1.o
+# 10/ FeII UV1 and dust
+#COMPOBJS = module_dust_model.o module_FeII_2587_model.o module_FeII_2600_model.o module_gas_composition_FeII_UV1_dust.o
 
 
-GASOBJS = module_constants.o module_random.o module_utils.o module_domain.o module_ramses.o module_uparallel.o $(COMPOBJS)
+GASOBJS = module_constants.o module_random.o module_utils.o module_voigt.o module_domain.o module_ramses.o module_uparallel.o $(COMPOBJS)
 
 OBJSDOM = $(GASOBJS) module_select.o module_mesh.o
 

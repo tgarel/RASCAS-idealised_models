@@ -1,9 +1,9 @@
-module module_SiII_1193_model
+module module_FeII_2344_model ! Fe_II UV3
 
-  ! This module describes the absorption of photons by SiII from level  3s^2 3p 2P^0 1/2 to level 3s 3p^2 2P 1/2.
-  ! This transition is at 1193.28 A.
-  ! The module also implements the two decay channels (resonant and fluorescent) at 1193.28 A and 1197.39 A. 
-  
+  ! This module describes the absorption of photons by FeII from level  3d^6 4s 9/2 to level 3d^6 4p 7/2.
+  ! This transition is at 2344.21 A. (named 2344)
+  ! The module also implements the two decay channels (resonant and fluorescent) at 2344.21 A , 2365.55 A. and 2381.49 
+
   use module_constants
   use module_utils, only : isotropic_direction
   use module_uparallel
@@ -14,70 +14,77 @@ module module_SiII_1193_model
 
   private
 
-  ! Atomic data, taken from Scarlata and Panagia, AjJ 801, 2015 (Table 1)
+  ! Atomic data, taken from Zhu et al, , 2015 (Table 2)
   ! In this module, we use the following convention :
-  ! level 1 is 3s^2 3p 2P^0 1/2
-  ! level 2 is 3s^2 3p 2P^0 3/2
-  ! level 3 is 3s 3p^2 2P 1/2
+  ! level 1 is 3d^6 4s 9/2
+  ! level 2 is 3d^6 4s 7/2
+  ! level 3 is 3d^6 4s 5/2
+  ! level 4 is 3d^6 4p 7/2
 
-  ! transition between levels 1 and 3 
-  real(kind=8),parameter :: lambda13       = 1193.28d0                    ! transition wavelength [A]
-  real(kind=8),parameter :: lambda13_cm    = lambda13 / cmtoA             ! [cm]
-  real(kind=8),parameter :: nu13           = clight / lambda13_cm         ! [Hz]
-  real(kind=8),parameter :: f13            = 0.575d0                      ! oscillator strength
-  real(kind=8),parameter :: sigma13_factor = sqrtpi*e_ch**2*f13/me/clight ! multiply by Voigt(x,a)/delta_nu_doppler to get sigma.
-  real(kind=8),parameter :: A31            = 2.69d9                       ! spontaneous decay [/s]
+  ! transition between levels 1 and 4
+  real(kind=8),parameter :: lambda14       = 2344.21d0                    ! transition wavelength [A]
+  real(kind=8),parameter :: lambda14_cm    = lambda14 / cmtoA             ! [cm]
+  real(kind=8),parameter :: nu14           = clight / lambda14_cm         ! [Hz]
+  real(kind=8),parameter :: f14            = 1.14d-1                      ! oscillator strength
+  real(kind=8),parameter :: sigma14_factor = sqrtpi*e_ch**2*f14/me/clight ! multiply by Voigt(x,a)/delta_nu_doppler to get sigma.
+  real(kind=8),parameter :: A41            = 1.73d8                       ! spontaneous decay [/s]
 
-  ! transition between levels 2 and 3
-  real(kind=8),parameter :: lambda23       = 1197.39d0                    ! transition wavelength [A]
-  real(kind=8),parameter :: lambda23_cm    = lambda23 / cmtoA             ! [cm]
-  real(kind=8),parameter :: nu23           = clight / lambda23_cm         ! [Hz]
-  real(kind=8),parameter :: A32            = 1.4d9                        ! spontaneous decay [/s]
+  ! transition between levels 4 and 2
+  real(kind=8),parameter :: lambda24       = 2365.55d0                    ! transition wavelength [A]
+  real(kind=8),parameter :: lambda24_cm    = lambda24 / cmtoA             ! [cm]
+  real(kind=8),parameter :: nu24           = clight / lambda24_cm         ! [Hz]
+  real(kind=8),parameter :: A42            = 5.9d7                        ! spontaneous decay [/s]
+
+  ! transition between levels 4 and 3
+  real(kind=8),parameter :: lambda34       = 2381.49d0                    ! transition wavelength [A]
+  real(kind=8),parameter :: lambda34_cm    = lambda34 / cmtoA             ! [cm]
+  real(kind=8),parameter :: nu34           = clight / lambda34_cm         ! [Hz]
+  real(kind=8),parameter :: A43            = 3.1d7                        ! spontaneous decay [/s]
   
-  real(kind=8),parameter :: Atot = A31+A32
-
-  public :: get_tau_SiII_1193, scatter_SiII_1193, read_SiII_1193_params, print_SiII_1193_params
+  real(kind=8),parameter :: Atot = A41+A42+A43
+  
+  public :: get_tau_FeII_2344, scatter_FeII_2344, read_FeII_2344_params, print_FeII_2344_params
 
 contains
 
-  function get_tau_SiII_1193(nSiII, vth, distance_to_border_cm, nu_cell)
+  function get_tau_FeII_2344(nFeII, vth, distance_to_border_cm, nu_cell)
 
     ! --------------------------------------------------------------------------
-    ! compute optical depth of SiII-1193.28 over a given distance
+    ! compute optical depth of FeII-2344.21 over a given distance
     ! --------------------------------------------------------------------------
     ! INPUTS:
-    ! - nSiII    : number density of SiII ions                              [ cm^-3 ]
-    ! - vth      : thermal (+ small-scale turbulence) velocity of SiII ions [ cm / s ]
+    ! - nFeII    : number density of FeII ions                              [ cm^-3 ]
+    ! - vth      : thermal (+ small-scale turbulence) velocity of FeII ions [ cm / s ]
     ! - distance_to_border_cm : distance over which we compute tau          [ cm ]
     ! - nu_cell  : photon's frequency in the frame of the cell              [ Hz ]
     ! OUTPUT :
-    ! - get_tau_SiII_1193 : optical depth of Silicon's line over distance_to_border_cm
+    ! - get_tau_FeII_2344 : optical depth of Fer's line over distance_to_border_cm
     ! --------------------------------------------------------------------------
     
-    real(kind=8),intent(in) :: nSiII,vth,distance_to_border_cm,nu_cell
-    real(kind=8)            :: delta_nu_doppler,x_cell,sigma,a,h_cell,get_tau_SiII_1193
+    real(kind=8),intent(in) :: nFeII,vth,distance_to_border_cm,nu_cell
+    real(kind=8)            :: delta_nu_doppler,x_cell,sigma,a,h_cell,get_tau_FeII_2344
 
     ! compute Doppler width and a-parameter
-    delta_nu_doppler = vth / lambda13_cm
-    a = A31 / (fourpi *  delta_nu_doppler)
+    delta_nu_doppler = vth / lambda14_cm
+    a = A41 / (fourpi * delta_nu_doppler)
 
-    ! cross section of SiII-1193.28
-    x_cell = (nu_cell - nu13) / delta_nu_doppler
+    ! cross section of FeII-2344
+    x_cell = (nu_cell - nu14) / delta_nu_doppler
     h_cell = voigt_function(x_cell,a)
-    sigma  = sigma13_factor / delta_nu_doppler * h_cell
+    sigma  = sigma14_factor / delta_nu_doppler * h_cell
 
-    get_tau_SiII_1193 = sigma * nSiII * distance_to_border_cm
+    get_tau_FeII_2344 = sigma * nFeII * distance_to_border_cm
    
     return
 
-  end function get_tau_SiII_1193
+  end function get_tau_FeII_2344
 
   
-  subroutine scatter_SiII_1193(vcell,vth,nu_cell,k,nu_ext,iran)
+  subroutine scatter_FeII_2344(vcell,vth,nu_cell,k,nu_ext,iran)
 
     ! ---------------------------------------------------------------------------------
-    ! perform scattering event on a SiII ion
-    ! The photon is absorbed in transition 1->3 and may decay as 3->1 or 3->2. 
+    ! perform scattering event on a FeII ion
+    ! The photon is absorbed in transition 1->4 and may decay as 4->1 or 4->2 or 4->3. 
     ! ---------------------------------------------------------------------------------
     ! INPUTS :
     ! - vcell    : bulk velocity of the gas (i.e. cell velocity)       [ cm / s ] 
@@ -99,13 +106,13 @@ contains
     real(kind=8),intent(in)                 :: vth
     integer(kind=4),intent(inout)           :: iran
     real(kind=8)                            :: delta_nu_doppler, a, x_cell, upar, ruper
-    real(kind=8)                            :: r2, uper, nu_atom, mu, bu, scalar, proba31
+    real(kind=8)                            :: r2, uper, nu_atom, mu, bu, scalar, proba41, proba42
     real(kind=8),dimension(3)               :: knew
 
     ! define x_cell & a
-    delta_nu_doppler = vth / lambda13_cm 
-    a = A31 / fourpi / delta_nu_doppler
-    x_cell = (nu_cell - nu13) / delta_nu_doppler
+    delta_nu_doppler = vth / lambda14_cm 
+    a = A41 / fourpi / delta_nu_doppler
+    x_cell = (nu_cell - nu14) / delta_nu_doppler
 
     ! 1/ component parallel to photon's propagation
     ! -> get velocity of interacting atom parallel to propagation
@@ -120,14 +127,17 @@ contains
 
     ! 3/ chose de-excitation channel to determine output freq. in atom's frame
     r2 = ran3(iran)
-    proba31 = A31/Atot
-
-    if (r2 <= proba31) then
-       ! photon goes down to level 1 -> coherent scattering
+    proba41 = A41/Atot
+    proba42 = proba41 + A42/Atot
+    if (r2 <= proba41) then
+       ! photon goes down to level 1 -> resonant scattering
        nu_atom = nu_cell - nu_ext * upar/clight ! incoming frequency in atom's frame = outcoming freq in same frame
+    else if (r2 <= proba42) then
+       ! photons goes down to level 2 ... -> fluorecent 2
+       nu_atom = nu24
     else
-       ! photons goes down to level two ...
-       nu_atom = nu23 
+       ! photons goes down to level 3 ... -> fluorecent 3
+       nu_atom = nu34
     end if
     
     ! 4/ determine direction of scattered photon
@@ -141,36 +151,36 @@ contains
     nu_cell = (1.d0 - scalar/clight) * nu_ext 
     k = knew
 
-  end subroutine scatter_SiII_1193
+  end subroutine scatter_FeII_2344
 
-  
-  subroutine read_SiII_1193_params(pfile)
+
+  subroutine read_FeII_2344_params(pfile)
     
     ! ---------------------------------------------------------------------------------
     ! subroutine which reads parameters of current module in the parameter file pfile
     !
     ! default parameter values are set at declaration (head of module)
     ! ---------------------------------------------------------------------------------
-
+    
     character(*),intent(in) :: pfile
-
+    
     call read_uparallel_params(pfile)
     call read_voigt_params(pfile)
-
+    
     return
+    
+  end subroutine read_FeII_2344_params
 
-  end subroutine read_SiII_1193_params
 
-
-    subroutine print_SiII_1193_params(unit)
+  subroutine print_FeII_2344_params(unit)
     
     ! ---------------------------------------------------------------------------------
     ! write parameter values to std output or to an open file if argument unit is
     ! present.
     ! ---------------------------------------------------------------------------------
-
+    
     integer(kind=4),optional,intent(in) :: unit
-
+    
     if (present(unit)) then 
        call print_uparallel_params(unit)
        call print_voigt_params(unit)
@@ -181,7 +191,6 @@ contains
     
     return
     
-  end subroutine print_SiII_1193_params
-
-
-end module module_SiII_1193_model
+  end subroutine print_FeII_2344_params
+  
+end module module_FeII_2344_model
