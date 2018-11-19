@@ -12,7 +12,7 @@ import nircam
 
 ################################################################################
 # RAScas dir. 
-rascas_directory = '/scratch/garel/rascas_sphinx/output/test_Mstar_gt1e-3_bis'
+rascas_directory = '/scratch/garel/rascas_sphinx/output/sfr_gt_1e-4'
 rascas_f90       = '/scratch/garel/rascas_sphinx/f90/'
 
 ################################################################################
@@ -42,11 +42,13 @@ ramses_params = OrderedDict([('self_shielding','F'),('ramses_rt','T'),('verbose'
 hcat = hC.haloCatalog(ramsesDir,ramsesTimestep,zoom=False)
 hcat.load_catalog()
 hcat.convert_distances()
-mstar = hcat.get_Mstar()
+mstar = hcat.get_Mstar() # in 1e11 Msun 
+sfr100 = hcat.get_halo_SFRs() # Msun/yr
 
 redshift = hcat.info['redshift']
 
-ids = np.where(mstar > 1.e-3)
+#ids = np.where(mstar > 1.e-3) 
+ids = np.where(sfr100 > 1.e-4)
 
 #TIBO------------
 # Create haloid list array
