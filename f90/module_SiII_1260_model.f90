@@ -163,7 +163,7 @@ contains
   end subroutine read_SiII_1260_params
 
 
-    subroutine print_SiII_1260_params(unit)
+  subroutine print_SiII_1260_params(unit)
     
     ! ---------------------------------------------------------------------------------
     ! write parameter values to std output or to an open file if argument unit is
