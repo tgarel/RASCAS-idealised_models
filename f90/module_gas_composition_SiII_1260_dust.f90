@@ -140,7 +140,7 @@ contains
 
 
   
-  function  gas_get_scatter_flag(cell_gas, distance_to_border_cm, nu_cell, tau_abs,iran)
+  function  gas_get_scatter_flag(cell_gas, distance_to_border_cm, nu_cell, tau_abs, iran)
 
     ! --------------------------------------------------------------------------
     ! Decide whether a scattering event occurs, and if so, on which element
