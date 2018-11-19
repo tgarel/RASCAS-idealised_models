@@ -100,12 +100,17 @@ module module_ramses
   real(kind=8),parameter    :: abundance_Fe_mass = 1.58d-3 ! From Scarlata (private comm.): abundance_Fe_number = 2.82d-5   
   real(kind=8),parameter    :: abundance_Mg_number = 3.39d-5 ! From Scarlata (private comm.)
 
+  ! Fe
+  ! abundance_Fe_mass == abundance_Fe_number * 55.845
+  real(kind=8),parameter    :: abundance_Fe_number = 2.82d-5 ! From Scarlata (private comm.)
   ! --------------------------------------------------------------------------
   
   
   public :: read_leaf_cells, read_leaf_cells_omp, read_leaf_cells_in_domain
   public :: get_ngridtot, ramses_get_box_size_cm, get_cpu_list, get_cpu_list_periodic, get_ncpu
-  public :: ramses_get_velocity_cgs, ramses_get_T_nhi_cgs, ramses_get_metallicity,  ramses_get_nh_cgs, ramses_get_T_nSiII_cgs, ramses_get_T_nMgII_cgs, ramses_get_T_nFeII_cgs
+
+  public :: ramses_get_velocity_cgs, ramses_get_T_nhi_cgs, ramses_get_metallicity,  ramses_get_nh_cgs
+  public :: ramses_get_T_nSiII_cgs, ramses_get_T_nMgII_cgs, ramses_get_T_nFeII_cgs
   public :: ramses_read_stars_in_domain
   public :: read_ramses_params, print_ramses_params, dump_ramses_info
   
@@ -1256,8 +1261,7 @@ contains
 
   end subroutine ramses_get_T_nMgII_cgs
 
-  
-  
+
   subroutine ramses_get_T_nFeII_cgs(repository,snapnum,nleaf,nvar,ramses_var,temp,nFeII)
 
     implicit none 
@@ -1282,8 +1286,9 @@ contains
     if(ramses_rt)then
        ! ramses RT
        allocate(mu(1:nleaf))
-       mu   = 1.d0 / (XH * (1.d0*ramses_var(ihii,:) + 0.25d0*(1.d0-XH)*(1.d0 + ramses_var(iheii,:) + 2.d0*ramses_var(iheiii,:)))) ! assumes no metals
-       temp = ramses_var(5,:) / ramses_var(1,:) * dp_scale_T2                ! T/mu [ K ]
+       mu   = XH * (1.d0+ramses_var(ihii,:)) + 0.25d0*(1.d0-XH)*(1.d0 + ramses_var(iheii,:) + 2.d0*ramses_var(iheiii,:)) ! assumes no metals
+       mu   = 1.0d0 / mu
+       temp = ramses_var(itemp,:) / ramses_var(1,:) * dp_scale_T2                ! T/mu [ K ]
        temp = temp * mu                                                      ! This is now T (in K) with no bloody mu ... 
        deallocate(mu)
     else
@@ -1294,7 +1299,7 @@ contains
        end if
        allocate(nh(nleaf))
        nh   = ramses_var(1,:) * dp_scale_nh  ! nb of H atoms per cm^3
-       temp = ramses_var(5,:) / ramses_var(1,:) * dp_scale_T2  ! T/mu [ K ]
+       temp = ramses_var(itemp,:) / ramses_var(1,:) * dp_scale_T2  ! T/mu [ K ]
        allocate(boost(nleaf))
        if (self_shielding) then
           do i=1,nleaf
@@ -1354,14 +1359,14 @@ contains
        end do
        deallocate(boost,nh)
     endif       
-
+    
     ! from T, we can compute the FeII fraction as 100% between 9.1704362 d+4 K and 1.87983 d+5 K, and 0% elsewhere.
     ! (These limits correspond to the following ionisation energies:
     ! - Fe - Fe+   : 7.9024678 ev = 1,1215236d-18 J  (NIST data)
     ! - Fe+ - Fe++ : 16.19920 eV = 2,56348d-18 J (NIST data)
     do i = 1,nleaf
        if (temp(i) >= 9.1704362d4 .and. temp(i) <= 1.87983d5) then
-          nFeII(i) = ramses_var(1,i) * dp_scale_d * ramses_var(imetal,i) * dp_scale_zsun * abundance_Fe_mass / mFe   ! [#/cm3]
+          nFeII(i) = ramses_var(1,i) * dp_scale_d * ramses_var(imetal,i) * dp_scale_zsun * abundance_Fe_number   ! [#/cm3]
        else
           nFeII(i) = 0.0d0
        end if
@@ -1370,6 +1375,7 @@ contains
     return
 
   end subroutine ramses_get_T_nFeII_cgs
+
 
 
   function ramses_get_box_size_cm(repository,snapnum)
@@ -2413,6 +2419,7 @@ contains
   !==================================================================================
   ! STARS utilities 
 
+  
   subroutine ramses_read_stars_in_domain(repository,snapnum,selection_domain,star_pos,star_age,star_mass,star_vel,star_met)
 
     implicit none

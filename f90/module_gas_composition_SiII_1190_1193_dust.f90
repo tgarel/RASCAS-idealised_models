@@ -1,14 +1,14 @@
 module module_gas_composition
 
-  ! Pure SiII gas. 
-  ! This modules handles two transitions in absorption (1193. and 1190). 
+  ! Mix of SiII and dust 
+  ! This modules handles two transitions in absorption by SiII (1193. and 1190) and dust
 
   use module_SiII_1193_model
   use module_SiII_1190_model
+  use module_dust_model
   use module_random
   use module_ramses
   use module_constants
-  use module_idealised_models
 
   implicit none
 
@@ -19,90 +19,39 @@ module module_gas_composition
      real(kind=8) :: v(3)      ! gas velocity [cm/s]
      ! SiII
      ! -> density is computed as 2.8d-5 * nHI * metallicity / solar_metallicity
-     real(kind=8) :: nSiII     ! numerical density of SiII  [#/cm3]
+     real(kind=8) :: nsiII     ! numerical density of SiII  [#/cm3]
      real(kind=8) :: dopwidth  ! Doppler width [cm/s]
-
+     ! DUST -> model of Laursen, Sommer-Larsen and Andersen 2009.
+     ! ->  ndust = (nHI + f_ion nHII)*Z/Zref
+     ! f_ion and Zref are two free parameters . 
+     real(kind=8) :: ndust     ! pseudo-numerical density of dust particles [#/cm3]
   end type gas
   real(kind=8),public :: box_size_cm   ! size of simulation box in cm. 
 
   ! --------------------------------------------------------------------------
   ! user-defined parameters - read from section [gas_composition] of the parameter file
   ! --------------------------------------------------------------------------
+  ! mixture parameters
+  real(kind=8)             :: f_ion           = 0.01   ! ndust = (n_HI + f_ion*n_HII) * Z/Zsun [Laursen+09]
+  real(kind=8)             :: Zref            = 0.005  ! reference metallicity. Should be ~ 0.005 for SMC and ~ 0.01 for LMC. 
   ! possibility to overwrite ramses values with an ad-hoc model 
   logical                  :: gas_overwrite       = .false. ! if true, define cell values from following parameters 
   real(kind=8)             :: fix_nSiII           = 0.0d0   ! ad-hoc HI density (H/cm3)
   real(kind=8)             :: fix_vth             = 1.0d5   ! ad-hoc thermal velocity (cm/s)
   real(kind=8)             :: fix_vel             = 0.0d0   ! ad-hoc cell velocity (cm/s) -> NEED BETTER PARAMETERIZATION for more than static... 
-  real(kind=8)             :: fix_box_size_cm     = 1.0d8   ! ad-hoc box size in cm. 
+  real(kind=8)             :: fix_ndust           = 0.0d0
+  real(kind=8)             :: fix_box_size_cm     = 1.0d8   ! ad-hoc box size in cm.
   ! miscelaneous
-  logical                  :: verbose             = .false. ! display some run-time info on this module
+  logical                  :: verbose             = .true. ! display some run-time info on this module
   ! --------------------------------------------------------------------------
-  
+
   ! public functions:
   public :: gas_from_ramses_leaves,get_gas_velocity,gas_get_scatter_flag,gas_scatter,dump_gas
-  ! TIBO
-  public :: gas_from_idealised_models
-  ! OBIT
   public :: read_gas,gas_destructor,read_gas_composition_params,print_gas_composition_params
 
 contains
   
-  ! TIBO
-  subroutine gas_from_idealised_models(outputdir, nleaf, g, x_leaf, leaf_level)
-    
-    integer(kind=4),intent(in)                       :: nleaf
-    type(gas),dimension(:),allocatable,intent(inout) :: g
-    integer(kind=4)                                  :: ileaf
-    real(kind=8),intent(in),dimension(nleaf,3)       :: x_leaf
-    integer(kind=4),intent(in),dimension(nleaf)      :: leaf_level
-    real(kind=8),dimension(:),allocatable            :: ndust_temp,ngas_temp,dopwidth_temp
-    real(kind=8),dimension(:,:),allocatable          :: vel_temp
-    character(2000),intent(in)                       :: outputdir
-    character(300)                                   :: modelprops_file,file
-    
-    ! allocate gas-element array
-    allocate(g(nleaf))
 
-    box_size_cm = box_size_IM_cm
-
-    allocate(ndust_temp(nleaf),ngas_temp(nleaf),dopwidth_temp(nleaf))
-    allocate(vel_temp(3,nleaf))
-    
-    ndust_temp(:)    = 0.0d0
-    ngas_temp(:)     = 0.0d0
-    dopwidth_temp(:) = 0.0d0
-    vel_temp(:,:)    = 0.0d0
-    
-    call compute_idealised_gas(ndust_temp,ngas_temp,dopwidth_temp,vel_temp,x_leaf,leaf_level,nleaf)
-
-    do ileaf = 1,nleaf
-       g(ileaf)%v = vel_temp(:,ileaf)
-    end do
-    
-    ! if no-dust module, comment the line below 
-    !g(:)%ndust    = ndust_temp(:)
-    ! adapt n_species name to each module_gas_composition
-    g(:)%nSiII    = ngas_temp(:)
-    ! Deal with m_atom here: adapt m_species name to each module_gas_composition
-    g(:)%dopwidth = 30.0d5 ! dopwidth_temp(:) / sqrt(mSi)
-    
-    modelprops_file = 'modelprops_file'
-    file = trim(outputdir)//trim(modelprops_file)
-    open(unit=15, file=trim(file), status='unknown', form='unformatted', action='write')
-    write(15) nleaf
-    do ileaf = 1,nleaf
-       write(15) x_leaf(ileaf,1),x_leaf(ileaf,2),x_leaf(ileaf,3),g(ileaf)%v(1),g(ileaf)%v(2),g(ileaf)%v(3),g(ileaf)%dopwidth,g(ileaf)%nSiII 
-    end do
-    close(15)
-    
-    deallocate(ndust_temp,ngas_temp,dopwidth_temp,vel_temp)
-
-    return
-    
-  end subroutine gas_from_idealised_models
-  ! OBIT
-
-  
   subroutine gas_from_ramses_leaves(repository,snapnum,nleaf,nvar,ramses_var, g)
 
     ! define gas contents from ramses raw data
@@ -113,7 +62,7 @@ contains
     real(kind=8),intent(in)           :: ramses_var(nvar,nleaf)
     type(gas),dimension(:),allocatable,intent(out) :: g
     integer(kind=4)                   :: ileaf
-    real(kind=8),allocatable          :: v(:,:), T(:), nSiII(:)
+    real(kind=8),allocatable          :: v(:,:), T(:), nSiII(:), nHI(:), nHII(:), metallicity(:)
 
     ! allocate gas-element array
     allocate(g(nleaf))
@@ -125,7 +74,7 @@ contains
        box_size_cm = ramses_get_box_size_cm(repository,snapnum)
 
        ! compute velocities in cm / s
-       if (verbose) write(*,*) '-- module_gas_composition_SiII : extracting velocities from ramses '
+       if (verbose) write(*,*) '-- module_gas_composition_SiII_dust : extracting velocities from ramses '
        allocate(v(3,nleaf))
        call ramses_get_velocity_cgs(repository,snapnum,nleaf,nvar,ramses_var,v)
        do ileaf = 1,nleaf
@@ -134,7 +83,7 @@ contains
        deallocate(v)
 
        ! get nSiII and temperature from ramses
-       if (verbose) write(*,*) '-- module_gas_composition_SiII : extracting nSiII from ramses '
+       if (verbose) write(*,*) '-- module_gas_composition_SiII_dust : extracting nSiII from ramses '
        allocate(T(nleaf),nSiII(nleaf))
        call ramses_get_T_nSiII_cgs(repository,snapnum,nleaf,nvar,ramses_var,T,nSiII)
        g(:)%nSiII = nSiII(:)
@@ -142,6 +91,23 @@ contains
        ! ++++++ TURBULENT VELOCITY >>>>> parameter to add and use here
        g(:)%dopwidth = sqrt(2.0d0*kb/mSi*T) ! [ cm/s ]
        deallocate(T,nSiII)
+
+       if (verbose) print*,'min/max of nSiII : ',minval(g(:)%nSiII),maxval(g(:)%nSiII)
+       
+       ! get ndust (pseudo dust density from Laursen, Sommer-Larsen, Andersen 2009)
+       if (verbose) write(*,*) '-- module_gas_composition_SiII_dust : extracting ndust from ramses '
+       allocate(T(nleaf),nhi(nleaf),metallicity(nleaf),nhii(nleaf))
+       call ramses_get_T_nhi_cgs(repository,snapnum,nleaf,nvar,ramses_var,T,nhi)
+       call ramses_get_metallicity(nleaf,nvar,ramses_var,metallicity)
+       call ramses_get_nh_cgs(repository,snapnum,nleaf,nvar,ramses_var,nhii)
+       nhii = nhii - nhi
+       do ileaf = 1,nleaf
+          g(ileaf)%ndust = metallicity(ileaf) / Zref * ( nhi(ileaf) + f_ion*nhii(ileaf) )   ! [ /cm3 ]
+       end do
+       deallocate(metallicity,T,nhi,nhii)
+
+       if (verbose) print*,'min/max of ndust : ',minval(g(:)%ndust),maxval(g(:)%ndust)
+       
     end if
 
     return
@@ -160,6 +126,7 @@ contains
     g(:)%v(3)     = fix_vel
     g(:)%nSiII    = fix_nSiII
     g(:)%dopwidth = fix_vth
+    g(:)%ndust    = fix_ndust
     
   end subroutine overwrite_gas
 
@@ -180,7 +147,7 @@ contains
     ! Decide whether a scattering event occurs, and if so, on which element
     ! --------------------------------------------------------------------------
     ! INPUTS:
-    ! - cell_gas : SiII (with two absorption channels)
+    ! - cell_gas : SiII (with two absorption channels) and dust
     ! - distance_to_border_cm : the maximum distance the photon may travel (before leaving the cell)
     ! - nu_cell : photon frequency in cell's frame [ Hz ]
     ! - tau_abs : optical depth at which the next scattering event will occur
@@ -188,7 +155,7 @@ contains
     ! OUTPUTS:
     ! - distance_to_border_cm : comes out as the distance to scattering event (if there is an event)
     ! - tau_abs : 0 if a scatter occurs, decremented by tau_cell if photon escapes cell. 
-    ! - gas_get_scatter_flag : 0 [no scatter], 1 [SiII-1190 scatter], 2 [SiII-1193 scatter]
+    ! - gas_get_scatter_flag : 0 [no scatter], 1 [SiII-1190 scatter], 2 [SiII-1193 scatter], 3 [dust] 
     ! --------------------------------------------------------------------------
 
     type(gas),intent(in)                  :: cell_gas
@@ -197,12 +164,13 @@ contains
     real(kind=8),intent(inout)            :: tau_abs                ! tau at which scattering is set to occur.
     integer,intent(inout)                 :: iran 
     integer(kind=4)                       :: gas_get_scatter_flag 
-    real(kind=8)                          :: tau_SiII_1190, tau_SiII_1193, tau_cell, proba90, x 
-
+    real(kind=8)                          :: tau_SiII_1190, tau_SiII_1193, tau_dust, tau_cell, proba90, x , proba93
+    
     ! compute optical depths for different components of the gas.
     tau_SiII_1190 = get_tau_SiII_1190(cell_gas%nSiII, cell_gas%dopwidth, distance_to_border_cm, nu_cell)
     tau_SiII_1193 = get_tau_SiII_1193(cell_gas%nSiII, cell_gas%dopwidth, distance_to_border_cm, nu_cell)
-    tau_cell      = tau_SiII_1190 + tau_SiII_1193
+    tau_dust      = get_tau_dust(cell_gas%ndust, distance_to_border_cm, nu_cell)
+    tau_cell      = tau_SiII_1190 + tau_SiII_1193 + tau_dust
 
     if (tau_abs > tau_cell) then  ! photon is due for absorption outside the cell 
        gas_get_scatter_flag = 0
@@ -212,13 +180,16 @@ contains
           stop
        endif
     else  ! the scattering happens inside the cell
-       ! decide if it is 1190 or 1193.
+       ! decide if it is 1190 or 1193 or dust 
        proba90 = tau_SiII_1190 /  tau_cell
+       proba93 = proba90 + tau_SiII_1193 / tau_cell 
        x = ran3(iran)
-       if (x < proba90) then
+       if (x <= proba90) then
           gas_get_scatter_flag = 1 ! absorption by SiII-1190
-       else
+       else if (x <= proba93) then
           gas_get_scatter_flag = 2 ! absorption by SiII-1193
+       else
+          gas_get_scatter_flag = 3 ! absorption by dust
        end if
        ! and transform "distance_to_border_cm" in "distance_to_absorption_cm"
        distance_to_border_cm = distance_to_border_cm * (tau_abs / tau_cell)
@@ -237,14 +208,18 @@ contains
     real(kind=8), intent(inout)               :: nu_cell, nu_ext
     real(kind=8), dimension(3), intent(inout) :: k
     integer, intent(inout)                    :: iran
+    integer(kind=4)                           :: ilost 
 
     select case(flag)
     case(1)
        call scatter_SiII_1190(cell_gas%v, cell_gas%dopwidth, nu_cell, k, nu_ext, iran)
     case(2)
        call scatter_SiII_1193(cell_gas%v, cell_gas%dopwidth, nu_cell, k, nu_ext, iran)
+    case(3)
+       call scatter_dust(cell_gas%v, nu_cell, k, nu_ext, iran, ilost)
+       if(ilost==1)flag=-1
     end select
-    
+
   end subroutine gas_scatter
 
 
@@ -257,6 +232,7 @@ contains
     write(unit) (g(i)%v(:), i=1,nleaf)
     write(unit) (g(i)%nSiII, i=1,nleaf)
     write(unit) (g(i)%dopwidth, i=1,nleaf)
+    write(unit) (g(i)%ndust, i=1,nleaf)
     write(unit) box_size_cm 
   end subroutine dump_gas
 
@@ -273,8 +249,12 @@ contains
        read(unit) (g(i)%v(:),i=1,n)
        read(unit) (g(i)%nSiII,i=1,n)
        read(unit) (g(i)%dopwidth,i=1,n)
+       read(unit) (g(i)%ndust,i=1,n)
        read(unit) box_size_cm 
     end if
+
+    if (verbose) print*,'min/max of nSiII : ',minval(g(:)%nSiII),maxval(g(:)%nSiII)
+
   end subroutine read_gas
 
   
@@ -323,6 +303,10 @@ contains
           i = scan(value,'!')
           if (i /= 0) value = trim(adjustl(value(:i-1)))
           select case (trim(name))
+          case ('f_ion')
+             read(value,*) f_ion
+          case ('Zref')
+             read(value,*) Zref
           case ('gas_overwrite')
              read(value,*) gas_overwrite
           case ('fix_nSiII')
@@ -331,6 +315,8 @@ contains
              read(value,*) fix_vth
           case ('fix_vel')
              read(value,*) fix_vel
+          case ('fix_ndust')
+             read(value,*) fix_ndust
           case ('verbose')
              read(value,*) verbose
           case ('fix_box_size_cm')
@@ -341,6 +327,7 @@ contains
     close(10)
 
     call read_ramses_params(pfile)
+    call read_dust_params(pfile)
     call read_SiII_1190_params(pfile)
     call read_SiII_1193_params(pfile)
 
@@ -361,6 +348,8 @@ contains
 
     if (present(unit)) then 
        write(unit,'(a,a,a)') '[gas_composition]'
+       write(unit,'(a,ES10.3)') '  f_ion                = ',f_ion
+       write(unit,'(a,ES10.3)') '  Zref                 = ',Zref
        write(unit,'(a)')       '# overwrite parameters'
        write(unit,'(a,L1)')    '  gas_overwrite         = ',gas_overwrite
        write(unit,'(a,ES10.3)') '  fix_nSiII            = ',fix_nSiII
@@ -371,10 +360,14 @@ contains
        write(unit,'(a,L1)')    '  verbose               = ',verbose
        write(unit,'(a)')             ' '
        call print_ramses_params(unit)
+       write(unit,'(a)')             ' '
+       call print_dust_params
        call print_SiII_1190_params(unit)
        call print_SiII_1193_params(unit)
     else
        write(*,'(a,a,a)') '[gas_composition]'
+       write(*,'(a,ES10.3)') '  f_ion                = ',f_ion
+       write(*,'(a,ES10.3)') '  Zref                 = ',Zref
        write(*,'(a)')       '# overwrite parameters'
        write(*,'(a,L1)')    '  gas_overwrite         = ',gas_overwrite
        write(*,'(a,ES10.3)') '  fix_nSiII            = ',fix_nSiII
@@ -385,8 +378,10 @@ contains
        write(*,'(a,L1)')    '  verbose               = ',verbose
        write(*,'(a)')             ' '
        call print_ramses_params
-       call print_SiII_1190_params()
-       call print_SiII_1193_params()
+       write(*,'(a)')             ' '
+       call print_dust_params
+       call print_SiII_1190_params
+       call print_SiII_1193_params
     end if
 
     return

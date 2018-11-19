@@ -41,8 +41,13 @@ LDFLAGS     =  -lmpi
 endif
 
 ifeq ($(SYSTYPE),"mac")
+<<<<<<< HEAD
 ##F90         = gfortran-mp-4.7 -ffree-line-length-none -ffree-form  ###-fopenmp
 F90         = gfortran-mp-6 -ffree-line-length-none -ffree-form  ###-fopenmp
+=======
+#F90         = gfortran-mp-4.7 -ffree-line-length-none -ffree-form  ###-fopenmp
+F90         = gfortran-mp-8 -ffree-line-length-none -ffree-form  ###-fopenmp
+>>>>>>> develop
 FFLAGS      = -g -fcheck=all -ftrapv -fbacktrace -Wall -fbounds-check
 #FFLAGS      = -O2
 FFLAGS += $(OPTIONS)
@@ -73,23 +78,31 @@ endif
 
 # choose the gas mix you want to use
 # 1/ HI, D, and dust
-#COMPOBJS = module_dust_model.o module_D_model.o module_HI_model.o module_gas_composition_HI_D_dust.o
+COMPOBJS = module_dust_model.o module_D_model.o module_HI_model.o module_gas_composition_HI_D_dust.o
 # 2/ HI and dust
 #COMPOBJS = module_dust_model.o module_HI_model.o module_gas_composition_HI_dust.o
 # 3/ pure HI
 #COMPOBJS = module_HI_model.o module_gas_composition_HI.o
 # 4/ pure RAMSES hydro variables
 #COMPOBJS = module_gas_composition_ramses.o
+<<<<<<< HEAD
 # 5/ SiII
 #COMPOBJS = module_SiII_1190_model.o module_SiII_1193_model.o module_gas_composition_SiII.o
 # 6/ SiII and dust
 #COMPOBJS = module_dust_model.o module_SiII_1190_model.o module_SiII_1193_model.o module_gas_composition_SiII_dust.o
+=======
+# 5/ SiII 1190/1193
+#COMPOBJS = module_SiII_1190_model.o module_SiII_1193_model.o module_gas_composition_SiII_1190_1193.o
+# 6/ SiII 1190/1193 and dust
+#COMPOBJS = module_dust_model.o module_SiII_1190_model.o module_SiII_1193_model.o module_gas_composition_SiII_1190_1193_dust.o
+>>>>>>> develop
 # 7/ MgII
 #COMPOBJS = module_MgII_2796_model.o module_MgII_2804_model.o module_gas_composition_MgII.o
 # 8/ MgII and dust
 #COMPOBJS = module_dust_model.o module_MgII_2796_model.o module_MgII_2804_model.o module_gas_composition_MgII_dust.o
 # 9/ FeII UV1
 #COMPOBJS = module_FeII_2587_model.o module_FeII_2600_model.o module_gas_composition_FeII_UV1.o
+<<<<<<< HEAD
 # 9-bis/ FeII UV1+dust
 #COMPOBJS = module_dust_model.o module_FeII_2587_model.o module_FeII_2600_model.o module_gas_composition_FeII_UV1_dust.o
 # TIBO-1/ pure HI + idealised_models
@@ -114,9 +127,17 @@ endif
 #COMPOBJS =  module_SiII_1260_model.o module_idealised_models.o module_gas_composition_SiII_1260.o
 # TIBO-10/ SiII-1260 + dust + idealised_models
  COMPOBJS =  module_dust_model.o module_SiII_1260_model.o module_idealised_models.o module_gas_composition_SiII_1260_dust.o
+=======
+# 10/ FeII UV1 and dust
+#COMPOBJS = module_dust_model.o module_FeII_2587_model.o module_FeII_2600_model.o module_gas_composition_FeII_UV1_dust.o
+# 11/ SiII 1260
+#COMPOBJS = module_SiII_1260_model.o module_gas_composition_SiII_1260.o
+# 12/ SiII 1260 and dust
+#COMPOBJS = module_dust_model.o module_SiII_1260_model.o module_gas_composition_SiII_1260_dust.o
+>>>>>>> develop
 
 
-GASOBJS = module_constants.o module_random.o module_utils.o module_domain.o module_ramses.o module_uparallel.o $(COMPOBJS)
+GASOBJS = module_constants.o module_random.o module_utils.o module_voigt.o module_domain.o module_ramses.o module_uparallel.o $(COMPOBJS)
 
 OBJSDOM = $(GASOBJS) module_select.o module_mesh.o
 

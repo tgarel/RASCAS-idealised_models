@@ -5,9 +5,10 @@ module module_FeII_2344_model ! Fe_II UV3
   ! The module also implements the two decay channels (resonant and fluorescent) at 2344.21 A , 2365.55 A. and 2381.49 
 
   use module_constants
-  use module_utils, only : voigt_fit, isotropic_direction
+  use module_utils, only : isotropic_direction
   use module_uparallel
   use module_random
+  use module_voigt
 
   implicit none
 
@@ -21,24 +22,25 @@ module module_FeII_2344_model ! Fe_II UV3
   ! level 4 is 3d^6 4p 7/2
 
   ! transition between levels 1 and 4
-  real(kind=8),parameter :: lambda14       = 2344.21d0                ! transition wavelength [A]
-  real(kind=8),parameter :: lambda14_cm    = lambda14 / cmtoA         ! [cm]
-  real(kind=8),parameter :: nu14           = clight / lambda14_cm     ! [Hz]
-  real(kind=8),parameter :: f14            = 1.14d-1                  ! oscillator strength
-  real(kind=8),parameter :: sigma14_factor = pi*e_ch**2*f14/me/clight ! multiply by Voigt(x,a)/nu_D to get sigma.
-  real(kind=8),parameter :: A41            = 1.73d8                   ! spontaneous decay [/s]
+  real(kind=8),parameter :: lambda14       = 2344.21d0                    ! transition wavelength [A]
+  real(kind=8),parameter :: lambda14_cm    = lambda14 / cmtoA             ! [cm]
+  real(kind=8),parameter :: nu14           = clight / lambda14_cm         ! [Hz]
+  real(kind=8),parameter :: f14            = 1.14d-1                      ! oscillator strength
+  real(kind=8),parameter :: sigma14_factor = sqrtpi*e_ch**2*f14/me/clight ! multiply by Voigt(x,a)/delta_nu_doppler to get sigma.
+  real(kind=8),parameter :: A41            = 1.73d8                       ! spontaneous decay [/s]
 
   ! transition between levels 4 and 2
-  real(kind=8),parameter :: lambda24       = 2365.55d0                ! transition wavelength [A]
-  real(kind=8),parameter :: lambda24_cm    = lambda24 / cmtoA         ! [cm]
-  real(kind=8),parameter :: nu24           = clight / lambda24_cm     ! [Hz]
-  real(kind=8),parameter :: A42            = 5.9d7                   ! spontaneous decay [/s]
+  real(kind=8),parameter :: lambda24       = 2365.55d0                    ! transition wavelength [A]
+  real(kind=8),parameter :: lambda24_cm    = lambda24 / cmtoA             ! [cm]
+  real(kind=8),parameter :: nu24           = clight / lambda24_cm         ! [Hz]
+  real(kind=8),parameter :: A42            = 5.9d7                        ! spontaneous decay [/s]
 
   ! transition between levels 4 and 3
-  real(kind=8),parameter :: lambda34       = 2381.49d0                ! transition wavelength [A]
-  real(kind=8),parameter :: lambda34_cm    = lambda34 / cmtoA         ! [cm]
-  real(kind=8),parameter :: nu34           = clight / lambda34_cm     ! [Hz]
-  real(kind=8),parameter :: A43            = 3.1d7                   ! spontaneous decay [/s]
+  real(kind=8),parameter :: lambda34       = 2381.49d0                    ! transition wavelength [A]
+  real(kind=8),parameter :: lambda34_cm    = lambda34 / cmtoA             ! [cm]
+  real(kind=8),parameter :: nu34           = clight / lambda34_cm         ! [Hz]
+  real(kind=8),parameter :: A43            = 3.1d7                        ! spontaneous decay [/s]
+  
   real(kind=8),parameter :: Atot = A41+A42+A43
   
   public :: get_tau_FeII_2344, scatter_FeII_2344, read_FeII_2344_params, print_FeII_2344_params
@@ -48,7 +50,7 @@ contains
   function get_tau_FeII_2344(nFeII, vth, distance_to_border_cm, nu_cell)
 
     ! --------------------------------------------------------------------------
-    ! compute optical depth of FeII-2260.78 over a given distance
+    ! compute optical depth of FeII-2344.21 over a given distance
     ! --------------------------------------------------------------------------
     ! INPUTS:
     ! - nFeII    : number density of FeII ions                              [ cm^-3 ]
@@ -60,16 +62,16 @@ contains
     ! --------------------------------------------------------------------------
     
     real(kind=8),intent(in) :: nFeII,vth,distance_to_border_cm,nu_cell
-    real(kind=8)            :: delta_nu_doppler,x_cell,sigma,a,h,get_tau_FeII_2344
+    real(kind=8)            :: delta_nu_doppler,x_cell,sigma,a,h_cell,get_tau_FeII_2344
 
     ! compute Doppler width and a-parameter
     delta_nu_doppler = vth / lambda14_cm
-    a    = A41 / (fourpi * delta_nu_doppler)
+    a = A41 / (fourpi * delta_nu_doppler)
 
     ! cross section of FeII-2344
     x_cell = (nu_cell - nu14) / delta_nu_doppler
-    h      = voigt_fit(x_cell,a)
-    sigma  = sigma14_factor / delta_nu_doppler * h
+    h_cell = voigt_function(x_cell,a)
+    sigma  = sigma14_factor / delta_nu_doppler * h_cell
 
     get_tau_FeII_2344 = sigma * nFeII * distance_to_border_cm
    
@@ -151,6 +153,7 @@ contains
 
   end subroutine scatter_FeII_2344
 
+
   subroutine read_FeII_2344_params(pfile)
     
     ! ---------------------------------------------------------------------------------
@@ -162,11 +165,11 @@ contains
     character(*),intent(in) :: pfile
     
     call read_uparallel_params(pfile)
+    call read_voigt_params(pfile)
     
     return
     
   end subroutine read_FeII_2344_params
-
 
 
   subroutine print_FeII_2344_params(unit)
@@ -180,8 +183,10 @@ contains
     
     if (present(unit)) then 
        call print_uparallel_params(unit)
+       call print_voigt_params(unit)
     else
        call print_uparallel_params()
+       call print_voigt_params()
     end if
     
     return

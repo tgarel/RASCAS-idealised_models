@@ -131,7 +131,7 @@ contains
        box_size_cm = ramses_get_box_size_cm(repository,snapnum)
 
        ! compute velocities in cm / s
-       if (verbose) write(*,*) '-- module_gas_composition_MgII : extracting velocities from ramses '
+       if (verbose) write(*,*) '-- module_gas_composition_MgII_dust : extracting velocities from ramses '
        allocate(v(3,nleaf))
        call ramses_get_velocity_cgs(repository,snapnum,nleaf,nvar,ramses_var,v)
        do ileaf = 1,nleaf
@@ -140,7 +140,7 @@ contains
        deallocate(v)
 
        ! get nMgII and temperature from ramses
-       if (verbose) write(*,*) '-- module_gas_composition_MgII : extracting nMgII from ramses '
+       if (verbose) write(*,*) '-- module_gas_composition_MgII_dust : extracting nMgII from ramses '
        allocate(T(nleaf),nMgII(nleaf))
        call ramses_get_T_nMgII_cgs(repository,snapnum,nleaf,nvar,ramses_var,T,nMgII)
        g(:)%nMgII = nMgII(:)
@@ -203,7 +203,7 @@ contains
     ! Decide whether a scattering event occurs, and if so, on which element
     ! --------------------------------------------------------------------------
     ! INPUTS:
-    ! - cell_gas : MgII (with two absorption channels)
+    ! - cell_gas : MgII (with two absorption channels) and dust
     ! - distance_to_border_cm : the maximum distance the photon may travel (before leaving the cell)
     ! - nu_cell : photon frequency in cell's frame [ Hz ]
     ! - tau_abs : optical depth at which the next scattering event will occur
@@ -374,6 +374,10 @@ contains
           i = scan(value,'!')
           if (i /= 0) value = trim(adjustl(value(:i-1)))
           select case (trim(name))
+          case ('f_ion')
+             read(value,*) f_ion
+          case ('Zref')
+             read(value,*) Zref
           case ('gas_overwrite')
              read(value,*) gas_overwrite
           case ('fix_nMgII')
@@ -417,39 +421,43 @@ contains
        write(unit,'(a,a,a)') '[gas_composition]'
        write(unit,'(a,ES10.3)') '  f_ion                = ',f_ion
        write(unit,'(a,ES10.3)') '  Zref                 = ',Zref
-       write(unit,'(a)')       '# overwrite parameters'
-       write(unit,'(a,L1)')    '  gas_overwrite         = ',gas_overwrite
+       write(unit,'(a)')        '# overwrite parameters'
+       write(unit,'(a,L1)')     '  gas_overwrite         = ',gas_overwrite
        write(unit,'(a,ES10.3)') '  fix_nMgII            = ',fix_nMgII
        write(unit,'(a,ES10.3)') '  fix_vth              = ',fix_vth
        write(unit,'(a,ES10.3)') '  fix_vel              = ',fix_vel
        write(unit,'(a,ES10.3)') '  fix_ndust            = ',fix_ndust
        write(unit,'(a,ES10.3)') '  fix_box_size_cm      = ',fix_box_size_cm
-       write(unit,'(a)')       '# miscelaneous parameters'
-       write(unit,'(a,L1)')    '  verbose               = ',verbose
+       write(unit,'(a)')        '# miscelaneous parameters'
+       write(unit,'(a,L1)')     '  verbose               = ',verbose
        write(unit,'(a)')             ' '
        call print_ramses_params(unit)
        write(unit,'(a)')             ' '
-       call print_dust_params
+       call print_dust_params(unit)
+       write(unit,'(a)')             ' '
        call print_MgII_2796_params(unit)
+       write(unit,'(a)')             ' '
        call print_MgII_2804_params(unit)
     else
        write(*,'(a,a,a)') '[gas_composition]'
        write(*,'(a,ES10.3)') '  f_ion                = ',f_ion
        write(*,'(a,ES10.3)') '  Zref                 = ',Zref
-       write(*,'(a)')       '# overwrite parameters'
-       write(*,'(a,L1)')    '  gas_overwrite         = ',gas_overwrite
+       write(*,'(a)')        '# overwrite parameters'
+       write(*,'(a,L1)')     '  gas_overwrite         = ',gas_overwrite
        write(*,'(a,ES10.3)') '  fix_nMgII            = ',fix_nMgII
        write(*,'(a,ES10.3)') '  fix_vth              = ',fix_vth
        write(*,'(a,ES10.3)') '  fix_vel              = ',fix_vel
        write(*,'(a,ES10.3)') '  fix_ndust            = ',fix_ndust
        write(*,'(a,ES10.3)') '  fix_box_size_cm      = ',fix_box_size_cm
-       write(*,'(a)')       '# miscelaneous parameters'
-       write(*,'(a,L1)')    '  verbose               = ',verbose
+       write(*,'(a)')        '# miscelaneous parameters'
+       write(*,'(a,L1)')     '  verbose               = ',verbose
        write(*,'(a)')             ' '
        call print_ramses_params
        write(*,'(a)')             ' '
        call print_dust_params
+       write(*,'(a)')             ' '
        call print_MgII_2796_params
+       write(*,'(a)')             ' '
        call print_MgII_2804_params
     end if
 

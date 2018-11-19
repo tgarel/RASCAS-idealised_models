@@ -1,28 +1,32 @@
 module module_D_model
 
   use module_constants
-  use module_utils, only : voigt_fit, isotropic_direction, anisotropic_direction_HIcore, anisotropic_direction_Rayleigh
+  use module_utils, only : isotropic_direction, anisotropic_direction_HIcore, anisotropic_direction_Rayleigh
   use module_uparallel
   use module_random
+  use module_voigt
 
   implicit none
 
   private
 
   ! Deuterium properties
-  real(kind=8),parameter   :: mdeut        = 2.d0 * mp           ! Deuterium atom's mass [ g ]
-  real(kind=8),parameter   :: lambda_0     = 1215.34d0           ! wavelength of Lya of Deuterium [ A ]
-  real(kind=8),parameter   :: gamma        = 6.265d8             ! Einstein coeff. [ s^-1 ]
-  real(kind=8),parameter   :: f12          = 0.416d0             ! Oscillator strength for Deuterium Lya.
+  real(kind=8),parameter   :: mdeut        = 2.d0 * mp                     ! Deuterium atom's mass [ g ]
+  real(kind=8),parameter   :: lambda_0     = 1215.34d0                     ! wavelength of Lya of Deuterium [ A ]
+  real(kind=8),parameter   :: gamma        = 6.265d8                       ! Einstein coeff. [ s^-1 ]
+  real(kind=8),parameter   :: f12          = 0.416d0                       ! Oscillator strength for Deuterium Lya.
   ! useful pre-computed quantities
-  real(kind=8),parameter   :: lambda_0_cm = lambda_0 / cmtoA              ! cm
-  real(kind=8),parameter   :: nu_0 = clight / lambda_0_cm                 ! Hz
-  real(kind=8),parameter   :: sigma_factor = pi*e_ch**2*f12/ me / clight ! cross-section factor-> multiply by Voigt(x,a)/delta_nu_doppler to get sigma.
+  real(kind=8),parameter   :: lambda_0_cm = lambda_0 / cmtoA               ! cm
+  real(kind=8),parameter   :: nu_0 = clight / lambda_0_cm                  ! Hz
+  real(kind=8),parameter   :: sigmaD_factor = sqrtpi*e_ch**2*f12/me/clight ! cross-section factor-> multiply by Voigt(x,a)/delta_nu_doppler to get sigma.
   real(kind=8),parameter   :: gamma_over_fourpi = gamma / fourpi
 
-  ! user-defined parameters - read from section [Deuterium] of the parameter file 
+  ! --------------------------------------------------------------------------
+  ! user-defined parameters - read from section [Deuterium] of the parameter 
+  ! --------------------------------------------------------------------------
   logical                  :: recoil       = .true.      ! if set to true, recoil effect is computed [default is true]
   logical                  :: isotropic    = .false.     ! if set to true, scattering events will be isotropic [default is false]
+  ! --------------------------------------------------------------------------
 
   public :: get_tau_D, scatter_D, read_D_params, print_D_params
 
@@ -46,19 +50,19 @@ contains
 
     real(kind=8),intent(in) :: ndi,vth,distance_to_border_cm,nu_cell
     real(kind=8)            :: get_tau_D
-    real(kind=8)            :: delta_nu_doppler, a, x, h, s
+    real(kind=8)            :: delta_nu_doppler, a, x_cell, h_cell, sigmaD
 
     ! compute Doppler width and a-parameter
     delta_nu_doppler = vth / lambda_0_cm 
     a = gamma_over_fourpi / delta_nu_doppler
 
     ! Cross section of Deuterium
-    x = (nu_cell - nu_0)/delta_nu_doppler
-    h = voigt_fit(x,a)
-    s = sigma_factor / delta_nu_doppler * h  
+    x_cell = (nu_cell - nu_0)/delta_nu_doppler
+    h_cell = voigt_function(x_cell,a)
+    sigmaD = sigmaD_factor / delta_nu_doppler * h_cell
 
     ! optical depth 
-    get_tau_D = s * ndi * distance_to_border_cm
+    get_tau_D = sigmaD * ndi * distance_to_border_cm
 
     return
 
@@ -196,6 +200,7 @@ contains
     end if
     close(10)
     call read_uparallel_params(pfile)
+    call read_voigt_params(pfile)
     return
 
   end subroutine read_D_params
@@ -216,11 +221,13 @@ contains
        write(unit,'(a,L1)') '  recoil    = ',recoil
        write(unit,'(a,L1)') '  isotropic = ',isotropic
        call print_uparallel_params(unit)
+       call print_voigt_params(unit)
     else
        write(*,'(a,a,a)') '[Deuterium]'
        write(*,'(a,L1)') '  recoil    = ',recoil
        write(*,'(a,L1)') '  isotropic = ',isotropic
        call print_uparallel_params()
+       call print_voigt_params()
     end if
 
     return

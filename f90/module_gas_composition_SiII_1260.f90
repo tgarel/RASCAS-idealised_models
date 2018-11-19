@@ -18,7 +18,7 @@ module module_gas_composition
      real(kind=8) :: v(3)      ! gas velocity [cm/s]
      ! SiII
      ! -> density is computed as 2.8d-5 * nHI * metallicity / solar_metallicity
-     real(kind=8) :: nSiII     ! numerical density of SiII  [#/cm3]
+     real(kind=8) :: nsiII     ! numerical density of SiII  [#/cm3]
      real(kind=8) :: dopwidth  ! Doppler width [cm/s]
 
   end type gas
@@ -42,11 +42,11 @@ module module_gas_composition
   ! TIBO
   public :: gas_from_idealised_models
   ! OBIT
+
   public :: read_gas,gas_destructor,read_gas_composition_params,print_gas_composition_params
 
 contains
   
-
   ! TIBO
   subroutine gas_from_idealised_models(outputdir, nleaf, g, x_leaf, leaf_level)
     
@@ -174,7 +174,7 @@ contains
 
 
   
-  function  gas_get_scatter_flag(cell_gas, distance_to_border_cm, nu_cell, tau_abs,iran)
+  function  gas_get_scatter_flag(cell_gas, distance_to_border_cm, nu_cell, tau_abs, iran)
 
     ! --------------------------------------------------------------------------
     ! Decide whether a scattering event occurs, and if so, on which element
@@ -197,7 +197,7 @@ contains
     real(kind=8),intent(inout)            :: tau_abs                ! tau at which scattering is set to occur.
     integer,intent(inout)                 :: iran 
     integer(kind=4)                       :: gas_get_scatter_flag 
-    real(kind=8)                          :: tau_SiII_1260, tau_cell, x 
+    real(kind=8)                          :: tau_SiII_1260, tau_cell
 
     ! compute optical depths for different components of the gas.
     tau_SiII_1260 = get_tau_SiII_1260(cell_gas%nSiII, cell_gas%dopwidth, distance_to_border_cm, nu_cell)
@@ -350,27 +350,27 @@ contains
 
     if (present(unit)) then 
        write(unit,'(a,a,a)') '[gas_composition]'
-       write(unit,'(a)')       '# overwrite parameters'
-       write(unit,'(a,L1)')    '  gas_overwrite         = ',gas_overwrite
+       write(unit,'(a)')        '# overwrite parameters'
+       write(unit,'(a,L1)')     '  gas_overwrite         = ',gas_overwrite
        write(unit,'(a,ES10.3)') '  fix_nSiII            = ',fix_nSiII
        write(unit,'(a,ES10.3)') '  fix_vth              = ',fix_vth
        write(unit,'(a,ES10.3)') '  fix_vel              = ',fix_vel
        write(unit,'(a,ES10.3)') '  fix_box_size_cm      = ',fix_box_size_cm
-       write(unit,'(a)')       '# miscelaneous parameters'
-       write(unit,'(a,L1)')    '  verbose               = ',verbose
+       write(unit,'(a)')        '# miscelaneous parameters'
+       write(unit,'(a,L1)')     '  verbose               = ',verbose
        write(unit,'(a)')             ' '
        call print_ramses_params(unit)
        call print_SiII_1260_params(unit)
     else
        write(*,'(a,a,a)') '[gas_composition]'
-       write(*,'(a)')       '# overwrite parameters'
-       write(*,'(a,L1)')    '  gas_overwrite         = ',gas_overwrite
+       write(*,'(a)')        '# overwrite parameters'
+       write(*,'(a,L1)')     '  gas_overwrite         = ',gas_overwrite
        write(*,'(a,ES10.3)') '  fix_nSiII            = ',fix_nSiII
        write(*,'(a,ES10.3)') '  fix_vth              = ',fix_vth
        write(*,'(a,ES10.3)') '  fix_vel              = ',fix_vel
        write(*,'(a,ES10.3)') '  fix_box_size_cm      = ',fix_box_size_cm
-       write(*,'(a)')       '# miscelaneous parameters'
-       write(*,'(a,L1)')    '  verbose               = ',verbose
+       write(*,'(a)')        '# miscelaneous parameters'
+       write(*,'(a,L1)')     '  verbose               = ',verbose
        write(*,'(a)')             ' '
        call print_ramses_params
        call print_SiII_1260_params()

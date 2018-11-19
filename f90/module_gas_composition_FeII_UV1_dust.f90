@@ -20,8 +20,7 @@ module module_gas_composition
   type, public :: gas
      ! fluid
      real(kind=8) :: v(3)      ! gas velocity [cm/s]
-     ! FeII
-     ! -> density is computed as 2.8d-5 * nHI * metallicity / solar_metallicity
+     ! FeII -> density is computed as abundance_number_FeII * nHI * metallicity / solar_metallicity
      real(kind=8) :: nFeII     ! numerical density of FeII  [#/cm3]
      real(kind=8) :: dopwidth  ! Doppler width [cm/s]
      ! DUST -> model of Laursen, Sommer-Larsen and Andersen 2009.
@@ -224,7 +223,7 @@ contains
     ! OUTPUTS:
     ! - distance_to_border_cm : comes out as the distance to scattering event (if there is an event)
     ! - tau_abs : 0 if a scatter occurs, decremented by tau_cell if photon escapes cell. 
-    ! - gas_get_scatter_flag : 0 [no scatter], 1 [FeII-2587 scatter], 2 [FeII-2600 scatter]
+    ! - gas_get_scatter_flag : 0 [no scatter], 1 [FeII-2587 scatter], 2 [FeII-2600 scatter], 3 [dust]
     ! --------------------------------------------------------------------------
 
     type(gas),intent(in)                  :: cell_gas
@@ -244,7 +243,7 @@ contains
     if (tau_abs > tau_cell) then  ! photon is due for absorption outside the cell 
        gas_get_scatter_flag = 0
        tau_abs = tau_abs - tau_cell
-       if (tau_abs.lt.0.d0) then
+       if (tau_abs.lt.0.0d0) then
           print*, 'tau_abs est negatif'
           stop
        endif
@@ -320,9 +319,6 @@ contains
        read(unit) (g(i)%ndust,i=1,n)
        read(unit) box_size_cm 
     end if
-
-    if (verbose) print*,'min/max of nFeII : ',minval(g(:)%nFeII),maxval(g(:)%nFeII)
-
   end subroutine read_gas
 
   
@@ -396,8 +392,8 @@ contains
 
     call read_ramses_params(pfile)
     call read_dust_params(pfile)
-    call read_FeII_2600_params(pfile)
     call read_FeII_2587_params(pfile)
+    call read_FeII_2600_params(pfile)
     
     return
 
@@ -430,9 +426,11 @@ contains
        write(unit,'(a)')             ' '
        call print_ramses_params(unit)
        write(unit,'(a)')             ' '
-       call print_dust_params
-       call print_FeII_2600_params(unit)
+       call print_dust_params(unit)
+       write(unit,'(a)')             ' '
        call print_FeII_2587_params(unit)
+       write(unit,'(a)')             ' '
+       call print_FeII_2600_params(unit)
     else
        write(*,'(a,a,a)') '[gas_composition]'
        write(*,'(a,ES10.3)') '  f_ion                = ',f_ion
@@ -450,8 +448,10 @@ contains
        call print_ramses_params
        write(*,'(a)')             ' '
        call print_dust_params
-       call print_FeII_2600_params
+       write(*,'(a)')             ' '
        call print_FeII_2587_params
+       write(*,'(a)')             ' '
+       call print_FeII_2600_params
     end if
 
     return

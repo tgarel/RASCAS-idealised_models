@@ -50,6 +50,7 @@ module module_gas_composition
   ! TIBO
   public :: gas_from_idealised_models
   ! OBIT
+
   public :: read_gas,gas_destructor,read_gas_composition_params,print_gas_composition_params
 
 contains
@@ -198,7 +199,7 @@ contains
 
 
   
-  function  gas_get_scatter_flag(cell_gas, distance_to_border_cm, nu_cell, tau_abs,iran)
+  function  gas_get_scatter_flag(cell_gas, distance_to_border_cm, nu_cell, tau_abs, iran)
 
     ! --------------------------------------------------------------------------
     ! Decide whether a scattering event occurs, and if so, on which element
