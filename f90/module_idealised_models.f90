@@ -14,6 +14,7 @@ module module_idealised_models
   real(kind=8)             :: Vgas_norm           = -999.0d0         ! V0, Vmax, Vcirc etc [cm/s]
   real(kind=8)             :: Vgas_slope          = -999.0d0         ! slope of the velocity profile
   real(kind=8)             :: Tgas_norm           = -999.0d0         ! Gas temperature [K]
+  real(kind=8)             :: vth_norm            = -999.0d0         ! Gas micro. speed [cm/s]
   real(kind=8)             :: ndust_norm          = -999.0d0         ! Dust density profile normalisation [cm-3]
   real(kind=8)             :: taudust_norm        = -999.0d0         ! (abs) dust opacity
   real(kind=8)             :: r_min               = -999.0d0         ! full box size [cm]
@@ -202,7 +203,7 @@ contains
        end if
     end if
     
-    bparam_ideal = sqrt(2.0d0*kb*Tgas_norm)
+    bparam_ideal = vth_norm
 
     if (missed_cell .eq. 1) then
        print*,'I missed a cell in module_idealised_models !'
@@ -315,7 +316,7 @@ contains
        end if
     end if
     
-    bparam_ideal = sqrt(2.0d0*kb*Tgas_norm)
+    bparam_ideal = vth_norm
 
     if (missed_cell .eq. 1) then
        print*,'I missed a cell in module_idealised_models !'
@@ -401,7 +402,7 @@ contains
     end if
     
     
-    bparam_ideal = sqrt(2.0d0*kb*Tgas_norm)
+    bparam_ideal = vth_norm
     
     if (missed_cell .eq. 1) then
        print*,'I missed a cell in module_idealised_models !'
@@ -496,7 +497,7 @@ contains
        end if
     end if
     
-    bparam_ideal = sqrt(2.0d0*kb*Tgas_norm)
+    bparam_ideal = vth_norm
 
     if (missed_cell .eq. 1) then
        print*,'I missed a cell in module_idealised_models !'
@@ -598,7 +599,7 @@ contains
        end if
     end if
     
-    bparam_ideal = sqrt(2.0d0*kb*Tgas_norm)
+    bparam_ideal = vth_norm
     
     if (missed_cell .eq. 1) then
        print*,'I missed a cell in module_idealised_models !'
@@ -699,7 +700,7 @@ contains
        end if
     end if
     
-    bparam_ideal = sqrt(2.0d0*kb*Tgas_norm)
+    bparam_ideal = vth_norm
     
     if (missed_cell .eq. 1) then
        print*,'I missed a cell in module_idealised_models !'
@@ -850,6 +851,8 @@ contains
              read(value,*) Vgas_slope
           case ('Tgas_norm')
              read(value,*) Tgas_norm
+          case ('vth_norm')
+             read(value,*) vth_norm
           case ('ndust_norm')
              read(value,*) ndust_norm
           case ('taudust_norm')
@@ -868,13 +871,14 @@ contains
     close(10)
 
     print*, ' idealmodel_type      = ',idealmodel_type
-    print*, ' MCsampling           = ', MCsampling
+    print*, ' MCsampling           = ',MCsampling
     print*, ' ngas_norm            = ',ngas_norm
     print*, ' coldens_norm         = ',coldens_norm
     print*, ' ngas_slope           = ',ngas_slope
     print*, ' Vgas_norm            = ',Vgas_norm
     print*, ' Vgas_slope           = ',Vgas_slope
     print*, ' Tgas_norm            = ',Tgas_norm
+    print*, ' vth_norm             = ',vth_norm
     print*, ' ndust_norm           = ',ndust_norm
     print*, ' taudust_norm         = ',taudust_norm
     print*, ' box_size_IM_cm       = ',box_size_IM_cm
@@ -895,13 +899,14 @@ contains
     
     if (present(unit)) then
        write(unit,'(a,a)')      ' idealmodel_type       = ',idealmodel_type
-       write(unit,'(a,a)')      ' MCsampling            = ', MCsampling
+       write(unit,'(a,a)')      ' MCsampling            = ',MCsampling
        write(unit,'(a,ES10.3)') '  ngas_norm            = ',ngas_norm
        write(unit,'(a,ES10.3)') '  coldens_norm         = ',coldens_norm
        write(unit,'(a,ES10.3)') '  ngas_slope           = ',ngas_slope
        write(unit,'(a,ES10.3)') '  Vgas_norm            = ',Vgas_norm
        write(unit,'(a,ES10.3)') '  Vgas_slope           = ',Vgas_slope
        write(unit,'(a,ES10.3)') '  Tgas_norm            = ',Tgas_norm
+       write(unit,'(a,ES10.3)') '  vth_norm             = ',vth_norm
        write(unit,'(a,ES10.3)') '  ndust_norm           = ',ndust_norm
        write(unit,'(a,ES10.3)') '  taudust_norm         = ',taudust_norm
        write(unit,'(a,ES10.3)') '  box_size_IM_cm       = ',box_size_IM_cm
@@ -910,13 +915,14 @@ contains
        write(unit,'(a,a)')      ' verbose               = ',verbose
     else
        write(*,'(a,a)')      ' idealmodel_type       = ',idealmodel_type
-       write(*,'(a,a)')      ' MCsampling            = ', MCsampling
+       write(*,'(a,a)')      ' MCsampling            = ',MCsampling
        write(*,'(a,ES10.3)') '  ngas_norm            = ',ngas_norm
        write(*,'(a,ES10.3)') '  coldens_norm         = ',coldens_norm
        write(*,'(a,ES10.3)') '  ngas_slope           = ',ngas_slope
        write(*,'(a,ES10.3)') '  Vgas_norm            = ',Vgas_norm
        write(*,'(a,ES10.3)') '  Vgas_slope           = ',Vgas_slope
        write(*,'(a,ES10.3)') '  Tgas_norm            = ',Tgas_norm
+       write(*,'(a,ES10.3)') '  vth_norm             = ',vth_norm
        write(*,'(a,ES10.3)') '  ndust_norm           = ',ndust_norm
        write(*,'(a,ES10.3)') '  taudust_norm         = ',taudust_norm
        write(*,'(a,ES10.3)') '  box_size_IM_cm       = ',box_size_IM_cm

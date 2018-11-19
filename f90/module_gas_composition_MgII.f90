@@ -82,17 +82,22 @@ contains
     !g(:)%ndust    = ndust_temp(:)
     ! adapt n_species name to each module_gas_composition
     g(:)%nMgII    = ngas_temp(:)
+
     ! Deal with m_atom here: adapt m_species name to each module_gas_composition
-    g(:)%dopwidth = dopwidth_temp(:) / sqrt(mMg)
+
+    ! HERE, I read true dopwidth (in cm/s) from param file (i.e. vth_norm, read in module_idealised_models)
+    ! Attention, 'temp' in dopwidth_temp stands for temporary, not T..... ;-)
+    ! g(:)%dopwidth = dopwidth_temp(:) / sqrt(mMg)
+    g(:)%dopwidth = dopwidth_temp(:)
     
-    modelprops_file = 'modelprops_file'
-    file = trim(outputdir)//trim(modelprops_file)
-    open(unit=15, file=trim(file), status='unknown', form='unformatted', action='write')
-    write(15) nleaf
-    do ileaf = 1,nleaf
-       write(15) x_leaf(ileaf,1),x_leaf(ileaf,2),x_leaf(ileaf,3),g(ileaf)%v(1),g(ileaf)%v(2),g(ileaf)%v(3),g(ileaf)%dopwidth,g(ileaf)%nMgII
-    end do
-    close(15)
+!!$    modelprops_file = 'modelprops_file'
+!!$    file = trim(outputdir)//trim(modelprops_file)
+!!$    open(unit=15, file=trim(file), status='unknown', form='unformatted', action='write')
+!!$    write(15) nleaf
+!!$    do ileaf = 1,nleaf
+!!$       write(15) x_leaf(ileaf,1),x_leaf(ileaf,2),x_leaf(ileaf,3),g(ileaf)%v(1),g(ileaf)%v(2),g(ileaf)%v(3),g(ileaf)%dopwidth,g(ileaf)%nMgII
+!!$    end do
+!!$    close(15)
     
     deallocate(ndust_temp,ngas_temp,dopwidth_temp,vel_temp)
 

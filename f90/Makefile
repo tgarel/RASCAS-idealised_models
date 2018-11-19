@@ -73,7 +73,7 @@ endif
 
 # choose the gas mix you want to use
 # 1/ HI, D, and dust
-COMPOBJS = module_dust_model.o module_D_model.o module_HI_model.o module_gas_composition_HI_D_dust.o
+#COMPOBJS = module_dust_model.o module_D_model.o module_HI_model.o module_gas_composition_HI_D_dust.o
 # 2/ HI and dust
 #COMPOBJS = module_dust_model.o module_HI_model.o module_gas_composition_HI_dust.o
 # 3/ pure HI
@@ -107,13 +107,13 @@ COMPOBJS = module_dust_model.o module_D_model.o module_HI_model.o module_gas_com
 # TIBO-6/ FeII + dust + idealised_models
 # COMPOBJS =  module_dust_model.o module_FeII_2587_model.o module_FeII_2600_model.o module_idealised_models.o module_gas_composition_FeII_UV1_dust.o
 # TIBO-7/ SiII-1190 + idealised_models
-#COMPOBJS =  module_SiII_1190_model.o module_SiII_1193_model.o module_idealised_models.o module_gas_composition_SiII_1190.o
+#COMPOBJS =  module_SiII_1190_model.o module_SiII_1193_model.o module_idealised_models.o module_gas_composition_SiII_1190_1193.o
 # TIBO-8/ SiII-1190 + dust + idealised_models
-# COMPOBJS =  module_dust_model.o module_SiII_1190_model.o module_SiII_1193_model.o module_idealised_models.o module_gas_composition_SiII_1190_dust.o
+ COMPOBJS =  module_dust_model.o module_SiII_1190_model.o module_SiII_1193_model.o module_idealised_models.o module_gas_composition_SiII_1190_1193_dust.o
 # TIBO-9/ SiII-1260 + idealised_models
 #COMPOBJS =  module_SiII_1260_model.o module_idealised_models.o module_gas_composition_SiII_1260.o
 # TIBO-10/ SiII-1260 + dust + idealised_models
- COMPOBJS =  module_dust_model.o module_SiII_1260_model.o module_idealised_models.o module_gas_composition_SiII_1260_dust.o
+# COMPOBJS =  module_dust_model.o module_SiII_1260_model.o module_idealised_models.o module_gas_composition_SiII_1260_dust.o
 
 
 GASOBJS = module_constants.o module_random.o module_utils.o module_voigt.o module_domain.o module_ramses.o module_uparallel.o $(COMPOBJS)
