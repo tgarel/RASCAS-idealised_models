@@ -103,6 +103,13 @@ contains
     tau_abs = p%tau_abs_curr
     iran    = p%iran
 
+    ! check that the photon is actually in the computational domain ...
+    in_domain = domain_contains_point(ppos,domaine_calcul)
+    if (.not. in_domain) then
+       print*,'Propagate called for photon outside domain ... '
+       stop
+    end if
+
     ! find cell in which the photon is, and define all its indices
     icell = in_cell_finder(domesh,ppos)
     if(domesh%son(icell)>=0)then
@@ -134,7 +141,7 @@ contains
     
     ! propagate photon until escape or death ... 
     photon_propagation : do 
-
+       
        ! gather properties properties of current cell
        cell_level   = domesh%octlevel(ioct)      ! level of current cell
        cell_size    = 0.5d0**cell_level          ! size of current cell in box units
@@ -171,7 +178,7 @@ contains
 
        
        propag_in_cell : do
-          
+
           ! generate the opt depth where the photon is scattered/absorbed
           if (tau_abs <= 0.0d0) then
              rtau    = ran3(iran)
@@ -560,7 +567,7 @@ contains
     integer(kind=4)               :: ipeel,idir,ileaf
     real(kind=8)                  :: tau,peel_contrib
     real(kind=8)                  :: projpos(2),kobs(3),x
-    logical                       :: increment_flux,increment_spec,increment_image
+    logical                       :: increment_flux, increment_spec, increment_image, increment_cube
     type(gas)                     :: cell_gas       ! gas in the current cell 
 
     do idir = 1,nDirections
@@ -571,8 +578,9 @@ contains
           increment_flux  = mock_point_in_flux_aperture(projpos,idir)
           increment_spec  = mock(idir)%compute_spectrum .and. mock_point_in_spectral_aperture(projpos,idir)
           increment_image = mock(idir)%compute_image .and. mock_point_in_image(projpos,idir)
+          increment_cube  = mock(idir)%compute_cube .and. mock_point_in_cube(projpos,idir)
           tau = tau_max
-          if (increment_flux .or. increment_spec .or. increment_image) then
+          if (increment_flux .or. increment_spec .or. increment_image .or. increment_cube) then
              if (PeelBuffer(ipeel)%scatter_flag > 0) then 
                 ileaf    = - domesh%son(PeelBuffer(ipeel)%icell)
                 cell_gas = domesh%gas(ileaf)
@@ -588,6 +596,7 @@ contains
              if (increment_flux)  call peel_to_flux(peel_contrib,idir) 
              if (increment_spec)  call peel_to_spec(PeelBuffer(ipeel)%nu,peel_contrib,idir)
              if (increment_image) call peel_to_map(projpos,peel_contrib,idir)
+             if (increment_cube)  call peel_to_cube(projpos,PeelBuffer(ipeel)%nu,peel_contrib,idir)
           end if
        end do
     end do

@@ -10,7 +10,6 @@ SYSTYPE="macP"
 
 OPTIONS = -cpp
 
-
 ifeq ($(SYSTYPE),"lyocral")
 F90         = ifort
 #FFLAGS      = -g -traceback -fpp -check all -debug -warn all -ftrapuv 
@@ -34,7 +33,7 @@ ifeq ($(SYSTYPE),"CCF")
 F90         = ifort
 #FFLAGS      = -g -fpp -check all -debug -warn all -ftrapuv -traceback
 ##FFLAGS      = -O3 -fpp -ftz  -xavx -sox -ipo -fno-alias -fno-fnalias -no-prec-div -no-prec-sqrt -align all
-FFLAGS      = -O3 -fpp -ftz  -xavx -ipo -fno-alias -fno-fnalias -no-prec-div -no-prec-sqrt -align all
+FFLAGS      = -openmp -O3 -fpp -ftz  -xavx -ipo -fno-alias -fno-fnalias -no-prec-div -no-prec-sqrt -align all
 ##FFLAGS      = -p -g
 FFLAGS += $(OPTIONS)
 LDFLAGS     =  -lmpi
@@ -96,13 +95,15 @@ COMPOBJS = module_dust_model.o module_SiII_1260_model.o module_gas_composition_S
 
 
 
-GASOBJS = module_constants.o module_random.o module_utils.o module_domain.o module_ramses.o module_uparallel.o $(COMPOBJS)
+GASOBJS = module_constants.o module_random.o module_utils.o module_domain.o coolrates_module.o module_ramses.o module_uparallel.o $(COMPOBJS)
 
 OBJSDOM = $(GASOBJS) module_select.o module_mesh.o
 
 OBJSPHO = $(GASOBJS) module_mesh.o module_mock.o module_photon.o module_opt_ray.o module_spectra.o
 
 OBJSMPI = $(OBJSPHO) module_parallel_mpi.o module_worker.o module_master.o
+
+LYAFG = module_constants.o module_random.o module_utils.o module_domain.o coolrates_module.o module_ramses.o
 
 #############################################################################
 #.SUFFIXES: .o .f90
@@ -126,6 +127,9 @@ star_luminosities: $(OBJSPHO) star_luminosities.o
 
 CreateDomDump: $(OBJSDOM) CreateDomDump_Val.o
 	$(F90) $(FFLAGS) $(LDFLAGS) -o $@ $(OBJSDOM) CreateDomDump_Val.o
+
+LyaPhotonsFromGas: $(LYAFG)  LyaPhotonsFromGas.o
+	$(F90) $(FFLAGS) $(LDFLAGS) -o $@ $(LYAFG)  LyaPhotonsFromGas.o
 
 ExtractSubvol: $(OBJSDOM) ExtractSubvol.o
 	$(F90) $(FFLAGS) $(LDFLAGS) -o $@ $(OBJSDOM) ExtractSubvol.o

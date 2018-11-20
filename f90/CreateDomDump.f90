@@ -16,7 +16,6 @@ program CreateDomDump
   real(kind=8),dimension(:,:),allocatable  :: x_leaf, xleaf_sel
   real(kind=8),dimension(:,:),allocatable  :: ramses_var
   integer,dimension(:),allocatable         :: leaf_level, leaflevel_sel, ind_sel
-
   integer :: noctsnap,nleaftot,nvar,nleaf_sel,i, narg, j
   character(2000) :: toto,meshroot,parameter_file,fichier, fichier2
   character(2000),dimension(:),allocatable :: domain_file_list, mesh_file_list

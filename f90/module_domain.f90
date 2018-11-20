@@ -621,6 +621,45 @@ contains
     
   end function domain_distance_to_border_along_k
 
+  subroutine domain_get_bounding_box(dom,xmin,xmax,ymin,ymax,zmin,zmax)
+    implicit none
+    type(domain),intent(in)     :: dom
+    real(kind=8),intent(inout)  :: xmin,xmax,ymin,ymax,zmin,zmax
+
+    select case(dom%type)
+    case('sphere')
+       xmax = dom%sp%center(1) + dom%sp%radius
+       xmin = dom%sp%center(1) - dom%sp%radius
+       ymax = dom%sp%center(2) + dom%sp%radius
+       ymin = dom%sp%center(2) - dom%sp%radius
+       zmax = dom%sp%center(3) + dom%sp%radius
+       zmin = dom%sp%center(3) - dom%sp%radius
+    case('shell')
+       xmax = dom%sh%center(1) + dom%sh%r_outbound
+       xmin = dom%sh%center(1) - dom%sh%r_outbound
+       ymax = dom%sh%center(2) + dom%sh%r_outbound
+       ymin = dom%sh%center(2) - dom%sh%r_outbound
+       zmax = dom%sh%center(3) + dom%sh%r_outbound
+       zmin = dom%sh%center(3) - dom%sh%r_outbound
+    case('cube')
+       xmax = dom%cu%center(1) + dom%cu%size*0.5d0
+       xmin = dom%cu%center(1) - dom%cu%size*0.5d0
+       ymax = dom%cu%center(2) + dom%cu%size*0.5d0
+       ymin = dom%cu%center(2) - dom%cu%size*0.5d0
+       zmax = dom%cu%center(3) + dom%cu%size*0.5d0
+       zmin = dom%cu%center(3) - dom%cu%size*0.5d0
+    case('slab')
+       xmax = 1.0d0
+       xmin = 0.0d0
+       ymax = 1.0d0
+       ymin = 0.0d0
+       zmax = dom%sl%zc + dom%sl%thickness*0.5d0
+       zmin = dom%sl%zc - dom%sl%thickness*0.5d0
+    end select
+    
+    return
+  end subroutine domain_get_bounding_box
+
   
 end module module_domain
 
