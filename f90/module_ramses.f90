@@ -110,6 +110,7 @@ module module_ramses
   public :: ramses_read_stars_in_domain
   public :: read_ramses_params, print_ramses_params, dump_ramses_info
   public :: ramses_get_LyaEmiss_HIDopwidth,ramses_get_cooling_time
+  public :: ramses_get_nhi_nhei_nheii_cgs
   
   !==================================================================================
 contains
@@ -1581,7 +1582,7 @@ contains
   end subroutine ramses_get_T_nMgII_cgs
 
   ! Return, nHI, nHeI, nHeII in cells ------------------------------------
-  subroutine ramses_get_nhi_nhei_nehii_cgs(repository,snapnum,nleaf,nvar  &
+  subroutine ramses_get_nhi_nhei_nheii_cgs(repository,snapnum,nleaf,nvar  &
                                                ,ramses_var,nhi,nhei,nheii)
 
     implicit none 
@@ -1615,46 +1616,7 @@ contains
     
     return
 
-  end subroutine ramses_get_nhi_nhei_nehii_cgs
-
-  ! Return, nHI, nHeI, nHeII in cells ------------------------------------
-  subroutine ramses_get_nh_nhi_nhei_nehii_cgs(repository,snapnum,nleaf,nvar  &
-                                               ,ramses_var,nh,nhi,nhei,nheii)
-
-    implicit none 
-
-    character(1000),intent(in)  :: repository
-    integer(kind=4),intent(in)  :: snapnum
-    integer(kind=4),intent(in)  :: nleaf, nvar
-    real(kind=8),intent(in)     :: ramses_var(nvar,nleaf) ! one cell only
-    real(kind=8),intent(inout)  :: nh(nleaf), nhi(nleaf), nhei(nleaf), nheii(nleaf)
-    real(kind=8),allocatable    :: nHe(:)
-
-    ! get conversion factors if necessary
-    if (.not. conversion_scales_are_known) then 
-       call read_conversion_scales(repository,snapnum)
-       conversion_scales_are_known = .True.
-    end if
-
-    if(ramses_rt)then
-       ! ramses RT
-       allocate(nHe(nleaf))
-       nHe  = ramses_var(1,:) * dp_scale_nhe
-       nh   = ramses_var(1,:) * dp_scale_nh         ! nb of H atoms per cm^3
-       nhi  = ramses_var(1,:) * dp_scale_nh  &      ! nb of HI atoms per cm^3
-                              * max(0.d0,(1.d0 - ramses_var(ihii,:)))
-       nhei = nHe * max(0.0d0,(1.d0 - ramses_var(iheii,:)  &
-                          - ramses_var(iheiii,:)))   ! nb of HeI atoms per cm^3
-       nheii  = nHe * (ramses_var(iheii,:))         ! nb of HeII atoms per cm^3
-       deallocate(nHe)
-    else
-       ! ramses standard...nothing to do for now
-    endif
-    
-    return
-
-  end subroutine ramses_get_nh_nhi_nhei_nehii_cgs
-
+  end subroutine ramses_get_nhi_nhei_nheii_cgs
 
 
   function ramses_get_box_size_cm(repository,snapnum)

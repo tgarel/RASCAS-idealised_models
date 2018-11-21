@@ -26,6 +26,7 @@ program main
   character(2000)           :: DataDir      = './'                      ! where input files below are 
   character(2000)           :: RaysICFile = 'Rays_IC_file.dat'      ! the file containing photons to cast.
   character(2000)           :: DomDumpFile  = 'domain_decomposition_params.dat' ! the file describing the outputs of CreateDomDump.
+  !Mat
   ! --- outputs
   character(2000)           :: fileout = 'fescs.dat'   ! output file ... 
   ! --- parameters
@@ -114,7 +115,7 @@ program main
 
   if (verbose) print *,'--> starting RT...'
   ! do the RT stuff
-  call ComputeFesc(nrays,rays,meshdom,compute_dom,maxdist,maxtau,minnH,ndirections,directions.txt)
+  call ComputeFesc(nrays,rays,meshdom,compute_dom,maxdist,maxtau,minnH,ndirections,)  !Mat
 
   if (verbose) print *,'--> RT done'
 
@@ -188,6 +189,7 @@ contains
              read(value,*) minnH
           case ('maxtau')
              read(value,*) maxtau
+          !Mat
           end select
        end do
     end if
@@ -205,7 +207,8 @@ contains
     RaysICFile = trim(DataDir)//trim(RaysICFile)
     HaloFile = trim(DataDir)//trim(HaloFile)
     DomDumpFile  = trim(DataDir)//trim(DomDumpFile)
-    
+    !Mat
+
     call read_mesh_params(pfile)
     
     return
@@ -227,6 +230,7 @@ contains
        write(unit,'(a,a)')           '  DataDir     = ',trim(DataDir)
        write(unit,'(a,a)')           '  RaysICFile  = ',trim(RaysICFile)
        write(unit,'(a,a)')           '  DomDumpFile = ',trim(DomDumpFile)
+       !Mat
        write(unit,'(a,a)')           '  fileout     = ',trim(fileout)
        write(unit,'(a,ES10.3)')      '  maxdist     = ',maxdist
        write(unit,'(a,ES10.3)')      '  maxtau      = ',maxtau
@@ -240,6 +244,7 @@ contains
        write(*,'(a,a)')           '  DataDir     = ',trim(DataDir)
        write(*,'(a,a)')           '  RaysICFile  = ',trim(RaysICFile)
        write(*,'(a,a)')           '  DomDumpFile = ',trim(DomDumpFile)
+       !Mat
        write(*,'(a,a)')           '  fileout     = ',trim(fileout)
        write(*,'(a,ES10.3)')      '  maxdist     = ',maxdist
        write(*,'(a,ES10.3)')      '  maxtau      = ',maxtau

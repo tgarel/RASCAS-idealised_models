@@ -30,10 +30,10 @@ endif
 
 
 ifeq ($(SYSTYPE),"CCF")
-F90         = ifort
-#FFLAGS      = -g -fpp -check all -debug -warn all -ftrapuv -traceback
+F90         = ifort -openmp
+FFLAGS      = -g -fpp -check all -debug -warn all -ftrapuv -traceback 
 ##FFLAGS      = -O3 -fpp -ftz  -xavx -sox -ipo -fno-alias -fno-fnalias -no-prec-div -no-prec-sqrt -align all
-FFLAGS      = -openmp -O3 -fpp -ftz  -xavx -ipo -fno-alias -fno-fnalias -no-prec-div -no-prec-sqrt -align all
+#FFLAGS      = -openmp -O3 -fpp -ftz  -xavx -ipo -fno-alias -fno-fnalias -no-prec-div -no-prec-sqrt -align all
 ##FFLAGS      = -p -g
 FFLAGS += $(OPTIONS)
 LDFLAGS     =  -lmpi
@@ -72,7 +72,7 @@ endif
 
 # choose the gas mix you want to use
 # 1/ HI, D, and dust
-COMPOBJS = module_dust_model.o module_D_model.o module_HI_model.o module_gas_composition_HI_D_dust.o
+#COMPOBJS = module_dust_model.o module_D_model.o module_HI_model.o module_gas_composition_HI_D_dust.o
 # 2/ HI and dust
 #COMPOBJS = module_dust_model.o module_HI_model.o module_gas_composition_HI_dust.o
 # 3/ pure HI
@@ -87,7 +87,8 @@ COMPOBJS = module_dust_model.o module_D_model.o module_HI_model.o module_gas_com
 #COMPOBJS = module_MgII_2796_model.o module_MgII_2804_model.o module_gas_composition_MgII.o
 # 8/ MgII and dust
 #COMPOBJS = module_dust_model.o module_MgII_2796_model.o module_MgII_2804_model.o module_gas_composition_MgII_dust.o
-
+# 9/ HI, HeI, HeII
+COMPOBJS = module_gas_composition_HI_HeI_HeII.o
 
 GASOBJS = module_constants.o module_random.o module_utils.o module_domain.o coolrates_module.o module_ramses.o module_uparallel.o $(COMPOBJS)
 
