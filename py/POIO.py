@@ -132,8 +132,8 @@ class mockobs(object):
         from matplotlib import pyplot as plt
         from numpy import linspace
         plt.figure()
-        l = linspace(self.lmin,self.lmax,num=self.spec_npix)  # [A]
-        plt.plot(l,self.spectot)
+        l = linspace(self.spec_lmin,self.spec_lmax,num=self.spec_npix)  # [A]
+        plt.plot(l,self.spec)
         plt.savefig(plotFile)
 
 
