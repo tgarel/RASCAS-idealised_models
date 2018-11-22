@@ -39,7 +39,7 @@ module module_HI_model
   !--LEEP--
 
   !--CORESKIP--
-  !public :: HI_core_skip 
+  public :: HI_core_skip 
   !--PIKSEROC-- 
   
 contains

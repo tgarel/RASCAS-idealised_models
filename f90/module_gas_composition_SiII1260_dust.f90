@@ -19,7 +19,7 @@ module module_gas_composition
      ! SiII
      ! -> density is computed as 2.8d-5 * nHI * metallicity / solar_metallicity
      !Val--  I use 3.2d-5 * nH instead of 2.8d-5 * nHI  --Val
-     real(kind=8) :: nsiII     ! numerical density of SiII  [#/cm3]
+     real(kind=8) :: nSiII     ! numerical density of SiII  [#/cm3]
      real(kind=8) :: dopwidth  ! Doppler width [cm/s]
      ! DUST -> model of Laursen, Sommer-Larsen and Andersen 2009.
      ! ->  ndust = (nHI + f_ion nHII)*Z/Zref
@@ -32,13 +32,12 @@ module module_gas_composition
   ! user-defined parameters - read from section [gas_composition] of the parameter file
   ! --------------------------------------------------------------------------
   ! mixture parameters
-  character(300)          :: input_ramses_file  !Path to the file 'input_ramses', with all the info on the simulation (ncells, box_size, positions, velocities, nHI, nHII, Z, dopwidth
-  character(300)          :: SiII_file         !Path to the file with the SiII densities
+  character(2000)          :: input_ramses_file  !Path to the file 'input_ramses', with all the info on the simulation (ncells, box_size, positions, velocities, nHI, nHII, Z, dopwidth
+  character(2000)          :: Ion_file           !Path to the file with the SiII densities
   real(kind=8)             :: f_ion           = 0.01   ! ndust = (n_HI + f_ion*n_HII) * Z/Zsun [Laursen+09]
   real(kind=8)             :: Zref            = 0.005  ! reference metallicity. Should be ~ 0.005 for SMC and ~ 0.01 for LMC. 
   ! possibility to overwrite ramses values with an ad-hoc model 
   logical                  :: gas_overwrite       = .false. ! if true, define cell values from following parameters 
-  real(kind=8)             :: fix_nSiII           = 0.0d0   ! ad-hoc HI density (H/cm3)
   real(kind=8)             :: fix_vth             = 1.0d5   ! ad-hoc thermal velocity (cm/s)
   real(kind=8)             :: fix_vel             = 0.0d0   ! ad-hoc cell velocity (cm/s) -> NEED BETTER PARAMETERIZATION for more than static... 
   real(kind=8)             :: fix_ndust           = 0.0d0
@@ -50,6 +49,9 @@ module module_gas_composition
   ! public functions:
   public :: gas_from_ramses_leaves, gas_from_list, get_gas_velocity,gas_get_scatter_flag,gas_scatter,dump_gas
   public :: read_gas,gas_destructor,read_gas_composition_params,print_gas_composition_params
+  !Val
+  public :: gas_get_n_CD, gas_get_CD
+  !laV
     !--PEEL--
   public :: gas_peeloff_weight,gas_get_tau,gas_get_tau_gray
   !--LEEP--
@@ -100,6 +102,8 @@ contains
     if (verbose) print*,'boxsize in cm : ', box_size_cm
     if (verbose) print*,'min/max of nSiII : ',minval(gas_leaves(:)%nSiII),maxval(gas_leaves(:)%nSiII)
     if (verbose) print*,'min/max of ndust : ',minval(gas_leaves(:)%ndust),maxval(gas_leaves(:)%ndust)
+
+    deallocate(nhi, nhii, metallicity)
 
 
   end subroutine gas_from_list
@@ -198,6 +202,29 @@ contains
 
   end function gas_get_tau_gray
   ! --------------------------------------------------------------------------
+
+
+  !Val
+  function gas_get_n_CD()
+
+    integer(kind=4)           :: gas_get_n_CD
+
+    gas_get_n_CD = 2
+
+  end function gas_get_n_CD
+  !laV
+
+  !Val
+  function gas_get_CD(cell_gas, distance_cm)
+
+    real(kind=8), intent(in) :: distance_cm
+    type(gas),intent(in)     :: cell_gas
+    real(kind=8)             :: gas_get_CD(2)
+
+    gas_get_CD = (/ distance_cm*cell_gas%nSiII, distance_cm*cell_gas%ndust /)
+
+  end function gas_get_CD
+  !laV
   
 
   subroutine overwrite_gas(g)
@@ -443,9 +470,9 @@ contains
           select case (trim(name))
           !Val---
           case ('input_ramses_file')
-             read(value,'(a)') input_ramses_file
-          case ('SiII_file')
-             read(value,'(a)') SiII_file
+             write(input_ramses_file,'(a)') trim(value)
+          case ('Ion_file')
+             write(Ion_file,'(a)') trim(value)
           !--Val
           case ('f_ion')
              read(value,*) f_ion
@@ -453,8 +480,6 @@ contains
              read(value,*) Zref
           case ('gas_overwrite')
              read(value,*) gas_overwrite
-          case ('fix_nSiII')
-             read(value,*) fix_nSiII
           case ('fix_vth')
              read(value,*) fix_vth
           case ('fix_vel')
@@ -492,8 +517,8 @@ contains
     if (present(unit)) then 
        write(unit,'(a,a,a)') '[gas_composition]'
        !Val---
-       write(unit,'(a,a)')      'input_ramses_file      = ',input_ramses_file
-       write(unit,'(a,a)')      'SiII_file              = ',SiII_file
+       write(unit,'(a,a)')      'input_ramses_file      = ',trim(input_ramses_file)
+       write(unit,'(a,a)')      'SiII_file              = ',trim(SiII_file)
        !--Val
        write(unit,'(a,ES10.3)') '  f_ion                = ',f_ion
        write(unit,'(a,ES10.3)') '  Zref                 = ',Zref
@@ -513,8 +538,8 @@ contains
     else
        write(*,'(a,a,a)') '[gas_composition]'
        !Val---
-       write(*,'(a,a)')      'input_ramses_file      = ',input_ramses_file
-       write(*,'(a,a)')      'SiII_file              = ',SiII_file
+       write(*,'(a,a)')      'input_ramses_file      = ',trim(input_ramses_file)
+       write(*,'(a,a)')      'SiII_file              = ',trim(SiII_file)
        !--Val
        write(*,'(a,ES10.3)') '  f_ion                = ',f_ion
        write(*,'(a,ES10.3)') '  Zref                 = ',Zref

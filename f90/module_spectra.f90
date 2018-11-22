@@ -176,28 +176,40 @@ CONTAINS
     case(7)  !CIV
        E0 = 3.506d+00 ; cs0 = 1.068d-16 ; P = 7.457d+00
        ya = 1.436d+01 ; yw = 0.000d+00 ; y0 = 0.000d+00 ; y1 = 0.000d+00
-    case(8)  !MgI
+    case(8)  !OI
+       E0 = 1.240d+00 ; cs0 = 1.745d-15 ; P = 1.764d+01
+       ya = 3.784d+00 ; yw = 7.589d-02 ; y0 = 8.698d+00 ; y1 = 1.271d-01
+    case(9)  !OII
+       E0 = 1.386d+00 ; cs0 = 5.967d-17 ; P = 8.943d+00
+       ya = 3.175d+01 ; yw = 1.934d-02 ; y0 = 2.131d+01 ; y1 = 1.503d-02
+    case(10)  !OIII
+       E0 = 1.723d-01 ; cs0 = 6.753d-16 ; P = 6.822d+00
+       ya = 3.852d+02 ; yw = 1.191d-01 ; y0 = 3.839d-03 ; y1 = 4.569d-01
+    case(11)  !OIV
+       E0 = 2.044d-01 ; cs0 = 8.659d-19 ; P = 8.785d+00
+       ya = 4.931d+02 ; yw = 3.143d+00 ; y0 = 3.328d+02 ; y1 = 4.285d+01
+    case(12)  !MgI
        E0 = 1.197d+01 ; cs0 = 1.372d-10 ; P = 1.574d+01
        ya = 2.228d-01 ; yw = 2.805d-01 ; y0 = 0.000d+00 ; y1 = 0.000d+00
-    case(9)  !MgII
+    case(13)  !MgII
        E0 = 8.139d+00 ; cs0 = 3.278d-18 ; P = 3.610d+00
        ya = 4.341d+07 ; yw = 0.000d+00 ; y0 = 0.000d+00 ; y1 = 0.000d+00
-    case(10)  !MgIII
+    case(14)  !MgIII
        E0 = 1.086d+01 ; cs0 = 5.377d-16 ; P = 7.117d+00
        ya = 9.779d+00 ; yw = 2.604d+00 ; y0 = 4.860d+00 ; y1 = 3.722d+00
-    case(11)  !MgIV
+    case(15)  !MgIV
        E0 = 2.912d+01 ; cs0 = 1.394d-15 ; P = 6.487d+00
        ya = 2.895d+00 ; yw = 4.326d-02 ; y0 = 9.402d-01 ; y1 = 1.135d-01
-    case(12)  !SiI
+    case(16)  !SiI
        E0 = 2.317d+01 ; cs0 = 2.506d-17 ; P = 3.546d+00
        ya = 2.057d+01 ; yw = 2.837d-01 ; y0 = 1.672d-05 ; y1 = 4.207d-01
-    case(13)  !SiII
+    case(17)  !SiII
        E0 = 2.556d+00 ; cs0 = 4.140d-18 ; P = 1.191d+01
        ya = 1.337d+01 ; yw = 1.570d+00 ; y0 = 6.634d+00 ; y1 = 1.272d-01
-    case(14)  !SiIII
+    case(18)  !SiIII
        E0 = 1.659d-01 ; cs0 = 5.790d-22 ; P = 1.336d+01
        ya = 1.474d+02 ; yw = 8.626d-01 ; y0 = 9.613d+01 ; y1 = 6.442d-01
-    case(15)  !SiIV
+    case(19)  !SiIV
        E0 = 1.288d+01 ; cs0 = 6.083d-18 ; P = 3.353d+00
        ya = 1.356d+06 ; yw = 0.000d+00 ; y0 = 0.000d+00 ; y1 = 0.000d+00
 
@@ -269,7 +281,7 @@ contains
     use spectrum_integrator_module
 
     integer:: nAges, nzs, nLs              ! # of bins of age, z, wavelength
-    integer,parameter::nIons=15             !BAD !!! This is hardcoded,   should think about that
+    integer,parameter::nIons=19             !BAD !!! This is hardcoded,   should think about that
     real(kind=8),allocatable::ages(:), Zs(:), Ls(:), rebAges(:)
     real(kind=8),allocatable::SEDs(:,:,:)           ! SEDs f(lambda,age,met)
     real(kind=8),allocatable::tbl(:,:,:), tbl2(:,:,:), reb_tbl(:,:,:)

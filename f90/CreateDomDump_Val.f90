@@ -195,6 +195,7 @@ program CreateDomDump
      print '(" --> Time to read leaves in domain = ",f12.3," seconds.")',finish-intermed
 
      fichier = trim(DomDumpDir)//trim(mesh_file_list(1))
+     
      call dump_mesh(domain_mesh, fichier)
      call mesh_destructor(domain_mesh)
      

@@ -2,7 +2,7 @@ program optical_bin
 
   use module_mesh
   use module_domain
-  use module_ramses
+
   use module_opt_ray
   use module_spectra
   use mpi
@@ -43,7 +43,6 @@ program optical_bin
   character(2000)           :: fileout = 'flux'                                 ! output file ... 
   ! --- miscelaneous
   logical                   :: verbose = .true.
-  logical                   :: skip    = .true.
   ! ------------------------------------------------------------------------------------------------
 
 
@@ -55,6 +54,12 @@ program optical_bin
   call MPI_COMM_SIZE(MPI_COMM_WORLD, npsize, ierr)
   allocate(chunksize(npsize), disp(npsize))
   t1=MPI_WTIME()						!Initialize time to display the total time of execution
+  open(unit=14,status='scratch')
+  rewind(14)
+  write (14,*) rank
+  rewind(14)											!5 lines to create a character of the rank of the core,  to put it in names of output files   (more straightforward way ?)
+  read  (14,*) ranktxt
+  close (14)
   ! ------------------------------------------------------------------------------------------------
 
 
@@ -138,27 +143,20 @@ program optical_bin
   if(rank==master) deallocate(star_L, star_pos, star_E, SiI_csn)
   ! ------------------------------------------------------------------------------------------------
 
-
-
-  !allocate(cell_flux_cpu(nSEDgroups,meshdom%nLeaf), cell_flux_all(nSEDgroups,meshdom%nLeaf))
-  !cell_flux_cpu = 0d0 ; cell_flux_all = 0d0
   if(verbose .and. rank==master)print*, 'nLeaf      = ', meshdom%nLeaf
   if(verbose .and. rank==master)print*, 'nstars     = ', nstars
   if(verbose .and. rank==master)print*, 'nSEDgroups = ', nSEDgroups
   counter = 0 ; counter2 = 0
-
-  !noct = meshdom%noct
-  !ncoarse = meshdom%ncoarse
 
   allocate(ray%E(nSEDgroups), ray%tau(nSEDgroups))
 
   t2=MPI_WTIME()
   if(rank==master) write(*,*) 'Initilization finished,  beginning computations after time ', t2-t1
 
-  distance = 0.00376 !code units
+  distance = 0.00376001 !code units
 
-  n=20 ; allocate(photo_rate(2*n*n), photo_rate_sum(2*n*n), photo_rate_all(2*n*n)) ; photo_rate_sum = 0d0
-  do istar=1,chunksize(rank+1)
+  n=4 ; allocate(photo_rate(2*n*n), photo_rate_sum(2*n*n), photo_rate_all(2*n*n)) ; photo_rate_sum = 0d0
+  do istar=300001,chunksize(rank+1)
      do i=1,n
         do j=1,2*n
            ray%ID = 0
@@ -170,26 +168,36 @@ program optical_bin
            ray%k_em = direction(:)/norm2(direction)
 
            call ray_advance(ray, meshdom, compute_dom, norm2(direction))
-           photo_rate(2*n*(i-1)+j) = 1/4d0/pi/(norm2(direction)*box_size_cm)**2*sum(star_L_cpu(:,istar)*SiI_csn_cpu(:,istar)*exp(-ray%tau(:)))
+           photo_rate(2*n*(i-1)+j) = 1/4d0/pi/(ray%dist)**2*sum(star_L_cpu(:,istar)*SiI_csn_cpu(:,istar)*exp(-ray%tau(:)))
 
+           !To compute in the void
            ! direction = compute_dom%sp%center(:) + (/ distance*sin(pi*i/n)*cos(pi*j/n), distance*sin(pi*i/n)*sin(pi*j/n), distance*cos(pi*i/n) /) - star_pos_cpu(:,istar)
            ! photo_rate(2*n*(i-1)+j) = 1/4d0/pi/(norm2(direction)*box_size_cm)**2*sum(star_L_cpu(:,istar)*SiI_csn_cpu(:,istar))
         end do
      end do
-     
+
      photo_rate_sum(:) = photo_rate_sum(:) + photo_rate(:)
+
+     if(modulo(istar,10000)==0) then
+        print*, rank, istar, minval(photo_rate_sum)
+        open(unit=12+rank, file='./bak'//trim(ranktxt), form='formatted', action='write')
+        write(12+rank,*) photo_rate_sum
+        close(12+rank)
+     end if       
      
-     if(modulo(istar,10)==0) print*, istar, minval(photo_rate_sum)
   end do
 
-  !print*, rank, photo_rate_sum
+  call MPI_REDUCE(photo_rate_sum, photo_rate_all, 2*n*n, MPI_DOUBLE_PRECISION, MPI_SUM, master, MPI_COMM_WORLD, ierr)
 
-  call MPI_ALLREDUCE(photo_rate_sum, photo_rate_all, 2*n*n, MPI_DOUBLE_PRECISION, MPI_SUM, MPI_COMM_WORLD, ierr)
+  if(rank==master) then
+     print*, minval(photo_rate_all)
+     open(unit=10, file=trim(fileout), form='formatted', action='write')
+     write(10,*) photo_rate_all
+     close(10)
+  end if
 
-  open(unit=10, file=trim(fileout), form='formatted', action='write')
-  write(10,*) photo_rate_all
-  close(10)
-
+  
+  deallocate(photo_rate, photo_rate_sum, photo_rate_all)
 
   t1=MPI_WTIME()
   write(*,*) 'Rank : ', rank, ' Computation time : ', t1-t2
@@ -199,6 +207,166 @@ program optical_bin
 
 
 contains
+
+
+  subroutine read_optical_params(pfile)
+
+    ! ---------------------------------------------------------------------------------
+    ! subroutine which reads parameters of current module in the parameter file pfile
+    ! default parameter values are set at declaration (head of module)
+    !
+    ! ALSO read parameter form used modules which have parameters (mesh)
+    ! ---------------------------------------------------------------------------------
+
+    character(*),intent(in) :: pfile
+    character(1000) :: line,name,value
+    integer(kind=4) :: err,i
+    logical         :: section_present
+
+    section_present = .false.
+    open(unit=10,file=trim(pfile),status='old',form='formatted')
+    ! search for section start
+    do
+       read (10,'(a)',iostat=err) line
+       if(err/=0) exit
+       if ((line(1:13) == '[OPTICAL_BIN]').or.(line(1:13) == '[optical_bin]')) then
+          section_present = .true.
+          exit
+       end if
+    end do
+    ! read section if present
+    if (section_present) then 
+       do
+          read (10,'(a)',iostat=err) line
+          if(err/=0) exit
+          if (line(1:1) == '[') exit ! next section starting... -> leave
+          i = scan(line,'=')
+          if (i==0 .or. line(1:1)=='#' .or. line(1:1)=='!') cycle  ! skip blank or commented lines
+          name=trim(adjustl(line(:i-1)))
+          value=trim(adjustl(line(i+1:)))
+          i = scan(value,'!')
+          if (i /= 0) value = trim(adjustl(value(:i-1)))
+          select case (trim(name))
+          case ('verbose')
+             read(value,*) verbose
+          !case ('skip')
+             !read(value,*) skip
+          case ('DomDumpDir')
+             write(DomDumpDir,'(a,"/")') trim(value)
+          case ('repository')
+             write(repository,'(a)') trim(value)
+          case('snapnum')
+             read(value,*) snapnum
+          case ('DomDumpFile')
+             write(DomDumpFile,'(a)') trim(value)
+          case ('fileout')
+             write(fileout,'(a)') trim(value)
+          end select
+       end do
+    end if
+    close(10)
+
+    ! add path (DomDumpDir) to files generated by CreateDomDump
+    DomDumpFile  = trim(DomDumpDir)//trim(DomDumpFile)
+
+
+    call read_ramses_params(pfile)
+    call read_spectra_params(pfile)
+
+    return
+
+  end subroutine read_optical_params
+
+
+  subroutine print_optical_params(unit)
+
+    ! ---------------------------------------------------------------------------------
+    ! write parameter values to std output or to an open file if argument unit is
+    ! present.
+    ! ---------------------------------------------------------------------------------
+
+    integer(kind=4),optional,intent(in) :: unit
+
+    if (present(unit)) then 
+       write(unit,'(a)')             '[OPTICAL_BIN]'
+       write(unit,'(a,a)')           '  DomDumpDir     = ',trim(DomDumpDir)
+       write(unit,'(a,a)')           '  repository     = ',trim(repository)
+       write(unit,'(a,i5)')          '  snapnum        = ',snapnum
+       write(unit,'(a,a)')           '  DomDumpFile    = ',trim(DomDumpFile)
+       write(unit,'(a,a)')           '  fileout        = ',trim(fileout)
+       write(unit,'(a,L1)')          '  verbose        = ',verbose
+       !write(unit,'(a,L1)')          '  skip           = ',skip
+       write(unit,'(a)')             ' '
+       call print_ramses_params(unit)
+       call print_spectra_params(unit)
+    else
+       write(*,'(a)')             '--------------------------------------------------------------------------------'
+       write(*,'(a)')             ''
+       write(*,'(a)')             '[OPTICAL_BIN]'
+       write(*,'(a,a)')           '  DomDumpDir     = ',trim(DomDumpDir)
+       write(*,'(a,a)')           '  repository     = ',trim(repository)
+       write(*,'(a,i5)')          '  snapnum        = ',snapnum
+       write(*,'(a,a)')           '  DomDumpFile    = ',trim(DomDumpFile)
+       write(*,'(a,a)')           '  fileout        = ',trim(fileout)
+       write(*,'(a,L1)')          '  verbose        = ',verbose
+       !write(*,'(a,L1)')          '  skip           = ',skip
+       write(*,'(a)')             ' '
+       write(*,'(a)')             '--------------------------------------------------------------------------------'
+       call print_ramses_params
+       call print_spectra_params
+    end if
+
+    return
+
+  end subroutine print_optical_params
+
+end program optical_bin
+
+
+
+
+
+!print*, meshdom%nCell
+
+
+! do icell=1,30
+!    if(meshdom%son(icell) < 0) then
+
+!       ray%ID = -meshdom%son(icell)
+!       ray%dist = 0d0
+!       ray%tau = 0d0
+!       ray%x_em = star_pos(:,1)
+!       ray%halo_ID = 1
+
+!       ind   = (icell - meshdom%nCoarse - 1) / meshdom%nOct + 1   ! JB: should we make a few simple functions to do all this ? 
+!       ioct  = icell - meshdom%nCoarse - (ind - 1) * meshdom%nOct
+!       cell_level   = meshdom%octlevel(ioct)      ! level of current cell
+!       posoct(:)    = meshdom%xoct(ioct,:)
+
+!       cell_center = get_cell_center(posoct,ind,cell_level)
+!       dist_tot = sqrt((cell_center(1)-star_pos(1,1))**2 + (cell_center(2)-star_pos(2,1))**2 + (cell_center(3)-star_pos(3,1))**2)
+
+!       ray%k_em = (cell_center - star_pos(:,1))/dist_tot
+
+!       call ray_advance(ray, meshdom, compute_dom, dist_tot*box_size_cm)
+!       !if(ray%halo_ID/=1)counter = counter + 1
+!       print*, abs(dist_tot*box_size_cm - ray%dist)/1d3
+!       !tau_dust(-meshdom%son(icell)) = ray%tau
+
+!    end if
+! end do
+
+
+! icell = 1
+! ind   = (icell - meshdom%nCoarse - 1) / meshdom%nOct + 1   ! JB: should we make a few simple functions to do all this ? 
+! ioct  = icell - meshdom%nCoarse - (ind - 1) * meshdom%nOct
+! cell_level   = meshdom%octlevel(ioct)      ! level of current cell
+! ison = meshdom%son(icell)
+! posoct(:) = meshdom%xoct(ison,:)
+!print*, icell, ind, ioct, cell_level, ison, posoct
+
+! print*, maxval(cell_flux(1,:))
+
 
 
   ! recursive subroutine add_flux(icell, istar, radius)
@@ -334,162 +502,3 @@ contains
 
   ! end function influence_radius
 
-
-
-  subroutine read_optical_params(pfile)
-
-    ! ---------------------------------------------------------------------------------
-    ! subroutine which reads parameters of current module in the parameter file pfile
-    ! default parameter values are set at declaration (head of module)
-    !
-    ! ALSO read parameter form used modules which have parameters (mesh)
-    ! ---------------------------------------------------------------------------------
-
-    character(*),intent(in) :: pfile
-    character(1000) :: line,name,value
-    integer(kind=4) :: err,i
-    logical         :: section_present
-
-    section_present = .false.
-    open(unit=10,file=trim(pfile),status='old',form='formatted')
-    ! search for section start
-    do
-       read (10,'(a)',iostat=err) line
-       if(err/=0) exit
-       if ((line(1:13) == '[OPTICAL_BIN]').or.(line(1:13) == '[optical_bin]')) then
-          section_present = .true.
-          exit
-       end if
-    end do
-    ! read section if present
-    if (section_present) then 
-       do
-          read (10,'(a)',iostat=err) line
-          if(err/=0) exit
-          if (line(1:1) == '[') exit ! next section starting... -> leave
-          i = scan(line,'=')
-          if (i==0 .or. line(1:1)=='#' .or. line(1:1)=='!') cycle  ! skip blank or commented lines
-          name=trim(adjustl(line(:i-1)))
-          value=trim(adjustl(line(i+1:)))
-          i = scan(value,'!')
-          if (i /= 0) value = trim(adjustl(value(:i-1)))
-          select case (trim(name))
-          case ('verbose')
-             read(value,*) verbose
-          case ('skip')
-             read(value,*) skip
-          case ('DomDumpDir')
-             write(DomDumpDir,'(a,"/")') trim(value)
-          case ('repository')
-             write(repository,'(a)') trim(value)
-          case('snapnum')
-             read(value,*) snapnum
-          case ('DomDumpFile')
-             write(DomDumpFile,'(a)') trim(value)
-          case ('fileout')
-             write(fileout,'(a)') trim(value)
-          end select
-       end do
-    end if
-    close(10)
-
-    ! add path (DomDumpDir) to files generated by CreateDomDump
-    DomDumpFile  = trim(DomDumpDir)//trim(DomDumpFile)
-
-
-    call read_ramses_params(pfile)
-    call read_spectra_params(pfile)
-
-    return
-
-  end subroutine read_optical_params
-
-
-  subroutine print_optical_params(unit)
-
-    ! ---------------------------------------------------------------------------------
-    ! write parameter values to std output or to an open file if argument unit is
-    ! present.
-    ! ---------------------------------------------------------------------------------
-
-    integer(kind=4),optional,intent(in) :: unit
-
-    if (present(unit)) then 
-       write(unit,'(a)')             '[OPTICAL_BIN]'
-       write(unit,'(a,a)')           '  DomDumpDir     = ',trim(DomDumpDir)
-       write(unit,'(a,a)')           '  repository     = ',trim(repository)
-       write(unit,'(a,i5)')          '  snapnum        = ',snapnum
-       write(unit,'(a,a)')           '  DomDumpFile    = ',trim(DomDumpFile)
-       write(unit,'(a,a)')           '  fileout        = ',trim(fileout)
-       write(unit,'(a,L1)')          '  verbose        = ',verbose
-       write(unit,'(a,L1)')          '  skip           = ',skip
-       write(unit,'(a)')             ' '
-       call print_ramses_params(unit)
-       call print_spectra_params(unit)
-    else
-       write(*,'(a)')             '--------------------------------------------------------------------------------'
-       write(*,'(a)')             ''
-       write(*,'(a)')             '[OPTICAL_BIN]'
-       write(*,'(a,a)')           '  DomDumpDir     = ',trim(DomDumpDir)
-       write(*,'(a,a)')           '  repository     = ',trim(repository)
-       write(*,'(a,i5)')          '  snapnum        = ',snapnum
-       write(*,'(a,a)')           '  DomDumpFile    = ',trim(DomDumpFile)
-       write(*,'(a,a)')           '  fileout        = ',trim(fileout)
-       write(*,'(a,L1)')          '  verbose        = ',verbose
-       write(*,'(a,L1)')          '  skip           = ',skip
-       write(*,'(a)')             ' '
-       write(*,'(a)')             '--------------------------------------------------------------------------------'
-       call print_ramses_params
-       call print_spectra_params
-    end if
-
-    return
-
-  end subroutine print_optical_params
-
-end program optical_bin
-
-
-
-
-
-!print*, meshdom%nCell
-
-
-! do icell=1,30
-!    if(meshdom%son(icell) < 0) then
-
-!       ray%ID = -meshdom%son(icell)
-!       ray%dist = 0d0
-!       ray%tau = 0d0
-!       ray%x_em = star_pos(:,1)
-!       ray%halo_ID = 1
-
-!       ind   = (icell - meshdom%nCoarse - 1) / meshdom%nOct + 1   ! JB: should we make a few simple functions to do all this ? 
-!       ioct  = icell - meshdom%nCoarse - (ind - 1) * meshdom%nOct
-!       cell_level   = meshdom%octlevel(ioct)      ! level of current cell
-!       posoct(:)    = meshdom%xoct(ioct,:)
-
-!       cell_center = get_cell_center(posoct,ind,cell_level)
-!       dist_tot = sqrt((cell_center(1)-star_pos(1,1))**2 + (cell_center(2)-star_pos(2,1))**2 + (cell_center(3)-star_pos(3,1))**2)
-
-!       ray%k_em = (cell_center - star_pos(:,1))/dist_tot
-
-!       call ray_advance(ray, meshdom, compute_dom, dist_tot*box_size_cm)
-!       !if(ray%halo_ID/=1)counter = counter + 1
-!       print*, abs(dist_tot*box_size_cm - ray%dist)/1d3
-!       !tau_dust(-meshdom%son(icell)) = ray%tau
-
-!    end if
-! end do
-
-
-! icell = 1
-! ind   = (icell - meshdom%nCoarse - 1) / meshdom%nOct + 1   ! JB: should we make a few simple functions to do all this ? 
-! ioct  = icell - meshdom%nCoarse - (ind - 1) * meshdom%nOct
-! cell_level   = meshdom%octlevel(ioct)      ! level of current cell
-! ison = meshdom%son(icell)
-! posoct(:) = meshdom%xoct(ison,:)
-!print*, icell, ind, ioct, cell_level, ison, posoct
-
-! print*, maxval(cell_flux(1,:))

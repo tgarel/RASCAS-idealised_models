@@ -263,6 +263,7 @@ module module_mesh
       ! + read type gas
       call read_gas(13,m%nleaf,g)
       allocate(m%gas(1:m%nleaf))
+
       m%gas = g
 
       close(13)
