@@ -46,7 +46,7 @@ class mockobs(object):
                 energy = energy * self.nPhotPerPacket  # [erg / s / phot packet]
                 energy = energy / dl                   # [erg / s / A / phot packet]
                 energy = energy / (self.cube_imsize*unit_l_arcsec/self.cube_nxy)**2 # [erg / s / A / arcsec2 / phot packet]
-                energy = energy / (4. * np.pi * lumdist_cm**2)  # [erg / s/ A / arcsec2 / cm2 / phot packet] 
+                energy = energy / (4. * np.pi * lumdist_cm**2)  # [erg / s/ A / arcsec2 / cm2 / phot packet]
                 self.cube = energy * self.cube   # [erg / s / A / arcsec2 / cm2 ]
                 x = np.arange(-0.5*self.cube_imsize,0.5*self.cube_imsize,self.cube_imsize/self.cube_nxy) + 0.5 * self.cube_imsize/self.cube_nxy
                 self.cube_x_arcsec = x * unit_l_arcsec
