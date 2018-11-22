@@ -3,11 +3,11 @@
 # input / output parameters
   repository = .
   snapnum    = 12
-  outputfile = /Users/mauerhof/Documents/RamsesFiles/SIMULATIONS/P13-20h-1Mpc-MUSIC/Zoom-7-10508/SPHINX_run/Halos/00136/Rascas/output/OI/output_1.out
+  outputfile = /Users/mauerhof/Documents/RamsesFiles/SIMULATIONS/P13-20h-1Mpc-MUSIC/Zoom-7-10508/SPHINX_run/Halos/00148/Rascas/output/OI/output_1.out
 
 # computational domain parameters
   star_dom_type      = sphere
-  star_dom_pos       = 0.47916505, 0.49580705, 0.5177275
+  star_dom_pos       = 0.47847566, 0.49525982, 0.5184675
   star_dom_rsp       = 0.003
 #  star_dom_size      = 3.000E-01
 #  star_dom_rin       = 0.000E+00
@@ -25,12 +25,12 @@
 
 # miscelaneous parameters
   nphot           = 1000000
-  ranseed         = -100
+  ranseed         = -544
   verbose         = T
 !--------------------------------------------------------------------------------
 
 [ramses]
  star_reading_method = fromlist
- star_info_file = /Users/mauerhof/Documents/RamsesFiles/SIMULATIONS/P13-20h-1Mpc-MUSIC/Zoom-7-10508/SPHINX_run/Halos/00136/star_info_rascas
+ star_info_file = /Users/mauerhof/Documents/RamsesFiles/SIMULATIONS/P13-20h-1Mpc-MUSIC/Zoom-7-10508/SPHINX_run/Halos/00148/star_info_rascas
  cosmo = T
  use_initial_mass = T

@@ -2,10 +2,10 @@
 
 !--------------------------------------------------------------------------------
 [RASCAS]
-  DomDumpDir   = /Users/mauerhof/Documents/RamsesFiles/SIMULATIONS/P13-20h-1Mpc-MUSIC/Zoom-7-10508/SPHINX_run/Halos/00136/Rascas/domdump/OI/
+  DomDumpDir   = /Users/mauerhof/Documents/RamsesFiles/SIMULATIONS/P13-20h-1Mpc-MUSIC/Zoom-7-10508/SPHINX_run/Halos/00148/Rascas/domdump/OI/
   DomDumpFile  = domain_decomposition_params.dat
-  PhotonICFile = /Users/mauerhof/Documents/RamsesFiles/SIMULATIONS/P13-20h-1Mpc-MUSIC/Zoom-7-10508/SPHINX_run/Halos/00136/Rascas/PFS/PFS_OI_1.out
-  fileout      = /Users/mauerhof/Documents/RamsesFiles/SIMULATIONS/P13-20h-1Mpc-MUSIC/Zoom-7-10508/SPHINX_run/Halos/00136/Rascas/output/OI/output_result.2.out
+  PhotonICFile = /Users/mauerhof/Documents/RamsesFiles/SIMULATIONS/P13-20h-1Mpc-MUSIC/Zoom-7-10508/SPHINX_run/Halos/00148/Rascas/output/OI/output_1.out
+  fileout      = /Users/mauerhof/Documents/RamsesFiles/SIMULATIONS/P13-20h-1Mpc-MUSIC/Zoom-7-10508/SPHINX_run/Halos/00148/Rascas/output/OI/output_result.1.out
   nbuffer      = 10
   verbose      = T
 !--------------------------------------------------------------------------------
@@ -19,8 +19,8 @@
 [master]
   verbose = F
   restart       = F
-  PhotonBakFile = /Users/mauerhof/Documents/RamsesFiles/SIMULATIONS/P13-20h-1Mpc-MUSIC/Zoom-7-10508/SPHINX_run/Halos/00136/Rascas/output/OI/output_rascas2.bak
-  dt_backup     = 1000
+  #PhotonBakFile = /Users/mauerhof/Documents/RamsesFiles/SIMULATIONS/P13-20h-1Mpc-MUSIC/Zoom-7-10508/SPHINX_run/Halos/00136/Rascas/output/OI/output_rascas2.bak
+  dt_backup     = 10000
 !--------------------------------------------------------------------------------
 
 !--------------------------------------------------------------------------------
@@ -52,7 +52,7 @@ a!------------------------------------------------------------------------------
 
 !--------------------------------------------------------------------------------
 [mock] 
-  nDirections = 2
+  nDirections = 3
   mock_parameter_file = params_mock.dat
-  mock_outputfilename = /Users/mauerhof/Documents/RamsesFiles/SIMULATIONS/P13-20h-1Mpc-MUSIC/Zoom-7-10508/SPHINX_run/Halos/00136/Rascas/output/OI/output_result.2.out
+  mock_outputfilename = /Users/mauerhof/Documents/RamsesFiles/SIMULATIONS/P13-20h-1Mpc-MUSIC/Zoom-7-10508/SPHINX_run/Halos/00148/Rascas/output/OI/output_result.1.out
 !--------------------------------------------------------------------------------
