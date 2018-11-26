@@ -98,6 +98,8 @@ OBJSPHO = $(GASOBJS) module_mesh.o module_mock.o module_photon.o
 
 OBJSMPI = $(OBJSPHO) module_parallel_mpi.o module_worker.o module_master.o
 
+FESC    = $(GASOBJS) module_mesh.o module_mathieu.o
+
 LYAFG = module_constants.o module_random.o module_utils.o module_domain.o coolrates_module.o module_ramses.o
 
 #############################################################################
@@ -109,7 +111,7 @@ LYAFG = module_constants.o module_random.o module_utils.o module_domain.o coolra
 	$(F90) $(FFLAGS) -c $^ -o $@
 
 #############################################################################
-all: clean CreateDomDump PhotonsFromSourceModel PhotonsFromStars rascas-serial
+all: clean CreateDomDump PhotonsFromSourceModel PhotonsFromStars rascas-serial FescFromStarsMathieu
 
 PhotonsFromSourceModel: $(OBJSPHO) PhotonsFromSourceModel.o
 	$(F90) $(FFLAGS) $(LDFLAGS) -o $@ $(OBJSPHO) PhotonsFromSourceModel.o
@@ -122,6 +124,9 @@ LyaPhotonsFromGas: $(LYAFG)  LyaPhotonsFromGas.o
 
 CreateDomDump: $(OBJSDOM) CreateDomDump.o
 	$(F90) $(FFLAGS) $(LDFLAGS) -o $@ $(OBJSDOM) CreateDomDump.o
+
+FescFromStarsMathieu: $(FESC) FescFromStarsMathieu.o
+	$(F90) $(FFLAGS) $(LDFLAGS) -o $@ $(FESC) FescFromStarsMathieu.o
 
 ExtractSubvol: $(OBJSDOM) ExtractSubvol.o
 	$(F90) $(FFLAGS) $(LDFLAGS) -o $@ $(OBJSDOM) ExtractSubvol.o

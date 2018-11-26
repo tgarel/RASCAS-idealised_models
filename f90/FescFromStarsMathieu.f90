@@ -23,10 +23,10 @@ program main
   ! user-defined parameters - read from section [ColumnDensity] of the parameter file
   ! --------------------------------------------------------------------------
   ! --- inputs 
-  character(2000)           :: DataDir      = './'                      ! where input files below are 
-  character(2000)           :: RaysICFile = 'Rays_IC_file.dat'      ! the file containing photons to cast.
+  character(2000)           :: DataDir      = '/scratch/chuniaud/test_fesc'                      ! where input files below are 
+  character(2000)           :: RaysICFile = 'position.txt'      ! the file containing photons to cast.
   character(2000)           :: DomDumpFile  = 'domain_decomposition_params.dat' ! the file describing the outputs of CreateDomDump.
-  !Mat
+  character(2000)           :: DirectionsFile  = 'directions.txt'    ! file where the directions and ndirections are written !Mat 
   ! --- outputs
   character(2000)           :: fileout = 'fescs.dat'   ! output file ... 
   ! --- parameters
@@ -115,7 +115,7 @@ program main
 
   if (verbose) print *,'--> starting RT...'
   ! do the RT stuff
-  call ComputeFesc(nrays,rays,meshdom,compute_dom,maxdist,maxtau,minnH,ndirections,)  !Mat
+  call ComputeFesc(nrays,rays,meshdom,compute_dom,maxdist,maxtau,minnH,ndirections,DirectionsFile)  !Mat
 
   if (verbose) print *,'--> RT done'
 
@@ -181,15 +181,16 @@ contains
              write(DomDumpFile,'(a)') trim(value)
           case ('fileout')
              write(fileout,'(a)') trim(value)
-          case ('ndirections')
-             read(value,*) ndirections
+        !  case ('ndirections')                  ndirections read in direction.txt in ComputeFesc 
+        !     read(value,*) ndirections       
           case ('maxdist')
              read(value,*) maxdist
           case ('minnH')
              read(value,*) minnH
           case ('maxtau')
              read(value,*) maxtau
-          !Mat
+          case ('DirectionsFile')
+             write(DirectionsFile,'(a)') trim(value)
           end select
        end do
     end if
@@ -230,7 +231,7 @@ contains
        write(unit,'(a,a)')           '  DataDir     = ',trim(DataDir)
        write(unit,'(a,a)')           '  RaysICFile  = ',trim(RaysICFile)
        write(unit,'(a,a)')           '  DomDumpFile = ',trim(DomDumpFile)
-       !Mat
+       write(unit,'(a,a)')           '  DirectionsFile = ',trim(DirectionsFile)                                      !Mat
        write(unit,'(a,a)')           '  fileout     = ',trim(fileout)
        write(unit,'(a,ES10.3)')      '  maxdist     = ',maxdist
        write(unit,'(a,ES10.3)')      '  maxtau      = ',maxtau
@@ -244,7 +245,7 @@ contains
        write(*,'(a,a)')           '  DataDir     = ',trim(DataDir)
        write(*,'(a,a)')           '  RaysICFile  = ',trim(RaysICFile)
        write(*,'(a,a)')           '  DomDumpFile = ',trim(DomDumpFile)
-       !Mat
+       write(unit,'(a,a)')           '  DirectionsFile = ',trim(DirectionsFile)         !Mat
        write(*,'(a,a)')           '  fileout     = ',trim(fileout)
        write(*,'(a,ES10.3)')      '  maxdist     = ',maxdist
        write(*,'(a,ES10.3)')      '  maxtau      = ',maxtau

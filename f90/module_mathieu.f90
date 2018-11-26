@@ -50,7 +50,7 @@ contains
     type(domain), intent(in)                        :: compute_dom
     real(kind=8),intent(in)                         :: maxdist,maxtau,minnH
     integer(kind=4)                                 :: ndirections ! Number of directions from each source
-    integer(kind=4)                                 :: i,idir,iloop
+    integer(kind=4)                                 :: i,j,idir,iloop
     real(kind=8)                                    :: fesc
     character(2000),intent(in)                      :: file
 
@@ -64,11 +64,11 @@ contains
 !$OMP DEFAULT(shared) &
 !$OMP PRIVATE(i,iran,idir,fesc)
 !$OMP DO SCHEDULE(DYNAMIC, 100) 
-    do i=1,nrays  ! these are actually star particle positions
+   do j=1,ndirections
+      do i=1,nrays  ! these are actually star particle positions
        fesc = 0.0d0
-         read(14) (rays(i)%k_em(1),    i=1,ndirections)
-         read(14) (rays(i)%k_em(2),    i=1,ndirections)
-         read(14) (rays(i)%k_em(3),    i=1,ndirections)    
+         read(14) rays(i)%k_em(1),rays(i)%k_em(2),rays(i)%k_em(3)
+       
          rays(i)%tau = 0.0d0 
          rays(i)%dist = 0.0d0
           if(use_halos) then
@@ -88,9 +88,9 @@ contains
 !$OMP END DO
 !$OMP END PARALLEL
 
-    if(identical_ray_distribution) then
-       deallocate(rand1,rand2)
-    endif
+  !  if(identical_ray_distribution) then
+  !     deallocate(rand1,rand2)
+  !  endif
     close(14)
 
   end subroutine ComputeFesc
@@ -183,11 +183,11 @@ contains
           end if
           exit ray_propagation  ! no need to update other unused properties of ray. 
        end if
-       if ( cell_gas%nH < minnH ) then ! Gone below the minimum density
-          ray%dist = dist
-          ray%tau  = tau
-          exit ray_propagation
-       endif
+!       if ( cell_gas%nH < minnH ) then ! Gone below the minimum density
+!          ray%dist = dist
+!          ray%tau  = tau
+!          exit ray_propagation
+!       endif
 
        ! update head of ray position
        ppos = ppos + kray * distance_to_border *(1.0d0 + epsilon(1.0d0))
@@ -290,27 +290,26 @@ contains
 
     ! read ICs
     open(unit=14, file=trim(file), status='unknown', form='unformatted', action='read')
-    read(14) n_rays
+    n_rays = 74557
     allocate(rays(n_rays))
     if (n_rays==0) return
-    read(14) (rays(i)%ID,         i=1,n_rays)
-    read(14) (rays(i)%x_em(1),    i=1,n_rays)
-    read(14) (rays(i)%x_em(2),    i=1,n_rays)
-    read(14) (rays(i)%x_em(3),    i=1,n_rays)
+  do i=1,n_rays
+   ! read(14) (rays(i)%ID,         i=1,n_rays)
+    read(14) rays(i)%x_em(1),rays(i)%x_em(2),rays(i)%x_em(3)
+   ! read(14) (rays(i)%x_em(2),    i=1,n_rays)
+   ! read(14) (rays(i)%x_em(3),    i=1,n_rays)
 !    read(14) (rays(i)%halo_ID,     i=1,n_rays)   pour l'instant pas besoin puisuqe uniquement sur un Halo
-    close(14)
+   
     ! initialise other properties. 
-    do i=1,n_rays
        rays(i)%dist  = 0.d0
        rays(i)%tau  = 0.d0
-    enddo
-
+   enddo
+    close(14)
     print*,minval(rays(:)%x_em(1)),maxval(rays(:)%x_em(1))
     print*,minval(rays(:)%x_em(2)),maxval(rays(:)%x_em(2))
     print*,minval(rays(:)%x_em(3)),maxval(rays(:)%x_em(3))
     
-  end subroutine init_rays_from_file
-
+  end subroutine init_rays_from_file 
   subroutine init_halos_from_file(file,halos)
 
     character(2000),intent(in)                            :: file
