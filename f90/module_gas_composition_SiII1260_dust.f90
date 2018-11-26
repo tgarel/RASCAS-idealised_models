@@ -74,7 +74,7 @@ contains
 
 
     open(unit=20, file=input_ramses_file, status='old', form='unformatted')
-    open(unit=21, file=SiII_file, status='old', form='unformatted')
+    open(unit=21, file=Ion_file, status='old', form='unformatted')
 
     read(20) ncells
 
@@ -236,7 +236,6 @@ contains
     g(:)%v(1)     = fix_vel
     g(:)%v(2)     = fix_vel
     g(:)%v(3)     = fix_vel
-    g(:)%nSiII    = fix_nSiII
     g(:)%dopwidth = fix_vth
     g(:)%ndust    = fix_ndust
     
@@ -518,13 +517,12 @@ contains
        write(unit,'(a,a,a)') '[gas_composition]'
        !Val---
        write(unit,'(a,a)')      'input_ramses_file      = ',trim(input_ramses_file)
-       write(unit,'(a,a)')      'SiII_file              = ',trim(SiII_file)
+       write(unit,'(a,a)')      'Ion_file               = ',trim(Ion_file)
        !--Val
        write(unit,'(a,ES10.3)') '  f_ion                = ',f_ion
        write(unit,'(a,ES10.3)') '  Zref                 = ',Zref
        write(unit,'(a)')       '# overwrite parameters'
        write(unit,'(a,L1)')    '  gas_overwrite         = ',gas_overwrite
-       write(unit,'(a,ES10.3)') '  fix_nSiII            = ',fix_nSiII
        write(unit,'(a,ES10.3)') '  fix_vth              = ',fix_vth
        write(unit,'(a,ES10.3)') '  fix_vel              = ',fix_vel
        write(unit,'(a,ES10.3)') '  fix_box_size_cm      = ',fix_box_size_cm
@@ -539,13 +537,12 @@ contains
        write(*,'(a,a,a)') '[gas_composition]'
        !Val---
        write(*,'(a,a)')      'input_ramses_file      = ',trim(input_ramses_file)
-       write(*,'(a,a)')      'SiII_file              = ',trim(SiII_file)
+       write(*,'(a,a)')      'Ion_file               = ',trim(Ion_file)
        !--Val
        write(*,'(a,ES10.3)') '  f_ion                = ',f_ion
        write(*,'(a,ES10.3)') '  Zref                 = ',Zref
        write(*,'(a)')       '# overwrite parameters'
        write(*,'(a,L1)')    '  gas_overwrite         = ',gas_overwrite
-       write(*,'(a,ES10.3)') '  fix_nSiII            = ',fix_nSiII
        write(*,'(a,ES10.3)') '  fix_vth              = ',fix_vth
        write(*,'(a,ES10.3)') '  fix_vel              = ',fix_vel
        write(*,'(a,ES10.3)') '  fix_box_size_cm      = ',fix_box_size_cm
