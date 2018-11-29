@@ -34,8 +34,8 @@ module module_SiII_1190_model
   real(kind=8),parameter :: nu24           = clight / lambda24_cm         ! [Hz]
   real(kind=8),parameter :: A42            = 3.45d9                       ! spontaneous decay [/s]
 
-  real(kind=8),parameter :: A41_over_A41_plus_A42 = A41 / (A41+A42)
-  
+  real(kind=8),parameter :: Atot = A41+A42
+
   public :: get_tau_SiII_1190, scatter_SiII_1190, read_SiII_1190_params, print_SiII_1190_params
 
 contains
@@ -99,7 +99,7 @@ contains
     real(kind=8),intent(in)                 :: vth
     integer(kind=4),intent(inout)           :: iran
     real(kind=8)                            :: delta_nu_doppler, a, x_cell, upar, ruper
-    real(kind=8)                            :: r2, uper, nu_atom, mu, bu, scalar
+    real(kind=8)                            :: r2, uper, nu_atom, mu, bu, scalar, proba41
     real(kind=8),dimension(3)               :: knew
 
     ! define x_cell & a
@@ -120,7 +120,8 @@ contains
 
     ! 3/ chose de-excitation channel to determine output freq. in atom's frame
     r2 = ran3(iran)
-    if (r2 <= A41_over_A41_plus_A42) then
+    proba41 = A41/Atot
+    if (r2 <= proba41) then
        ! photon goes down to level 1 -> coherent scattering
        nu_atom = nu_cell - nu_ext * upar/clight ! incoming frequency in atom's frame = outcoming freq in same frame
     else
@@ -136,7 +137,7 @@ contains
     ! 5/ compute atom freq. in external frame, after scattering
     scalar = knew(1) * vcell(1) + knew(2) * vcell(2) + knew(3)* vcell(3)
     nu_ext = nu_atom * (1.0d0 + scalar/clight + (upar*mu + bu*uper)/clight)
-    nu_cell = (1.d0 - scalar/clight) * nu_ext 
+    nu_cell = (1.0d0 - scalar/clight) * nu_ext 
     k = knew
 
   end subroutine scatter_SiII_1190
