@@ -24,9 +24,9 @@ program main
   ! --------------------------------------------------------------------------
   ! --- inputs 
   character(2000)           :: DataDir      = '/scratch/chuniaud/test_fesc'                      ! where input files below are 
-  character(2000)           :: RaysICFile = 'position.txt'      ! the file containing photons to cast.
+  character(2000)           :: RaysICFile = 'position.dat'      ! the file containing photons to cast.
   character(2000)           :: DomDumpFile  = 'domain_decomposition_params.dat' ! the file describing the outputs of CreateDomDump.
-  character(2000)           :: DirectionsFile  = 'directions.txt'    ! file where the directions and ndirections are written !Mat 
+  character(2000)           :: DirectionsFile  = 'direction_nside16.txt'    ! file where the directions and ndirections are written !Mat 
   ! --- outputs
   character(2000)           :: fileout = 'fescs.dat'   ! output file ... 
   ! --- parameters
@@ -208,6 +208,8 @@ contains
     RaysICFile = trim(DataDir)//trim(RaysICFile)
     HaloFile = trim(DataDir)//trim(HaloFile)
     DomDumpFile  = trim(DataDir)//trim(DomDumpFile)
+    DirectionsFile = trim(DataDir)//trim(DirectionsFile)    
+
     !Mat
 
     call read_mesh_params(pfile)

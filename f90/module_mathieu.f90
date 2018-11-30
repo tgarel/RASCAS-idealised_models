@@ -51,48 +51,71 @@ contains
     real(kind=8),intent(in)                         :: maxdist,maxtau,minnH
     integer(kind=4)                                 :: ndirections ! Number of directions from each source
     integer(kind=4)                                 :: i,j,idir,iloop
-    real(kind=8)                                    :: fesc
+  !  real(kind=8)                                    :: fesc  on va plutôt faire une liste des fesc
     character(2000),intent(in)                      :: file
 
-    !! Ici on lit les directions choisies (et leur nombre) dans un fichier.
-    
-    open(unit=14, file=trim(file), status='unknown', form='unformatted', action='read')
-    read(14) ndirections
+    real(kind=8),allocatable :: directions(:,:)
+    real(kind=8),allocatable :: fesc(:)
+    !!!! variable pour stocker les resultats (fesc (ndir))
 
+
+    !! Ici on lit les directions choisies (et leur nombre) dans un fichier.
+    open(unit=14, file=trim(file), status='unknown', form='formatted', action='read')
+    read(14,*) ndirections
+    allocate(directions(3,ndirections))
+    do i = 1,ndirections
+       read(14,*) directions(1,i),directions(2,i),directions(3,i)
+    end do
+    close(14)
+   
+    allocate(fesc(ndirections))
+    open(unit=14, file='result_nside16.txt', status='replace', form='formatted', action='write') ! fichier de résultats avec fesc par directions, moyenne sur toutes étoiles
+   
     iloop=0
 !$OMP PARALLEL &
 !$OMP DEFAULT(shared) &
 !$OMP PRIVATE(i,iran,idir,fesc)
 !$OMP DO SCHEDULE(DYNAMIC, 100) 
-   do j=1,ndirections
-      do i=1,nrays  ! these are actually star particle positions
-       fesc = 0.0d0
-         read(14) rays(i)%k_em(1),rays(i)%k_em(2),rays(i)%k_em(3)
-       
-         rays(i)%tau = 0.0d0 
-         rays(i)%dist = 0.0d0
-          if(use_halos) then
-             if(rays(i)%halo_ID > 0) then
-                call ray_advance(rays(i),mesh_dom,halos(rays(i)%halo_ID)%domain,maxdist,maxtau,minnH)
-             else
-                ! No halo assigned here => 100% escape since already in IGM
-                rays(i)%tau = 0.0d0 
-             endif
-          else
+ 
+
+    do j=1,ndirections
+       fesc(j) = 0.0d0
+        do i=1,nrays  ! these are actually star particle positions
+          !  fesc = 0.0d0
+          rays(i)%k_em(1) = directions(1,j)
+          rays(i)%k_em(2) = directions(2,j)
+          rays(i)%k_em(3) = directions(3,j)
+          rays(i)%tau = 0.0d0 
+          rays(i)%dist = 0.0d0
+!          if(use_halos) then
+!             if(rays(i)%halo_ID > 0) then
+!                call ray_advance(rays(i),mesh_dom,halos(rays(i)%halo_ID)%domain,maxdist,maxtau,minnH) pas d'utilisation de halo pour l'instant, don't care
+!             else
+!                ! No halo assigned here => 100% escape since already in IGM
+!                rays(i)%tau = 0.0d0    
+!             endif
+!          else
              call ray_advance(rays(i),mesh_dom,compute_dom,maxdist,maxtau,minnH)
-          endif 
-          fesc = fesc + exp(-rays(i)%tau)
-       end do
-       rays(i)%fesc = fesc / real(ndirections,8)
+!          endif 
+          fesc(j) = fesc(j) + exp(-rays(i)%tau)   
+          end do
+          fesc(j) = fesc(j)/ real(nrays,8) 
+          write(14,*) fesc(j)
+     ! rays(i)%fesc = fesc / real(ndirections,8)
     enddo
+
+  
+
 !$OMP END DO
 !$OMP END PARALLEL
 
+    close(14)
   !  if(identical_ray_distribution) then
   !     deallocate(rand1,rand2)
   !  endif
-    close(14)
 
+  deallocate(directions)
+  deallocate(fesc)
   end subroutine ComputeFesc
 
 
@@ -145,7 +168,7 @@ contains
        cell_level   = domesh%octlevel(ioct)      ! level of current cell
        cell_size    = 0.5d0**cell_level          ! size of current cell in box units
        cell_size_cm = cell_size * box_size_cm    ! size of the current cell in cm
-       cell_gas     = domesh%gas(ileaf)
+       cell_gas     = domesh%gas(ileaf)  
        ! compute position of photon in current-cell units
        posoct(:)    = domesh%xoct(ioct,:)
        cell_corner  = get_cell_corner(posoct,ind,cell_level)   ! position of cell corner, in box units.
@@ -161,28 +184,29 @@ contains
        distance_to_border    = min(distance_to_border, &
             & domain_distance_to_border_along_k(ppos,kray,domaine_calcul)) ! in box units
        distance_to_border_cm = distance_to_border * box_size_cm ! cm
-       
+  
+     
        ! compute (total) optical depth along ray in cell 
        tau_cell = gas_get_tau(cell_gas, distance_to_border_cm)
-
+     
        ! update traveled distance and optical depth
        dist = dist + distance_to_border_cm
        tau  = tau + tau_cell 
-       
        ! check if we reached tau or distance limits
-       if (dist > maxdist_cm .and. tau > maxtau) then
+!       if (dist > maxdist_cm .and. tau > maxtau) then
           ! dist or tau exceeding boundary -> correct excess and exit. 
-          if (maxdist_cm > 0) then
-             excess   = maxdist_cm - dist
-             ray%dist = dist
-             ray%tau  = tau - (excess / distance_to_border_cm)*tau_cell
-          else
-             excess   = maxtau - tau
-             ray%dist = dist - (excess / tau_cell) * distance_to_border_cm 
-             ray%tau  = maxtau
-          end if
-          exit ray_propagation  ! no need to update other unused properties of ray. 
-       end if
+!          if (maxdist_cm > 0) then
+!             excess   = maxdist_cm - dist
+!             ray%dist = dist
+!             ray%tau  = tau - (excess / distance_to_border_cm)*tau_cell
+         ! else
+         !    excess   = maxtau - tau
+         !    ray%dist = dist - (excess / tau_cell) * distance_to_border_cm     pour l'instant on enlève car pas de conditions sur maxtau > 0 dc on a systématiquement tau = maxtau
+         !    ray%tau  = maxtau                                                 
+!          end if
+!          exit ray_propagation  ! no need to update other unused properties of ray. 
+
+!       end if
 !       if ( cell_gas%nH < minnH ) then ! Gone below the minimum density
 !          ray%dist = dist
 !          ray%tau  = tau
@@ -206,6 +230,7 @@ contains
           !print*,'initial distance to border of domain [cm] : ',domain_distance_to_border(ray%x_em,domaine_calcul)*box_size_cm
           !print*,'maxdist [cm]                              : ',maxdist_cm
           exit ray_propagation  ! ray is done 
+         
        end if
        ! Ray moves to next cell : find it
        call whereIsPhotonGoing(domesh,icell,ppos,icellnew,flagoutvol)
@@ -214,21 +239,21 @@ contains
        npush = 0
        do while (icell==icellnew)
           npush = npush + 1
-          if (npush>100) then
-             print*,'Too many pushes, npush>100 '
-             print*,'ray id = ',ray%ID
-             print*,'ray initial position = ',ray%x_em
-             print*,'ray direction = ',ray%k_em
-             print*,'halo domain type = ',domaine_calcul%type
-             print*,'halo center = ',domaine_calcul%sp%center
-             print*,'halo radius = ',domaine_calcul%sp%radius
-             print*,'ray position = ',ppos
-             print*,'distance to border = ',distance_to_border,distance_to_border_cm
-             tmp = sqrt(sum((ppos-domaine_calcul%sp%center)**2))
-             print*,'dist of ray from center = ',tmp
-             print*,'dist - rvir = ',tmp - domaine_calcul%sp%radius
-             stop
-          endif
+        !  if (npush>10000) then
+        !     print*,'Too many pushes, npush>10000 '
+        !     print*,'ray id = ',ray%ID
+        !     print*,'ray initial position = ',ray%x_em
+        !     print*,'ray direction = ',ray%k_em
+        !     print*,'halo domain type = ',domaine_calcul%type
+        !     print*,'halo center = ',domaine_calcul%sp%center
+        !     print*,'halo radius = ',domaine_calcul%sp%radius
+        !     print*,'ray position = ',ppos
+        !     print*,'distance to border = ',distance_to_border,distance_to_border_cm
+        !     tmp = sqrt(sum((ppos-domaine_calcul%sp%center)**2))
+        !     print*,'dist of ray from center = ',tmp
+        !     print*,'dist - rvir = ',tmp - domaine_calcul%sp%radius
+        !     stop
+        !  endif
 
           ! hack
           do i=1,3
@@ -256,6 +281,7 @@ contains
           end if
           call whereIsPhotonGoing(domesh,icell,ppos,icellnew,flagoutvol)
        end do
+       ! print*, npush
        if (npush > 1) print*,'WARNING : npush > 1 needed in module_gray_ray:propagate.'
        
        ! check if photon outside of cpu domain (flagoutvol)
@@ -274,42 +300,52 @@ contains
        endif
        ileaf = - domesh%son(icell)
        ind   = (icell - domesh%nCoarse - 1) / domesh%nOct + 1   ! JB: should we make a few simple functions to do all this ? 
-       ioct  = icell - domesh%nCoarse - (ind - 1) * domesh%nOct
-       
+       ioct  = icell - domesh%nCoarse - (ind - 1) * domesh%nOct       
+   
     end do ray_propagation
-    
 
   end subroutine ray_advance
   
 
   subroutine init_rays_from_file(file,rays)
 
-    character(2000),intent(in)                           :: file
+    character(2000),intent(in)                           :: file    
+    !character(2000),intent(in)                           :: dirFile  
     type(ray_type),dimension(:),allocatable, intent(out) :: rays
     integer(kind=4)                                      :: i, n_rays
 
     ! read ICs
-    open(unit=14, file=trim(file), status='unknown', form='unformatted', action='read')
-    n_rays = 74557
+    open(unit=14, file=trim(file), status='unknown', form='formatted', action='read')
+    read(14,*) n_rays
     allocate(rays(n_rays))
     if (n_rays==0) return
-  do i=1,n_rays
+  
    ! read(14) (rays(i)%ID,         i=1,n_rays)
-    read(14) rays(i)%x_em(1),rays(i)%x_em(2),rays(i)%x_em(3)
-   ! read(14) (rays(i)%x_em(2),    i=1,n_rays)
-   ! read(14) (rays(i)%x_em(3),    i=1,n_rays)
+     read(14,*) (rays(i)%x_em(1),    i=1,n_rays)
+     read(14,*) (rays(i)%x_em(2),    i=1,n_rays)
+     read(14,*) (rays(i)%x_em(3),    i=1,n_rays)
 !    read(14) (rays(i)%halo_ID,     i=1,n_rays)   pour l'instant pas besoin puisuqe uniquement sur un Halo
-   
+     close(14)
     ! initialise other properties. 
-       rays(i)%dist  = 0.d0
-       rays(i)%tau  = 0.d0
-   enddo
-    close(14)
-    print*,minval(rays(:)%x_em(1)),maxval(rays(:)%x_em(1))
-    print*,minval(rays(:)%x_em(2)),maxval(rays(:)%x_em(2))
-    print*,minval(rays(:)%x_em(3)),maxval(rays(:)%x_em(3))
-    
+
+
+   
+   print*,minval(rays(:)%x_em(1)),maxval(rays(:)%x_em(1))
+   print*,minval(rays(:)%x_em(2)),maxval(rays(:)%x_em(2))
+   print*,minval(rays(:)%x_em(3)),maxval(rays(:)%x_em(3))
+   
+   
+   ! lecture des directions dans le fichier dirFile
+   ! open 
+   ! read ndirections
+   ! read all directions
+   ! close le fichier
+         
+
+
   end subroutine init_rays_from_file 
+
+
   subroutine init_halos_from_file(file,halos)
 
     character(2000),intent(in)                            :: file
