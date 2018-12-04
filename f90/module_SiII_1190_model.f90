@@ -67,7 +67,7 @@ contains
     sigma  = sigma14_factor / delta_nu_doppler * h_cell
 
     get_tau_SiII_1190 = sigma * nSiII * distance_to_border_cm
-   
+    
     return
 
   end function get_tau_SiII_1190
@@ -139,7 +139,7 @@ contains
     nu_ext = nu_atom * (1.0d0 + scalar/clight + (upar*mu + bu*uper)/clight)
     nu_cell = (1.0d0 - scalar/clight) * nu_ext 
     k = knew
-
+    
   end subroutine scatter_SiII_1190
 
 
