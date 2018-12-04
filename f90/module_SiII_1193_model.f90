@@ -14,7 +14,7 @@ module module_SiII_1193_model
 
   private
 
-  ! Atomic data, taken from Scarlata and Panagia, AjJ 801, 2015 (Table 1)
+  ! Atomic data, from the NIST database (https://www.nist.gov)
   ! In this module, we use the following convention :
   ! level 1 is 3s^2 3p 2P^0 1/2
   ! level 2 is 3s^2 3p 2P^0 3/2
