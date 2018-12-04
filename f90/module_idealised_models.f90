@@ -10,9 +10,9 @@ module module_idealised_models
   private
   real(kind=8)             :: ngas_norm           = -999.0d0         ! Gas density profile normalisation [cm-3]
   real(kind=8)             :: coldens_norm        = -999.0d0         ! Gas COLUMN density [cm-2]
-  real(kind=8)             :: ngas_slope          = -999.0d0         ! slope of the density profile
+  real(kind=8)             :: ngas_slope          = -999.0d0         ! slope of the density profile ! ngas_slope=2 -> n~r**(-2)
   real(kind=8)             :: Vgas_norm           = -999.0d0         ! V0, Vmax, Vcirc etc [cm/s]
-  real(kind=8)             :: Vgas_slope          = -999.0d0         ! slope of the velocity profile
+  real(kind=8)             :: Vgas_slope          = -999.0d0         ! slope of the velocity profile ! Vgas_slope=2 -> V~r**2
   real(kind=8)             :: Tgas_norm           = -999.0d0         ! Gas temperature [K]
   real(kind=8)             :: vth_norm            = -999.0d0         ! Gas micro. speed [cm/s]
   real(kind=8)             :: ndust_norm          = -999.0d0         ! Dust density profile normalisation [cm-3]
@@ -30,7 +30,8 @@ module module_idealised_models
   
   ! public functions:
   public :: read_IdealisedModels_params, print_IdealisedModels_params, compute_idealised_gas, shell_V_rho_gradient, shellcone_V_rho_gradient, shell_chisholm, shell_V_rho_gradient_steady, sphere_homogen_velfix, sphere_homogen_Vgradient
-  
+
+  !! WARNING: sphere_homogen_velfix and sphere_homogen_Vgradient are "sphere" models, i.e. only work for r_min=0
   
 contains
 
@@ -515,7 +516,8 @@ contains
   subroutine sphere_homogen_velfix(ndust_ideal,ngas_ideal,bparam_ideal,vx_ideal,vy_ideal,vz_ideal,xcell_ideal,ycell_ideal,zcell_ideal,dx_cell)
     
     implicit none
-    
+
+    ! This is a SPHERE model, not shell (works only for r_min=0)
     ! point source at center and medium transparent at R > r_max
 
     ! Declare arguments
@@ -618,6 +620,7 @@ contains
     implicit none
     
     ! point source at center and medium transparent at R > r_max
+    ! This is a SPHERE model, not shell (works only for r_min=0)
 
     ! Declare arguments
     real(kind=8)                          :: dx_cell
