@@ -1,6 +1,6 @@
 module module_FeII_2250_model ! Fe_II UV5
 
-  ! This module describes the absorption of photons by FeII from level  3d^6 4s 9/2 to level 3d^6 4p 7/2.
+  ! This module describes the absorption of photons by FeII from level  3d^6 4s 6D 9/2 to level 3d^6 4p 4D^0 7/2.
   ! This transition is at 2249.88 A. (named 2250)
   ! The module also implements the two decay channels (resonant and fluorescent) at 2249.88 A and 2269.52 A. 
 
@@ -14,11 +14,11 @@ module module_FeII_2250_model ! Fe_II UV5
 
   private
 
-  ! Atomic data, taken from Zhu et al, 2015 (Appendix A Table 2)
+  ! Atomic data, from the NIST database (https://www.nist.gov)
   ! In this module, we use the following convention :
-  ! level 1 is 3d^6 4s 9/2
-  ! level 2 is 3d^6 4s 7/2
-  ! level 3 is 3d^6 4p 7/2
+  ! level 1 is 3d^6 4s 6D 9/2
+  ! level 2 is 3d^6 4s 6D 7/2
+  ! level 3 is 3d^6 4p 4D^0 7/2
 
   ! transition between levels 1 and 3
   real(kind=8),parameter :: lambda13       = 2249.88d0                    ! transition wavelength [A]
@@ -32,7 +32,7 @@ module module_FeII_2250_model ! Fe_II UV5
   real(kind=8),parameter :: lambda23       = 2269.52d0                    ! transition wavelength [A]
   real(kind=8),parameter :: lambda23_cm    = lambda23 / cmtoA             ! [cm]
   real(kind=8),parameter :: nu23           = clight / lambda23_cm         ! [Hz]
-  real(kind=8),parameter :: A32            = 4.0d6                        ! spontaneous decay [/s]
+  real(kind=8),parameter :: A32            = 4.0d5                        ! spontaneous decay [/s]
 
   real(kind=8),parameter :: A31_over_A31_plus_A32 = A31 / (A31+A32)
   

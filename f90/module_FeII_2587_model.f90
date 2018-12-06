@@ -1,6 +1,6 @@
 module module_FeII_2587_model ! Fe_II UV1
 
-  ! This module describes the absorption of photons by FeII from level  3d^6 4s 9/2 to level 3d^6 4p 7/2.
+  ! This module describes the absorption of photons by FeII from level  3d^6 4s 6D 9/2 to level 3d^6 4p 6D^0 7/2.
   ! This transition is at 2586.65 A. (named 2587)
   ! The module also implements the two decay channels (resonant and fluorescent) at 2586.65 A , 2612.65 A. and 2632.11 
 
@@ -14,12 +14,12 @@ module module_FeII_2587_model ! Fe_II UV1
 
   private
 
-  ! Atomic data, taken from Zhu et al, , 2015 (Table 2)
+  ! Atomic data, from the NIST database (https://www.nist.gov)
   ! In this module, we use the following convention :
-  ! level 1 is 3d^6 4s 9/2
-  ! level 2 is 3d^6 4s 7/2
-  ! level 3 is 3d^6 4s 5/2
-  ! level 4 is 3d^6 4p 7/2
+  ! level 1 is 3d^6 4s 6D 9/2
+  ! level 2 is 3d^6 4s 6D 7/2
+  ! level 3 is 3d^6 4s 6D 5/2
+  ! level 4 is 3d^6 4p 6D^0 7/2
 
   ! transition between levels 1 and 4
   real(kind=8),parameter :: lambda14       = 2586.65d0                    ! transition wavelength [A]

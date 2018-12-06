@@ -14,7 +14,7 @@ module module_SiII_1260_model
 
   private
 
-  ! Atomic data, taken from NIST database (Table 1 of Scarlata&Panagia15 looks wrong for this transition)
+  ! Atomic data, from the NIST database (https://www.nist.gov)
   ! In this module, we use the following convention :
   ! level 1 is 3s^2 3p 2P^0 1/2
   ! level 2 is 3s^2 3p 2P^0 3/2
@@ -24,7 +24,7 @@ module module_SiII_1260_model
   real(kind=8),parameter :: lambda13       = 1260.42d0                    ! transition wavelength [A]
   real(kind=8),parameter :: lambda13_cm    = lambda13 / cmtoA             ! [cm]
   real(kind=8),parameter :: nu13           = clight / lambda13_cm         ! [Hz]
-  real(kind=8),parameter :: f13            = 1.226d0                      ! oscillator strength
+  real(kind=8),parameter :: f13            = 1.22d0                      ! oscillator strength
   real(kind=8),parameter :: sigma13_factor = sqrtpi*e_ch**2*f13/me/clight ! multiply by Voigt(x,a)/delta_nu_doppler to get sigma.
   real(kind=8),parameter :: A31            = 2.57d9                       ! spontaneous decay [/s]
 
