@@ -363,6 +363,7 @@ contains
     DomDumpDir = trim(DomDumpDir)//"/"
     
     call read_mesh_params(pfile)
+    call read_ramses_params(pfile)
     
     return
 
@@ -422,6 +423,7 @@ contains
        write(unit,'(a,L1)')          '  verbose         = ',verbose
        write(unit,'(a)')             ' '
        call print_mesh_params(unit)
+       call print_ramses_params(unit)
     else
        write(*,'(a)')             '--------------------------------------------------------------------------------'
        write(*,'(a)')             ' '
@@ -467,6 +469,8 @@ contains
        write(*,'(a,L1)')          '  verbose         = ',verbose
        write(*,'(a)')             ' '
        call print_mesh_params
+       write(*,'(a)')             ' '
+       call print_ramses_params
        write(*,'(a)')             ' '
        write(*,'(a)')             '--------------------------------------------------------------------------------'
     end if

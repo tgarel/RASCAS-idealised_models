@@ -303,7 +303,17 @@ contains
   end function path
 
 
-  
+  subroutine print_rascas_header
+    write(*,'(a)') '                                             '
+    write(*,'(a)') '    _____  _____  _____  _____  _____  _____ '
+    write(*,'(a)') '   / ___ \/ ___ \/ ____\/   __\/ ___ \/ ____\'
+    write(*,'(a)') '   | \_/ || \_/ |\ \___ |  /   | \_/ |\ \___ '
+    write(*,'(a)') '   |    _/|  _  | \___ \|  |   |  _  | \___ \'
+    write(*,'(a)') '   | |\ \ | | | |_____/ |  \___| | | |____/ |'
+    write(*,'(a)') '   |_| \_\|_| |_|\_____/\_____/|_| |_|\_____/'
+    write(*,'(a)') '                                             '
+    write(*,'(a)') '                                             '
+  end subroutine print_rascas_header
 
 
 end module module_utils

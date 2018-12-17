@@ -5,13 +5,14 @@ module module_gas_composition
 
   use module_HI_model
   use module_random
-  use module_ramses
   use module_constants
 
   implicit none
 
   private
 
+  character(100),parameter :: moduleName = 'module_gas_composition_HI.f90'
+  
   type, public :: gas
      ! fluid
      real(kind=8) :: v(3)      ! gas velocity [cm/s]
@@ -30,8 +31,6 @@ module module_gas_composition
   real(kind=8)             :: fix_vth             = 1.0d5   ! ad-hoc thermal velocity (cm/s)
   real(kind=8)             :: fix_vel             = 0.0d0   ! ad-hoc cell velocity (cm/s) -> NEED BETTER PARAMETERIZATION for more than static... 
   real(kind=8)             :: fix_box_size_cm     = 1.0d8   ! ad-hoc box size in cm. 
-  ! miscelaneous
-  logical                  :: verbose             = .false. ! display some run-time info on this module
   ! --------------------------------------------------------------------------
 
   ! public functions:
@@ -44,6 +43,8 @@ contains
   subroutine gas_from_ramses_leaves(repository,snapnum,nleaf,nvar,ramses_var, g)
 
     ! define gas contents from ramses raw data
+
+    use module_ramses
 
     character(2000),intent(in)                     :: repository 
     integer(kind=4),intent(in)                     :: snapnum
@@ -62,7 +63,7 @@ contains
     else
        box_size_cm = ramses_get_box_size_cm(repository,snapnum)
        ! compute velocities in cm / s
-       if (verbose) write(*,*) '-- module_gas_composition_HI : extracting velocities from ramses '
+       write(*,*) '-- module_gas_composition_HI : extracting velocities from ramses '
        allocate(v(3,nleaf))
        call ramses_get_velocity_cgs(repository,snapnum,nleaf,nvar,ramses_var,v)
        do ileaf = 1,nleaf
@@ -70,7 +71,7 @@ contains
        end do
        deallocate(v)
        ! get nHI and temperature from ramses
-       if (verbose) write(*,*) '-- module_gas_composition_HI : extracting nHI and T from ramses '
+       write(*,*) '-- module_gas_composition_HI : extracting nHI and T from ramses '
        allocate(T(nleaf),nhi(nleaf))
        call ramses_get_T_nhi_cgs(repository,snapnum,nleaf,nvar,ramses_var,T,nhi)
        g(:)%nHI = nhi(:)
@@ -259,8 +260,6 @@ contains
              read(value,*) fix_vth
           case ('fix_vel')
              read(value,*) fix_vel
-          case ('verbose')
-             read(value,*) verbose
           case ('fix_box_size_cm')
              read(value,*) fix_box_size_cm
           end select
@@ -268,7 +267,6 @@ contains
     end if
     close(10)
 
-    call read_ramses_params(pfile)
     call read_HI_params(pfile)
 
     return
@@ -288,30 +286,28 @@ contains
 
     if (present(unit)) then 
        write(unit,'(a,a,a)') '[gas_composition]'
+       write(unit,'(a,a)')     '# code compiled with: ',trim(moduleName)
        write(unit,'(a)')       '# overwrite parameters'
        write(unit,'(a,L1)')    '  gas_overwrite       = ',gas_overwrite
-       write(unit,'(a,ES10.3)') '  fix_nhi            = ',fix_nhi
-       write(unit,'(a,ES10.3)') '  fix_vth            = ',fix_vth
-       write(unit,'(a,ES10.3)') '  fix_vel            = ',fix_vel
-       write(unit,'(a,ES10.3)') '  fix_box_size_cm    = ',fix_box_size_cm
-       write(unit,'(a)')       '# miscelaneous parameters'
-       write(unit,'(a,L1)')    '  verbose             = ',verbose
-       write(unit,'(a)')             ' '
-       call print_ramses_params(unit)
+       if(gas_overwrite)then
+          write(unit,'(a,ES10.3)') '  fix_nhi            = ',fix_nhi
+          write(unit,'(a,ES10.3)') '  fix_vth            = ',fix_vth
+          write(unit,'(a,ES10.3)') '  fix_vel            = ',fix_vel
+          write(unit,'(a,ES10.3)') '  fix_box_size_cm    = ',fix_box_size_cm
+       endif
        write(unit,'(a)')             ' '
        call print_HI_params(unit)
     else
        write(*,'(a,a,a)') '[gas_composition]'
+       write(*,'(a,a)')     '# code compiled with: ',trim(moduleName)
        write(*,'(a)')       '# overwrite parameters'
        write(*,'(a,L1)')    '  gas_overwrite       = ',gas_overwrite
-       write(*,'(a,ES10.3)') '  fix_nhi            = ',fix_nhi
-       write(*,'(a,ES10.3)') '  fix_vth            = ',fix_vth
-       write(*,'(a,ES10.3)') '  fix_vel            = ',fix_vel
-       write(*,'(a,ES10.3)') '  fix_box_size_cm    = ',fix_box_size_cm
-       write(*,'(a)')       '# miscelaneous parameters'
-       write(*,'(a,L1)')    '  verbose             = ',verbose
-       write(*,'(a)')             ' '
-       call print_ramses_params
+       if(gas_overwrite)then
+          write(*,'(a,ES10.3)') '  fix_nhi            = ',fix_nhi
+          write(*,'(a,ES10.3)') '  fix_vth            = ',fix_vth
+          write(*,'(a,ES10.3)') '  fix_vel            = ',fix_vel
+          write(*,'(a,ES10.3)') '  fix_box_size_cm    = ',fix_box_size_cm
+       endif
        write(*,'(a)')             ' '
        call print_HI_params
     end if
