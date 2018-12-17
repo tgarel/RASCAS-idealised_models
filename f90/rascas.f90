@@ -21,8 +21,8 @@ program main
   ! --- outputs
   character(2000)           :: fileout = 'photons_done.dat'   ! output file ... 
   ! --- miscelaneous
-  integer(kind=4)           :: nbundle = 1000
-  logical                   :: verbose = .false.
+  integer(kind=4)           :: nbundle = 10
+  logical                   :: verbose = .true.
   ! --------------------------------------------------------------------------
 
   
