@@ -15,6 +15,7 @@ module module_gas_composition
 
   private
 
+  character(100),parameter :: moduleName = 'module_gas_composition_FeII_UV1_dust.f90'
   type, public :: gas
      ! fluid
      real(kind=8) :: v(3)      ! gas velocity [cm/s]
@@ -342,6 +343,7 @@ contains
 
     if (present(unit)) then
        write(unit,'(a,a,a)') '[gas_composition]'
+       write(unit,'(a,a)')      '# code compiled with: ',trim(moduleName)
        write(unit,'(a)')        '# mixture parameters'
        write(unit,'(a,ES10.3)') '  f_ion                = ',f_ion
        write(unit,'(a,ES10.3)') '  Zref                 = ',Zref
@@ -362,6 +364,7 @@ contains
        call print_FeII_2600_params(unit)
     else
        write(*,'(a,a,a)') '[gas_composition]'
+       write(*,'(a,a)')      '# code compiled with: ',trim(moduleName)
        write(*,'(a)')        '# mixture parameters'
        write(*,'(a,ES10.3)') '  f_ion                = ',f_ion
        write(*,'(a,ES10.3)') '  Zref                 = ',Zref
