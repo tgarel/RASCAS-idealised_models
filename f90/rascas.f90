@@ -3,6 +3,7 @@ program main
   use module_parallel_mpi
   use module_master
   use module_worker
+  use module_utils, only : print_rascas_header
 
   implicit none
 
@@ -204,20 +205,5 @@ contains
 
   end subroutine print_rascas_params
 
-
-  subroutine print_rascas_header
-    
-    write(*,'(a)') '                                             '
-    write(*,'(a)') '    _____  _____  _____  _____  _____  _____ '
-    write(*,'(a)') '   / ___ \/ ___ \/ ____\/   __\/ ___ \/ ____\'
-    write(*,'(a)') '   | \_/ || \_/ |\ \___ |  /   | \_/ |\ \___ '
-    write(*,'(a)') '   |    _/|  _  | \___ \|  |   |  _  | \___ \'
-    write(*,'(a)') '   | |\ \ | | | |_____/ |  \___| | | |____/ |'
-    write(*,'(a)') '   |_| \_\|_| |_|\_____/\_____/|_| |_|\_____/'
-    write(*,'(a)') '                                             '
-    write(*,'(a)') '                                             '
-
-  end subroutine print_rascas_header
-  
 
 end program main
