@@ -13,6 +13,7 @@ module module_gas_composition
 
   private
 
+  character(100),parameter :: moduleName = 'module_gas_composition_SiII_1190_1193_dust.f90'
   type, public :: gas
      ! fluid
      real(kind=8) :: v(3)      ! gas velocity [cm/s]
@@ -251,12 +252,9 @@ contains
        read(unit) (g(i)%ndust,i=1,n)
        read(unit) box_size_cm 
     end if
-
-    if (verbose) print*,'min/max of nSiII : ',minval(g(:)%nSiII),maxval(g(:)%nSiII)
-
   end subroutine read_gas
 
-  
+
 
   subroutine gas_destructor(g)
     type(gas),dimension(:),allocatable,intent(inout) :: g
@@ -344,6 +342,7 @@ contains
 
     if (present(unit)) then 
        write(unit,'(a,a,a)') '[gas_composition]'
+       write(unit,'(a,a)')      '# code compiled with: ',trim(moduleName)
        write(unit,'(a)')        '# mixture parameters'
        write(unit,'(a,ES10.3)') '  f_ion                = ',f_ion
        write(unit,'(a,ES10.3)') '  Zref                 = ',Zref
@@ -356,11 +355,15 @@ contains
           write(unit,'(a,ES10.3)') '  fix_ndust            = ',fix_ndust
           write(unit,'(a,ES10.3)') '  fix_box_size_cm      = ',fix_box_size_cm
        endif
-       call print_dust_params
+       write(unit,'(a)')             ' '
+       call print_dust_params(unit)
+       write(unit,'(a)')             ' '
        call print_SiII_1190_params(unit)
+       write(unit,'(a)')             ' '
        call print_SiII_1193_params(unit)
     else
        write(*,'(a,a,a)') '[gas_composition]'
+       write(*,'(a,a)')      '# code compiled with: ',trim(moduleName)
        write(*,'(a)')        '# mixture parameters'
        write(*,'(a,ES10.3)') '  f_ion                = ',f_ion
        write(*,'(a,ES10.3)') '  Zref                 = ',Zref
@@ -375,7 +378,9 @@ contains
        endif
        write(*,'(a)')             ' '
        call print_dust_params
+       write(*,'(a)')             ' '
        call print_SiII_1190_params
+       write(*,'(a)')             ' '
        call print_SiII_1193_params
     end if
 
