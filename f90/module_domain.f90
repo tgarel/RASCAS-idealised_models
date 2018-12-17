@@ -147,16 +147,41 @@ contains
     integer(kind=4),dimension(:),allocatable,intent(out) :: indsel
     integer(kind=4)                                      :: i,ii,nsel
     integer(kind=4),dimension(:),allocatable             :: tmpi
-    real(kind=8)                                         :: dd,dx
+    real(kind=8)                                         :: dd,dx,dy,dz
     
     select case(trim(dom%type))
-    
+       
+    ! TIBO       
     case('sphere')
        allocate(indsel(1:n))
        indsel=0
        ii=0
        do i=1,n
-          dd = (xp(i,1)-dom%sp%center(1))**2 + (xp(i,2)-dom%sp%center(2))**2 + (xp(i,3)-dom%sp%center(3))**2
+          ! correct positions for periodic boundaries 
+          dx = xp(i,1)-dom%sp%center(1)
+          if (dx > 0.5d0) then 
+             dx = dx -1.0d0 
+          else if (dx < -0.5d0) then 
+             dx = dx + 1.0d0
+          end if
+          
+          dy = xp(i,2)-dom%sp%center(2)
+          if (dy > 0.5d0) then 
+             dy = dy -1.0d0 
+          else if (dy < -0.5d0) then 
+             dy = dy + 1.0d0
+          end if
+          
+          dz = xp(i,3)-dom%sp%center(3)
+          if (dz > 0.5d0) then 
+             dz = dz -1.0d0 
+          else if (dz < -0.5d0) then 
+             dz = dz + 1.0d0
+          end if
+          
+          !dd = (xp(i,1)-dom%sp%center(1))**2 + (xp(i,2)-dom%sp%center(2))**2 + (xp(i,3)-dom%sp%center(3))**2
+          dd = dx**2 + dy**2 + dz**2
+          ! OBIT
           if(sqrt(dd)<=dom%sp%radius)then
              ii=ii+1
              indsel(ii)=i
@@ -169,7 +194,7 @@ contains
        allocate(indsel(1:nsel))
        indsel=tmpi
        deallocate(tmpi)
-
+       
     case('shell')
        allocate(indsel(1:n))
        indsel=0
@@ -398,6 +423,7 @@ contains
     domain_contains_point=.false.
     select case(trim(dom%type))
     case('sphere')
+       ! correct cell's position for periodic boundaries 
        dx = x(1)-dom%sp%center(1)
        if (dx > 0.5d0) then 
           dx = dx -1.0d0 
@@ -467,7 +493,7 @@ contains
     real(kind=8),dimension(3),intent(in) :: x
     real(kind=8),intent(in)              :: dx
     logical                              :: domain_contains_cell
-    real(kind=8)                         :: rr,xc,dd
+    real(kind=8)                         :: rr,xc,dd,ddx,ddy,ddz
     real(kind=8),parameter :: sqrt3over2 = sqrt(3.0d0)*0.5d0
     
     domain_contains_cell=.false.
@@ -475,11 +501,34 @@ contains
     select case(trim(dom%type))
 
     case('sphere')
+       ! TIBO
+       ! correct cell's position for periodic boundaries
+       ddx = x(1)-dom%sp%center(1)
+       if (ddx > 0.5d0) then 
+          ddx = ddx -1.0d0 
+       else if (ddx < -0.5d0) then 
+          ddx = ddx + 1.0d0
+       end if
        
-       rr = sqrt((x(1)-dom%sp%center(1))**2 + (x(2)-dom%sp%center(2))**2 + (x(3)-dom%sp%center(3))**2)
+       ddy = x(2)-dom%sp%center(2)
+       if (ddy > 0.5d0) then 
+          ddy = ddy -1.0d0 
+       else if (ddy < -0.5d0) then 
+          ddy = ddy + 1.0d0
+       end if
+       
+       ddz = x(3)-dom%sp%center(3)
+       if (ddz > 0.5d0) then 
+          ddz = ddz -1.0d0 
+       else if (ddz < -0.5d0) then 
+          ddz = ddz + 1.0d0
+       end if
+       
+       rr = sqrt(ddx**2 + ddy**2 + ddz**2)
        rr = rr + dx*sqrt3over2
        if (rr < dom%sp%radius) domain_contains_cell=.true.
-      
+       ! OBIT
+
     case('shell')
        
        rr = sqrt((x(1)-dom%sh%center(1))**2 + (x(2)-dom%sh%center(2))**2 + (x(3)-dom%sh%center(3))**2)
@@ -547,12 +596,12 @@ contains
     do i=1,ndom
        db = domain_distance_to_border(x,liste_domaines(i))
        ! if db < 0 point outside domain
-       if (db>dmax)then ! if (db>=dmax)then
+       if (db>=dmax)then
           imax = i
           dmax = db
        endif
     enddo
-    if(dmax<=0.0d0 .or. imax==0)then ! if(dmax<0.0d0 .or. imax==0)then
+    if(dmax<0.0d0 .or. imax==0)then
        print *,'ERROR: problem with get_my_new_domain'
        stop
     endif
@@ -573,6 +622,7 @@ contains
     select case(trim(dom%type))
 
     case('sphere')
+       ! correct position for periodic boudaries
        ddx = x(1)-dom%sp%center(1)
        if (ddx > 0.5d0) then 
           ddx = ddx -1.0d0 
@@ -674,7 +724,8 @@ contains
     select case(trim(dom%type))
        
     case('sphere')
-       
+
+       ! correct position for periodic boudaries
        dx = x(1)-dom%sp%center(1)
        if (dx > 0.5d0) then 
           dx = dx -1.0d0 
