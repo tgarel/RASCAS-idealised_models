@@ -235,7 +235,7 @@ contains
     case('RASCAS')
        methodKey = 3
     case default
-       print*,'ERROR: method not known in module_uparallel.f90:PROB_FUNC : ',trim(method)
+       print*,'ERROR: method not known in module_uparallel.f90: read_uparallel_params: ',trim(method)
        stop
     end select
     
