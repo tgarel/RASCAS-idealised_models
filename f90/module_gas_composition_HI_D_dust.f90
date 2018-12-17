@@ -16,6 +16,8 @@ module module_gas_composition
 
   private
 
+  character(100),parameter :: moduleName = 'module_gas_composition_HI_D_dust.f90'
+  
   type, public :: gas
      ! fluid
      real(kind=8) :: v(3)      ! gas velocity [cm/s]
@@ -234,7 +236,7 @@ contains
     write(unit) (g(i)%nHI, i=1,nleaf)
     write(unit) (g(i)%dopwidth, i=1,nleaf)
     write(unit) (g(i)%ndust, i=1,nleaf)
-    write(unit) box_size_cm 
+    write(unit) box_size_cm
   end subroutine dump_gas
 
 
@@ -251,7 +253,7 @@ contains
        read(unit) (g(i)%nHI,i=1,n)
        read(unit) (g(i)%dopwidth,i=1,n)
        read(unit) (g(i)%ndust,i=1,n)
-       read(unit) box_size_cm 
+       read(unit) box_size_cm
     end if
   end subroutine read_gas
 
@@ -346,6 +348,7 @@ contains
 
     if (present(unit)) then 
        write(unit,'(a,a,a)') '[gas_composition]'
+       write(unit,'(a,a)')      '# code compiled with: ',trim(moduleName)
        write(unit,'(a)')        '# mixture parameters'
        write(unit,'(a,ES10.3)') '  deut2H_nb_ratio = ',deut2H_nb_ratio
        write(unit,'(a,ES10.3)') '  f_ion           = ',f_ion
@@ -367,6 +370,7 @@ contains
        call print_dust_params(unit)
     else
        write(*,'(a,a,a)') '[gas_composition]'
+       write(*,'(a,a)')      '# code compiled with: ',trim(moduleName)
        write(*,'(a)')        '# mixture parameters'
        write(*,'(a,ES10.3)') '  deut2H_nb_ratio = ',deut2H_nb_ratio
        write(*,'(a,ES10.3)') '  f_ion           = ',f_ion
