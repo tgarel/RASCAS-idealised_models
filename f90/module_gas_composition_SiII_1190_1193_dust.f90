@@ -140,7 +140,7 @@ contains
 
 
   
-  function  gas_get_scatter_flag(cell_gas, distance_to_border_cm, nu_cell,tau_abs,iran)
+  function  gas_get_scatter_flag(cell_gas, distance_to_border_cm, nu_cell, tau_abs,iran)
 
     ! --------------------------------------------------------------------------
     ! Decide whether a scattering event occurs, and if so, on which element
@@ -174,7 +174,7 @@ contains
     if (tau_abs > tau_cell) then  ! photon is due for absorption outside the cell 
        gas_get_scatter_flag = 0
        tau_abs = tau_abs - tau_cell
-       if (tau_abs.lt.0.0d0) then
+       if (tau_abs.lt.0.d0) then
           print*, 'tau_abs est negatif'
           stop
        endif
@@ -251,6 +251,9 @@ contains
        read(unit) (g(i)%ndust,i=1,n)
        read(unit) box_size_cm 
     end if
+
+    if (verbose) print*,'min/max of nSiII : ',minval(g(:)%nSiII),maxval(g(:)%nSiII)
+
   end subroutine read_gas
 
   
@@ -353,11 +356,8 @@ contains
           write(unit,'(a,ES10.3)') '  fix_ndust            = ',fix_ndust
           write(unit,'(a,ES10.3)') '  fix_box_size_cm      = ',fix_box_size_cm
        endif
-       write(unit,'(a)')             ' '
-       call print_dust_params(unit)
-      write(unit,'(a)')             ' '
+       call print_dust_params
        call print_SiII_1190_params(unit)
-      write(unit,'(a)')             ' '
        call print_SiII_1193_params(unit)
     else
        write(*,'(a,a,a)') '[gas_composition]'
@@ -375,9 +375,7 @@ contains
        endif
        write(*,'(a)')             ' '
        call print_dust_params
-       write(*,'(a)')             ' '
        call print_SiII_1190_params
-       write(*,'(a)')             ' '
        call print_SiII_1193_params
     end if
 

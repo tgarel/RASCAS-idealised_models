@@ -1,6 +1,6 @@
 module module_MgII_2804_model
 
-  ! This module describes the absorption of photons by MgII from level 2p^6 3p 2P 1/2 to level 2p^6 3s 2S
+  ! This module describes the absorption of photons by MgII from level 2p^6 3p 2P^0 1/2 to level 2p^6 3s 2S 1/2
   ! This transition is 2803.53 A.
   ! The module also implements one decay channel (resonant) at 2803.25 A.
 
@@ -14,10 +14,10 @@ module module_MgII_2804_model
 
   private
 
-  ! Atomic data, taken from Zhu et al., ApJ 815, 2015 (table 2)
+  ! Atomic data, from the NIST database (https://www.nist.gov)
   ! In this module, we use the following convention :
-  ! level 1 is 2p^6 3s 2S
-  ! level 2 is 2p^6 3p 2P 1/2
+  ! level 1 is 2p^6 3s 2S 1/2
+  ! level 2 is 2p^6 3p 2P^0 1/2
 
   ! transition between levels 2 and 1
   real(kind=8),parameter :: lambda12       = 2803.53d0                    ! transition wavelength [A]

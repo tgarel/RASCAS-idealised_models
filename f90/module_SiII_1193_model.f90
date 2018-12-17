@@ -14,7 +14,7 @@ module module_SiII_1193_model
 
   private
 
-  ! Atomic data, taken from Scarlata and Panagia, AjJ 801, 2015 (Table 1)
+  ! Atomic data, from the NIST database (https://www.nist.gov)
   ! In this module, we use the following convention :
   ! level 1 is 3s^2 3p 2P^0 1/2
   ! level 2 is 3s^2 3p 2P^0 3/2
@@ -34,7 +34,7 @@ module module_SiII_1193_model
   real(kind=8),parameter :: nu23           = clight / lambda23_cm         ! [Hz]
   real(kind=8),parameter :: A32            = 1.4d9                        ! spontaneous decay [/s]
   
-  real(kind=8),parameter :: A31_over_A31_plus_A32 = A31 / (A31+A32)
+  real(kind=8),parameter :: Atot = A31+A32
 
   public :: get_tau_SiII_1193, scatter_SiII_1193, read_SiII_1193_params, print_SiII_1193_params
 
@@ -99,7 +99,7 @@ contains
     real(kind=8),intent(in)                 :: vth
     integer(kind=4),intent(inout)           :: iran
     real(kind=8)                            :: delta_nu_doppler, a, x_cell, upar, ruper
-    real(kind=8)                            :: r2, uper, nu_atom, mu, bu, scalar
+    real(kind=8)                            :: r2, uper, nu_atom, mu, bu, scalar, proba31
     real(kind=8),dimension(3)               :: knew
 
     ! define x_cell & a
@@ -120,7 +120,9 @@ contains
 
     ! 3/ chose de-excitation channel to determine output freq. in atom's frame
     r2 = ran3(iran)
-    if (r2 <= A31_over_A31_plus_A32) then
+    proba31 = A31/Atot
+
+    if (r2 <= proba31) then
        ! photon goes down to level 1 -> coherent scattering
        nu_atom = nu_cell - nu_ext * upar/clight ! incoming frequency in atom's frame = outcoming freq in same frame
     else

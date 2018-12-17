@@ -8,12 +8,13 @@ module module_uparallel
   ! --------------------------------------------------------------------------
   ! user-defined parameters - read from section [uparallel] in the parameter file 
   ! --------------------------------------------------------------------------
-  character(20) :: method = 'RASCAS'   ! may be 'Smith', 'Semelin', or 'RASCAS'
-  real(kind=8)  :: xForGaussian = 8.0  ! above this value, use a Gaussian to draw u_parallel
+  character(20)   :: method = 'RASCAS'   ! may be 'Smith', 'Semelin', or 'RASCAS'
+  real(kind=8)    :: xForGaussian = 8.0  ! above this value, use a Gaussian to draw u_parallel
   ! --------------------------------------------------------------------------
 
-  logical       :: isRead=.False., isPrinted=.False. ! to avoid multiple reads and prints when called from different modules
-
+  logical         :: isRead=.False., isPrinted=.False. ! to avoid multiple reads and prints when called from different modules
+  integer(kind=4) :: methodKey
+  
   public :: get_uparallel,read_uparallel_params,print_uparallel_params
 
 contains
@@ -52,21 +53,52 @@ contains
     
     if( x < xForGaussian ) then
        ! Define a value of u_0 (the optimisation parameter from Zheng & Miralda-Escude 2002). 
-       select case(trim(method)) 
-       case ('Semelin')
+
+       ! select case(trim(method))
+       ! case ('Semelin')
+       !    if (x>3) then 
+       !       u_0=1.85-log(a)/6.73+log(log(x))  ! Eq. 17 of Semelin+07
+       !    else
+       !       u_0 = 0.0d0
+       !    end if
+       ! case ('Smith')
+       !    xcw = 6.9184721d0 + 81.766279d0 / (log10(a) - 14.651253d0)  ! Eq. 21 of Smith+15
+       !    if (x < xcw) then
+       !       u_0 = x - 1.0d0 / (x + exp(1.d0-x*x)/a)   ! Eq. 31 of Smith+15
+       !    else
+       !       u_0 = xcw - 1.d0/xcw + 0.15*(x-xcw)       ! Eq. 32 of Smith+15
+       !    end if
+       ! case ('RASCAS')
+       !    ! empirical 2D polynomial for u0 (JB-2017)
+       !    if (x<0.6) then 
+       !       u_0 = 0
+       !    else
+       !       la = log10(a)
+       !       la2 = la*la
+       !       u_0 =2.648963+2.014446*la+0.351479*la2 + x*(-4.058673-3.675859*la-0.640003*la2 &
+       !            + x*(3.017395+2.117133*la+0.370294*la2 + x*(-0.869789-0.565886*la-0.096312*la2 &
+       !            + x*(0.110987+0.070103*la+0.011557*la2 + x*(-0.005200-0.003240*la-0.000519*la2)))))
+       !    end if
+       ! case default
+       !    print*,'ERROR: method not known in module_uparallel.f90:PROB_FUNC : ',trim(method)
+       !    stop
+       ! end select
+
+       select case(methodKey)
+       case (1)
           if (x>3) then 
              u_0=1.85-log(a)/6.73+log(log(x))  ! Eq. 17 of Semelin+07
           else
              u_0 = 0.0d0
           end if
-       case ('Smith')
+       case (2)
           xcw = 6.9184721d0 + 81.766279d0 / (log10(a) - 14.651253d0)  ! Eq. 21 of Smith+15
           if (x < xcw) then
              u_0 = x - 1.0d0 / (x + exp(1.d0-x*x)/a)   ! Eq. 31 of Smith+15
           else
              u_0 = xcw - 1.d0/xcw + 0.15*(x-xcw)       ! Eq. 32 of Smith+15
           end if
-       case ('RASCAS')
+       case (3)
           ! empirical 2D polynomial for u0 (JB-2017)
           if (x<0.6) then 
              u_0 = 0
@@ -81,6 +113,7 @@ contains
           print*,'ERROR: method not known in module_uparallel.f90: get_uparallel: ',trim(method)
           stop
        end select
+       
        ! Perform the rejection method given u_0
        ctloc=0
        success=.false.
@@ -194,6 +227,18 @@ contains
        close(10)
     endif
 
+    select case(trim(method))
+    case('Semelin')
+       methodKey = 1
+    case('Smith')
+       methodKey = 2
+    case('RASCAS')
+       methodKey = 3
+    case default
+       print*,'ERROR: method not known in module_uparallel.f90:PROB_FUNC : ',trim(method)
+       stop
+    end select
+    
     isRead = .True.
     
     return

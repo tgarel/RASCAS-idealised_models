@@ -7,10 +7,11 @@ module module_voigt
   ! --------------------------------------------------------------------------
   ! user-defined parameters - read from section [voigt] in the parameter file 
   ! --------------------------------------------------------------------------
-  character(20) :: approximation = 'COLT'  ! could be 'COLT', 'Tasitsiomi' or 'Humlicek_w4'
+  character(20)   :: approximation = 'COLT'  ! could be 'COLT', 'Tasitsiomi' or 'Humlicek_w4'
   ! --------------------------------------------------------------------------
 
-  logical       :: isRead=.False., isPrinted=.False. ! to avoid multiple reads and prints when called from different modules
+  integer(kind=4) :: approxKey
+  logical         :: isRead=.False., isPrinted=.False. ! to avoid multiple reads and prints when called from different modules
   
   public :: voigt_function, read_voigt_params, print_voigt_params
 
@@ -25,15 +26,36 @@ contains
     real(kind=8),intent(in) :: x,a
     real(kind=8)            :: voigt_function
 
-    select case(trim(approximation))
-    case('Tasitsiomi')
+    !========================================
+    ! if(approximation=='COLT')then
+    !    voigt_function = colt_approx(x,a)
+    ! else 
+    !    if(approximation=='Tasitsiomi')then
+    !       voigt_function = tasitsiomi_approx(x,a)
+    !    else
+    !       voigt_function = humlicek_w4(x,a)
+    !    end if
+    ! end if
+    !========================================
+    ! select case(trim(approximation))
+    ! case('Tasitsiomi')
+    !    voigt_function = tasitsiomi_approx(x,a)
+    ! case('COLT')
+    !    voigt_function = colt_approx(x,a)
+    ! case('Humlicek_w4')
+    !    voigt_function = humlicek_w4(x,a)
+    ! end select
+    !========================================
+    select case(approxKey)
+    case(1)
        voigt_function = tasitsiomi_approx(x,a)
-    case('COLT')
+    case(2)
        voigt_function = colt_approx(x,a)
-    case('Humlicek_w4')
+    case(3)
        voigt_function = humlicek_w4(x,a)
     end select
-
+    !========================================
+    
     return
 
   end function voigt_function
@@ -176,6 +198,20 @@ contains
        close(10)
     endif
     isRead = .True.
+
+    ! encode approximation choice into an integer
+    select case(trim(approximation))
+    case('Tasitsiomi')
+       approxKey = 1
+    case('COLT')
+       approxKey = 2
+    case('Humlicek_w4')
+       approxKey = 3
+    case default
+       print*,'ERROR: approximation not known in module_voigt.f90: read_voigt_params: ',trim(approximation)
+       stop
+    end select
+
     return
   end subroutine read_voigt_params
 
