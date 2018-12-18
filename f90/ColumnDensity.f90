@@ -2,7 +2,7 @@ program main
 
   ! Use RASCAS to compute column densities along sight-lines. 
 
-  use module_gray_ray 
+  use module_jbv
   use module_mesh
   use module_domain
   use module_constants
@@ -23,22 +23,22 @@ program main
   ! user-defined parameters - read from section [ColumnDensity] of the parameter file
   ! --------------------------------------------------------------------------
   ! --- inputs 
-  character(2000)           :: DataDir      = '/scratch/chuniaud/test_fesc'                      ! where input files below are 
-  character(2000)           :: RaysICFile = 'position.dat'      ! the file containing photons to cast.
-  character(2000)           :: DomDumpFile  = 'domain_decomposition_params.dat' ! the file describing the outputs of CreateDomDump.
-  character(2000)           :: DirectionsFile  = 'direction_nside16.txt'    ! file where the directions and ndirections are written !Mat 
+  character(2000)           :: DataDir      	= '/DATA_simu/HI_D_SMC/00164/' !'/scratch/chuniaud/test_fesc'  ! where input files below are 
+  character(2000)           :: RaysICFile 	= 'directions_star1.dat'      ! the file containing photons to cast.
+  character(2000)           :: DomDumpFile  	= 'domain_decomposition_params.dat' ! the file describing the outputs of CreateDomDump.
+  character(2000)           :: DirectionsFile  	= 'directions_star1.dat' !'direction.txt'    ! file where the directions and ndirections are written !Mat 
   ! --- outputs
-  character(2000)           :: fileout = 'fescs.dat'   ! output file ... 
+  character(2000)           :: fileout 		= 'NHI.dat' !'fescs.dat'   ! output file ... 
   ! --- parameters
-  integer(kind=4)           :: ndirections=500 ! Number of directions (rays) from each source
-  real(kind=8)              :: maxdist = -1    ! stop rays after this distance [cm] negative => ignored)
-  real(kind=8)              :: maxtau  = -1    ! stop rays after this tau (overrides maxdist) (negative => ignored)
-  real(kind=8)              :: minnH   = -1    ! stop rays when reaching H density lower than this (in cm^-3)
+  integer(kind=4)           :: ndirections	=500 ! Number of directions (rays) from each source
+  real(kind=8)              :: maxdist 		= -1    ! stop rays after this distance [cm] negative => ignored)
+  real(kind=8)              :: maxtau  		= -1    ! stop rays after this tau (overrides maxdist) (negative => ignored)
+  real(kind=8)              :: minnH   		= -1    ! stop rays when reaching H density lower than this (in cm^-3)
   ! --- halos - for escape fractions out of virial radii
-  integer(kind=4)           :: nhalos=0 ! Number of halos
-  character(2000)           :: HaloFile = 'halos.dat' ! the file containing halo ids, rvir, and pos
+  integer(kind=4)           :: nhalos		=0 ! Number of halos
+  character(2000)           :: HaloFile 	= 'halos.dat' ! the file containing halo ids, rvir, and pos
   ! --- miscelaneous
-  logical                   :: verbose = .false.
+  logical                   :: verbose 		= .false.
   ! --------------------------------------------------------------------------
 
   call cpu_time(start)
@@ -70,14 +70,6 @@ program main
   endif
   ! ------------------------------------------------------------
 
-  ! -------------------- read halo IDs and domains -------------
-  if(use_halos) then
-     if (verbose) print *,'--> reading halos in file: ',trim(HaloFile)
-     call init_halos_from_file(HaloFile,halos)
-     nhalos = size(halos)
-     if (verbose) print *,'--> Nb of halos =',nhalos
-  endif
-  ! -----------------------------------------------------------
 
   
   ! -------------------- Get domain properties --------------------
@@ -96,7 +88,6 @@ program main
      read(18,'(a)') line ; i = scan(line,'=') ; mesh_file_list(j) = trim(DataDir)//trim(adjustl(line(i+1:)))
   end do
   close(18)
-  
   call domain_constructor_from_file(file_compute_dom,compute_dom)
   if (verbose) print*,'computational domain built'
   call mesh_from_file(mesh_file_list(1),meshdom)

@@ -2,7 +2,7 @@ program main
 
   ! Use RASCAS to compute column densities along sight-lines. 
 
-  use module_gray_ray 
+  use module_mathieu 
   use module_mesh
   use module_domain
   use module_constants

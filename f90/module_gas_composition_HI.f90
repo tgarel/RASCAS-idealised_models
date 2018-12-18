@@ -1,4 +1,4 @@
-module module_gas_composition
+module module_gas_composition_HI
 
   ! Pure HI gas. 
   ! - The HI content is derived from RAMSES directly
@@ -322,4 +322,4 @@ contains
 
 
 
-end module module_gas_composition
+end module module_gas_composition_HI

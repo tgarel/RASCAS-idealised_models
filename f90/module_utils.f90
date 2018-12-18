@@ -198,7 +198,8 @@ contains
 
     phi = twopi * ran3(iran)
     x   = ran3(iran)
-    mu = ((((((-24.901267d0*x + 87.154434d0)*x -114.220525d0)*x + 67.665227d0)*x -18.389694d0)*x + 3.496531d0)*x + 1.191722d0)*x -0.998214d0
+    mu = ((((((-24.901267d0*x + 87.154434d0)*x -114.220525d0)*x + 67.665227d0)*x -18.389694d0)*x &
+    + 3.496531d0)*x + 1.191722d0)*x -0.998214d0
     ! angular description of kin in external frame (box coordinates)
     cti = kin(3)
     sti = sqrt(1.0d0 - cti**2)  ! sin(theta) is positive for theta in [0,pi]. 

@@ -1,4 +1,4 @@
-module module_mathieu
+module module_jbv
 
   ! This is a trimmed and slightly modified version of module_photon.
   !
@@ -16,35 +16,22 @@ module module_mathieu
   ! todonext define accuracy
   real(kind=8),parameter :: accuracy=1.d-15
   integer(kind=4) :: iran = -10
-  logical::identical_ray_distribution=.false. ! Same ray directions for all sources?
-  logical:: use_halos = .false.
 
 
-  
 
   type ray_type
-     integer(kind=4)           :: ID       ! a positive unique ID 
-     real(kind=8)              :: dist     ! distance traveled along ray (box units)
-     real(kind=8)              :: tau      ! integrated opacity along ray
      real(kind=8),dimension(3) :: x_em     ! emission location (box units)
-     integer(kind=4)           :: halo_ID  ! a positive unique ID 
      real(kind=8),dimension(3) :: k_em     ! emission direction == propagation direction (normalised vector)
-     real(kind=8)              :: fesc     ! escape fraction 
+     real(kind=8)              :: NHI      ! escape fraction 
   end type ray_type
 
-  type halo_type
-     integer(kind=4)           :: ID       ! a positive unique ID
-     type(domain)              :: domain   ! rvir and center (box units)
-  end type halo_type
-
-  type(halo_type),dimension(:),allocatable :: halos
 
   public  :: ComputeFesc, ray_advance, init_rays_from_file, init_halos_from_file, dump_rays
   private :: path
 
 contains
 
-  subroutine ComputeFesc(nrays,rays,mesh_dom,compute_dom,maxdist,maxtau,minnH,ndirections,file)
+  subroutine ComputeNHI(nrays,rays,mesh_dom,compute_dom,maxdist,maxtau,minnH,ndirections,file)
 
     integer(kind=4), intent(in)                     :: nrays
     type(ray_type), dimension(nrays), intent(inout) :: rays
@@ -63,21 +50,7 @@ contains
 
     real(kind=8) :: x_em(3),k_em(3), tau, dist
 
-    !!!! variable pour stocker les resultats (fesc (ndir))
 
-
-    !! Ici on lit les directions choisies (et leur nombre) dans un fichier.
-    open(unit=14, file=trim(file), status='unknown', form='formatted', action='read')
-    read(14,*) ndirections
-    allocate(directions(3,ndirections))
-    do i = 1,ndirections
-       read(14,*) directions(1,i),directions(2,i),directions(3,i)
-    end do
-    close(14)
-   
-    allocate(fesc(ndirections))
-    allocate(densh(ndirections))
-   ! open(unit=14, file='result_nside16.txt',Access= 'append', status='old', form='formatted', action='write') ! fichier de résultats avec fesc par directions, moyenne sur toutes étoiles
    
     iloop=0
 !$OMP PARALLEL &
@@ -86,46 +59,19 @@ contains
 !$OMP DO SCHEDULE(DYNAMIC, 100) 
  
 
-    do j=1,ndirections
-       print*,j
-       fesc(j) = 0.0d0
-       k_em(:) = directions(:,j) 
        do i=1,nrays  ! these are actually star particle positions
-          x_em(:) = rays(i)%x_em(:)
+          x_em(:) = rays(i)%x_em(:) + tenpc * rays(i)%x_em(:) 
           tau   = 0.0d0
           dist  = 0.0d0
           nhtot = 0.0d0
-          call ray_advance(x_em,k_em,tau,dist,nhtot,mesh_dom,compute_dom,maxdist,maxtau,minnH)
-          fesc(j) = fesc(j) + exp(-tau)   
-          densh(j) =densh(j) + nhtot
+          call ray_advance(x_em,rays(i)%k_em,tau,dist,nhtot,mesh_dom,compute_dom,maxdist,maxtau,minnH)
+          rays(i)%nhi = nhtot
        end do
-       fesc(j) = fesc(j)/ real(nrays,8) 
-       densh(j)= densh(j)/real(nrays,8)
-    enddo
-    
+
 !$OMP END DO
 !$OMP END PARALLEL
 
-    !new loop to write the file
-    open(unit=14, file='result_nside16.txt', status='replace', form='formatted', action='write')
-    do j=1,ndirections
-       write(14,*) fesc(j)
-    enddo 
-    close(14)
-    open(unit=14, file='nH_nside16.txt', status='replace', form='formatted', action='write')
-    do j=1,ndirections
-       write(14,*) densh(j)
-    enddo
-    close(14)    
-    !open(unit=14, file='dist_nside16.txt', status='replace', form='formatted', action='write')
-    !do j=1,ndirections
-    !   write(14,*) densh(j)
-    !enddo
-    !close(14)
-  
-  deallocate(directions)
-  deallocate(fesc)
-  deallocate(densh)
+
   end subroutine ComputeFesc
 
 
@@ -178,23 +124,16 @@ contains
     ind   = (icell - domesh%nCoarse - 1) / domesh%nOct + 1   ! JB: should we make a few simple functions to do all this ? 
     ioct  = icell - domesh%nCoarse - (ind - 1) * domesh%nOct
 
-
     k = 0 
 
     ! advance ray until it escapes the computational domain ... 
     ray_propagation : do
        
-
-
        ! gather properties properties of current cell
        cell_level   = domesh%octlevel(ioct)      ! level of current cell
        cell_size    = 0.5d0**cell_level          ! size of current cell in box units
        cell_size_cm = cell_size * box_size_cm    ! size of the current cell in cm
        cell_gas     = domesh%gas(ileaf)  
-
-       ! H  projection density along the ray
-    !   k = k + 1
-    !   nhtot = nhtot + cell_gas%nHI
 
        ! compute position of photon in current-cell units
        posoct(:)    = domesh%xoct(ioct,:)
@@ -214,34 +153,11 @@ contains
             & domain_distance_to_border_along_k(ppos,kray,domaine_calcul)) ! in box units
        distance_to_border_cm = distance_to_border * box_size_cm ! cm
   
-     
        ! compute (total) optical depth along ray in cell 
-       tau_cell = gas_get_tau(cell_gas, distance_to_border_cm)
        nhtot = nhtot + distance_to_border_cm*cell_gas%nHI            !column density
 
        ! update traveled distance and optical depth
        dist = dist + distance_to_border_cm
-       tau  = tau + tau_cell 
-       ! check if we reached tau or distance limits
-!       if (dist > maxdist_cm .and. tau > maxtau) then
-          ! dist or tau exceeding boundary -> correct excess and exit. 
-!          if (maxdist_cm > 0) then
-!             excess   = maxdist_cm - dist
-!             ray%dist = dist
-!             ray%tau  = tau - (excess / distance_to_border_cm)*tau_cell
-         ! else
-         !    excess   = maxtau - tau
-         !    ray%dist = dist - (excess / tau_cell) * distance_to_border_cm     pour l'instant on enlève car pas de conditions sur maxtau > 0 dc on a systématiquement tau = maxtau
-         !    ray%tau  = maxtau                                                 
-!          end if
-!          exit ray_propagation  ! no need to update other unused properties of ray. 
-
-!       end if
-!       if ( cell_gas%nH < minnH ) then ! Gone below the minimum density
-!          ray%dist = dist
-!          ray%tau  = tau
-!          exit ray_propagation
-!       endif
 
        ! update head of ray position
        ppos = ppos + kray * distance_to_border *(1.0d0 + epsilon(1.0d0))
@@ -255,12 +171,7 @@ contains
        in_domain = domain_contains_point(ppos,domaine_calcul)
        if (.not.(in_domain)) then
           dist = dist
-          tau  = tau
-          !print*,'WARNING: escaping domain before maxdist or maxtau is reached... '
-          !print*,'initial distance to border of domain [cm] : ',domain_distance_to_border(ray%x_em,domaine_calcul)*box_size_cm
-          !print*,'maxdist [cm]                              : ',maxdist_cm
           exit ray_propagation  ! ray is done 
-         
        end if
        ! Ray moves to next cell : find it
        call whereIsPhotonGoing(domesh,icell,ppos,icellnew,flagoutvol)
@@ -277,12 +188,12 @@ contains
           endif
 
           ! hack
-          do i=1,3
-             ppos(i) = ppos(i) + kray(i) * 1d7 * epsilon(ppos(i))
-          end do
-          !!$ ppos(1) = ppos(1) + merge(-1.0d0,1.0d0,kray(1)<0.0d0) * epsilon(ppos(1))
-          !!$ ppos(2) = ppos(2) + merge(-1.0d0,1.0d0,kray(2)<0.0d0) * epsilon(ppos(2))
-          !!$ ppos(3) = ppos(3) + merge(-1.0d0,1.0d0,kray(3)<0.0d0) * epsilon(ppos(3))
+          !!$do i=1,3
+          !!$   ppos(i) = ppos(i) + kray(i) * 1d7 * epsilon(ppos(i))
+          !!$end do
+          ppos(1) = ppos(1) + merge(-1.0d0,1.0d0,kray(1)<0.0d0) * epsilon(ppos(1))
+          ppos(2) = ppos(2) + merge(-1.0d0,1.0d0,kray(2)<0.0d0) * epsilon(ppos(2))
+          ppos(3) = ppos(3) + merge(-1.0d0,1.0d0,kray(3)<0.0d0) * epsilon(ppos(3))
           ! kcah
           
           ! correct for periodicity

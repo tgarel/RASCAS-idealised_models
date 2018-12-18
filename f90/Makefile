@@ -1,17 +1,17 @@
 #############################################################################
 # Fortran compiler options and directives
 
-SYSTYPE="CCF"
+#SYSTYPE="CCF"
 #SYSTYPE="lyocral"
 #SYSTYPE="lyocralP"
-#SYSTYPE="mac"
+SYSTYPE="mac"
 #SYSTYPE="macP"
 #SYSTYPE="ccage"
 
 OPTIONS = -cpp
 
 ifeq ($(SYSTYPE),"lyocral")
-F90         = ifort
+F90         = gfortran
 #FFLAGS      = -g -traceback -fpp -check all -debug -warn all -ftrapuv 
 ##FFLAGS      = -O3 -fpp -ftz  -xavx -sox -ipo -fno-alias -fno-fnalias -no-prec-div -no-prec-sqrt -align all
 FFLAGS      = -O3 -fpp -ftz -ipo -fno-alias -fno-fnalias -no-prec-div -no-prec-sqrt -align all
@@ -30,7 +30,7 @@ endif
 
 
 ifeq ($(SYSTYPE),"CCF")
-F90         = ifort -openmp
+F90         = gfortran -openmp
 FFLAGS      = -g -fpp -check all -debug -warn all -ftrapuv -traceback 
 ##FFLAGS      = -O3 -fpp -ftz  -xavx -sox -ipo -fno-alias -fno-fnalias -no-prec-div -no-prec-sqrt -align all
 #FFLAGS      = -openmp -O3 -fpp -ftz  -xavx -ipo -fno-alias -fno-fnalias -no-prec-div -no-prec-sqrt -align all
@@ -41,7 +41,7 @@ endif
 
 ifeq ($(SYSTYPE),"mac")
 #F90         = gfortran-mp-4.7 -ffree-line-length-none -ffree-form  ###-fopenmp
-F90         = gfortran-mp-6 -ffree-line-length-none -ffree-form -fopenmp
+F90         = gfortran -ffree-line-length-none -ffree-form -fopenmp
 #FFLAGS      = -g -fcheck=all -ftrapv -fbacktrace -Wall -fbounds-check
 FFLAGS      = -O2
 FFLAGS += $(OPTIONS)
@@ -72,7 +72,7 @@ endif
 
 # choose the gas mix you want to use
 # 1/ HI, D, and dust
-#COMPOBJS = module_dust_model.o module_D_model.o module_HI_model.o module_gas_composition_HI_D_dust.o
+COMPOBJS = module_dust_model.o module_D_model.o module_HI_model.o module_gas_composition_HI_D_dust.o
 # 2/ HI and dust
 #COMPOBJS = module_dust_model.o module_HI_model.o module_gas_composition_HI_dust.o
 # 3/ pure HI
@@ -88,7 +88,7 @@ endif
 # 8/ MgII and dust
 #COMPOBJS = module_dust_model.o module_MgII_2796_model.o module_MgII_2804_model.o module_gas_composition_MgII_dust.o
 # 9/ HI, HeI, HeII
-COMPOBJS = module_gas_composition_HI_HeI_HeII.o
+#COMPOBJS = module_gas_composition_HI_HeI_HeII.o
 
 GASOBJS = module_constants.o module_random.o module_utils.o module_domain.o coolrates_module.o module_ramses.o module_uparallel.o $(COMPOBJS)
 
@@ -125,6 +125,9 @@ LyaPhotonsFromGas: $(LYAFG)  LyaPhotonsFromGas.o
 CreateDomDump: $(OBJSDOM) CreateDomDump.o
 	$(F90) $(FFLAGS) $(LDFLAGS) -o $@ $(OBJSDOM) CreateDomDump.o
 
+ColumnDensity: $(FESC) ColumnDensity.o
+	$(F90) $(FFLAGS) $(LDFLAGS) -o $@ $(FESC) ColumnDensity.o
+	
 FescFromStarsMathieu: $(FESC) FescFromStarsMathieu.o
 	$(F90) $(FFLAGS) $(LDFLAGS) -o $@ $(FESC) FescFromStarsMathieu.o
 
