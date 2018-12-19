@@ -28,7 +28,7 @@ program main
   ! --- outputs
   character(2000)           :: fileout    = '/DATA_simu/HI_D_SMC/00164/star1/result.dat' ! output file ... 
   ! --- miscelaneous
-  logical                   :: verbose    = .false.
+  logical                   :: verbose    = .true.
   ! --------------------------------------------------------------------------
 
   call cpu_time(start)
