@@ -42,8 +42,8 @@ endif
 ifeq ($(SYSTYPE),"mac")
 #F90         = gfortran-mp-4.7 -ffree-line-length-none -ffree-form  ###-fopenmp
 F90         = gfortran -ffree-line-length-none -ffree-form -fopenmp
-#FFLAGS      = -g -fcheck=all -ftrapv -fbacktrace -Wall -fbounds-check
-FFLAGS      = -O2
+FFLAGS      = -g -fcheck=all -ftrapv -fbacktrace -Wall -fbounds-check
+#FFLAGS      = -O2
 FFLAGS += $(OPTIONS)
 LDFLAGS     = 
 endif
@@ -98,7 +98,7 @@ OBJSPHO = $(GASOBJS) module_mesh.o module_mock.o module_photon.o
 
 OBJSMPI = $(OBJSPHO) module_parallel_mpi.o module_worker.o module_master.o
 
-FESC    = $(GASOBJS) module_mesh.o module_mathieu.o
+FESC    = $(GASOBJS) module_mesh.o module_jbv.o
 
 LYAFG = module_constants.o module_random.o module_utils.o module_domain.o coolrates_module.o module_ramses.o
 
@@ -127,7 +127,7 @@ CreateDomDump: $(OBJSDOM) CreateDomDump.o
 
 ColumnDensity: $(FESC) ColumnDensity.o
 	$(F90) $(FFLAGS) $(LDFLAGS) -o $@ $(FESC) ColumnDensity.o
-	
+
 FescFromStarsMathieu: $(FESC) FescFromStarsMathieu.o
 	$(F90) $(FFLAGS) $(LDFLAGS) -o $@ $(FESC) FescFromStarsMathieu.o
 

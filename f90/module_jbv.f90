@@ -1,9 +1,7 @@
 module module_jbv
 
   ! This is a trimmed and slightly modified version of module_photon.
-  !
-  ! THIS IMPLENMENTATION HAS NO WAVELENGTH / VELOCITY INFO (used for escape fraction measurements). 
-  
+    
   use module_gas_composition
   use module_mesh
   use module_constants
@@ -13,100 +11,73 @@ module module_jbv
 
   implicit none
 
-  ! todonext define accuracy
-  real(kind=8),parameter :: accuracy=1.d-15
-  integer(kind=4) :: iran = -10
-
-
-
   type ray_type
      real(kind=8),dimension(3) :: x_em     ! emission location (box units)
      real(kind=8),dimension(3) :: k_em     ! emission direction == propagation direction (normalised vector)
-     real(kind=8)              :: NHI      ! escape fraction 
+     real(kind=8)              :: NHI      ! HI column density [cm-2]
+     real(kind=8)              :: dist     ! distance traveled [cm]
   end type ray_type
 
 
-  public  :: ComputeFesc, ray_advance, init_rays_from_file, init_halos_from_file, dump_rays
+  public  :: ComputeNHI, ray_advance, init_rays_from_file, dump_rays
   private :: path
 
 contains
 
-  subroutine ComputeNHI(nrays,rays,mesh_dom,compute_dom,maxdist,maxtau,minnH,ndirections,file)
+  subroutine ComputeNHI(nrays,rays,mesh_dom,compute_dom)
 
     integer(kind=4), intent(in)                     :: nrays
     type(ray_type), dimension(nrays), intent(inout) :: rays
     type(mesh), intent(in)                          :: mesh_dom
     type(domain), intent(in)                        :: compute_dom
-    real(kind=8),intent(in)                         :: maxdist,maxtau,minnH
-    integer(kind=4)                                 :: ndirections ! Number of directions from each source
-    integer(kind=4)                                 :: i,j,idir,iloop
-  !  real(kind=8)                                    :: fesc  on va plutôt faire une liste des fesc
-    character(2000),intent(in)                      :: file
+    integer(kind=4)                                 :: i
+    real(kind=8)                                    :: x_em(3),k_em(3), NHI, dist, tenpc
 
-    real(kind=8)             :: nhtot
-    real(kind=8),allocatable :: directions(:,:)
-    real(kind=8),allocatable :: fesc(:)
-    real(kind=8),allocatable :: densh(:)
+    tenpc = 10.0d0 * 3.0857d18  ! in cm
+    tenpc = tenpc / box_size_cm ! in code units 
 
-    real(kind=8) :: x_em(3),k_em(3), tau, dist
-
-
-   
-    iloop=0
 !$OMP PARALLEL &
 !$OMP DEFAULT(shared) &
-!$OMP PRIVATE(i,nhtot,tau, dist,k_em,x_em)               
+!$OMP PRIVATE(NHI, dist, k_em, x_em)               
 !$OMP DO SCHEDULE(DYNAMIC, 100) 
- 
-
-       do i=1,nrays  ! these are actually star particle positions
-          x_em(:) = rays(i)%x_em(:) + tenpc * rays(i)%x_em(:) 
-          tau   = 0.0d0
-          dist  = 0.0d0
-          nhtot = 0.0d0
-          call ray_advance(x_em,rays(i)%k_em,tau,dist,nhtot,mesh_dom,compute_dom,maxdist,maxtau,minnH)
-          rays(i)%nhi = nhtot
-       end do
-
+    do i=1,nrays 
+       ! initialisation 
+       x_em(:) = rays(i)%x_em(:) + tenpc * rays(i)%x_em(:)  ! start ten pc away from star
+       k_em(:) = rays(i)%k_em(:)
+       NHI     = 0.0d0
+       dist    = 0.0d0 
+       call ray_advance(x_em,k_em,dist,NHI,mesh_dom,compute_dom)
+       rays(i)%nhi  = NHI
+       rays(i)%dist = dist
+    end do
 !$OMP END DO
 !$OMP END PARALLEL
 
+  end subroutine ComputeNHI
 
-  end subroutine ComputeFesc
 
+  subroutine ray_advance(x_em,k_em,dist,NHI,domesh,domaine_calcul)
 
-  subroutine ray_advance(x_em,k_em,tau,dist,nhtot,domesh,domaine_calcul,maxdist,maxtau,minnH)
-
-!    type(ray_type),intent(inout)   :: ray            ! a ray 
-    real(kind=8),intent(in) :: x_em(3),k_em(3)
-    real(kind=8),intent(out) :: tau,dist
-    type(mesh),intent(in)          :: domesh         ! mesh
-    type(domain),intent(in)        :: domaine_calcul ! domaine dans lequel on propage les photons...
-    real(kind=8),intent(in)        :: maxdist,maxtau ! stop propagation at either maxdist or maxtau (the one which is positive). 
-    real(kind=8),intent(in)        :: minnH          ! stop propagation when reaching hydrogen density below this value
-    real(kind=8),intent(out)       :: nhtot             ! projection of H and He density along the ray
-    type(gas)                      :: cell_gas       ! gas in the current cell 
-    integer(kind=4)                :: icell, ioct, ind, ileaf, cell_level  ! current cell indices and level
-    real(kind=8)                   :: cell_size, cell_size_cm, scalar, nu_cell, maxdist_cm
-    real(kind=8),dimension(3)      :: ppos,ppos_cell ! working coordinates of photon (in box and in cell units)
-    real(kind=8)                   :: distance_to_border,distance_to_border_cm
-    real(kind=8)                   :: tau_cell, dborder
-    integer(kind=4)                :: i, icellnew, npush, k    !k le nombre de cellules le long de la ray
-    real(kind=8),dimension(3)      :: vgas, kray, cell_corner, posoct
-    logical                        :: flagoutvol, in_domain
-    real(kind=8)                   :: excess, tmp
+    real(kind=8),intent(in)   :: x_em(3),k_em(3)
+    real(kind=8),intent(out)  :: dist, NHI
+    type(mesh),intent(in)     :: domesh         ! mesh
+    type(domain),intent(in)   :: domaine_calcul ! domaine dans lequel on propage les photons...
+    type(gas)                 :: cell_gas       ! gas in the current cell 
+    integer(kind=4)           :: icell, ioct, ind, ileaf, cell_level  ! current cell indices and level
+    real(kind=8)              :: cell_size, cell_size_cm
+    real(kind=8),dimension(3) :: ppos,ppos_cell ! working coordinates of photon (in box and in cell units)
+    real(kind=8)              :: distance_to_border,distance_to_border_cm
+    real(kind=8)              :: dborder
+    integer(kind=4)           :: i, icellnew, npush
+    real(kind=8),dimension(3) :: kray, cell_corner, posoct
+    logical                   :: flagoutvol, in_domain, escape_domain_before_cell
     
     ! initialise ray tracing 
-!!$    ppos  = ray%x_em   ! emission position 
-!!$    kray  = ray%k_em   ! propagation direction
     ppos  = x_em   ! emission position 
     kray  = k_em   ! propagation direction
-    dist  = 0.0d0      ! distance covered
-    tau   = 0.0d0      ! corresponding optical depth
-    nhtot = 0.0d0    !initialise nhtot density along the ray
-    maxdist_cm = maxdist ! maxdist is now provided in cm ... 
-
-
+    dist  = 0.0d0  ! distance covered
+    NHI   = 0.0d0  !initialise nhtot density along the ray
+    
     ! check that the ray starts in the domain
     if (.not. domain_contains_point(ppos,domaine_calcul)) then
        print * ,'Ray outside domain at start '
@@ -123,8 +94,6 @@ contains
     ileaf = - domesh%son(icell)
     ind   = (icell - domesh%nCoarse - 1) / domesh%nOct + 1   ! JB: should we make a few simple functions to do all this ? 
     ioct  = icell - domesh%nCoarse - (ind - 1) * domesh%nOct
-
-    k = 0 
 
     ! advance ray until it escapes the computational domain ... 
     ray_propagation : do
@@ -148,15 +117,17 @@ contains
        ! compute distance of photon to border of cell or domain along propagation direction
        distance_to_border    = path(ppos_cell,kray) * cell_size            ! in box units
 
-       !! -> if au lieu du min, plus un flag qui nous dit quon va sortir ...
-       distance_to_border    = min(distance_to_border, &
-            & domain_distance_to_border_along_k(ppos,kray,domaine_calcul)) ! in box units
+       ! Check if ray escapes domain before cell 
+       escape_domain_before_cell = .false.
+       dborder = domain_distance_to_border_along_k(ppos,kray,domaine_calcul)
+       if (dborder < distance_to_border) then
+          escape_domain_before_cell = .true.
+          distance_to_border = dborder
+       end if
        distance_to_border_cm = distance_to_border * box_size_cm ! cm
   
-       ! compute (total) optical depth along ray in cell 
-       nhtot = nhtot + distance_to_border_cm*cell_gas%nHI            !column density
-
-       ! update traveled distance and optical depth
+       ! increment column density and traveled distance
+       NHI  = NHI  + distance_to_border_cm * cell_gas%nHI 
        dist = dist + distance_to_border_cm
 
        ! update head of ray position
@@ -166,13 +137,18 @@ contains
           if (ppos(i) < 0.0d0) ppos(i)=ppos(i)+1.0d0
           if (ppos(i) > 1.0d0) ppos(i)=ppos(i)-1.0d0
        enddo
+
        
-      ! check if photon still in computational domain after position update
-       in_domain = domain_contains_point(ppos,domaine_calcul)
-       if (.not.(in_domain)) then
-          dist = dist
+       if (escape_domain_before_cell) then ! ray escapes domain -> we are done.
           exit ray_propagation  ! ray is done 
        end if
+       
+       ! check if photon still in computational domain after position update
+       in_domain = domain_contains_point(ppos,domaine_calcul)
+       if (.not.(in_domain)) then 
+          exit ray_propagation  ! ray is done 
+       end if
+       
        ! Ray moves to next cell : find it
        call whereIsPhotonGoing(domesh,icell,ppos,icellnew,flagoutvol)
        ! It may happen due to numerical precision that the photon is still in the current cell (i.e. icell == icellnew).
@@ -184,33 +160,26 @@ contains
              print*,ppos
              print*,kray
              print*,'Too many pushes, npush>100 '
-             exit ray_propagation
+             stop
           endif
-
-          ! hack
-          !!$do i=1,3
-          !!$   ppos(i) = ppos(i) + kray(i) * 1d7 * epsilon(ppos(i))
-          !!$end do
           ppos(1) = ppos(1) + merge(-1.0d0,1.0d0,kray(1)<0.0d0) * epsilon(ppos(1))
           ppos(2) = ppos(2) + merge(-1.0d0,1.0d0,kray(2)<0.0d0) * epsilon(ppos(2))
           ppos(3) = ppos(3) + merge(-1.0d0,1.0d0,kray(3)<0.0d0) * epsilon(ppos(3))
-          ! kcah
           
           ! correct for periodicity
           do i=1,3
              if (ppos(i) < 0.0d0) ppos(i)=ppos(i)+1.0d0
              if (ppos(i) > 1.0d0) ppos(i)=ppos(i)-1.0d0
           enddo
+          
           ! test that we are still in domain before calling WhereIsPhotonGoing... 
           in_domain = domain_contains_point(ppos,domaine_calcul)
           if (.not.(in_domain)) then
-             dist = dist
-             tau  = tau
              exit ray_propagation  ! ray is done 
           end if
           call whereIsPhotonGoing(domesh,icell,ppos,icellnew,flagoutvol)
        end do
-       if (npush > 1) print*,'WARNING : npush > 1 needed in module_gray_ray:propagate.'
+       if (npush > 1) print*,'WARNING : npush > 1 needed in module_gray_ray:propagate.',npush
        
        ! check if photon outside of cpu domain (flagoutvol)
        if(flagoutvol)then
@@ -232,14 +201,11 @@ contains
    
     end do ray_propagation
  
-    ! nhtot = nhtot /real(k,8)                ! average of nhtot on all the cells of the ray
-
   end subroutine ray_advance
+
   
-
   subroutine init_rays_from_file(file,rays)
-  ! JBV
-
+    
     character(2000),intent(in)                           :: file    
     type(ray_type),dimension(:),allocatable, intent(out) :: rays
     integer(kind=4)                                      :: i, n_rays
@@ -248,35 +214,12 @@ contains
     open(unit=14, file=trim(file), status='unknown', form='formatted', action='read')
     read(14,*) n_rays
     allocate(rays(n_rays))
-     
     do i = 1, n_rays
-    	read(14,*) rays(i)%x_em(1),rays(i)%x_em(2),rays(i)%x_em(3),rays(i)%k_em(1),rays(i)%k_em(2),rays(i)%k_em(3)
-    end do 
-    close(14)
-
-  end subroutine init_rays_from_file 
-
-
-  subroutine init_halos_from_file(file,halos)
-
-    character(2000),intent(in)                            :: file
-    type(halo_type),dimension(:),allocatable, intent(out) :: halos
-    integer(kind=4)                                       :: i, n_halos
-
-    print*,'Initialising halos from file (in module_gray_ray.f90)'
-    ! read Halos (for escape fractions out of virial radii)
-    open(unit=14, file=trim(file), status='unknown', form='unformatted', action='read')
-    read(14) n_halos
-    allocate(halos(n_halos))
-    halos(1:n_halos)%domain%type='sphere'
-    read(14) (halos(i)%ID,               i=1,n_halos)
-    read(14) (halos(i)%domain%sp%radius,    i=1,n_halos)
-    read(14) (halos(i)%domain%sp%center(1), i=1,n_halos)
-    read(14) (halos(i)%domain%sp%center(2), i=1,n_halos)
-    read(14) (halos(i)%domain%sp%center(3), i=1,n_halos)
+       read(14,*) rays(i)%x_em(1),rays(i)%x_em(2),rays(i)%x_em(3),rays(i)%k_em(1),rays(i)%k_em(2),rays(i)%k_em(3)
+    end do
     close(14)
     
-  end subroutine init_halos_from_file
+  end subroutine init_rays_from_file 
 
 
   subroutine dump_rays(file,rays)
@@ -286,14 +229,14 @@ contains
     integer(kind=4)                        :: i,np
 
     np = size(rays)
-    open(unit=14, file=trim(file), status='unknown', form='unformatted', action='write')
-    write(14) np
-    if(np.gt.0) then
-       write(14) (rays(i)%fesc,i=1,np)
-       write(14) (rays(i)%ID,i=1,np)
-    endif
+    open(unit=14, file=trim(file), status='unknown', form='formatted', action='write')
+    write(14,*) np
+    do i=1,np
+       write(14,'(8(e14.6,1x))') rays(i)%x_em(1),rays(i)%x_em(2),rays(i)%x_em(3),rays(i)%k_em(1),rays(i)%k_em(2),rays(i)%k_em(3),rays(i)%NHI,rays(i)%dist
+    end do
     close(14)
 
   end subroutine dump_rays
 
-end module module_mathieu
+  
+end module module_jbv
