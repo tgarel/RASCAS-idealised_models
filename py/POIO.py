@@ -15,11 +15,11 @@ class mockobs(object):
         self.LumPerPacket = self.nPhotPerPacket * ly.h_cgs * ly.nu0 
 
         if load_image:
-            self.imsize_cu, self.image_npix, self.imtot = self.__read_image()
+            self.imsize_cu, self.image_npix, self.imtot = self.__read_image(index=idirection)
             self.imtot = self.imtot * self.LumPerPacket # [erg/s]
 
         if load_spectrum:  # restframe spectrum
-            self.spec_lmin,self.spec_lmax,self.spec_npix,self.spec = self.__read_spectrum()
+            self.spec_lmin,self.spec_lmax,self.spec_npix,self.spec = self.__read_spectrum(index=idirection)
             dl = (self.spec_lmax - self.spec_lmin) / self.spec_npix  # [A] 
             l = np.arange(self.spec_lmin,self.spec_lmax,dl) + 0.5*dl # [A]
             self.spec_lbda_Angstrom  = l
@@ -77,15 +77,16 @@ class mockobs(object):
         return nlbda,nxy,lmin,lmax,imsize,cubetot
 
     
-    def __read_image(self):
+    def __read_image(self,index=1):
         from scipy.io import FortranFile as ff
         first = True
         for i in range(1,self.ncpu):
             f = ff('%s/%s_image.%5.5i'%(self.Dir,self.FileName,i))
-            n = f.read_ints()[0]
-            imsize = f.read_reals('d')[0]
-            imcenter = f.read_reals('d')
-            im = f.read_reals('d')
+            for j in range(index):
+                n = f.read_ints()[0]
+                imsize = f.read_reals('d')[0]
+                imcenter = f.read_reals('d')
+                im = f.read_reals('d')
             im=im.reshape((n,n))
             f.close()
             if first:
@@ -96,14 +97,15 @@ class mockobs(object):
         return imsize,n,imtot 
 
 
-    def __read_spectrum(self):
+    def __read_spectrum(self,index=1):
         from scipy.io import FortranFile as ff
         first = True
         for i in range(1,self.ncpu):
             f = ff('%s/%s_spectrum.%5.5i'%(self.Dir,self.FileName,i))
-            n = f.read_ints()[0]
-            aperture,lmin,lmax = f.read_reals('d')
-            spec = f.read_reals('d')
+            for j in range(index):
+                n = f.read_ints()[0]
+                aperture,lmin,lmax = f.read_reals('d')
+                spec = f.read_reals('d')
             f.close()
             if first:
                 spectot = spec
@@ -132,8 +134,8 @@ class mockobs(object):
         from matplotlib import pyplot as plt
         from numpy import linspace
         plt.figure()
-        l = linspace(self.lmin,self.lmax,num=self.spec_npix)  # [A]
-        plt.plot(l,self.spectot)
+        l = linspace(self.spec_lmin,self.spec_lmax,num=self.spec_npix)  # [A]
+        plt.plot(l,self.spec)
         plt.savefig(plotFile)
 
 
