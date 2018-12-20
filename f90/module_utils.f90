@@ -2,46 +2,21 @@ module module_utils
   
   ! general-purpose functions : 
   ! 
-  ! - voigt_fit
   ! - isotropic_direction
   ! - anisotropic_direction_HIcore
   ! - anisotropic_direction_Rayleigh
+  ! - anisotropic_direction_Dust
+  ! - locatedb
+  ! - path
   
-  use module_constants, only : pi, sqrtpi, twopi
+  use module_constants, only : twopi
   use module_random
   
   public
 
 contains
 
-  function voigt_fit(x,a)
-
-    ! returns ... what exactly?
-    ! REF to where the fit is taken from ?
-    ! comment on accuracy ?
-    
-    implicit none
-    
-    real(kind=8),intent(in) :: x,a
-    real(kind=8)            :: voigt_fit 
-    real(kind=8)            :: q,z,x2
-    
-    x2 = x**2
-    z  = (x2 - 0.855d0) / (x2 + 3.42d0)
-    if (z > 0.0d0) then 
-       q = z * (1.0d0 + 21.0d0/x2) * a / pi / (x2 + 1.0d0)
-       q = q * (((5.674d0*z - 9.207d0)*z + 4.421d0)*z + 0.1117)
-    else
-       q = 0.0d0 
-    end if
-    voigt_fit = q + exp(-x2) / sqrtpi
-    
-    return
-    
-  end function voigt_fit
-
- 
-
+  
   subroutine isotropic_direction(k,iran)
 
     ! ---------------------------------------------------------------------------------
@@ -399,7 +374,17 @@ contains
   end function path
 
 
-  
+  subroutine print_rascas_header
+    write(*,'(a)') '                                             '
+    write(*,'(a)') '    _____  _____  _____  _____  _____  _____ '
+    write(*,'(a)') '   / ___ \/ ___ \/ ____\/   __\/ ___ \/ ____\'
+    write(*,'(a)') '   | \_/ || \_/ |\ \___ |  /   | \_/ |\ \___ '
+    write(*,'(a)') '   |    _/|  _  | \___ \|  |   |  _  | \___ \'
+    write(*,'(a)') '   | |\ \ | | | |_____/ |  \___| | | |____/ |'
+    write(*,'(a)') '   |_| \_\|_| |_|\_____/\_____/|_| |_|\_____/'
+    write(*,'(a)') '                                             '
+    write(*,'(a)') '                                             '
+  end subroutine print_rascas_header
 
 
 end module module_utils

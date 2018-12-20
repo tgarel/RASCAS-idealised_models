@@ -8,7 +8,7 @@
   emission_dom_pos       =  0.48208201, 0.49919999, 0.51319617
   emission_dom_rsp       =  0.003147
 # parameters
-  nphotons = 100000
+  nphotons = 200000
   ranseed = -200
 # miscelaneous parameters
   verbose         = T

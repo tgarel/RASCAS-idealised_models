@@ -10,7 +10,7 @@ module module_parallel_mpi
   integer(kind=4)                                 :: nb_cpus       ! total number of cpus
   integer(kind=4)                                 :: code, error
   integer(kind=4)                                 :: tag, done_tag, ierror, exi_tag=2
-  integer(kind=4)                                 :: nslave
+  integer(kind=4)                                 :: nworker
   integer(kind=4),dimension(MPI_STATUS_SIZE)      :: status
 
   ! define a MPI derived type for photons
