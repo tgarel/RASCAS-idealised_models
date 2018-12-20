@@ -86,7 +86,7 @@ contains
        call cpu_time(start_photpacket)
 
        ! do the RT stuff. This is a single loop over photons in photpacket.
-       call MCRT(nbuffer,photpacket,meshdom,compute_dom)
+       call MCRT(nbundle,photpacket,meshdom,compute_dom)
 
        call cpu_time(end_photpacket)
 

@@ -96,12 +96,7 @@ COMPOBJS = module_dust_model.o module_D_model.o module_HI_model.o module_gas_com
 # 12/ SiII 1260 and dust
 #COMPOBJS = module_dust_model.o module_SiII_1260_model.o module_gas_composition_SiII_1260_dust.o
 
-
-<<<<<<< HEAD
-GASOBJS = module_constants.o module_random.o module_utils.o module_domain.o coolrates_module.o module_ramses.o module_uparallel.o $(COMPOBJS)
-=======
-GASOBJS = module_constants.o module_random.o module_utils.o module_voigt.o module_domain.o module_ramses.o module_uparallel.o $(COMPOBJS)
->>>>>>> origin/mpi-fix
+GASOBJS = module_constants.o module_random.o module_utils.o module_voigt.o module_domain.o coolrates_module.o module_ramses.o module_uparallel.o $(COMPOBJS)
 
 OBJSDOM = $(GASOBJS) module_select.o module_mesh.o
 
