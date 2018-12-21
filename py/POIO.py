@@ -10,8 +10,8 @@ class mockobs(object):
         ICFile = FileName.replace('result.','')
         p = jp.photonlist("%s/%s"%(self.Dir,ICFile),'',load=False)
         nRealPhotons = p.get_nRealPhotons()
-        nPhotons     = p.get_nphoton()
-        self.nPhotPerPacket = nRealPhotons / nPhotons
+        self.nPhotons     = p.get_nphoton()
+        self.nPhotPerPacket = nRealPhotons / self.nPhotons
         self.LumPerPacket = self.nPhotPerPacket * ly.h_cgs * ly.nu0 
 
         if load_image:
@@ -136,6 +136,7 @@ class mockobs(object):
         plt.figure()
         l = linspace(self.spec_lmin,self.spec_lmax,num=self.spec_npix)  # [A]
         plt.plot(l,self.spec)
+       # plt.ylim(0,3.5e40)
         plt.savefig(plotFile)
 
 

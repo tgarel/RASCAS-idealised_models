@@ -92,6 +92,7 @@ contains
     read(20) nhii
     read(20) metallicity
     read(20) gas_leaves%dopwidth
+    gas_leaves%dopwidth = gas_leaves%dopwidth / sqrt(15.999)
     read(21) gas_leaves%nOI
 
     close(20) ; close(21)

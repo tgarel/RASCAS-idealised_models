@@ -37,7 +37,8 @@ module module_gas_composition
   real(kind=8)             :: f_ion           = 0.01   ! ndust = (n_HI + f_ion*n_HII) * Z/Zsun [Laursen+09]
   real(kind=8)             :: Zref            = 0.005  ! reference metallicity. Should be ~ 0.005 for SMC and ~ 0.01 for LMC. 
   ! possibility to overwrite ramses values with an ad-hoc model 
-  logical                  :: gas_overwrite       = .false. ! if true, define cell values from following parameters 
+  logical                  :: gas_overwrite       = .false. ! if true, define cell values from following parameters
+  real(kind=8)             :: fix_nSiII           = 1.0d0   ! ad-hoc SiII density (1/cm3)
   real(kind=8)             :: fix_vth             = 1.0d5   ! ad-hoc thermal velocity (cm/s)
   real(kind=8)             :: fix_vel             = 0.0d0   ! ad-hoc cell velocity (cm/s) -> NEED BETTER PARAMETERIZATION for more than static... 
   real(kind=8)             :: fix_ndust           = 0.0d0
@@ -92,6 +93,7 @@ contains
     read(20) nhii
     read(20) metallicity
     read(20) gas_leaves%dopwidth
+    gas_leaves%dopwidth = gas_leaves%dopwidth / sqrt(28.0855)
     read(21) gas_leaves%nSiII
 
     close(20) ; close(21)
@@ -230,9 +232,10 @@ contains
   subroutine overwrite_gas(g)
 
     type(gas),dimension(:),intent(inout) :: g
+    integer*4 :: i
 
     box_size_cm   = fix_box_size_cm
-    
+    g(:)%nSiII    = fix_nSiII
     g(:)%v(1)     = fix_vel
     g(:)%v(2)     = fix_vel
     g(:)%v(3)     = fix_vel
@@ -406,6 +409,7 @@ contains
     integer,intent(in)                             :: unit,n
     type(gas),dimension(:),allocatable,intent(out) :: g
     integer                                        :: i
+
     allocate(g(1:n))
     if (gas_overwrite) then
        call overwrite_gas(g)
@@ -414,10 +418,10 @@ contains
        read(unit) (g(i)%nSiII,i=1,n)
        read(unit) (g(i)%dopwidth,i=1,n)
        read(unit) (g(i)%ndust,i=1,n)
-       read(unit) box_size_cm 
+       read(unit) box_size_cm
     end if
 
-    if (verbose) print*,'min/max of nSiII : ',minval(g(:)%nSiII),maxval(g(:)%nSiII)
+    if (verbose) print*, 'min/max of nSiII : ',minval(g(:)%nSiII),maxval(g(:)%nSiII)
 
   end subroutine read_gas
 
@@ -479,6 +483,8 @@ contains
              read(value,*) Zref
           case ('gas_overwrite')
              read(value,*) gas_overwrite
+          case ('fix_nSiII')
+             read(value,*) fix_nSiII
           case ('fix_vth')
              read(value,*) fix_vth
           case ('fix_vel')
@@ -523,6 +529,7 @@ contains
        write(unit,'(a,ES10.3)') '  Zref                 = ',Zref
        write(unit,'(a)')       '# overwrite parameters'
        write(unit,'(a,L1)')    '  gas_overwrite         = ',gas_overwrite
+       write(unit,'(a,ES10.3)') '  fix_nSiII            = ',fix_nSiII
        write(unit,'(a,ES10.3)') '  fix_vth              = ',fix_vth
        write(unit,'(a,ES10.3)') '  fix_vel              = ',fix_vel
        write(unit,'(a,ES10.3)') '  fix_box_size_cm      = ',fix_box_size_cm
@@ -543,6 +550,7 @@ contains
        write(*,'(a,ES10.3)') '  Zref                 = ',Zref
        write(*,'(a)')       '# overwrite parameters'
        write(*,'(a,L1)')    '  gas_overwrite         = ',gas_overwrite
+       write(*,'(a,ES10.3)') '  fix_nSiII            = ',fix_nSiII
        write(*,'(a,ES10.3)') '  fix_vth              = ',fix_vth
        write(*,'(a,ES10.3)') '  fix_vel              = ',fix_vel
        write(*,'(a,ES10.3)') '  fix_box_size_cm      = ',fix_box_size_cm

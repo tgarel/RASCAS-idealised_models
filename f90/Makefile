@@ -90,13 +90,13 @@ endif
 # 8/ MgII and dust
 #COMPOBJS = module_dust_model.o module_MgII_2796_model.o module_MgII_2804_model.o module_gas_composition_MgII_dust.o
 # 9/ SiII_1260 and dust
-#COMPOBJS = module_dust_model.o module_SiII_1260_model.o module_gas_composition_SiII1260_dust.o
+COMPOBJS = module_dust_model.o module_SiII_1260_model.o module_gas_composition_SiII1260_dust.o
 # 10/ dust only
 #COMPOBJS = module_dust_model.o module_gas_composition_dust.o
 # 11/ HI and HII
 #COMPOBJS = module_HI_model.o module_gas_composition_HI_HII.o
 # 12/ OI_1302 and dust
-COMPOBJS = module_dust_model.o module_OI_1302_model.o module_gas_composition_OI1302_dust.o
+#COMPOBJS = module_dust_model.o module_OI_1302_model.o module_gas_composition_OI1302_dust.o
 
 
 
@@ -128,8 +128,8 @@ PhotonsFromStars: $(OBJSPHO) PhotonsFromStars.o
 star_luminosities: $(OBJSPHO) star_luminosities.o
 	$(F90) $(FFLAGS) $(LDFLAGS) -o $@ $(OBJSPHO) star_luminosities.o
 
-CreateDomDump: $(OBJSDOM) CreateDomDump_Val.o
-	$(F90) $(FFLAGS) $(LDFLAGS) -o $@ $(OBJSDOM) CreateDomDump_Val.o
+CreateDomDump: $(OBJSDOM) CreateDomDump.o
+	$(F90) $(FFLAGS) $(LDFLAGS) -o $@ $(OBJSDOM) CreateDomDump.o
 
 ExtractSubvol: $(OBJSDOM) ExtractSubvol.o
 	$(F90) $(FFLAGS) $(LDFLAGS) -o $@ $(OBJSDOM) ExtractSubvol.o

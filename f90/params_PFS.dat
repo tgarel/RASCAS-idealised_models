@@ -3,7 +3,7 @@
 # input / output parameters
   repository = .
   snapnum    = 12
-  outputfile = /Users/mauerhof/Documents/RamsesFiles/SIMULATIONS/P13-20h-1Mpc-MUSIC/Zoom-7-10508/SPHINX_run/Halos/00148/Rascas/output/OI/output_1.out
+  outputfile = /Users/mauerhof/Documents/RamsesFiles/SIMULATIONS/P13-20h-1Mpc-MUSIC/Zoom-7-10508/SPHINX_run/Halos/00148/Rascas/output/OI/output_2.out
 
 # computational domain parameters
   star_dom_type      = sphere
@@ -16,7 +16,8 @@
 
 # Particle weights 
   weight_type        = PowLaw
-  weight_input_file  = /Users/mauerhof/Documents/RamsesFiles/SIMULATIONS/P13-20h-1Mpc-MUSIC/Zoom-7-10508/SPHINX_run/Halos/00136/Rascas/PowLaw/PowLawTable.dat
+  weight_input_file  = /Users/mauerhof/Documents/RamsesFiles/SIMULATIONS/P13-20h-1Mpc-MUSIC/Zoom-7-10508/SPHINX_run/Halos/00148/Rascas/PowLaw/PowLawTable_test_rm.dat
+  #weight_input_file  = /Users/mauerhof/Documents/RamsesFiles/SIMULATIONS/P13-20h-1Mpc-MUSIC/Zoom-7-10508/SPHINX_run/Halos/00136/Rascas/PowLaw/PowLawTable.dat
 
 # Spectral shape 
   spec_type               = PowLaw
@@ -24,8 +25,8 @@
   spec_powlaw_lmax_Ang = 1308
 
 # miscelaneous parameters
-  nphot           = 1000000
-  ranseed         = -544
+  nphot           = 2000000
+  ranseed         = -715
   verbose         = T
 !--------------------------------------------------------------------------------
 

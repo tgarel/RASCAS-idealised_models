@@ -566,9 +566,10 @@ contains
     real(kind=8),parameter        :: tau_max = 60   ! stop computation when tau reaches tau_max ... 
     integer(kind=4)               :: ipeel,idir,ileaf
     real(kind=8)                  :: tau,peel_contrib
-    real(kind=8)                  :: projpos(2),kobs(3),x
+    real(kind=8)                  :: projpos(2),kobs(3)
     logical                       :: increment_flux, increment_spec, increment_image, increment_cube
-    type(gas)                     :: cell_gas       ! gas in the current cell 
+    type(gas)                     :: cell_gas       ! gas in the current cell
+    real(kind=8)                  :: nupeel
 
     do idir = 1,nDirections
        kobs = mock_line_of_sight(idir)
@@ -580,13 +581,13 @@ contains
           increment_image = mock(idir)%compute_image .and. mock_point_in_image(projpos,idir)
           increment_cube  = mock(idir)%compute_cube .and. mock_point_in_cube(projpos,idir)
           tau = tau_max
+          nupeel = PeelBuffer(ipeel)%nu ! save to restore for next directions
           if (increment_flux .or. increment_spec .or. increment_image .or. increment_cube) then
              if (PeelBuffer(ipeel)%scatter_flag > 0) then 
                 ileaf    = - domesh%son(PeelBuffer(ipeel)%icell)
                 cell_gas = domesh%gas(ileaf)
-                x        = PeelBuffer(ipeel)%nu ! incoming direction ... 
-                PeelBuffer(ipeel)%weight = gas_peeloff_weight(PeelBuffer(ipeel)%scatter_flag, cell_gas, x, PeelBuffer(ipeel)%kin, kobs, iran)
-                PeelBuffer(ipeel)%nu     = x ! frequency in the direction of observation 
+                ! NB: the following line updates peel%nu to the frequency in the direction of observation. 
+                PeelBuffer(ipeel)%weight = gas_peeloff_weight(PeelBuffer(ipeel)%scatter_flag, cell_gas, PeelBuffer(ipeel)%nu, PeelBuffer(ipeel)%kin, kobs, iran)
              end if
              tau = tau_to_border(PeelBuffer(ipeel),domesh,domaine_calcul,tau_max,kobs)
           end if
@@ -598,6 +599,7 @@ contains
              if (increment_image) call peel_to_map(projpos,peel_contrib,idir)
              if (increment_cube)  call peel_to_cube(projpos,PeelBuffer(ipeel)%nu,peel_contrib,idir)
           end if
+          PeelBuffer(ipeel)%nu = nupeel ! restore for next directions
        end do
     end do
     

@@ -1,7 +1,7 @@
 !--------------------------------------------------------------------------------
 [CreateDomDump]
 # input outputs:
-  DomDumpDir = /Users/mauerhof/Documents/RamsesFiles/SIMULATIONS/P13-20h-1Mpc-MUSIC/Zoom-7-10508/SPHINX_run/Halos/00148/Rascas/domdump/OI/
+  DomDumpDir = /Users/mauerhof/Documents/RamsesFiles/SIMULATIONS/P13-20h-1Mpc-MUSIC/Zoom-7-10508/SPHINX_run/Halos/00148/Rascas/domdump/SiII/
   #DomDumpDir = /Users/mauerhof/Documents/RamsesFiles/SIMULATIONS/P13-20h-1Mpc-MUSIC/Zoom-7-10508/SPHINX_run/Halos/00136/Rascas/domdump/CD
   repository = ./
   snapnum    = 1
@@ -59,7 +59,7 @@
 
 #Necessary only when reading_method = fromlist
   input_ramses_file   = /Users/mauerhof/Documents/RamsesFiles/SIMULATIONS/P13-20h-1Mpc-MUSIC/Zoom-7-10508/SPHINX_run/Halos/00148/data_rascas
-  Ion_file           = /Users/mauerhof/Documents/RamsesFiles/SIMULATIONS/P13-20h-1Mpc-MUSIC/Zoom-7-10508/SPHINX_run/Halos/00148/Krome/OI_noCT/outputs/Save/OI
+  Ion_file           = /Users/mauerhof/Documents/RamsesFiles/SIMULATIONS/P13-20h-1Mpc-MUSIC/Zoom-7-10508/SPHINX_run/Halos/00148/Krome/Si_noCT/outputs/Save/SiII
   #SiII_file           = /Users/mauerhof/Documents/RamsesFiles/SIMULATIONS/P13-20h-1Mpc-MUSIC/Zoom-7-10508/SPHINX_run/Halos/00136/Krome/noCT/outputs/SiI_onlyT/Save/SiI
 !--------------------------------------------------------------------------------
 

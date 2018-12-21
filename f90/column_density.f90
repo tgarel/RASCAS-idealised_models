@@ -73,16 +73,17 @@ program column_density
   nCD = gas_get_n_CD()
   allocate(ray%CD(nCD))
 
-  distance = 0.004 !code units
+  distance = 0.001 !code units
+  print*, 'distance = ', distance*box_size_cm/3.08568d21, ' kpc'
 
-  n=4 ; allocate(CD(nCD,2*n*n))
+  n=100 ; allocate(CD(nCD,2*n*n))
 
   do i=1,n
      do j=1,2*n
         ray%ID = 0
         ray%dist = 0d0
         ray%CD = 0d0
-        ray%x_em = compute_dom%sp%center(:)
+        ray%x_em = compute_dom%sp%center(:) + (/ 0.0005, 0.0005, 0.0005 /)
         direction = (/ distance*sin(pi*i/n)*cos(pi*j/n), distance*sin(pi*i/n)*sin(pi*j/n), distance*cos(pi*i/n) /)
         ray%k_em = direction(:)/norm2(direction)
 
@@ -93,8 +94,8 @@ program column_density
   end do
 
   print*, minval(CD(1,:)), maxval(CD(1,:))
-  print*, minval(CD(2,:)), maxval(CD(2,:))
-  print*, CD(1,:)
+  !print*, minval(CD(2,:)), maxval(CD(2,:))
+  !print*, CD(1,:)
 
 
 contains
