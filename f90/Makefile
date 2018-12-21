@@ -4,11 +4,25 @@
 #SYSTYPE="CCF"
 #SYSTYPE="lyocral"
 #SYSTYPE="lyocralP"
-SYSTYPE="mac"
+#SYSTYPE="mac"
 #SYSTYPE="macP"
 #SYSTYPE="ccage"
+SYSTYPE="tycho"
+
 
 OPTIONS = -cpp
+
+ifeq ($(SYSTYPE),"tycho")
+F90         = mpif90
+#FFLAGS      = -g -traceback -fpp -check all -debug -warn all -ftrapuv 
+##FFLAGS      = -O3 -fpp -ftz  -xavx -sox -ipo -fno-alias -fno-fnalias -no-prec-div -no-prec-sqrt -align all
+#FFLAGS      = -O3 -fpp -ftz -ipo -fno-alias -fno-fnalias -no-prec-div -no-prec-sqrt -align all
+##FFLAGS      = -p -g
+FFLAGS += $(OPTIONS)
+LDFLAGS     = -lmpi
+endif
+
+
 
 ifeq ($(SYSTYPE),"lyocral")
 F90         = gfortran
@@ -79,20 +93,18 @@ COMPOBJS = module_dust_model.o module_D_model.o module_HI_model.o module_gas_com
 #COMPOBJS = module_HI_model.o module_gas_composition_HI.o
 # 4/ pure RAMSES hydro variables
 #COMPOBJS = module_gas_composition_ramses.o
-# 5/ SiII 1190/1193
-#COMPOBJS = module_SiII_1190_model.o module_SiII_1193_model.o module_gas_composition_SiII_1190_1193.o
-# 6/ SiII 1190/1193 and dust
-#COMPOBJS = module_dust_model.o module_SiII_1190_model.o module_SiII_1193_model.o module_gas_composition_SiII_1190_1193_dust.o
+# 5/ SiII
+#COMPOBJS = module_SiII_1190_model.o module_SiII_1193_model.o module_gas_composition_SiII.o
+# 6/ SiII and dust
+#COMPOBJS = module_dust_model.o module_SiII_1190_model.o module_SiII_1193_model.o module_gas_composition_SiII_dust.o
 # 7/ MgII
 #COMPOBJS = module_MgII_2796_model.o module_MgII_2804_model.o module_gas_composition_MgII.o
 # 8/ MgII and dust
 #COMPOBJS = module_dust_model.o module_MgII_2796_model.o module_MgII_2804_model.o module_gas_composition_MgII_dust.o
-
 # 9/ HI, HeI, HeII
 #COMPOBJS = module_gas_composition_HI_HeI_HeII.o
 
-GASOBJS = module_constants.o module_random.o module_utils.o module_domain.o coolrates_module.o module_ramses.o module_uparallel.o $(COMPOBJS)
-
+GASOBJS = module_constants.o module_random.o module_utils.o module_voigt.o module_domain.o coolrates_module.o module_ramses.o module_uparallel.o $(COMPOBJS)
 
 OBJSDOM = $(GASOBJS) module_select.o module_mesh.o
 
@@ -113,7 +125,7 @@ LYAFG = module_constants.o module_random.o module_utils.o module_domain.o coolra
 	$(F90) $(FFLAGS) -c $^ -o $@
 
 #############################################################################
-all: clean CreateDomDump PhotonsFromSourceModel PhotonsFromStars rascas-serial FescFromStarsMathieu
+all: clean CreateDomDump PhotonsFromSourceModel PhotonsFromStars rascas-serial 
 
 PhotonsFromSourceModel: $(OBJSPHO) PhotonsFromSourceModel.o
 	$(F90) $(FFLAGS) $(LDFLAGS) -o $@ $(OBJSPHO) PhotonsFromSourceModel.o
@@ -129,9 +141,6 @@ CreateDomDump: $(OBJSDOM) CreateDomDump.o
 
 ColumnDensity: $(FESC) ColumnDensity.o
 	$(F90) $(FFLAGS) $(LDFLAGS) -o $@ $(FESC) ColumnDensity.o
-
-FescFromStarsMathieu: $(FESC) FescFromStarsMathieu.o
-	$(F90) $(FFLAGS) $(LDFLAGS) -o $@ $(FESC) FescFromStarsMathieu.o
 
 ExtractSubvol: $(OBJSDOM) ExtractSubvol.o
 	$(F90) $(FFLAGS) $(LDFLAGS) -o $@ $(OBJSDOM) ExtractSubvol.o
