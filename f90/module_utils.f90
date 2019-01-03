@@ -8,6 +8,7 @@ module module_utils
   ! - anisotropic_direction_Dust
   ! - locatedb
   ! - path
+  ! - print_rascas_header
   
   use module_constants, only : twopi
   use module_random
@@ -203,14 +204,14 @@ contains
     real(kind=8),intent(out)      :: kout(3)
     real(kind=8),intent(out)      :: mu
     integer(kind=4),intent(inout) :: iran
-    real(kind=8)                  :: phi,cti,sti,cpi,spi,ct1,st1,cp1,sp1,ra,knorm
+    real(kind=8)                  :: phi,cti,sti,cpi,spi,ct1,st1,cp1,sp1,x,knorm
     real(kind=8),intent(in)       :: g_dust
 
 
     ! determine scattering angle (in atom's frame)
     ! use White 79 approximation for the "reciprocal" of cumulative Henyey-Greenstein phase fct:
-    ra=ran3(iran) 
-    mu = (1.0d0+g_dust*g_dust-((1.0d0-g_dust*g_dust)/(1.0d0-g_dust+2.0d0*g_dust*ra))**2)/(2.0d0*g_dust)
+    x  = ran3(iran) 
+    mu = (1.0d0+g_dust*g_dust-((1.0d0-g_dust*g_dust)/(1.0d0-g_dust+2.0d0*g_dust*x))**2)/(2.0d0*g_dust)
 
     ! angular description of kin in external frame (box coordinates)
     ! ---------------------------------------------------------------------------------
