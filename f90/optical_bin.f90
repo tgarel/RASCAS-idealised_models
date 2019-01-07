@@ -156,7 +156,7 @@ program optical_bin
   distance = 0.00376001 !code units
 
   n=4 ; allocate(photo_rate(2*n*n), photo_rate_sum(2*n*n), photo_rate_all(2*n*n)) ; photo_rate_sum = 0d0
-  do istar=300001,chunksize(rank+1)
+  do istar=1,chunksize(rank+1)
      do i=1,n
         do j=1,2*n
            ray%ID = 0

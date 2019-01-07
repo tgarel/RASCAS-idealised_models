@@ -93,7 +93,7 @@ contains
     read(20) nhii
     read(20) metallicity
     read(20) gas_leaves%dopwidth
-    gas_leaves%dopwidth = gas_leaves%dopwidth / sqrt(28.0855)
+    gas_leaves%dopwidth = gas_leaves%dopwidth / sqrt(28.0855)   !28.0855 is the atomic mass unit of Silicone.  In the data file I printed sqrt(2*kb*T/m_u), so it's correct for Hydrogen, but other elements have to be divided by sqrt(mass of the element in atomic units).
     read(21) gas_leaves%nSiII
 
     close(20) ; close(21)
