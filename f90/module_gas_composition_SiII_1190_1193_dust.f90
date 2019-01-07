@@ -141,7 +141,7 @@ contains
 
 
   
-  function  gas_get_scatter_flag(cell_gas, distance_to_border_cm, nu_cell,tau_abs,iran)
+  function  gas_get_scatter_flag(cell_gas, distance_to_border_cm, nu_cell, tau_abs,iran)
 
     ! --------------------------------------------------------------------------
     ! Decide whether a scattering event occurs, and if so, on which element
@@ -175,7 +175,7 @@ contains
     if (tau_abs > tau_cell) then  ! photon is due for absorption outside the cell 
        gas_get_scatter_flag = 0
        tau_abs = tau_abs - tau_cell
-       if (tau_abs.lt.0.0d0) then
+       if (tau_abs.lt.0.d0) then
           print*, 'tau_abs est negatif'
           stop
        endif
@@ -252,6 +252,9 @@ contains
        read(unit) (g(i)%ndust,i=1,n)
        read(unit) box_size_cm 
     end if
+
+    if (verbose) print*,'min/max of nSiII : ',minval(g(:)%nSiII),maxval(g(:)%nSiII)
+
   end subroutine read_gas
 
   
@@ -347,43 +350,37 @@ contains
        write(unit,'(a,a,a)') '[gas_composition]'
        write(unit,'(a,ES10.3)') '  f_ion                = ',f_ion
        write(unit,'(a,ES10.3)') '  Zref                 = ',Zref
-       write(unit,'(a)')        '# overwrite parameters'
-       write(unit,'(a,L1)')     '  gas_overwrite        = ',gas_overwrite
+       write(unit,'(a)')       '# overwrite parameters'
+       write(unit,'(a,L1)')    '  gas_overwrite         = ',gas_overwrite
        write(unit,'(a,ES10.3)') '  fix_nSiII            = ',fix_nSiII
        write(unit,'(a,ES10.3)') '  fix_vth              = ',fix_vth
        write(unit,'(a,ES10.3)') '  fix_vel              = ',fix_vel
-       write(unit,'(a,ES10.3)') '  fix_ndust            = ',fix_ndust
        write(unit,'(a,ES10.3)') '  fix_box_size_cm      = ',fix_box_size_cm
-       write(unit,'(a)')        '# miscelaneous parameters'
-       write(unit,'(a,L1)')     '  verbose              = ',verbose
+       write(unit,'(a)')       '# miscelaneous parameters'
+       write(unit,'(a,L1)')    '  verbose               = ',verbose
        write(unit,'(a)')             ' '
        call print_ramses_params(unit)
        write(unit,'(a)')             ' '
-       call print_dust_params(unit)
-      write(unit,'(a)')             ' '
+       call print_dust_params
        call print_SiII_1190_params(unit)
-      write(unit,'(a)')             ' '
        call print_SiII_1193_params(unit)
     else
        write(*,'(a,a,a)') '[gas_composition]'
        write(*,'(a,ES10.3)') '  f_ion                = ',f_ion
        write(*,'(a,ES10.3)') '  Zref                 = ',Zref
-       write(*,'(a)')        '# overwrite parameters'
-       write(*,'(a,L1)')     '  gas_overwrite        = ',gas_overwrite
+       write(*,'(a)')       '# overwrite parameters'
+       write(*,'(a,L1)')    '  gas_overwrite         = ',gas_overwrite
        write(*,'(a,ES10.3)') '  fix_nSiII            = ',fix_nSiII
        write(*,'(a,ES10.3)') '  fix_vth              = ',fix_vth
        write(*,'(a,ES10.3)') '  fix_vel              = ',fix_vel
-       write(*,'(a,ES10.3)') '  fix_ndust            = ',fix_ndust
        write(*,'(a,ES10.3)') '  fix_box_size_cm      = ',fix_box_size_cm
-       write(*,'(a)')        '# miscelaneous parameters'
-       write(*,'(a,L1)')     '  verbose              = ',verbose
+       write(*,'(a)')       '# miscelaneous parameters'
+       write(*,'(a,L1)')    '  verbose               = ',verbose
        write(*,'(a)')             ' '
        call print_ramses_params
        write(*,'(a)')             ' '
        call print_dust_params
-       write(*,'(a)')             ' '
        call print_SiII_1190_params
-       write(*,'(a)')             ' '
        call print_SiII_1193_params
     end if
 
