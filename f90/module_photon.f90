@@ -106,7 +106,7 @@ contains
        cell_size_cm = cell_size * box_size_cm    ! size of the current cell in cm
        cell_gas     = domesh%gas(ileaf)
        ! compute position of photon in current-cell units
-       posoct(:)    = domesh%xoct(ioct,:)
+       posoct(:)    = domesh%xoct(:,ioct)
        cell_corner  = get_cell_corner(posoct,ind,cell_level)   ! position of cell corner, in box units.
        ppos_cell    = (ppos - cell_corner) / cell_size         ! position of photon in cell units (x,y,z in [0,1] within cell)
        if((ppos_cell(1)>1.0d0).or.(ppos_cell(2)>1.0d0).or.(ppos_cell(3)>1.0d0).or. &

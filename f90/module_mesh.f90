@@ -24,6 +24,7 @@ module module_mesh
                  -.5d0,-.5d0,+.5d0, +.5d0,-.5d0,+.5d0, -.5d0,+.5d0,+.5d0, +.5d0,+.5d0,+.5d0/), (/3,8/))
 
   ! TODO: change shape of xoct,xleaf,nbor to optimize access xoct(1:noct,1:3) => xoct(1:3,1:noct)
+  !                                                          nbor(1:nOct,1:6) => nbor(1:6,1:nOct)
 
   ! WORKING VARIABLES (internal to this module, could be renamed)
   
@@ -111,7 +112,7 @@ module module_mesh
       allocate(son(1:nCell))
       allocate(father(1:nOct))
       allocate(octlevel(1:nOct))
-      allocate(xoct(1:nOct,1:3))
+      allocate(xoct(1:3,1:nOct))
       ! allocate(nbor(1:nOct,1:6)) ! will be done later
       son=0
       father=-1
@@ -160,7 +161,7 @@ module module_mesh
          write(*,*)
          write(*,*)'...building nbor array...'
       end if
-      allocate(nbor(nOct,6))
+      allocate(nbor(6,nOct))
       nbor = 0
       call make_nbor_array
 
@@ -177,7 +178,7 @@ module module_mesh
 
 
       ! fill the mesh type structure
-      allocate(m%son(ncell),m%father(noct),m%octlevel(noct),m%xoct(noct,3),m%nbor(noct,6))
+      allocate(m%son(ncell),m%father(noct),m%octlevel(noct),m%xoct(3,noct),m%nbor(6,noct))
 
       ! allocate & fill m%domain%stuff
 
@@ -228,7 +229,7 @@ module module_mesh
       read(13) m%ncoarse, m%noct, m%ncell, m%nleaf
 
       ! allocate m
-      allocate(m%son(m%ncell),m%father(m%noct),m%octlevel(m%noct),m%xoct(m%noct,3),m%nbor(m%noct,6))
+      allocate(m%son(m%ncell),m%father(m%noct),m%octlevel(m%noct),m%xoct(3,m%noct),m%nbor(6,m%noct))
 
       ! father
       allocate(iarr1d(m%noct))
@@ -243,7 +244,7 @@ module module_mesh
       deallocate(iarr1d)
 
       ! nbor
-      allocate(iarr2d(m%noct,6))
+      allocate(iarr2d(6,m%noct))
       read(13) iarr2d
       m%nbor = iarr2d
       deallocate(iarr2d)
@@ -255,7 +256,7 @@ module module_mesh
       deallocate(iarr1d)
 
       ! xoct
-      allocate(farr2d(m%noct,3))
+      allocate(farr2d(3,m%noct))
       read(13) farr2d
       m%xoct = farr2d
       deallocate(farr2d)
@@ -301,7 +302,7 @@ module module_mesh
 
       ! test if photon is in father(ioct)
       ifather = m%father(ioct)    ! is a cell
-      xc      = m%xoct(ioct,1:3)
+      xc      = m%xoct(1:3,ioct)
       level   = m%octlevel(ioct)  ! level l
       dx      = 0.5d0**(level)    ! cell size in oct, so half size of father cell at level l-1 
       inside  = ((abs(xc(1)-xpnew(1))<dx).and.(abs(xc(2)-xpnew(2))<dx).and.(abs(xc(3)-xpnew(3))<dx))
@@ -315,7 +316,7 @@ module module_mesh
 
       else ! if no -> test 3 neighbors
          do i=1,3
-            icell = m%nbor(ioct,nbortest(i,ind))
+            icell = m%nbor(nbortest(i,ind),ioct)
             ! The nbor of the oct are the neighboring cells of the father of the oct. 
             ! 3 possible cases: 
             ! 2a/ if son(icell)>0 -> this is an oct 
@@ -329,7 +330,7 @@ module module_mesh
 
             ison=m%son(icell)
             if(ison>0)then
-               xc     = m%xoct(ison,1:3)
+               xc     = m%xoct(1:3,ison)
                !level  = m%octlevel(ison)    ! = level l as defined above
                !dx     = 0.5d0**(level)
                inside = ((abs(xc(1)-xpnew(1))<dx).and.(abs(xc(2)-xpnew(2))<dx).and.(abs(xc(3)-xpnew(3))<dx))      
@@ -343,7 +344,7 @@ module module_mesh
             else
                indleaf  = (icell-m%ncoarse-1)/m%noct + 1
                ioctleaf = icell - m%ncoarse - (indleaf-1)*m%noct
-               xc       = m%xoct(ioctleaf,1:3)
+               xc       = m%xoct(1:3,ioctleaf)
                !level    = m%octlevel(ioctleaf)           ! = level l+1 compared to level defined above
                !dx       = 0.5d0**(level)                 ! we keep dx from level l 
                xc       = xc + offset(1:3,indleaf)*dx*2   ! but then 2*dx for level l+1 
@@ -383,7 +384,7 @@ module module_mesh
 
       ison = m%son(icell)               ! its (oct) son
       do while (ison > 0)               ! there is an oct in current cell 
-         x  = m%xoct(ison,1:3)          ! oct position
+         x  = m%xoct(1:3,ison)          ! oct position
          ix = merge(0,1,xp(1) < x(1)) 
          iy = merge(0,1,xp(2) < x(2))
          iz = merge(0,1,xp(3) < x(3))
@@ -410,7 +411,7 @@ module module_mesh
       icell = 1 ! the coarse cell containing the whole box is always nb 1
       ison  = m%son(icell) ! its (oct) son
       do while (ison > 0)  ! there is an oct in current cell 
-         x  = m%xoct(ison,1:3)  ! oct position
+         x  = m%xoct(1:3,ison)  ! oct position
          ix = merge(0,1,xp(1) < x(1)) 
          iy = merge(0,1,xp(2) < x(2))
          iz = merge(0,1,xp(3) < x(3))
@@ -426,16 +427,16 @@ module module_mesh
 
 
 
-    function get_cell_corner(xoct, ind, cell_level) 
+    function get_cell_corner(x_oct, ind, cell_level) 
       ! return position of cell corner, in box units.
       
-      real(kind=8),dimension(3),intent(in) :: xoct
+      real(kind=8),dimension(3),intent(in) :: x_oct
       integer(kind=4),intent(in)           :: ind, cell_level
       real(kind=8),dimension(3)            :: get_cell_corner, xcell
       real(kind=8)                         :: dx
 
       dx              = 0.5d0**cell_level
-      xcell           = xoct + offset(1:3,ind)*dx
+      xcell           = x_oct + offset(1:3,ind)*dx
       get_cell_corner = xcell - dx*0.5d0
 
       return
@@ -463,9 +464,9 @@ module module_mesh
       write(13) m%nCoarse, m%nOct, m%nCell, m%nLeaf
       write(13) m%father(1:nOct)
       write(13) m%son(1:nCell)
-      write(13) m%nbor(1:nOct,1:6)
+      write(13) m%nbor(1:6,1:nOct)
       write(13) m%octlevel(1:nOct)
-      write(13) m%xoct(1:nOct,1:3)
+      write(13) m%xoct(1:3,1:nOct)
 
       ! dump gas
       call dump_gas(13,m%gas)
@@ -504,7 +505,7 @@ module module_mesh
 
       ilastoct = ilastoct + 1 
       octlevel(ilastoct)=fcl+1
-      xoct(ilastoct,1:3) = fcx(1:3)
+      xoct(1:3,ilastoct) = fcx(1:3)
       father(ilastoct) = ifc
       level=octlevel(ilastoct)
       ilastoctLevel = ilastoct
@@ -722,9 +723,9 @@ module module_mesh
       do ioct=1,nOct  ! loop over all octs. 
          level = octlevel(ioct)   ! level of oct -> 6 neighbors are cells at level-1
          dx    = 0.5d0**(level-1) ! size of neighbor cells (or cell containing the oct)
-         xc    = xoct(ioct,1:3)   ! position of current oct.
+         xc    = xoct(1:3,ioct)   ! position of current oct.
          if (level == 1) then     ! this is the oct within the unique coarse cell (at l=0)/
-            nbor(ioct,1:6) = 1    ! -> define its neighbors as the coarse cell itself.
+            nbor(1:6,ioct) = 1    ! -> define its neighbors as the coarse cell itself.
             cycle
          end if
          if (level <= 0) then     ! this should not happen, but it does : what are these octs ? 
@@ -769,7 +770,7 @@ module module_mesh
             l     = 0 ! its level 
             ison  = son(icell) ! its (oct) son
             do while (ison > 0)  ! there is an oct in current cell 
-               x  = xoct(ison,1:3)  ! oct position
+               x  = xoct(1:3,ison)  ! oct position
                ix = merge(0,1,xnbor(1) < x(1)) 
                iy = merge(0,1,xnbor(2) < x(2))
                iz = merge(0,1,xnbor(3) < x(3))
@@ -779,7 +780,7 @@ module module_mesh
                l   = l + 1
                if (l == level-1) exit
             end do
-            nbor(ioct,inbor) = icell 
+            nbor(inbor,ioct) = icell 
             if((ison/=0).and.(l/=level-1))then
                print*,'ERROR: Ouh la la',ioct,ison,l,level,inbor
                stop
@@ -838,14 +839,14 @@ module module_mesh
       
       ! resize nbor
       !deallocate(nbor)
-      !allocate(nbor(nOctTot,6))
+      !allocate(nbor(6,nOctTot))
       !nbor = 0
 
       ! resize xoct
-      allocate(tmpr(nnew,3))
-      tmpr = xoct(1:nnew,:)
+      allocate(tmpr(3,nnew))
+      tmpr = xoct(:,1:nnew)
       deallocate(xoct)
-      allocate(xoct(nnew,3))
+      allocate(xoct(3,nnew))
       xoct = tmpr
       deallocate(tmpr)
       
@@ -864,13 +865,13 @@ module module_mesh
          write(*,*)'min max son          ',minval(son(:)),maxval(son(:))
          write(*,*)'min max father       ',minval(father(:)),maxval(father(:))
          write(*,*)'min max octlevel     ',minval(octlevel(:)),maxval(octlevel(:))
-         write(*,*)'min max xoct         ',minval(xoct(:,1)),maxval(xoct(:,1))
-         write(*,*)'min max yoct         ',minval(xoct(:,2)),maxval(xoct(:,2))
-         write(*,*)'min max zoct         ',minval(xoct(:,3)),maxval(xoct(:,3))
+         write(*,*)'min max xoct         ',minval(xoct(1,:)),maxval(xoct(1,:))
+         write(*,*)'min max yoct         ',minval(xoct(2,:)),maxval(xoct(2,:))
+         write(*,*)'min max zoct         ',minval(xoct(3,:)),maxval(xoct(3,:))
          write(*,*)'min max octlevel (>0)',minval(octlevel, mask=(octlevel >= 0)), maxval(octlevel, mask=(octlevel >= 0))
-         write(*,*)'min max xoct (>0)    ',minval(xoct(:,1), mask=(xoct(:,1)>=0)),maxval(xoct(:,1), mask=(xoct(:,1)>=0))
-         write(*,*)'min max yoct (>0)    ',minval(xoct(:,2), mask=(xoct(:,2)>=0)),maxval(xoct(:,2), mask=(xoct(:,2)>=0))
-         write(*,*)'min max zoct (>0)    ',minval(xoct(:,3), mask=(xoct(:,3)>=0)),maxval(xoct(:,3), mask=(xoct(:,3)>=0))
+         write(*,*)'min max xoct (>0)    ',minval(xoct(1,:), mask=(xoct(1,:)>=0)),maxval(xoct(1,:), mask=(xoct(1,:)>=0))
+         write(*,*)'min max yoct (>0)    ',minval(xoct(2,:), mask=(xoct(2,:)>=0)),maxval(xoct(2,:), mask=(xoct(2,:)>=0))
+         write(*,*)'min max zoct (>0)    ',minval(xoct(3,:), mask=(xoct(3,:)>=0)),maxval(xoct(3,:), mask=(xoct(3,:)>=0))
          write(*,*)
       end if
 
