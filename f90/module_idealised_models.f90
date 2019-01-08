@@ -122,7 +122,7 @@ contains
        !! if gas norm set as column density in param file.... OK for model with n~r^-2 ONLY !!!
        !! n0 = coldens_norm / (r_min * box_size_IM_cm * (1.0d0 - r_min / r_max))  ! cm-3
        if (ngas_slope .ne. 1.0) then
-          n0 = coldens_norm * (1.0-ngas_slope) / ((r_min * box_size_IM_cm)**ngas_slope * (r_max**(1.0-ngas_slope) - r_min**(1.0-ngas_slope)))  ! cm-3
+          n0 = coldens_norm * (1.0-ngas_slope) / ((r_min * box_size_IM_cm)**ngas_slope * ((r_max * box_size_IM_cm)**(1.0-ngas_slope) - (r_min * box_size_IM_cm)**(1.0-ngas_slope)))  ! cm-3
        else
           n0 = coldens_norm / ((r_min * box_size_IM_cm) * log(r_max / r_min))  ! cm-3
        end if
@@ -376,7 +376,7 @@ contains
        !! if gas norm set as column density in param file.... OK for model with n~r^-2 ONLY !!!
        !! n0 = coldens_norm / (r_min * box_size_IM_cm * (1.0d0 - r_min / r_max))  ! cm-3
        if (ngas_slope .ne. 1.0) then
-          n0 = coldens_norm * (1.0-ngas_slope) / ((r_min * box_size_IM_cm)**ngas_slope * (r_max**(1.0-ngas_slope) - r_min**(1.0-ngas_slope)))  ! cm-3
+          n0 = coldens_norm * (1.0-ngas_slope) / ((r_min * box_size_IM_cm)**ngas_slope * ((r_max * box_size_IM_cm)**(1.0-ngas_slope) - (r_min * box_size_IM_cm)**(1.0-ngas_slope)))  ! cm-3
        else
           n0 = coldens_norm / ((r_min * box_size_IM_cm) * log(r_max / r_min))  ! cm-3
        end if
