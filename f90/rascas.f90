@@ -4,6 +4,9 @@ program main
   use module_master
   use module_worker
   use module_utils, only : print_rascas_header
+  !--PEEL--
+  use module_mock, only : read_mock_params
+  !--LEEP--
 
   implicit none
 
@@ -30,8 +33,10 @@ program main
   call cpu_time(start)
 
   call start_mpi
-  call define_mpi_type
-
+  ! GATHER -- 
+  !call define_mpi_type
+  ! -- GATHER 
+  
   nworker=nb_cpus-1
   if(nworker==0)then
      print*,'rascas is a parallel code, you should run it with MPI'

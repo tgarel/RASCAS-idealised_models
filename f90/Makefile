@@ -50,11 +50,11 @@ endif
 
 
 ifeq ($(SYSTYPE),"macP")
-F90         = mpif90-openmpi-mp
+F90         = mpif90-openmpi-gcc6
 FFLAGS      = -g -fcheck=all -ffree-line-length-none -ffree-form -ftrapv -fbounds-check -fbacktrace -Wall
 #FFLAGS      = -O3
 FFLAGS += $(OPTIONS)
-LDFLAGS     = #-lmpi
+LDFLAGS     = -lmpi
 endif
 
 
@@ -102,7 +102,10 @@ OBJSDOM = $(GASOBJS) module_select.o module_mesh.o
 
 OBJSPHO = $(GASOBJS) module_mesh.o module_mock.o module_photon.o 
 
-OBJSMPI = $(OBJSPHO) module_parallel_mpi.o module_worker.o module_master.o
+# GATHER -- 
+#OBJSMPI = $(OBJSPHO) module_parallel_mpi.o module_worker.o module_master.o
+OBJSMPI = module_parallel_mpi.o $(OBJSPHO) module_worker.o module_master.o
+# -- GATHER
 
 LYAFG = module_constants.o module_random.o module_utils.o module_domain.o coolrates_module.o module_ramses.o
 

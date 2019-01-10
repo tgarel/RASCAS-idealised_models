@@ -3,6 +3,9 @@ module module_master
   use module_parallel_mpi
   use module_domain
   use module_photon
+  ! GATHER --
+  use module_mock
+  ! -- GATHER 
 
   implicit none
 
@@ -45,6 +48,9 @@ contains
     logical                                       :: everything_not_done
     real(kind=8)                                  :: start_initphot, end_initphot, time_now, dt_since_last_backup, time_last_backup
     real(kind=8)                                  :: percentDone, percentBefore
+    ! GATHER --
+    integer(kind=4) :: nmocks_received
+    ! -- GATHER 
     
     call cpu_time(start_initphot)
 
@@ -186,8 +192,8 @@ contains
           call MPI_RECV(photpacket(i)%tau_abs_curr, 1, MPI_DOUBLE_PRECISION, idcpu, DONE_TAG , MPI_COMM_WORLD, status,IERROR)
           call MPI_RECV(photpacket(i)%iran, 1, MPI_INTEGER, idcpu, DONE_TAG , MPI_COMM_WORLD, status,IERROR)
        end do
-       !gubed                                                                                                                                                                                                                                                                                                              \
-
+       !gubed
+       
        !if (verbose) print*,'[master] receive a bundle of',nbundle,' photon packets from worker',idcpu
 
        ! By construction, photons that arrive here are not going to go back to the same domain, 
@@ -289,9 +295,21 @@ contains
        endif
 
     enddo
-
-    ! finale synchronization, for profiling purposes
+    
+    ! final synchronization, for profiling purposes
     call MPI_BARRIER(MPI_COMM_WORLD,code)    
+
+    ! GATHER --
+    nmocks_received = 0
+    print*,'[master] gathering mocks from workers ... '
+    do while (nmocks_received /= nworker)
+       call master_receives_mock
+       nmocks_received = nmocks_received + 1
+       print*,'[master] \__ ',nmocks_received,'/',nworker
+    end do
+    print*,'[master] writing mock to file'
+    call dump_mocks(0)
+    ! -- GATHER
 
     if(verbose)then
        call print_diagnostics
