@@ -593,7 +593,7 @@ contains
           end if
           ! if tau is not absurdly large, increment detectors 
           if (tau < tau_max) then
-             peel_contrib = PeelBuffer(ipeel)%weight * exp(-tau)
+             peel_contrib = PeelBuffer(ipeel)%weight * exp(-tau) * 2d0
              if (increment_flux)  call peel_to_flux(peel_contrib,idir) 
              if (increment_spec)  call peel_to_spec(PeelBuffer(ipeel)%nu,peel_contrib,idir)
              if (increment_image) call peel_to_map(projpos,peel_contrib,idir)
