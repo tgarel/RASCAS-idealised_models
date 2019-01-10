@@ -5,7 +5,7 @@
 #SYSTYPE="lyocral"
 #SYSTYPE="lyocralP"
 SYSTYPE="macP"
-#SYSTYPE="macP"
+#SYSTYPE="mac"
 #SYSTYPE="ccage"
 
 OPTIONS = -cpp
@@ -42,7 +42,7 @@ endif
 
 ifeq ($(SYSTYPE),"mac")
 #F90         = gfortran-mp-4.7 -ffree-line-length-none -ffree-form  ###-fopenmp
-F90         = gfortran-mp-6 -ffree-line-length-none -ffree-form  ###-fopenmp
+F90         = gfortran -ffree-line-length-none -ffree-form -fopenmp
 FFLAGS      = -g -fcheck=all -ftrapv -fbacktrace -fbounds-check
 #FFLAGS      = -O2
 FFLAGS += $(OPTIONS)
@@ -104,7 +104,7 @@ GASOBJS = module_constants.o module_random.o module_utils.o module_domain.o cool
 
 OBJSDOM = $(GASOBJS) module_select.o module_mesh.o
 
-OBJSPHO = $(GASOBJS) module_mesh.o module_mock.o module_photon.o module_opt_ray.o module_spectra.o
+OBJSPHO = $(GASOBJS) module_mesh.o module_mock.o module_photon.o module_opt_ray.o module_spectra.o module_CD.o
 
 OBJSMPI = $(OBJSPHO) module_parallel_mpi.o module_worker.o module_master.o
 
@@ -143,8 +143,11 @@ rascas: $(OBJSMPI) rascas.o
 optical_bin: $(OBJSPHO) optical_bin.o
 	$(F90) $(FFLAGS) $(LDFLAGS) -o $@ $(OBJSPHO) optical_bin.o
 
-column_density: $(OBJSPHO) column_density.o
-	$(F90) $(FFLAGS) $(LDFLAGS) -o $@ $(OBJSPHO) column_density.o
+IC_ColumnDensity: $(OBJSPHO) IC_ColumnDensity.o
+	$(F90) $(FFLAGS) $(LDFLAGS) -o $@ $(OBJSPHO) IC_ColumnDensity.o
+
+ColumnDensity: $(OBJSPHO) ColumnDensity.o
+	$(F90) $(FFLAGS) $(LDFLAGS) -o $@ $(OBJSPHO) ColumnDensity.o
 
 clean:
 	rm -f $(OBJSDOM) $(OBJSPHO) $(OBJSMPI) *.o *.mod
