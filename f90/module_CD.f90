@@ -27,7 +27,7 @@ module module_CD
 
   type(histo_v_N) :: histo
 
-  public  :: ComputeNHI, ray_advance, init_rays_from_file, dump_rays, init_histo_v_N, dump_histo
+  public  :: ComputeNSiII, ray_advance, init_rays_from_file, dump_rays, init_histo_v_N, dump_histo
   private :: path
 
 contains
@@ -62,7 +62,7 @@ contains
 !$OMP END DO
 !$OMP END PARALLEL
 
-  end subroutine ComputeNHI
+  end subroutine ComputeNSiII
 
 
   subroutine ray_advance(x_em,k_em,dist,NHI,domesh,domaine_calcul,weight)
