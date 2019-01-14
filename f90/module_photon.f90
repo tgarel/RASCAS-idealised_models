@@ -55,17 +55,17 @@ module module_photon
   
 contains
 
-  subroutine MCRT(nbuffer,photpacket,mesh_dom,compute_dom)    
+  subroutine MCRT(npp,photpacket,mesh_dom,compute_dom)
 
     ! this is the Monte Carlo Radiative transfer routine... but also a single loop over photons...
 
-    integer(kind=4),intent(in)                            :: nbuffer
-    type(photon_current),dimension(nbuffer),intent(inout) :: photpacket
-    type(mesh),intent(in)                                 :: mesh_dom
-    type(domain),intent(in)                               :: compute_dom
-    integer(kind=4)                                       :: i
-    
-    do i=1,nbuffer
+    integer(kind=4),intent(in)                        :: npp
+    type(photon_current),dimension(npp),intent(inout) :: photpacket
+    type(mesh),intent(in)                             :: mesh_dom
+    type(domain),intent(in)                           :: compute_dom
+    integer(kind=4)                                   :: i
+
+    do i=1,npp
        ! case of photpacket not fully filled...
        if (photpacket(i)%ID>0) then
           call propagate(photpacket(i),mesh_dom,compute_dom)
@@ -262,6 +262,11 @@ contains
                    ppos(1) = ppos(1) + merge(-1.0d0,1.0d0,p%k(1)<0.0d0) * epsilon(ppos(1))
                    ppos(2) = ppos(2) + merge(-1.0d0,1.0d0,p%k(2)<0.0d0) * epsilon(ppos(2))
                    ppos(3) = ppos(3) + merge(-1.0d0,1.0d0,p%k(3)<0.0d0) * epsilon(ppos(3))
+                   ! correct for periodicity
+                   do i=1,3
+                      if (ppos(i) < 0.0d0) ppos(i)=ppos(i)+1.0d0
+                      if (ppos(i) > 1.0d0) ppos(i)=ppos(i)-1.0d0
+                   enddo
                    call whereIsPhotonGoing(domesh,icell,ppos,icellnew,flagoutvol)
                 end do
                 if (npush > 1) print*,'WARNING : npush > 1 needed in module_photon:propagate.'
@@ -315,7 +320,7 @@ contains
              enddo
              ! update ppos according to ppos_cell
              ppos = ppos_cell * cell_size + cell_corner
-
+             
              !------------
              ! scattering
              !------------
@@ -568,7 +573,7 @@ contains
     real(kind=8)                  :: tau,peel_contrib
     real(kind=8)                  :: projpos(2),kobs(3)
     logical                       :: increment_flux, increment_spec, increment_image, increment_cube
-    type(gas)                     :: cell_gas       ! gas in the current cell
+    type(gas)                     :: cell_gas       ! gas in the current cell 
     real(kind=8)                  :: nupeel
 
     do idir = 1,nDirections
@@ -593,7 +598,7 @@ contains
           end if
           ! if tau is not absurdly large, increment detectors 
           if (tau < tau_max) then
-             peel_contrib = PeelBuffer(ipeel)%weight * exp(-tau) * 2d0
+             peel_contrib = PeelBuffer(ipeel)%weight * exp(-tau) * 2.0d0 
              if (increment_flux)  call peel_to_flux(peel_contrib,idir) 
              if (increment_spec)  call peel_to_spec(PeelBuffer(ipeel)%nu,peel_contrib,idir)
              if (increment_image) call peel_to_map(projpos,peel_contrib,idir)

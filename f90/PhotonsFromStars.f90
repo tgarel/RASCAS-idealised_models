@@ -214,15 +214,29 @@ program PhotonsFromStars
         dxage2 = sed_age(iage+1) - star_age(i) 
         dxmet1 = star_met(i) - sed_met(imet)
         dxmet2 = sed_met(imet+1) - star_met(i)         
-        w     = sed_nphot(iage,imet) * dxage2 * dxmet2 + &
+        w      = sed_nphot(iage,imet) * dxage2 * dxmet2 + &
              &  sed_nphot(iage+1,imet) * dxage1 * dxmet2 + &
              & sed_nphot(iage,imet+1) * dxage2 * dxmet1 + & 
              & sed_nphot(iage+1 ,imet+1) * dxage1 * dxmet1
         sweight(i) = sweight(i) * w / (dxage1+dxage2)/(dxmet1+dxmet2) ! nb of photons per sec. 
      case ('Table')
-        sweight(i) = sweight(i) * sed_nphot(iage,imet)  ! nb of photons per sec.
+        ! apres
+        ! interpolate in age and Z
+        dxage1 = star_age(i) - sed_age(iage)
+        dxage2 = sed_age(iage+1) - star_age(i) 
+        dxmet1 = star_met(i) - sed_met(imet)
+        dxmet2 = sed_met(imet+1) - star_met(i)         
+        w      = sed_nphot(iage,imet) * dxage2 * dxmet2 + &
+             &  sed_nphot(iage+1,imet) * dxage1 * dxmet2 + &
+             & sed_nphot(iage,imet+1) * dxage2 * dxmet1 + & 
+             & sed_nphot(iage+1 ,imet+1) * dxage1 * dxmet1
+        sweight(i) = sweight(i) * w / (dxage1+dxage2)/(dxmet1+dxmet2) ! nb of photons per sec. 
+        ! -apres
+        ! avant : 
+        !sweight(i) = sweight(i) * sed_nphot(iage,imet)  ! nb of photons per sec.
         star_iage(i) = iage
         star_imet(i) = imet
+        ! tnava
      case('PowLaw')
         ! integrate powerlaw from min to max wavelengths.
         ! We actually want to sample the number of photons per lambda bin.

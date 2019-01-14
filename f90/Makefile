@@ -51,12 +51,18 @@ endif
 
 
 ifeq ($(SYSTYPE),"macP")
+<<<<<<< HEAD
 #F90         = mpif90-openmpi-mp
 F90	= mpif90 -ffree-line-length-none -ffree-form 
 #FFLAGS      = -g -fcheck=all -ftrapv -fbounds-check -fbacktrace
 FFLAGS      = -O3
+=======
+F90         = mpif90-openmpi-gcc6
+FFLAGS      = -g -fcheck=all -ffree-line-length-none -ffree-form -ftrapv -fbounds-check -fbacktrace -Wall
+#FFLAGS      = -O3
+>>>>>>> dev-harley
 FFLAGS += $(OPTIONS)
-LDFLAGS     = #-lmpi
+LDFLAGS     = -lmpi
 endif
 
 
@@ -81,10 +87,10 @@ endif
 #COMPOBJS = module_HI_model.o module_gas_composition_HI.o
 # 4/ pure RAMSES hydro variables
 #COMPOBJS = module_gas_composition_ramses.o
-# 5/ SiII
-#COMPOBJS = module_SiII_1190_model.o module_SiII_1193_model.o module_gas_composition_SiII.o
-# 6/ SiII and dust
-#COMPOBJS = module_dust_model.o module_SiII_1190_model.o module_SiII_1193_model.o module_gas_composition_SiII_dust.o
+# 5/ SiII 1190/1193
+#COMPOBJS = module_SiII_1190_model.o module_SiII_1193_model.o module_gas_composition_SiII_1190_1193.o
+# 6/ SiII 1190/1193 and dust
+#COMPOBJS = module_dust_model.o module_SiII_1190_model.o module_SiII_1193_model.o module_gas_composition_SiII_1190_1193_dust.o
 # 7/ MgII
 #COMPOBJS = module_MgII_2796_model.o module_MgII_2804_model.o module_gas_composition_MgII.o
 # 8/ MgII and dust
@@ -99,14 +105,16 @@ COMPOBJS = module_dust_model.o module_SiII_1260_model.o module_gas_composition_S
 #COMPOBJS = module_dust_model.o module_OI_1302_model.o module_gas_composition_OI1302_dust.o
 
 
-
-GASOBJS = module_constants.o module_random.o module_utils.o module_domain.o coolrates_module.o module_ramses.o module_uparallel.o $(COMPOBJS)
+GASOBJS = module_constants.o module_random.o module_utils.o module_voigt.o module_domain.o coolrates_module.o module_ramses.o module_uparallel.o $(COMPOBJS)
 
 OBJSDOM = $(GASOBJS) module_select.o module_mesh.o
 
 OBJSPHO = $(GASOBJS) module_mesh.o module_mock.o module_photon.o module_opt_ray.o module_spectra.o module_CD.o
 
-OBJSMPI = $(OBJSPHO) module_parallel_mpi.o module_worker.o module_master.o
+# GATHER -- 
+#OBJSMPI = $(OBJSPHO) module_parallel_mpi.o module_worker.o module_master.o
+OBJSMPI = module_parallel_mpi.o $(OBJSPHO) module_worker.o module_master.o
+# -- GATHER
 
 #############################################################################
 #.SUFFIXES: .o .f90

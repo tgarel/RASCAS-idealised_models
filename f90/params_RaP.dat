@@ -56,3 +56,7 @@ a!------------------------------------------------------------------------------
   mock_parameter_file = params_mock.dat
   mock_outputfilename = /Users/mauerhof/Documents/RamsesFiles/SIMULATIONS/P13-20h-1Mpc-MUSIC/Zoom-7-10508/SPHINX_run/Halos/00148/Rascas/output/OI/output_result.2.out
 !--------------------------------------------------------------------------------
+[voigt]
+  approximation = COLT
+!--------------------------------------------------------------------------------
+
