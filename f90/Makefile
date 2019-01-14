@@ -51,16 +51,10 @@ endif
 
 
 ifeq ($(SYSTYPE),"macP")
-<<<<<<< HEAD
 #F90         = mpif90-openmpi-mp
 F90	= mpif90 -ffree-line-length-none -ffree-form 
 #FFLAGS      = -g -fcheck=all -ftrapv -fbounds-check -fbacktrace
 FFLAGS      = -O3
-=======
-F90         = mpif90-openmpi-gcc6
-FFLAGS      = -g -fcheck=all -ffree-line-length-none -ffree-form -ftrapv -fbounds-check -fbacktrace -Wall
-#FFLAGS      = -O3
->>>>>>> dev-harley
 FFLAGS += $(OPTIONS)
 LDFLAGS     = -lmpi
 endif
