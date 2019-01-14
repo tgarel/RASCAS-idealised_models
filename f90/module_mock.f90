@@ -334,7 +334,9 @@ contains
 
     implicit none 
     integer(kind=4) :: idir, n, idcpu
+    real(kind=8)             :: flux
     real(kind=8),allocatable :: spec(:), image(:,:), cube(:,:,:)
+    
     
     ! First, receive information from a given CPU and identify the CPU
     print*,'master about to receive ... '
@@ -348,7 +350,8 @@ contains
     do idir = 1,nDirections
        ! flux
        call MPI_RECV(mock(idir)%flux_aperture, 1, MPI_DOUBLE_PRECISION, idcpu, DONE_TAG , MPI_COMM_WORLD, status,IERROR)
-       call MPI_RECV(mock(idir)%flux, 1, MPI_DOUBLE_PRECISION, idcpu, DONE_TAG , MPI_COMM_WORLD, status,IERROR)
+       call MPI_RECV(flux, 1, MPI_DOUBLE_PRECISION, idcpu, DONE_TAG , MPI_COMM_WORLD, status,IERROR)
+       mock(idir)%flux = mock(idir)%flux + flux
        ! spectrum
        call MPI_RECV(mock(idir)%compute_spectrum, 1, MPI_LOGICAL, idcpu, DONE_TAG , MPI_COMM_WORLD, status,IERROR)
        if (mock(idir)%compute_spectrum) then
