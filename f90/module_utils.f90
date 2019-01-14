@@ -307,7 +307,7 @@ contains
 
     mu = kin(1)*kout(1) + kin(2)*kout(2) + kin(3)*kout(3)
     bu = sqrt(1.0d0 - mu*mu)
-    anisotropic_probability_Dust = (1.d0-g_dust**2)/(1.d0+g_dust**2 - 2.0d0*g_dust*mu)**(3./2.)
+    anisotropic_probability_Dust = 0.5d0* (1.d0-g_dust**2)/(1.d0+g_dust**2 - 2.0d0*g_dust*mu)**(3./2.)
 
     return
     
