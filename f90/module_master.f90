@@ -300,17 +300,23 @@ contains
     call MPI_BARRIER(MPI_COMM_WORLD,code)    
 
     ! GATHER --
-    nmocks_received = 0
-    print*,'[master] gathering mocks from workers ... '
-    do while (nmocks_received /= nworker)
-       call master_receives_mock
-       nmocks_received = nmocks_received + 1
-       print*,'[master] \__ ',nmocks_received,'/',nworker
-    end do
-    print*,'[master] writing mock to file'
-    call dump_mocks(0)
+    if (peeling_off) then 
+       nmocks_received = 0
+       print*,'[master] gathering mocks from workers ... '
+       do while (nmocks_received /= nworker)
+          call master_receives_mock
+          nmocks_received = nmocks_received + 1
+          print*,'[master] \__ ',nmocks_received,'/',nworker
+       end do
+       
+       ! post-final synchronization, for profiling purposes
+       call MPI_BARRIER(MPI_COMM_WORLD,code)    
+       
+       print*,'[master] writing mock to file'
+       call dump_mocks(0)
+    end if
     ! -- GATHER
-
+       
     if(verbose)then
        call print_diagnostics
        !print *,' '

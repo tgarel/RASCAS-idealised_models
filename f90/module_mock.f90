@@ -386,6 +386,7 @@ contains
           allocate(cube(mock(idir)%cube_lbda_npix,mock(idir)%cube_image_npix,mock(idir)%cube_image_npix))
           call MPI_RECV(cube, n, MPI_DOUBLE_PRECISION, idcpu, DONE_TAG , MPI_COMM_WORLD, status,IERROR)
           mock(idir)%cube = mock(idir)%cube + cube
+          deallocate(cube)
        end if
     end do
     

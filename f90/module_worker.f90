@@ -127,6 +127,8 @@ contains
        ! GATHER -- 
        !call dump_mocks(rank)
        call send_mock_to_master(rank)
+       ! post-final synchronization, for profiling purposes
+       call MPI_BARRIER(MPI_COMM_WORLD,code)    
        ! -- GATHER
     end if
     !--LEEP--
