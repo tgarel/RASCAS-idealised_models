@@ -103,7 +103,7 @@ GASOBJS = module_constants.o module_random.o module_utils.o module_voigt.o modul
 
 OBJSDOM = $(GASOBJS) module_select.o module_mesh.o
 
-OBJSPHO = $(GASOBJS) module_mesh.o module_mock.o module_photon.o module_opt_ray.o module_spectra.o module_CD.o
+OBJSPHO = $(GASOBJS) module_mesh.o module_mock.o module_photon.o module_spectra.o module_CD.o #module_opt_ray.o
 
 # GATHER -- 
 #OBJSMPI = $(OBJSPHO) module_parallel_mpi.o module_worker.o module_master.o
