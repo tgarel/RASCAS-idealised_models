@@ -165,6 +165,7 @@ contains
 
           if((photpacket(i)%status==0).and.(ndomain==1))then
              print*,'ERROR: pb with photon buffer in master...'
+           
              call stop_mpi
           endif
           ! empty packet, nothing to do
