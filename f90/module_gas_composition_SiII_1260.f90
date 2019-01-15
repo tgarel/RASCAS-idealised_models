@@ -1,17 +1,17 @@
 module module_gas_composition
 
   ! Pure SiII gas. 
-  ! This modules handles the transition in absorption (1260.42). 
+  ! This modules handles one transition in absorption at 1260 A
 
   use module_SiII_1260_model
   use module_random
+  use module_ramses
   use module_constants
 
   implicit none
 
   private
 
-  character(100),parameter :: moduleName = 'module_gas_composition_SiII_1260.f90'
   type, public :: gas
      ! fluid
      real(kind=8) :: v(3)      ! gas velocity [cm/s]
@@ -32,6 +32,8 @@ module module_gas_composition
   real(kind=8)             :: fix_vth             = 1.0d5   ! ad-hoc thermal velocity (cm/s)
   real(kind=8)             :: fix_vel             = 0.0d0   ! ad-hoc cell velocity (cm/s) -> NEED BETTER PARAMETERIZATION for more than static... 
   real(kind=8)             :: fix_box_size_cm     = 1.0d8   ! ad-hoc box size in cm. 
+  ! miscelaneous
+  logical                  :: verbose             = .false. ! display some run-time info on this module
   ! --------------------------------------------------------------------------
   
   ! public functions:
@@ -45,8 +47,6 @@ contains
 
     ! define gas contents from ramses raw data
 
-    use module_ramses
-    
     character(2000),intent(in)        :: repository 
     integer(kind=4),intent(in)        :: snapnum
     integer(kind=4),intent(in)        :: nleaf,nvar
@@ -65,7 +65,7 @@ contains
        box_size_cm = ramses_get_box_size_cm(repository,snapnum)
 
        ! compute velocities in cm / s
-       write(*,*) '-- module_gas_composition_SiII : extracting velocities from ramses '
+       if (verbose) write(*,*) '-- module_gas_composition_SiII : extracting velocities from ramses '
        allocate(v(3,nleaf))
        call ramses_get_velocity_cgs(repository,snapnum,nleaf,nvar,ramses_var,v)
        do ileaf = 1,nleaf
@@ -74,7 +74,7 @@ contains
        deallocate(v)
 
        ! get nSiII and temperature from ramses
-       write(*,*) '-- module_gas_composition_SiII : extracting nSiII from ramses '
+       if (verbose) write(*,*) '-- module_gas_composition_SiII : extracting nSiII from ramses '
        allocate(T(nleaf),nSiII(nleaf))
        call ramses_get_T_nSiII_cgs(repository,snapnum,nleaf,nvar,ramses_var,T,nSiII)
        g(:)%nSiII = nSiII(:)
@@ -114,7 +114,7 @@ contains
 
 
   
-  function  gas_get_scatter_flag(cell_gas, distance_to_border_cm, nu_cell, tau_abs, iran)
+  function  gas_get_scatter_flag(cell_gas, distance_to_border_cm, nu_cell, tau_abs,iran)
 
     ! --------------------------------------------------------------------------
     ! Decide whether a scattering event occurs, and if so, on which element
@@ -128,7 +128,7 @@ contains
     ! OUTPUTS:
     ! - distance_to_border_cm : comes out as the distance to scattering event (if there is an event)
     ! - tau_abs : 0 if a scatter occurs, decremented by tau_cell if photon escapes cell. 
-    ! - gas_get_scatter_flag : 0 [no scatter], 1 [SiII-1260 scatter]
+    ! - gas_get_scatter_flag : 0 [no scatter], 1 [SiII-1190 scatter], 2 [SiII-1193 scatter]
     ! --------------------------------------------------------------------------
 
     type(gas),intent(in)                  :: cell_gas
@@ -137,7 +137,8 @@ contains
     real(kind=8),intent(inout)            :: tau_abs                ! tau at which scattering is set to occur.
     integer,intent(inout)                 :: iran 
     integer(kind=4)                       :: gas_get_scatter_flag 
-    real(kind=8)                          :: tau_SiII_1260, tau_cell
+    real(kind=8)                          :: tau_SiII_1260, tau_cell, x 
+
 
     ! compute optical depths for different components of the gas.
     tau_SiII_1260 = get_tau_SiII_1260(cell_gas%nSiII, cell_gas%dopwidth, distance_to_border_cm, nu_cell)
@@ -151,11 +152,12 @@ contains
           stop
        endif
     else  ! the scattering happens inside the cell
-       gas_get_scatter_flag = 1 ! absorption by SiII-1260    
-       ! and transform "distance_to_border_cm" in "distance_to_absorption_cm"
-       distance_to_border_cm = distance_to_border_cm * (tau_abs / tau_cell)
+		gas_get_scatter_flag = 1 ! absorption by SiII-1260
+
+			! and transform "distance_to_border_cm" in "distance_to_absorption_cm"
+		distance_to_border_cm = distance_to_border_cm * (tau_abs / tau_cell)
     end if
-    
+
     return
 
   end function gas_get_scatter_flag
@@ -170,9 +172,10 @@ contains
     real(kind=8), dimension(3), intent(inout) :: k
     integer, intent(inout)                    :: iran
 
-    select case(flag)
+    select case(flag)		!Only one case,  but this way conserves the structure of all the module_gas_composition_*** files
     case(1)
-       call scatter_SiII_1260(cell_gas%v, cell_gas%dopwidth, nu_cell, k, nu_ext, iran)
+        call scatter_SiII_1260(cell_gas%v, cell_gas%dopwidth, nu_cell, k, nu_ext, iran)
+
     end select
     
   end subroutine gas_scatter
@@ -261,6 +264,8 @@ contains
              read(value,*) fix_vth
           case ('fix_vel')
              read(value,*) fix_vel
+          case ('verbose')
+             read(value,*) verbose
           case ('fix_box_size_cm')
              read(value,*) fix_box_size_cm
           end select
@@ -268,6 +273,7 @@ contains
     end if
     close(10)
 
+    call read_ramses_params(pfile)
     call read_SiII_1260_params(pfile)
 
     return
@@ -287,30 +293,30 @@ contains
 
     if (present(unit)) then 
        write(unit,'(a,a,a)') '[gas_composition]'
-       write(unit,'(a,a)')      '# code compiled with: ',trim(moduleName)
-       write(unit,'(a)')        '# overwrite parameters'
-       write(unit,'(a,L1)')     '  gas_overwrite         = ',gas_overwrite
-       if(gas_overwrite)then
-          write(unit,'(a,ES10.3)') '  fix_nSiII            = ',fix_nSiII
-          write(unit,'(a,ES10.3)') '  fix_vth              = ',fix_vth
-          write(unit,'(a,ES10.3)') '  fix_vel              = ',fix_vel
-          write(unit,'(a,ES10.3)') '  fix_box_size_cm      = ',fix_box_size_cm
-       endif
+       write(unit,'(a)')       '# overwrite parameters'
+       write(unit,'(a,L1)')    '  gas_overwrite         = ',gas_overwrite
+       write(unit,'(a,ES10.3)') '  fix_nSiII            = ',fix_nSiII
+       write(unit,'(a,ES10.3)') '  fix_vth              = ',fix_vth
+       write(unit,'(a,ES10.3)') '  fix_vel              = ',fix_vel
+       write(unit,'(a,ES10.3)') '  fix_box_size_cm      = ',fix_box_size_cm
+       write(unit,'(a)')       '# miscelaneous parameters'
+       write(unit,'(a,L1)')    '  verbose               = ',verbose
        write(unit,'(a)')             ' '
+       call print_ramses_params(unit)
        call print_SiII_1260_params(unit)
     else
        write(*,'(a,a,a)') '[gas_composition]'
-       write(*,'(a,a)')      '# code compiled with: ',trim(moduleName)
-       write(*,'(a)')        '# overwrite parameters'
-       write(*,'(a,L1)')     '  gas_overwrite         = ',gas_overwrite
-       if(gas_overwrite)then
-          write(*,'(a,ES10.3)') '  fix_nSiII            = ',fix_nSiII
-          write(*,'(a,ES10.3)') '  fix_vth              = ',fix_vth
-          write(*,'(a,ES10.3)') '  fix_vel              = ',fix_vel
-          write(*,'(a,ES10.3)') '  fix_box_size_cm      = ',fix_box_size_cm
-       endif
+       write(*,'(a)')       '# overwrite parameters'
+       write(*,'(a,L1)')    '  gas_overwrite         = ',gas_overwrite
+       write(*,'(a,ES10.3)') '  fix_nSiII            = ',fix_nSiII
+       write(*,'(a,ES10.3)') '  fix_vth              = ',fix_vth
+       write(*,'(a,ES10.3)') '  fix_vel              = ',fix_vel
+       write(*,'(a,ES10.3)') '  fix_box_size_cm      = ',fix_box_size_cm
+       write(*,'(a)')       '# miscelaneous parameters'
+       write(*,'(a,L1)')    '  verbose               = ',verbose
        write(*,'(a)')             ' '
-       call print_SiII_1260_params
+       call print_ramses_params
+	   call print_SiII_1260_params()
     end if
 
     return
