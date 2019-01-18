@@ -16,8 +16,9 @@ module module_gas_composition
   type, public :: gas
      ! fluid
      real(kind=8) :: v(3)      ! gas velocity [cm/s]
-     ! SiII
-     ! -> density is computed as 2.8d-5 * nHI * metallicity / solar_metallicity
+     ! OI
+     ! -> density is computed with Krome
+     !s
      real(kind=8) :: nOI       ! numerical density of OI  [#/cm3]
      real(kind=8) :: dopwidth  ! Doppler width [cm/s]
      ! DUST -> model of Laursen, Sommer-Larsen and Andersen 2009.
@@ -36,13 +37,15 @@ module module_gas_composition
   real(kind=8)             :: f_ion           = 0.01        ! ndust = (n_HI + f_ion*n_HII) * Z/Zsun [Laursen+09]
   real(kind=8)             :: Zref            = 0.005       ! reference metallicity. Should be ~ 0.005 for SMC and ~ 0.01 for LMC. 
   ! possibility to overwrite ramses values with an ad-hoc model 
-  logical                  :: gas_overwrite       = .false. ! if true, define cell values from following parameters 
+  logical                  :: gas_overwrite       = .false. ! if true, define cell values from following parameters
+  real(kind=8)             :: fix_nOI           = 1.0d0   ! ad-hoc SiII density (1/cm3)
   real(kind=8)             :: fix_vth             = 1.0d5   ! ad-hoc thermal velocity (cm/s)
   real(kind=8)             :: fix_vel             = 0.0d0   ! ad-hoc cell velocity (cm/s) -> NEED BETTER PARAMETERIZATION for more than static... 
   real(kind=8)             :: fix_ndust           = 0.0d0
   real(kind=8)             :: fix_box_size_cm     = 1.0d8   ! ad-hoc box size in cm.
   ! miscelaneous
   logical                  :: verbose             = .true. ! display some run-time info on this module
+  logical                  :: HI_core_skip        = .false.
   ! --------------------------------------------------------------------------
 
   ! public functions:
@@ -52,16 +55,15 @@ module module_gas_composition
   public :: gas_get_n_CD, gas_get_CD
   !laV
     !--PEEL--
-  public :: gas_peeloff_weight,gas_get_tau,gas_get_tau_gray
+  public :: gas_peeloff_weight,gas_get_tau!,gas_get_tau_gray
   !--LEEP--
-  
+
   public :: HI_core_skip
 
 
 contains
   
   !Val --
-  ! --------------------------------------------------------------------------
   subroutine gas_from_list(ncells, cell_pos, cell_l, gas_leaves)
 
     integer(kind=4), intent(out)		:: ncells
@@ -92,7 +94,7 @@ contains
     read(20) nhii
     read(20) metallicity
     read(20) gas_leaves%dopwidth
-    gas_leaves%dopwidth = gas_leaves%dopwidth / sqrt(15.999)
+    gas_leaves%dopwidth = gas_leaves%dopwidth / sqrt(15.999)  !15.999 is the atomic mass unit of Oxygen.  In the data file I printed sqrt(2*kb*T/m_u), so it's correct for Hydrogen, but other elements have to be divided by sqrt(mass of the element in atomic units).
     read(21) gas_leaves%nOI
 
     close(20) ; close(21)
@@ -101,6 +103,7 @@ contains
 
 
     if (verbose) print*,'boxsize in cm : ', box_size_cm
+    if (verbose) print*,'min/max of vth   : ',minval(gas_leaves(:)%dopwidth),maxval(gas_leaves(:)%dopwidth)
     if (verbose) print*,'min/max of nOI : ',minval(gas_leaves(:)%nOI),maxval(gas_leaves(:)%nOI)
     if (verbose) print*,'min/max of ndust : ',minval(gas_leaves(:)%ndust),maxval(gas_leaves(:)%ndust)
 
@@ -131,32 +134,32 @@ contains
   ! --------------------------------------------------------------------------
   
 
-  ! --------------------------------------------------------------------------
-  function gas_get_tau_gray(cell_gas, distance_cm, nu_cell)
+  ! ! --------------------------------------------------------------------------
+  ! function gas_get_tau_gray(cell_gas, distance_cm, nu_cell)
 
-    ! --------------------------------------------------------------------------
-    ! compute opacity due to dust accross distance_cm
-    ! --------------------------------------------------------------------------
-    ! INPUTS:
-    ! - cell_gas : a mix of SiII and dust
-    ! - distance_cm : the distance along which to compute tau [cm]
-    ! OUTPUTS:
-    ! - gas_get_tau_gray : the total optical depth
+  !   ! --------------------------------------------------------------------------
+  !   ! compute opacity due to dust accross distance_cm
+  !   ! --------------------------------------------------------------------------
+  !   ! INPUTS:
+  !   ! - cell_gas : a mix of SiII and dust
+  !   ! - distance_cm : the distance along which to compute tau [cm]
+  !   ! OUTPUTS:
+  !   ! - gas_get_tau_gray : the total optical depth
 
-    ! --------------------------------------------------------------------------
+  !   ! --------------------------------------------------------------------------
 
-    ! check whether scattering occurs within cell (scatter_flag > 0) or not (scatter_flag==0)
-    type(gas),intent(in)    :: cell_gas
-    real(kind=8),intent(in) :: distance_cm, nu_cell
-    real(kind=8)            :: gas_get_tau_gray
+  !   ! check whether scattering occurs within cell (scatter_flag > 0) or not (scatter_flag==0)
+  !   type(gas),intent(in)    :: cell_gas
+  !   real(kind=8),intent(in) :: distance_cm, nu_cell
+  !   real(kind=8)            :: gas_get_tau_gray
 
-    ! compute optical depths for different components of the gas.
-    gas_get_tau_gray = get_tau_dust(cell_gas%ndust, distance_cm, nu_cell)
+  !   ! compute optical depths for different components of the gas.
+  !   gas_get_tau_gray = get_tau_dust(cell_gas%ndust, distance_cm, nu_cell)
 
-    return
+  !   return
 
-  end function gas_get_tau_gray
-  ! --------------------------------------------------------------------------
+  ! end function gas_get_tau_gray
+  ! ! --------------------------------------------------------------------------
 
 
   !Val
@@ -187,7 +190,7 @@ contains
     type(gas),dimension(:),intent(inout) :: g
 
     box_size_cm   = fix_box_size_cm
-    
+    g(:)%nOI      = fix_nOI
     g(:)%v(1)     = fix_vel
     g(:)%v(2)     = fix_vel
     g(:)%v(3)     = fix_vel
@@ -361,6 +364,7 @@ contains
     integer,intent(in)                             :: unit,n
     type(gas),dimension(:),allocatable,intent(out) :: g
     integer                                        :: i
+    
     allocate(g(1:n))
     if (gas_overwrite) then
        call overwrite_gas(g)
