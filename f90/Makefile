@@ -106,7 +106,7 @@ OBJSPHO = $(GASOBJS) module_mesh.o module_photon.o
 
 OBJSMPI = $(OBJSPHO) module_parallel_mpi.o module_worker.o module_master.o
 
-OBJLYAFG = module_constants.o module_random.o module_utils.o module_domain.o coolrates_module.o module_ramses.o
+OBJLYAFG = module_constants.o module_random.o module_utils.o module_voigt.o module_domain.o coolrates_module.o module_ramses.o module_uparallel.o module_HI_model.o
 
 #############################################################################
 #.SUFFIXES: .o .f90

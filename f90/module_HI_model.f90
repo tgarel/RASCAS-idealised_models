@@ -11,20 +11,20 @@ module module_HI_model
   private
 
   ! definition of atomic values
-  real(kind=8),parameter   :: lambda_0=1215.67d0                           ![A] Lya wavelength
-  real(kind=8),parameter   :: gamma=6.265d8                                ! Einstein coeff = damping constant for Voigt Function(gamma_alpha)  
-  real(kind=8),parameter   :: f12=0.416d0                                  ! oscillator strength for Ly-alpha
+  real(kind=8),parameter,public :: lambda_0=1215.67d0                           ![A] Lya wavelength
+  real(kind=8),parameter        :: gamma=6.265d8                                ! Einstein coeff = damping constant for Voigt Function(gamma_alpha)  
+  real(kind=8),parameter        :: f12=0.416d0                                  ! oscillator strength for Ly-alpha
   ! useful pre-computed quantities
-  real(kind=8),parameter   :: lambda_0_cm = lambda_0 / cmtoA               ! cm
-  real(kind=8),parameter   :: nu_0 = clight / lambda_0_cm                  ! Hz
-  real(kind=8),parameter   :: sigmaH_factor = sqrtpi*e_ch**2*f12/me/clight ! H cross-section factor-> multiply by Voigt(x,a)/delta_nu_doppler to get sigma.
-  real(kind=8),parameter   :: gamma_over_fourpi = gamma / fourpi
+  real(kind=8),parameter,public :: lambda_0_cm = lambda_0 / cmtoA               ! cm
+  real(kind=8),parameter,public :: nu_0 = clight / lambda_0_cm                  ! Hz
+  real(kind=8),parameter        :: sigmaH_factor = sqrtpi*e_ch**2*f12/me/clight ! H cross-section factor-> multiply by Voigt(x,a)/delta_nu_doppler to get sigma.
+  real(kind=8),parameter        :: gamma_over_fourpi = gamma / fourpi
 
   ! --------------------------------------------------------------------------
   ! user-defined parameters - read from section [HI] in the parameter file 
   ! --------------------------------------------------------------------------
-  logical                  :: recoil       = .true.      ! if set to true, recoil effect is computed [default is true]
-  logical                  :: isotropic    = .false.     ! if set to true, scattering events will be isotropic [default is false]
+  logical                       :: recoil       = .true.      ! if set to true, recoil effect is computed [default is true]
+  logical                       :: isotropic    = .false.     ! if set to true, scattering events will be isotropic [default is false]
   ! --------------------------------------------------------------------------
 
   public :: get_tau_HI, scatter_HI, read_HI_params, print_HI_params

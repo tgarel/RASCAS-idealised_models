@@ -6,13 +6,10 @@ program LyaPhotonsFromGas
   use module_constants
   use module_utils
   use OMP_LIB
+  use module_HI_model, only: lambda_0, lambda_0_cm, nu_0
   
   implicit none
 
-  real(kind=8),parameter   :: lambda_0=1215.67d0                          ![A] Lya wavelength
-  real(kind=8),parameter   :: lambda_0_cm = lambda_0 / cmtoA              ! cm
-  real(kind=8),parameter   :: nu_0 = clight / lambda_0_cm                 ! Hz
-  
   character(2000)              :: parameter_file
   type(domain)                 :: emission_domain
   integer(kind=4)              :: nleaftot,nvar,narg,nsel,i,iphot,j,iseed,lmax
@@ -22,12 +19,12 @@ program LyaPhotonsFromGas
   real(kind=8)                 :: r1, r2, dx, dv, nu, scalar, recomb_total,coll_total,k(3), boxsize,maxrec,maxcol
   real(kind=8)                 :: start_photpacket,end_photpacket,x(3),dt,xmin,xmax,ymin,ymax,zmin,zmax
   logical                      :: ok
-  real(kind=8),allocatable :: nu_em(:),x_em(:,:),k_em(:,:),nu_cell(:)
+  real(kind=8),allocatable     :: nu_em(:),x_em(:,:),k_em(:,:),nu_cell(:)
   integer(kind=4),dimension(:),allocatable :: cpu_list
-  integer(kind=4) :: ncpu_read
-  real(kind=8),allocatable :: low_prob_rec(:),low_prob_col(:)
-  integer(kind=4) :: ilow,iup,imid
-  real(kind=8) :: mid
+  integer(kind=4)                          :: ncpu_read
+  real(kind=8),allocatable                 :: low_prob_rec(:),low_prob_col(:)
+  integer(kind=4)                          :: ilow,iup,imid
+  real(kind=8)                             :: mid
 
   ! ---------------------------------------------------------------------------
   ! user-defined parameters - read from section [CreateDomDump] of the parameter file
