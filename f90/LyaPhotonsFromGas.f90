@@ -15,14 +15,13 @@ program LyaPhotonsFromGas
   
   character(2000)              :: parameter_file
   type(domain)                 :: emission_domain
-  integer(kind=4)              :: nleaftot,nvar,narg,nsel,i,iphot,j,iseed,lmax,ii
+  integer(kind=4)              :: nleaftot,nvar,narg,nsel,i,iphot,j,iseed,lmax
   integer(kind=4), allocatable :: emitting_cells(:),leaf_level(:)
   real(kind=8),allocatable     :: x_leaf(:,:),ramses_var(:,:),recomb_em(:),coll_em(:),v_leaf(:,:),HIDopWidth(:),cell_volume_vs_level(:)
   real(kind=8),allocatable     :: coolingTime(:)
   real(kind=8)                 :: r1, r2, dx, dv, nu, scalar, recomb_total,coll_total,k(3), boxsize,maxrec,maxcol
   real(kind=8)                 :: start_photpacket,end_photpacket,x(3),dt,xmin,xmax,ymin,ymax,zmin,zmax
-  logical                      :: ok 
-  integer(kind=4),allocatable :: iseed_array(:)
+  logical                      :: ok
   real(kind=8),allocatable :: nu_em(:),x_em(:,:),k_em(:,:),nu_cell(:)
   integer(kind=4),dimension(:),allocatable :: cpu_list
   integer(kind=4) :: ncpu_read

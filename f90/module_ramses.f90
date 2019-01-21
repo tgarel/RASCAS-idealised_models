@@ -1,9 +1,9 @@
 module module_ramses
 
-  use module_constants, only : kB, mp, XH, mSi, mMg, planck, clight,cmtoA
+  use module_constants, only : kB, mp, XH, planck, clight, cmtoA
   use module_domain
   use coolrates_module
-
+  
   implicit none
 
   private 
@@ -1069,7 +1069,7 @@ contains
     real(kind=8),parameter,dimension(4)::ion_egy = (/13.60d0, 15.20d0, 24.59d0, 54.42d0/)*eV_to_erg
     !! -JB
     character(1000)            :: filename
-    integer(kind=4)            :: levelmin,levelmax,ilun=33,nRTvar,nIons,nGroups,igroup,indexgroup,nvarH
+    integer(kind=4)            :: ilun=33,nRTvar,nIons,nGroups,igroup,indexgroup,nvarH
     real(kind=8),allocatable   :: group_egy(:),group_csn(:,:),group_cse(:,:)
     real(kind=8)               :: hrate,unit_fp
     
@@ -2522,7 +2522,6 @@ contains
                 ncache=numbb(ibound-ncpu,ilevel)
              end if
              if(ncache>0)then
-!!!if (ilevel < fg_levelmin) print*,'lev < levmin',ilevel
                 allocate(ind_grid(1:ncache))
                 allocate(iig(1:ncache))
                 read(iunit)ind_grid ! Read grid index
