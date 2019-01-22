@@ -3,11 +3,11 @@ import jphot as jp
 import numpy as np
 
 class mockobs(object):
-    def __init__(self,Dir,FileName,load_spectrum=False,load_image=False,load_cube=False,unit_l_arcsec=1.0,lumdist_cm=1.0,redshift=0.0,cube_h5_file=None,idirection=1):
+    def __init__(self,Dir,FileName,ICFile,load_spectrum=False,load_image=False,load_cube=False,unit_l_arcsec=1.0,lumdist_cm=1.0,redshift=0.0,cube_h5_file=None,idirection=1):
         self.Dir      = Dir
         self.FileName = FileName 
-        ICFile = FileName.replace('result.','')
-        p = jp.photonlist("%s/%s"%(self.Dir,ICFile),'',load=False)
+        self.ICFile = ICFile
+        p = jp.photonlist("%s/%s"%(self.Dir,self.ICFile),'',load=False)
         nRealPhotons = p.get_nRealPhotons()
         self.nPhotons     = p.get_nphoton()
         self.nPhotPerPacket = nRealPhotons / self.nPhotons
@@ -20,7 +20,7 @@ class mockobs(object):
         if load_spectrum:  # restframe spectrum
             self.spec_lmin,self.spec_lmax,self.spec_npix,self.spec = self.__read_spectrum(index=idirection)
             dl = (self.spec_lmax - self.spec_lmin) / self.spec_npix  # [A] 
-            l = np.arange(self.spec_lmin,self.spec_lmax-dl/1e6,dl) + 0.5*dl # [A]
+            l = np.arange(self.spec_lmin,self.spec_lmax,dl) + 0.5*dl # [A]
             self.spec_lbda_Angstrom  = l
             self.spec_dlbda_Angstrom = dl
             l = l * 1e-8  # [cm]
@@ -45,7 +45,7 @@ class mockobs(object):
                 energy = energy * self.nPhotPerPacket  # [erg / s / phot packet]
                 energy = energy / dl                   # [erg / s / A / phot packet]
                 energy = energy / (self.cube_imsize*unit_l_arcsec/self.cube_nxy)**2 # [erg / s / A / arcsec2 / phot packet]
-                energy = energy / (4. * np.pi * lumdist_cm**2)  # [erg / s/ A / arcsec2 / cm2 / phot packet]
+                energy = energy / (4. * np.pi * lumdist_cm**2)  # [erg / s/ A / arcsec2 / cm2 / phot packet] 
                 self.cube = energy * self.cube   # [erg / s / A / arcsec2 / cm2 ]
                 x = np.arange(-0.5*self.cube_imsize,0.5*self.cube_imsize,self.cube_imsize/self.cube_nxy) + 0.5 * self.cube_imsize/self.cube_nxy
                 self.cube_x_arcsec = x * unit_l_arcsec
@@ -117,7 +117,6 @@ class mockobs(object):
         plt.figure()
         l = linspace(self.spec_lmin,self.spec_lmax,num=self.spec_npix)  # [A]
         plt.plot(l,self.spec)
-       # plt.ylim(0,3.5e40)
         plt.savefig(plotFile)
 
 

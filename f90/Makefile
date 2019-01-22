@@ -90,7 +90,7 @@ endif
 # 8/ MgII and dust
 #COMPOBJS = module_dust_model.o module_MgII_2796_model.o module_MgII_2804_model.o module_gas_composition_MgII_dust.o
 # 9/ SiII_1260 and dust
-COMPOBJS = module_dust_model.o module_SiII_1260_model.o module_gas_composition_SiII1260_dust.o
+COMPOBJS = module_dust_model.o module_SiII_1260_model.o module_gas_composition_SiII_1260_dust.o
 # 10/ dust only
 #COMPOBJS = module_dust_model.o module_gas_composition_dust.o
 # 11/ HI and HII
