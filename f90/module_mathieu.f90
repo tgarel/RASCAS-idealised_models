@@ -25,7 +25,7 @@ module module_gray_ray
   type ray_type
      integer(kind=4)           :: ID       ! a positive unique ID 
      real(kind=8)              :: dist     ! distance traveled along ray (box units)
-     real(kind=8)              :: tau      ! integrated opacity along ray
+     real(kind=8)              :: tau,tau2,tau3      ! integrated opacity along ray  for the different groups
      real(kind=8),dimension(3) :: x_em     ! emission location (box units)
      integer(kind=4)           :: halo_ID  ! a positive unique ID 
      real(kind=8),dimension(3) :: k_em     ! emission direction == propagation direction (normalised vector)
@@ -44,27 +44,49 @@ module module_gray_ray
 
 contains
 
-  subroutine ComputeFesc(nrays,rays,mesh_dom,compute_dom,maxdist,maxtau,minnH,ndirections,file)
+  subroutine ComputeFesc(nrays,rays,lum1,lum2,lum3,mesh_dom,compute_dom,maxdist,maxtau,minnH,ndirections,file,datadir)   ! lum1,2 et 3 for the different photon groups
 
     integer(kind=4), intent(in)                     :: nrays
     type(ray_type), dimension(nrays), intent(inout) :: rays
+    real(kind=8), dimension(nrays), intent(inout)   :: lum1,lum2, lum3
     type(mesh), intent(in)                          :: mesh_dom
     type(domain), intent(in)                        :: compute_dom
     real(kind=8),intent(in)                         :: maxdist,maxtau,minnH
     integer(kind=4)                                 :: ndirections ! Number of directions from each source
-    integer(kind=4)                                 :: i,j,idir,iloop
+    integer(kind=4)                                 :: i,j,idir,iloop, m,n,l, mmax, nmax, lmax
   !  real(kind=8)                                    :: fesc  on va plutôt faire une liste des fesc
-    character(2000),intent(in)                      :: file
+    character(2000),intent(in)                      :: file,datadir
+    character(2000) :: fichier
 
-    real(kind=8)             :: nhtot
+    real(kind=8)             :: nhtot, e1, e2, e3, nu10,nu11,nu20,nu21,nu30,nu31,deps           ! average energy of each photons group (in J)
     real(kind=8),allocatable :: directions(:,:)
     real(kind=8),allocatable :: fesc(:)
+    real(kind=8),allocatable :: Npho(:)
     real(kind=8),allocatable :: densh(:)
+    real(kind=8),allocatable :: distance(:)
 
-    real(kind=8) :: x_em(3),k_em(3), tau, dist
+    real(kind=8) :: x_em(3),k_em(3), tau, tau2,tau3, dist, lumi1,lumi2,lumi3,lumtot
+    logical      :: verner     ! pour savoir si on calcule tau en intégrant la formule de Verner ou non
+ 
+   !!!! variable pour stocker les resultats (fesc (ndir))
 
-    !!!! variable pour stocker les resultats (fesc (ndir))
 
+    e1 = 28.9033E-19       ! average energies of a photon for groups 1,2 and 3
+    e2 = 51.9748E-19
+    e3 = 107.619E-19    
+
+
+   
+    nu10 = 13.600
+    nu11 = 24.590
+    nu20 = 24.590
+    nu21 = 54.420
+    nu30 = 54.420
+    nu31 = 90.00
+    deps = 0.4
+    mmax = int((nu11-nu10)/deps)
+    nmax = int((nu21-nu20)/deps)
+    lmax = int((nu31-nu30)/deps)
 
     !! Ici on lit les directions choisies (et leur nombre) dans un fichier.
     open(unit=14, file=trim(file), status='unknown', form='formatted', action='read')
@@ -76,52 +98,102 @@ contains
     close(14)
    
     allocate(fesc(ndirections))
+    allocate(Npho(ndirections))
     allocate(densh(ndirections))
+    allocate(distance(ndirections))
    ! open(unit=14, file='result_nside16.txt',Access= 'append', status='old', form='formatted', action='write') ! fichier de résultats avec fesc par directions, moyenne sur toutes étoiles
    
+    verner = .TRUE.  
+
     iloop=0
 !$OMP PARALLEL &
 !$OMP DEFAULT(shared) &
-!$OMP PRIVATE(i,nhtot,tau, dist,k_em,x_em)               
+!$OMP PRIVATE(i,m,n,l,nhtot,tau,tau2,tau3, dist,k_em,x_em,lumi1,lumi2,lumi3,lumtot)               
 !$OMP DO SCHEDULE(DYNAMIC, 100) 
  
-
+   
     do j=1,ndirections
-       print*,j
        fesc(j) = 0.0d0
+       Npho(j) = 0.0d0
+       distance(j) = 0.0d0
+       lumtot =0.0d0
        k_em(:) = directions(:,j) 
        do i=1,nrays  ! these are actually star particle positions
           x_em(:) = rays(i)%x_em(:)
+          lumi1 = lum1(i)
+          lumi2 = lum2(i)
+          lumi3 = lum3(i)
           tau   = 0.0d0
+          tau2  = 0.0d0
+          tau3  = 0.0d0
           dist  = 0.0d0
           nhtot = 0.0d0
-          call ray_advance(x_em,k_em,tau,dist,nhtot,mesh_dom,compute_dom,maxdist,maxtau,minnH)
-          fesc(j) = fesc(j) + exp(-tau)   
+  !        call ray_advance(x_em,k_em,tau,tau2,tau3,dist,nhtot,mesh_dom,compute_dom,maxdist,maxtau,minnH,verner,nu10,nu20,nu30)
+          
+          if (verner == .FALSE.) then
+              call ray_advance(x_em,k_em,tau,tau2,tau3,dist,nhtot,mesh_dom,compute_dom,maxdist,maxtau,minnH,verner,nu10,nu20,nu30)
+              fesc(j) = fesc(j) + exp(-tau)*lumi1 + exp(-tau2)*lumi2 + exp(-tau3)*lumi3       
+      !     Npho(j) = Npho(j) + exp(-tau)*lumi1/e1 + exp(-tau2)*lumi2/e2 + exp(-tau3)*lumi3/e3
+          else 
+            do m = 1,lmax
+             
+               if (m <= mmax) then
+
+                 call ray_advance(x_em,k_em,tau,tau2,tau3,dist,nhtot,mesh_dom,compute_dom,maxdist,maxtau,minnH,verner,nu10,nu20,nu30)   !TRES LOURD faire une seul boucle avec max(lmax,nmax,mmax)
+                 fesc(j) = fesc(j) + lumi1 * 1/mmax * exp(-tau) + 1/nmax * exp(-tau2) + 1/lmax * exp(-tau3)
+               
+               else if (m <= nmax) then
+            
+                 call ray_advance(x_em,k_em,tau,tau2,tau3,dist,nhtot,mesh_dom,compute_dom,maxdist,maxtau,minnH,verner,nu10,nu20,nu30)
+                 fesc(j) = fesc(j) + lumi2/nmax * exp(-tau2) + lumi3/lmax * exp(-tau3)
+ 
+               else
+
+                 call ray_advance(x_em,k_em,tau,tau2,tau3,dist,nhtot,mesh_dom,compute_dom,maxdist,maxtau,minnH,verner,nu10,nu20,nu30)
+                 fesc(j) = fesc(j) + lumi3/lmax * exp(-tau3)
+
+               endif
+
+               nu10 = nu10 + deps
+               nu20 = nu20 + deps
+               nu30 = nu30 + deps
+
+            enddo
+         
+           endif
+          lumtot = lumtot +lumi1+lumi2+lumi3   
           densh(j) =densh(j) + nhtot
-       end do
-       fesc(j) = fesc(j)/ real(nrays,8) 
-       densh(j)= densh(j)/real(nrays,8)
+          distance(j)=distance(j) + dist
+       enddo
+       print*,j,lumtot, fesc(j), tau
+!       print*,j, fesc(j), lumtot
+       fesc(j) = fesc(j)/(lumtot) 
+       densh(j)= densh(j)/(real(nrays,8))
+       distance(j)=distance(j)/(real(nrays,8))
     enddo
     
 !$OMP END DO
 !$OMP END PARALLEL
 
     !new loop to write the file
-    open(unit=14, file='result_nside16.txt', status='replace', form='formatted', action='write')
+    write(fichier,'(a,a)') trim(datadir),'/result_verner_nside24_lum_group.txt'
+    open(unit=14, file=fichier, status='replace', form='formatted', action='write')
     do j=1,ndirections
        write(14,*) fesc(j)
     enddo 
     close(14)
-    open(unit=14, file='nH_nside16.txt', status='replace', form='formatted', action='write')
+    write(fichier,'(a,a)') trim(datadir),'/nH_verner_nside24.txt'
+    open(unit=14, file=fichier, status='replace', form='formatted', action='write')
     do j=1,ndirections
        write(14,*) densh(j)
     enddo
     close(14)    
-    !open(unit=14, file='dist_nside16.txt', status='replace', form='formatted', action='write')
-    !do j=1,ndirections
-    !   write(14,*) densh(j)
-    !enddo
-    !close(14)
+    write(fichier,'(a,a)') trim(datadir),'/dist_verner_nside24.txt'
+    open(unit=14, file=fichier, status='replace', form='formatted', action='write')
+    do j=1,ndirections
+       write(14,*) distance(j)
+    enddo
+    close(14)
   
   deallocate(directions)
   deallocate(fesc)
@@ -129,11 +201,11 @@ contains
   end subroutine ComputeFesc
 
 
-  subroutine ray_advance(x_em,k_em,tau,dist,nhtot,domesh,domaine_calcul,maxdist,maxtau,minnH)
+  subroutine ray_advance(x_em,k_em,tau,tau2,tau3,dist,nhtot,domesh,domaine_calcul,maxdist,maxtau,minnH,verner,nu1,nu2,nu3)
 
 !    type(ray_type),intent(inout)   :: ray            ! a ray 
     real(kind=8),intent(in) :: x_em(3),k_em(3)
-    real(kind=8),intent(out) :: tau,dist
+    real(kind=8),intent(out) :: tau,tau2,tau3,dist
     type(mesh),intent(in)          :: domesh         ! mesh
     type(domain),intent(in)        :: domaine_calcul ! domaine dans lequel on propage les photons...
     real(kind=8),intent(in)        :: maxdist,maxtau ! stop propagation at either maxdist or maxtau (the one which is positive). 
@@ -144,12 +216,15 @@ contains
     real(kind=8)                   :: cell_size, cell_size_cm, scalar, nu_cell, maxdist_cm
     real(kind=8),dimension(3)      :: ppos,ppos_cell ! working coordinates of photon (in box and in cell units)
     real(kind=8)                   :: distance_to_border,distance_to_border_cm
-    real(kind=8)                   :: tau_cell, dborder
-    integer(kind=4)                :: i, icellnew, npush, k    !k le nombre de cellules le long de la ray
+    real(kind=8)                   :: tau_cell,tau2_cell,tau3_cell, dborder
+    integer(kind=4)                :: i, icellnew, npush, k,n, m ,l     !k le nombre de cellules le long de la ray, n la division de chaque groupe de photon pour l'intégral Verner
     real(kind=8),dimension(3)      :: vgas, kray, cell_corner, posoct
     logical                        :: flagoutvol, in_domain
     real(kind=8)                   :: excess, tmp
-    
+    logical,intent(in)             :: verner
+    real(kind=8)                   :: eps01,eps11,eps02,eps12,eps03,eps13, deps    ! energies des différents groupes de photon + interval intégration pour verner    
+    real(kind=8)                   :: nu1,nu2, nu3
+
     ! initialise ray tracing 
 !!$    ppos  = ray%x_em   ! emission position 
 !!$    kray  = ray%k_em   ! propagation direction
@@ -157,8 +232,30 @@ contains
     kray  = k_em   ! propagation direction
     dist  = 0.0d0      ! distance covered
     tau   = 0.0d0      ! corresponding optical depth
+    tau2  = 0.0d0
+    tau3  = 0.0d0
     nhtot = 0.0d0    !initialise nhtot density along the ray
     maxdist_cm = maxdist ! maxdist is now provided in cm ... 
+
+  !  tau_cell = 0.0d0
+  !  tau2_cell = 0.0d0
+  !  tau3_cell = 0.0d0
+
+    ! initalise les énergies des groupes de photons pour intégrla verner (en ev)
+    
+    eps01 = 13.600
+    eps11 = 24.590
+    eps02 = 24.590
+    eps12 = 54.420  
+    eps03 = 54.420
+    eps13 = 90.00  ! ATTENTION valeure rajoutée pour pouvoir intégrer, pas dans les tables
+
+  !  deps  = 0.4
+
+  !  nu1 = 13.600
+  !  nu2 = 24.590
+  !  nu3 = 54.420
+
 
 
     ! check that the ray starts in the domain
@@ -214,16 +311,32 @@ contains
             & domain_distance_to_border_along_k(ppos,kray,domaine_calcul)) ! in box units
        distance_to_border_cm = distance_to_border * box_size_cm ! cm
   
+
      
        ! compute (total) optical depth along ray in cell 
-       tau_cell = gas_get_tau(cell_gas, distance_to_border_cm)
-       nhtot = nhtot + distance_to_border_cm*cell_gas%nHI            !column density
+      
+       if (verner == .FALSE.) then       
+
+          tau_cell  = gas_get_tau(cell_gas, distance_to_border_cm)
+          tau2_cell = gas_get_tau2(cell_gas, distance_to_border_cm)
+          tau3_cell = gas_get_tau3(cell_gas, distance_to_border_cm)
+          nhtot = nhtot + distance_to_border_cm*cell_gas%nHI            !column density
+       else 
+            
+           tau_cell = gas_get_tau_verner(cell_gas,distance_to_border_cm,nu1,1)
+           tau2_cell = gas_get_tau_verner(cell_gas,distance_to_border_cm,nu2,2)
+           tau3_cell = gas_get_tau_verner(cell_gas,distance_to_border_cm,nu3,3)
+  
+       endif
 
        ! update traveled distance and optical depth
-       dist = dist + distance_to_border_cm
        tau  = tau + tau_cell 
-       ! check if we reached tau or distance limits
-!       if (dist > maxdist_cm .and. tau > maxtau) then
+       tau2 = tau2 + tau2_cell
+       tau3 = tau3 + tau3_cell
+       if (tau < 1) then
+             dist = dist + distance_to_border_cm
+       endif 
+       ! check if we reached tau or distance limits!       if (dist > maxdist_cm .and. tau > maxtau) then
           ! dist or tau exceeding boundary -> correct excess and exit. 
 !          if (maxdist_cm > 0) then
 !             excess   = maxdist_cm - dist
@@ -256,6 +369,8 @@ contains
        if (.not.(in_domain)) then
           dist = dist
           tau  = tau
+          tau2 = tau2
+          tau3 = tau3
           !print*,'WARNING: escaping domain before maxdist or maxtau is reached... '
           !print*,'initial distance to border of domain [cm] : ',domain_distance_to_border(ray%x_em,domaine_calcul)*box_size_cm
           !print*,'maxdist [cm]                              : ',maxdist_cm
@@ -295,6 +410,8 @@ contains
           if (.not.(in_domain)) then
              dist = dist
              tau  = tau
+             tau2  = tau2
+             tau3  = tau3
              exit ray_propagation  ! ray is done 
           end if
           call whereIsPhotonGoing(domesh,icell,ppos,icellnew,flagoutvol)
@@ -322,27 +439,36 @@ contains
     end do ray_propagation
  
     ! nhtot = nhtot /real(k,8)                ! average of nhtot on all the cells of the ray
-
+     
+   
   end subroutine ray_advance
   
 
-  subroutine init_rays_from_file(file,rays)
+  subroutine init_rays_from_file(file,rays,lum1,lum2,lum3)
 
     character(2000),intent(in)                           :: file    
     !character(2000),intent(in)                           :: dirFile  
     type(ray_type),dimension(:),allocatable, intent(out) :: rays
+    real(kind=8),dimension(:),allocatable, intent(out)   :: lum1,lum2,lum3
     integer(kind=4)                                      :: i, n_rays
 
     ! read ICs
     open(unit=14, file=trim(file), status='unknown', form='formatted', action='read')
     read(14,*) n_rays
     allocate(rays(n_rays))
+    allocate(lum1(n_rays))
+    allocate(lum2(n_rays))
+    allocate(lum3(n_rays))
+
     if (n_rays==0) return
   
    ! read(14) (rays(i)%ID,         i=1,n_rays)
      read(14,*) (rays(i)%x_em(1),    i=1,n_rays)
      read(14,*) (rays(i)%x_em(2),    i=1,n_rays)
      read(14,*) (rays(i)%x_em(3),    i=1,n_rays)
+     read(14,*) (lum1(i),            i=1,n_rays)
+     read(14,*) (lum2(i),            i=1,n_rays)
+     read(14,*) (lum3(i),            i=1,n_rays)
 !    read(14) (rays(i)%halo_ID,     i=1,n_rays)   pour l'instant pas besoin puisuqe uniquement sur un Halo
      close(14)
     ! initialise other properties. 
