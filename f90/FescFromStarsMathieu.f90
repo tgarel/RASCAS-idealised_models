@@ -14,6 +14,7 @@ program main
   type(domain)                             :: compute_dom
   integer                                  :: nrays
   real(kind=8)                             :: start, tmptime, finish
+  real(kind=8), dimension(:),allocatable   :: lum1,lum2,lum3
 
   character(2000) :: parameter_file, line, file_compute_dom
   character(2000),dimension(:),allocatable :: mesh_file_list 
@@ -23,10 +24,10 @@ program main
   ! user-defined parameters - read from section [ColumnDensity] of the parameter file
   ! --------------------------------------------------------------------------
   ! --- inputs 
-  character(2000)           :: DataDir      = '/scratch/chuniaud/test_fesc'                      ! where input files below are 
-  character(2000)           :: RaysICFile = 'position.dat'      ! the file containing photons to cast.
+  character(2000)           :: DataDir      = '/scratch/chuniaud/test_fesc/'                      ! where input files below are 
+  character(2000)           :: RaysICFile = 'position_lum_groups.dat'      ! the file containing photons to cast.
   character(2000)           :: DomDumpFile  = 'domain_decomposition_params.dat' ! the file describing the outputs of CreateDomDump.
-  character(2000)           :: DirectionsFile  = 'direction_nside16.txt'    ! file where the directions and ndirections are written !Mat 
+  character(2000)           :: DirectionsFile  = 'direction_nside24.txt'    ! file where the directions and ndirections are written !Mat 
   ! --- outputs
   character(2000)           :: fileout = 'fescs.dat'   ! output file ... 
   ! --- parameters
@@ -59,7 +60,7 @@ program main
 
   ! -------------------- read ICs photons --------------------
   if (verbose) print *,'--> reading ICs photons in file: ',trim(RaysICFile)
-  call init_rays_from_file(RaysICFile,rays)
+  call init_rays_from_file(RaysICFile,rays,lum1,lum2,lum3)
   nrays = size(rays)
   if (verbose) print *,'--> Nb of rays =',nrays
   if (nrays .eq. 0) then
@@ -115,7 +116,7 @@ program main
 
   if (verbose) print *,'--> starting RT...'
   ! do the RT stuff
-  call ComputeFesc(nrays,rays,meshdom,compute_dom,maxdist,maxtau,minnH,ndirections,DirectionsFile)  !Mat
+  call ComputeFesc(nrays,rays,lum1,lum2,lum3,meshdom,compute_dom,maxdist,maxtau,minnH,ndirections,DirectionsFile,DataDir)  !Mat
 
   if (verbose) print *,'--> RT done'
 
@@ -205,10 +206,10 @@ contains
     end if
     
     ! add path (datadir) to input files 
-    RaysICFile = trim(DataDir)//trim(RaysICFile)
-    HaloFile = trim(DataDir)//trim(HaloFile)
-    DomDumpFile  = trim(DataDir)//trim(DomDumpFile)
-    DirectionsFile = trim(DataDir)//trim(DirectionsFile)    
+    write(RaysICFile,'(a,a,a)') trim(DataDir),'/',trim(RaysICFile)
+    write(HaloFile,'(a,a,a)') trim(DataDir),'/',trim(HaloFile)
+    write(DomDumpFile,'(a,a,a)') trim(DataDir),'/',trim(DomDumpFile)
+    write(DirectionsFile,'(a,a,a)') trim(DataDir),'/',trim(DirectionsFile)    
 
     !Mat
 
@@ -247,7 +248,7 @@ contains
        write(*,'(a,a)')           '  DataDir     = ',trim(DataDir)
        write(*,'(a,a)')           '  RaysICFile  = ',trim(RaysICFile)
        write(*,'(a,a)')           '  DomDumpFile = ',trim(DomDumpFile)
-       write(unit,'(a,a)')           '  DirectionsFile = ',trim(DirectionsFile)         !Mat
+       write(*,'(a,a)')           '  DirectionsFile = ',trim(DirectionsFile)         !Mat
        write(*,'(a,a)')           '  fileout     = ',trim(fileout)
        write(*,'(a,ES10.3)')      '  maxdist     = ',maxdist
        write(*,'(a,ES10.3)')      '  maxtau      = ',maxtau
