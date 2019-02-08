@@ -28,12 +28,20 @@ module module_gas_composition
   real(kind=8)             :: sigma_HI
   real(kind=8)             :: sigma_HeI
   real(kind=8)             :: sigma_HeII
+
+  real(kind=8)             :: sigma2_HI
+  real(kind=8)             :: sigma2_HeI
+  real(kind=8)             :: sigma2_HeII
+
+  real(kind=8)             :: sigma3_HI
+  real(kind=8)             :: sigma3_HeI
+  real(kind=8)             :: sigma3_HeII
   ! miscelaneous
   logical                  :: verbose             = .false. ! display some run-time info on this module
   ! --------------------------------------------------------------------------
 
   ! public functions:
-  public :: gas_from_ramses_leaves,dump_gas,gas_get_tau
+  public :: gas_from_ramses_leaves,dump_gas,gas_get_tau,gas_get_tau2,gas_get_tau3,gas_get_tau_verner
   public :: read_gas,gas_destructor,read_gas_composition_params,print_gas_composition_params
 
 contains
@@ -68,33 +76,158 @@ contains
 
   end subroutine gas_from_ramses_leaves
 
-  
+
   function  gas_get_tau(cell_gas, distance_cm)
 
-    ! --------------------------------------------------------------------------
-    ! compute total opacity of gas accross distance_cm 
-    ! --------------------------------------------------------------------------
-    ! INPUTS:
-    ! - cell_gas : HI, HeI, HeII
-    ! - distance_cm : the distance along which to compute tau [cm]
-    ! OUTPUTS:
-    ! - gas_get_tau : the total optical depth
-    ! --------------------------------------------------------------------------
+    ! --------------------------------------------------------------------------                                                                                                     
+    ! compute total opacity of gas accross distance_cm for the 1st group of photon                                                                                                   
+    ! --------------------------------------------------------------------------                                                                                                     
+    ! INPUTS:                                                                                                                                                                        
+    ! - cell_gas : HI, HeI, HeII                                                                                                                                                     
+    ! - distance_cm : the distance along which to compute tau [cm]                                                                                                                   
+    ! OUTPUTS:                                                                                                                                                                       
+    ! - gas_get_tau : the total optical depth for the 1st group of photons                                                                                                           
+    ! --------------------------------------------------------------------------                                                                                                     
 
     type(gas),intent(in)    :: cell_gas
     real(kind=8),intent(in) :: distance_cm
     real(kind=8)            :: gas_get_tau
     real(kind=8)            :: tau_HI, tau_HeI, tau_HeII
 
-    ! compute optical depths for different components of the gas.
+    ! compute optical depths for different components of the gas.                                                                                                                    
     tau_HI = cell_gas%nHI * distance_cm * sigma_HI
     tau_HeI = cell_gas%nHeI * distance_cm * sigma_HeI
-    tau_HeII = cell_gas%nHeII * distance_cm * sigma_HeII    
+    tau_HeII = cell_gas%nHeII * distance_cm * sigma_HeII
     gas_get_tau = tau_HI + tau_HeI + tau_HeII
 
     return
-    
+
   end function gas_get_tau
+  
+  function  gas_get_tau2(cell_gas, distance_cm)
+
+    ! --------------------------------------------------------------------------
+    ! compute total opacity of gas accross distance_cm for the 2nd group of photon
+    ! --------------------------------------------------------------------------
+    ! INPUTS:
+    ! - cell_gas : HI, HeI, HeII
+    ! - distance_cm : the distance along which to compute tau [cm]
+    ! OUTPUTS:
+    ! - gas_get_tau : the total optical depth for the 2nd group of photons
+    ! --------------------------------------------------------------------------
+
+    type(gas),intent(in)    :: cell_gas
+    real(kind=8),intent(in) :: distance_cm
+    real(kind=8)            :: gas_get_tau2
+    real(kind=8)            :: tau2_HI, tau2_HeI, tau2_HeII
+
+    ! compute optical depths for different components of the gas.
+    tau2_HI = cell_gas%nHI * distance_cm * sigma2_HI
+    tau2_HeI = cell_gas%nHeI * distance_cm * sigma2_HeI
+    tau2_HeII = cell_gas%nHeII * distance_cm * sigma2_HeII    
+    gas_get_tau2 = tau2_HI + tau2_HeI + tau2_HeII
+
+    return
+    
+  end function gas_get_tau2
+
+  function  gas_get_tau3(cell_gas, distance_cm)
+
+    ! --------------------------------------------------------------------------                                                                                                     
+    ! compute total opacity of gas accross distance_cm for the 3rd group of photon                                                                                                                              
+    ! --------------------------------------------------------------------------                                                                                                     
+    ! INPUTS:                                                                                                                                                                        
+    ! - cell_gas : HI, HeI, HeII                                                                                                                                                     
+    ! - distance_cm : the distance along which to compute tau [cm]                                                                                                                   
+    ! OUTPUTS:                                                                                                                                                                       
+    ! - gas_get_tau3 : the total optical depth for the 3rd group of photon                                                                                                                                        
+    ! --------------------------------------------------------------------------                                                                                                     
+
+    type(gas),intent(in)    :: cell_gas
+    real(kind=8),intent(in) :: distance_cm
+    real(kind=8)            :: gas_get_tau3
+    real(kind=8)            :: tau3_HI, tau3_HeI, tau3_HeII
+
+    ! compute optical depths for different components of the gas.                                                                                                                    
+    tau3_HI = cell_gas%nHI * distance_cm * sigma3_HI
+    tau3_HeI = cell_gas%nHeI * distance_cm * sigma3_HeI
+    tau3_HeII = cell_gas%nHeII * distance_cm * sigma3_HeII
+    gas_get_tau3 = tau3_HI + tau3_HeI + tau3_HeII
+
+    return
+
+  end function gas_get_tau3
+
+
+  function gas_get_tau_verner(cell_gas,distance_cm,nu,igroup)
+
+    type(gas),intent(in)    :: cell_gas
+    real(kind=8),intent(in) :: distance_cm
+    real(kind=8)            :: gas_get_tau_verner
+    integer,intent(in)      :: igroup
+    real(kind=8),intent(in) :: nu
+    real(kind=8)            :: tau_HI, tau_HeI, tau_HeII
+    real(kind=8)            :: sigma_HI_verner, sigma_HeI_verner, sigma_HeII_verner
+    real(kind=8)            :: x_HI, p_HI, sigma0_HI, ya_HI, x_HeI, p_HeI, sigma0_HeI, ya_HeI, y1, yw, x_HeII,y_HeI, p_HeII, sigma0_HeII, ya_HeII  
+    
+    
+
+    !!!!!!!! on rentre la formule de sigma_HI!!!!!!!!!!!!!!
+    
+    sigma0_HI = 5.475E-14
+    x_HI = nu /0.4298           ! nu0_HI = 0.4298
+    p_HI = 2.963
+    ya_HI = 32.88
+
+    sigma_HI_verner  = sigma0_HI * ((x_HI - 1.0d0)**2.0d0) * x_HI ** (0.5d0 * p_HI - 5.5d0) / (1+sqrt(x_HI/ya_HI))**p_HI
+    
+    !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+    !!!!!!!! on rentre la formule de sigma_HeI!!!!!!!!!!!!!!                                                                                                                                                                                   
+
+    sigma0_HeI = 9.492E-16
+    x_HeI = nu /0.1361 - 0.4434           ! nu0_HI = 0.1362, y1 = 0.4434                                                                                                                                                                    
+    p_HeI = 3.188
+    ya_HeI = 1.469
+    y1   = 2.136
+    yw   = 2.039
+    y_HeI = sqrt(x_HeI**2.0d0 + y1**2.0d0)
+
+    sigma_HeI_verner  = sigma0_HeI * ((x_HeI - 1.0d0)**2.0d0 + yw**2.0d0) * y_HeI ** (0.5d0 * p_HeI - 5.5d0) / (1+sqrt(y_HeI/ya_HeI))**p_HeI
+
+    !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+    !!!!!!!! on rentre la formule de sigma_HeII!!!!!!!!!!!!!!                                                                                                                                                                                   
+
+    sigma0_HeII = 1.369E-14
+    x_HI = nu /1.720           ! nu0_HeII = 1.720                                                                                                                                                                                           
+    p_HI = 2.963
+    ya_HI = 32.88
+   
+    sigma_HeII_verner  = sigma0_HeII * ((x_HeII - 1.0d0)**2.0d0) * x_HeII ** (0.5d0 * p_HeII - 5.5d0) / (1+sqrt(x_HeII/ya_HeII))**p_HeII
+
+    !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! 
+
+    if (igroup == 1) then 
+       tau_HI = cell_gas%nHI * distance_cm * sigma_HI_verner
+       gas_get_tau_verner = tau_HI
+    else if (igroup == 2) then
+       tau_HI  = cell_gas%nHI * distance_cm * sigma_HI_verner
+       tau_HeI = cell_gas%nHeI * distance_cm * sigma_HeI_verner
+       gas_get_tau_verner = tau_HI + tau_HeI
+    else 
+       tau_HI  = cell_gas%nHI * distance_cm * sigma_HI_verner
+       tau_HeI = cell_gas%nHeI * distance_cm * sigma_HeI_verner
+       tau_HeII =cell_gas%nHeII * distance_cm * sigma_HeII_verner
+       gas_get_tau_verner = tau_HI + tau_HeI + tau_HeII
+    endif
+
+   
+endfunction gas_get_tau_verner
+ 
+
+  
+
   ! --------------------------------------------------------------------------
 
 !!$  function  gas_get_scatter_flag(cell_gas, distance_to_border_cm, nu_cell, tau_abs,iran)
@@ -213,6 +346,19 @@ contains
              read(value,*) sigma_HeI
           case ('sigma_HeII')
              read(value,*) sigma_HeII
+          case ('sigma2_HI')
+             read(value,*) sigma2_HI
+          case ('sigma2_HeI')
+             read(value,*) sigma2_HeI
+          case ('sigma2_HeII')
+             read(value,*) sigma2_HeII
+          case ('sigma3_HI') 
+             read(value,*) sigma3_HI
+          case ('sigma3_HeI')
+             read(value,*) sigma3_HeI
+          case ('sigma3_HeII')
+             read(value,*) sigma3_HeII
+
           case ('verbose')
              read(value,*) verbose
           end select
