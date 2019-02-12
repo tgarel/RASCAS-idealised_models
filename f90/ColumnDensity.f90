@@ -12,13 +12,13 @@ program main
   type(ray_type),dimension(:),allocatable  :: rays
   type(mesh)                               :: meshdom
   type(domain)                             :: compute_dom
-  integer                                  :: nrays
+  integer                                  :: nrays, n
   real(kind=8)                             :: start, tmptime, finish
 
   character(2000) :: parameter_file, line, file_compute_dom, DomDumpFile
   character(2000),dimension(:),allocatable :: mesh_file_list 
   integer(kind=4) :: narg, i, j, ndomain
-  
+  real(kind=8),allocatable  :: kdir(:,:)
 
   ! --------------------------------------------------------------------------
   ! user-defined parameters - read from section [ColumnDensity] of the parameter file
@@ -31,9 +31,11 @@ program main
   ! --- miscelaneous
   logical                   :: verbose    = .true.
   !For the histogram Column_Density VS gas velocity
+  integer(kind=4)           :: nDirections    = 1
+  character(2000)           :: direction_file = 'params_mock.dat'
   real(kind=8)              :: vmin = -1d3       !velocities between which we want to plot NSiII vs velocity of gas cell
   real(kind=8)              :: vmax = 1d3        
-  integer(kind=4)           :: nBins = 20        ! number of bins of velocities
+  integer(kind=4)           :: nBins = 100        ! number of bins of velocities,  if <1, don't do the histo 2d
   ! --------------------------------------------------------------------------
 
   call cpu_time(start)
@@ -59,6 +61,27 @@ program main
   if (verbose) print *,'--> Nb of rays =',nrays
   ! ------------------------------------------------------------
 
+  ! -------------------- read directions -----------------------
+  n=3
+  allocate(kdir(n*2*n,3))
+  do i=1,n
+     do j=1,2*n
+        kdir(2*n*(i-1)+j,:) = (/ sin(pi*i/n)*cos(pi*j/n), sin(pi*i/n)*sin(pi*j/n), cos(pi*i/n) /)
+     end do
+  end do
+  ! allocate(kdir(nDirections,3))
+  ! open(unit=10,file=direction_file,status='old',action='read',form='formatted')
+  ! do i=1,nDirections
+  !    read(10,*) kdir(i,:)
+  !    kdir(i,:) = kdir(i,:)/norm2(kdir(i,:))
+  !    read(10,*) 
+  !    read(10,*) 
+  !    read(10,*) 
+  !    read(10,*) 
+  !    read(10,*)
+  ! end do
+  ! close(10)
+  ! ------------------------------------------------------------
 
 
   ! -------------------- Get domain properties --------------------
@@ -89,21 +112,19 @@ program main
   endif
   ! ------------------------------------------------------------
 
-
-  call init_histo_v_N(vmin,vmax,nBins)
+  if(nBins>0) call init_histo_v_N(vmin,vmax,nBins,nrays,nDirections)
 
   call cpu_time(tmptime)
   if (verbose) print '(" --> Time = ",f12.3," seconds.")',tmptime-start
 
   ! do the RT stuff
   if (verbose) print *,'--> starting RT...'
-  call ComputeNHI(nrays,rays,meshdom,compute_dom)
+  call ComputeCD(nrays,rays,meshdom,compute_dom,nDirections,kdir)
   if (verbose) print *,'--> RT done'
 
   if (verbose) print *,' '
   if (verbose) print*,'--> writing results in file: ',trim(fileout)
-  call dump_rays(fileout,rays)
-  call dump_histo(fileout)
+  call dump(fileout,rays)
 
   call cpu_time(finish)
   if (verbose) print '(" --> Time = ",f12.3," seconds.")',finish-start
@@ -161,6 +182,10 @@ contains
              write(DomDumpDir,'(a)') trim(value)
           case ('RaysICFile')
              write(RaysICFile,'(a)') trim(value)
+          case('nDirections')
+             read(value,*) nDirections
+          case ('direction_file')
+             write(direction_file,'(a)') trim(value)
           case ('fileout')
              write(fileout,'(a)') trim(value)
           end select
@@ -191,7 +216,9 @@ contains
        write(unit,'(a,a)')           '  fileout     = ',trim(fileout)
        write(unit,'(ES10.3,1x)')     '  vmin        = ', vmin
        write(unit,'(ES10.3,1x)')     '  vmax        = ', vmax
-       write(unit,'(i5)')             '  nBins       = ', nBins
+       write(unit,'(a,i5)')            '  nBins       = ', nBins
+       write(unit,'(a,i5)')            '  nDirections = ', nBins
+       write(unit,'(a,a)')           'direction_file  = ',trim(direction_file)
        write(unit,'(a,L1)')          '  verbose     = ',verbose
        write(unit,'(a)')             ' '
        call print_mesh_params(unit)
@@ -205,6 +232,8 @@ contains
        write(*,'(a,ES10.3)')        '  vmin        = ', vmin
        write(*,'(a,ES10.3)')        '  vmax        = ', vmax
        write(*,'(a,i5)')            '  nBins       = ', nBins
+       write(*,'(a,i5)')            '  nDirections = ', nDirections
+       write(*,'(a,a)')           'direction_file  = ',trim(direction_file)
        write(*,'(a,L1)')          '  verbose     = ',verbose
        write(*,'(a)')             ' '       
        call print_mesh_params

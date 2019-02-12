@@ -14,7 +14,8 @@ program main
 
   type(domain)    :: emission_domain
   character(2000) :: parameter_file
-  real(kind=8),allocatable :: star_pos(:,:),star_age(:),star_mass(:),star_vel(:,:),star_met(:), star_L(:,:), star_L_tot(:)
+  real(kind=8),allocatable :: star_pos(:,:),star_age(:),star_mass(:),star_vel(:,:),star_met(:), star_L(:,:)
+  real(kind=8)    :: star_L_tot, L_faint
   integer(kind=4) :: iran,i,nstars,narg, nSEDgroups
   integer(kind=8) :: ilast,j
 
@@ -39,8 +40,8 @@ program main
 
   ! --- miscelaneous
   integer(kind=4)           :: nphot   = 1000000      ! number of photons to generate
-  real(kind=8),dimension(3) :: direction = (/1d0,0d0,0d0/)
-  character(2000)           :: method  = 'fromstars' 
+  character(2000)           :: method  = 'fromstars'
+  !real(kind=8)              :: frac_lum = 1d0
   logical                   :: verbose = .true.
   ! --------------------------------------------------------------------------
 
@@ -91,27 +92,38 @@ program main
      deallocate(star_vel)
      ! --------------------------------------------------------------------------------------
      nphot = size(star_age)
-     nSEDgroups = get_nOptBins()   !From module_spectra
+     nSEDgroups = get_nOptBins()   !From module_spectra, Have to use nSEDgroups = 1 !
 
      !initialize SED properties
      call init_SED_table()
 
      !compute SED luminosities,  in #photons/s
-     allocate(star_L(nSEDgroups,nphot), star_L_tot(nSEDgroups)) ; star_L_tot = 0d0
+     allocate(star_L(nSEDgroups,nphot)) ; star_L_tot = 0d0
      do i=1,nphot
         call inp_sed_table(star_age(i)/1d3, star_met(i), 1, .false., star_L(:,i))    !Third variable :  1 for L[#photons/s],  3 for mean energy in bin,  2+2*Iion for mean cross-section,  Iion: 1:HI,2:HeI,3:HeII,4:SiI, etc
         star_L(:,i) = star_L(:,i)*star_mass(i)/msun
-        star_L_tot(:) = star_L_tot(:) + star_L(:,i)
+        star_L_tot = star_L_tot + star_L(1,i)
      end do
+
+     ! call hpsort_real(nphot,star_L(1,:))
+     ! print*,star_L(1,nphot)/star_L_tot, star_L(1,nphot-1)/star_L_tot
+     ! i=0 ; L_faint = 0d0
+     ! do while(L_faint/star_L_tot < 1d0-frac_lum)
+     !    i=i+1
+     !    L_faint = L_faint + star_L(1,i)
+     ! end do
+     ! print*,i,L_faint,star_L_tot
+     
 
      print*, 'number of stars in domain = ', nphot
      allocate(x_em(3,nphot), k_em(3,nphot), weight(nphot))
 
+
      do i=1,nphot
         x_em(:,i) = star_pos(:,i)
-        k_em(:,i) = direction(:)
-        weight(i) = star_L(1,i)/star_L_tot(1)    !Have to use nSEDgroups = 1 !
+        weight(i) = star_L(1,i)
      end do
+     
      deallocate(star_pos, star_mass, star_met, star_age)
   else
      print*, 'method ', method, ' not known for the moment'
@@ -124,14 +136,59 @@ program main
   if (verbose) write(*,*) '> writing file'
   open(unit=14, file=trim(outputfile), status='unknown', form='unformatted', action='write')
   write(14) nphot      ! nb of MC photons
-  do i=1,nphot
-     write(14) x_em(1,i), x_em(2,i), x_em(3,i), k_em(1,i), k_em(2,i), k_em(3,i), weight(i)
-  end do
+  write(14) (x_em(:,i), i=1,nphot)
+  write(14) (weight(i), i=1,nphot)
   close(14)
   ! --------------------------------------------------------------------------------------
 
 
 contains
+
+  ! subroutine hpsort_real(n,ra) 
+
+  !   implicit none
+
+  !   integer(kind=4),intent(in)    :: n
+  !   real(kind=8),intent(inout) :: ra(n)
+  !   real(kind=8) :: rra
+  !   integer(kind=4)               :: l, ir, i, j 
+
+  !   if (n < 2) return
+  !   l=n/2+1
+  !   ir=n
+  !   do
+  !      if(l.gt.1) then 
+  !         l=l-1
+  !         rra=ra(l) 
+  !      else
+  !         rra=ra(ir) 
+  !         ra(ir)=ra(1) 
+  !         ir=ir-1 
+  !         if(ir.eq.1)then
+  !            ra(1)=rra
+  !            return 
+  !         endif
+  !      endif
+  !      i=l
+  !      j=l+l
+  !      do while (j.le.ir)
+  !         if(j.lt.ir)then
+  !            if(ra(j).lt.ra(j+1)) j=j+1
+  !         end if
+  !         if(rra.lt.ra(j))then 
+  !            ra(i)=ra(j)
+  !            i=j
+  !            j=j+j 
+  !         else
+  !            j=ir+1 
+  !         endif
+  !      end do
+  !      ra(i)=rra
+  !   end do
+
+  !   return
+
+  ! end subroutine hpsort_real
 
   subroutine read_IC_ColumnDensity_params(pfile)
 
@@ -191,12 +248,12 @@ contains
              read(value,*) star_dom_thickness
           case ('nphot')
              read(value,*) nphot
-          case ('direction')
-             read(value,*) direction(1), direction(2), direction(3)
           case('method')
              write(method,'(a)') trim(value)
           case ('verbose')
              read(value,*) verbose
+         ! case ('frac_lum')
+           !  read(value,*) frac_lum
           case default
              write(*,'(a,a,a)') '> WARNING: parameter ',trim(name),' unknown '
           end select
@@ -235,7 +292,7 @@ contains
        write(unit,'(a)')             '# miscelaneous parameters'
        write(unit,'(a,i8)')          '  nphot           = ',nphot
        write(unit,'(a,a)')           '  method          = ',trim(method)
-       write(unit,'(a,3(ES10.3,1x))')'  direction       = ',direction(1), direction(2), direction(3)
+       !write(unit,'(a,ES10.3,1x)')   '  frac_lum        = ',frac_lum
        write(unit,'(a,L1)')          '  verbose         = ',verbose
        write(unit,'(a)')             ' '
        call print_ramses_params(unit)
@@ -252,8 +309,8 @@ contains
 
        write(*,'(a)')             '# miscelaneous parameters'
        write(*,'(a,i8)')          '  nphot           = ',nphot
-       write(*,'(a,3(ES10.3,1x))')'  direction       = ',direction(1), direction(2), direction(3)
        write(*,'(a,a)')           '  method          = ',trim(method)
+       !write(*,'(a,ES10.3,1x)')   '  frac_lum        = ',frac_lum
        write(*,'(a,L1)')          '  verbose         = ',verbose
        write(*,'(a)')             ' '
        call print_ramses_params
