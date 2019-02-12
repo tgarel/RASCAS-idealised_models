@@ -48,6 +48,55 @@ module module_gas_composition
   
 contains
 
+  !Val --
+  subroutine gas_from_list(ncells, cell_pos, cell_l, gas_leaves)
+
+    integer(kind=4), intent(out)		:: ncells
+    integer(kind=4), allocatable, intent(out)	:: cell_l(:)
+    real(kind=8), allocatable, intent(out)	:: cell_pos(:,:)
+    type(gas), allocatable, intent(out)		:: gas_leaves(:)
+
+    integer(kind=4)				:: i
+    real(kind=8), allocatable			:: nhii(:), metallicity(:)
+
+
+    open(unit=20, file=input_ramses_file, status='old', form='unformatted')
+    read(20) ncells
+
+    allocate(cell_l(ncells), cell_pos(ncells,3), gas_leaves(ncells), nhi(ncells), nhii(ncells), metallicity(ncells))
+
+    read(20) box_size_cm
+    read(20) cell_l
+    read(20) cell_pos(:,1)
+    read(20) cell_pos(:,2)
+    read(20) cell_pos(:,3)
+    read(20) gas_leaves%v(1)
+    read(20) gas_leaves%v(2)
+    read(20) gas_leaves%v(3)
+    read(20) gas_leaves%nHI
+    read(20) nhii
+    read(20) metallicity
+    read(20) gas_leaves%dopwidth
+    gas_leaves%dopwidth = gas_leaves%dopwidth / sqrt(15.999)  !15.999 is the atomic mass unit of Oxygen.  In the data file I printed sqrt(2*kb*T/m_u), so it's correct for Hydrogen, but other elements have to be divided by sqrt(mass of the element in atomic units).
+    read(21) gas_leaves%nOI
+
+    close(20) ; close(21)
+    
+    gas_leaves%ndust = metallicity / Zref * ( nhi + f_ion*nhii )   ! [ /cm3 ]
+
+
+    if (verbose) print*,'boxsize in cm : ', box_size_cm
+    if (verbose) print*,'min/max of vth   : ',minval(gas_leaves(:)%dopwidth),maxval(gas_leaves(:)%dopwidth)
+    if (verbose) print*,'min/max of nOI : ',minval(gas_leaves(:)%nOI),maxval(gas_leaves(:)%nOI)
+    if (verbose) print*,'min/max of ndust : ',minval(gas_leaves(:)%ndust),maxval(gas_leaves(:)%ndust)
+
+    deallocate(nhi, nhii, metallicity)
+
+
+  end subroutine gas_from_list
+  ! --------------------------------------------------------------------------
+  !--laV
+
   
   subroutine gas_from_ramses_leaves(repository,snapnum,nleaf,nvar,ramses_var, g)
 
@@ -106,6 +155,19 @@ contains
     return
 
   end subroutine gas_from_ramses_leaves
+
+
+  !Val
+  function gas_get_CD(cell_gas, distance_cm)
+
+    real(kind=8), intent(in) :: distance_cm
+    type(gas),intent(in)     :: cell_gas
+    real(kind=8)             :: gas_get_CD
+
+    gas_get_CD = distance_cm*cell_gas%nHI
+
+  end function gas_get_CD
+  !laV
 
 
   

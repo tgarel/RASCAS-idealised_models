@@ -57,7 +57,7 @@ module module_gas_composition
     !--PEEL--
   public :: gas_peeloff_weight,gas_get_tau!,gas_get_tau_gray
   !--LEEP--
-  
+
   public :: HI_core_skip
 
 
@@ -103,6 +103,7 @@ contains
 
 
     if (verbose) print*,'boxsize in cm : ', box_size_cm
+    if (verbose) print*,'min/max of vth   : ',minval(gas_leaves(:)%dopwidth),maxval(gas_leaves(:)%dopwidth)
     if (verbose) print*,'min/max of nSiII : ',minval(gas_leaves(:)%nSiII),maxval(gas_leaves(:)%nSiII)
     if (verbose) print*,'min/max of ndust : ',minval(gas_leaves(:)%ndust),maxval(gas_leaves(:)%ndust)
 
@@ -233,7 +234,6 @@ contains
   subroutine overwrite_gas(g)
 
     type(gas),dimension(:),intent(inout) :: g
-    integer*4 :: i
 
     box_size_cm   = fix_box_size_cm
     g(:)%nSiII    = fix_nSiII

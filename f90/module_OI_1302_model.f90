@@ -77,8 +77,6 @@ contains
     x_cell = (nu_cell - nu14) / delta_nu_doppler
     h_cell = voigt_function(x_cell,a)
     sigma  = sigma14_factor / delta_nu_doppler * h_cell
-    test = voigt_function(0.6d0, 1.6d0)
-    print*, 'test ', test
 
     get_tau_OI_1302 = sigma * nOI * distance_to_border_cm
 
@@ -225,6 +223,7 @@ contains
 
     ! 4/ determine direction of scattered photon
     OI_1302_peeloff_weight = 0.5d0  ! P(mu) for isotropic phase function
+    !OI_1302_peeloff_weight = 0d0    ! Test without scattering
     mu = kin(1)*kout(1) + kin(2)*kout(2) + kin(3)*kout(3)
     bu = sqrt(1.0d0 - mu*mu)
 
