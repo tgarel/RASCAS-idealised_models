@@ -105,7 +105,7 @@ contains
           mock(idir)%kobs = mock(idir)%kobs / sqrt(mock(idir)%kobs(1)*mock(idir)%kobs(1)+&
                & mock(idir)%kobs(2)*mock(idir)%kobs(2)+mock(idir)%kobs(3)*mock(idir)%kobs(3))
           ! define basis for sky plane
-          if (mock(idir)%kobs(1) < 1.d0) then
+          if (abs(mock(idir)%kobs(1)) < 1.d0) then
              ! kobs_perp_1 is cross prod. of kobs and x 
              mock(idir)%kobs_perp_1(1) = 0.
              mock(idir)%kobs_perp_1(2) = mock(idir)%kobs(3)
