@@ -368,13 +368,17 @@ class RascasSurvey(object):
         import healpy as hp
 
         Tenpc_cm = 3.086e19   # 10pc in cm... 
-        m = self.nRealPhotons  # [erg/s/A]  !!! This is due to a bug in CPT ... 
+        #m = self.nRealPhotons  # [erg/s/A]  !!! This is due to a bug in CPT ...
+        m  = self.nRealPhotons * np.mean(self.pesc.nu) * lya.h_cgs # erg/s/A 
         m = m * 1e8  # [erg/s/cm]
         wavelength_Angstrom = lya.clight / np.mean(self.pesc.nu) * 1e8
         m = m * (wavelength_Angstrom*1e-8)**2 / lya.clight  # [erg/s/Hz]
         m = m / (4.*np.pi*Tenpc_cm**2) # [erg/s/Hz/cm2]
         nphot_map = self.MCPhotCount_angular_map(nside)
         npix = float(hp.nside2npix(nside))
+        print("AAAAAAAa")
+        print("npix = ",npix)
+        print("nphot_map = ",len(nphot_map))
         ext_factor = nphot_map / float(self.nphotTot) * npix
         m = m * ext_factor # [erg/s/Hz/cm2]
         m = -2.5 * np.log10(m) - 48.6
@@ -539,7 +543,7 @@ class RascasSurvey(object):
             f.write("#PBS -l select=1:ncpus=16 \n")
             f.write("#PBS -l place=scatter:excl   \n")
             f.write("#PBS -l walltime=24:00:00   \n")
-            f.write("#PBS -q R37551 \n")
+            f.write("#PBS -q workq \n")
             f.write("cd $PBS_O_WORKDIR   \n")
             f.write("source /usr/share/modules/init/bash   \n")
             f.write("module load intel-icc-14/14.0.3.174   \n")
@@ -654,10 +658,10 @@ class RascasSurvey(object):
         f = open(fff,'w')
         f.write("#PBS -S /bin/bash \n")
         f.write("#PBS -j oe   \n")
-        f.write("#PBS -l select=1:ncpus=1 \n")
+        f.write("#PBS -l select=1:ncpus=16 \n")
         f.write("#PBS -l place=scatter:excl   \n")
         f.write("#PBS -l walltime=24:00:00   \n")
-        f.write("#PBS -q R37551 \n")
+        f.write("#PBS -q workq \n")
         f.write("cd $PBS_O_WORKDIR   \n")
         f.write("source /usr/share/modules/init/bash   \n")
         f.write("module load intel-icc-14/14.0.3.174   \n")
@@ -746,8 +750,8 @@ class RascasSurvey(object):
                                          ('PhotonICFile',PhotonICFile),
                                          ('fileout',RascasOutputFile),
                                          ('nbuffer',10),('verbose','T')])
-        worker_params = OrderedDict([('verbose','F')])
-        master_params = OrderedDict([('verbose','F'),('restart','F'),
+        worker_params = OrderedDict([('verbose','T')])
+        master_params = OrderedDict([('verbose','T'),('restart','F'),
                                          ('PhotonBakFile',RascasBackupFile),
                                          ('dt_backup',18000.)])
         parameters = OrderedDict([('RASCAS',rascas_params),('worker',worker_params),('master',master_params),
@@ -761,10 +765,10 @@ class RascasSurvey(object):
         f = open(fff,'w')
         f.write("#PBS -S /bin/bash \n")
         f.write("#PBS -j oe   \n")
-        f.write("#PBS -l select=4:ncpus=16:mpiprocs=16 \n")
+        f.write("#PBS -l select=2:ncpus=16:mpiprocs=16 \n")
         f.write("#PBS -l place=scatter:excl   \n")
         f.write("#PBS -l walltime=24:00:00   \n")
-        f.write("#PBS -q R37551 \n")
+        f.write("#PBS -q workq \n")
         f.write("cd $PBS_O_WORKDIR   \n")
         f.write("source /usr/share/modules/init/bash   \n")
         f.write("module load intel-icc-14/14.0.3.174   \n")
@@ -773,7 +777,7 @@ class RascasSurvey(object):
         f.write("module load mpt/2.10   \n")
         f.write("set -x   \n")
         #f.write("time mpiexec_mpt -np 64 dplace -s1 -c0-15 /scratch/garel/rascas_sphinx/f90/rascas %s >& %s.log \n"%(rascasParamFile,rascasParamFile))
-        f.write("time mpiexec_mpt -np 64 dplace -s1 -c0-15 %srascas %s >& %s.log \n"%(self.rascas_f90,rascasParamFile,rascasParamFile))
+        f.write("time mpiexec_mpt -np 32 dplace -s1 -c0-15 %srascas %s >& %s.log \n"%(self.rascas_f90,rascasParamFile,rascasParamFile))
 
         f.close()
             

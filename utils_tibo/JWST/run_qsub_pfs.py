@@ -5,9 +5,9 @@ import os
 
 #halo_ids = ['11518','12763','18546','23233','24695','41361','47123','49444','49905','6114']
 halo_ids = []
-ramsesTimestep = 183
+ramsesTimestep = 147
 
-rascas_directory = '/scratch/garel/rascas_sphinx/output/sfr_gt_1e-4'
+rascas_directory = '/scratch/garel/rascas_sphinx/output/sfr_gt_1e-4_corrBuffer_domain'
 
 fff = "%s/%5.5i/haloid_list.dat"%(rascas_directory,ramsesTimestep)
 f = open(fff,'r')

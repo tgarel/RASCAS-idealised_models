@@ -9,9 +9,9 @@ import os
 #path2confFiles = '/scratch/garel/rascas_sphinx/output/test_Mstar_gt1e-3/'
 
 halo_ids = []
-ramsesTimestep = 183
+ramsesTimestep = 147
 
-rascas_directory = '/scratch/garel/rascas_sphinx/output/sfr_gt_1e-4'
+rascas_directory = '/scratch/garel/rascas_sphinx/output/sfr_gt_1e-4_corrBuffer_domain'
 
 fff = "%s/%5.5i/haloid_list.dat"%(rascas_directory,ramsesTimestep)
 f = open(fff,'r')

@@ -12,7 +12,7 @@ import nircam
 
 ################################################################################
 # RAScas dir. 
-rascas_directory = '/scratch/garel/rascas_sphinx/output/sfr_gt_1e-4'
+rascas_directory = '/scratch/garel/rascas_sphinx/output/sfr_gt_1e-4_corrBuffer_domain'
 rascas_f90       = '/scratch/garel/rascas_sphinx/f90/'
 
 ################################################################################
@@ -27,13 +27,14 @@ gas_composition_params  = OrderedDict([ ('f_ion','%.16e'%(0.01)),('Zref','%.16e'
 # RAMSES-SIMULATION STUFF 
 ################################################################################
 # RAMSES OUTPUT
-ramsesDir      = '/scratch/blaizot/sphinx/05_F1000/02_IC20_BP/'
-ramsesTimestep = 183 
+#ramsesDir      = '/scratch/blaizot/sphinx/05_F1000/02_IC20_BP/' # 183
+ramsesDir      = '/scratch/garel/SPHINX_outputs/02_IC20_BP/'
+ramsesTimestep = 147 # 183 
 
 # CreateDomDump extra parameters
 CreateDomDumpOptions = OrderedDict([('reading_method','hilbert'),('verbose','T')])
 
-ramses_params = OrderedDict([('self_shielding','F'),('ramses_rt','T'),('verbose','F'),
+ramses_params = OrderedDict([('self_shielding','F'),('ramses_rt','T'),('verbose','T'),
                                  ('use_initial_mass','T'),('cosmo','T'),('use_proper_time','T'),
                                  ('read_rt_variables','F')])
 
@@ -44,11 +45,38 @@ hcat.load_catalog()
 hcat.convert_distances()
 mstar = hcat.get_Mstar() # in 1e11 Msun 
 sfr100 = hcat.get_halo_SFRs() # Msun/yr
+mvir   = hcat.mvir * 1.0e11
 
 redshift = hcat.info['redshift']
 
+# Compute cell size in code units for domain decompositon
+###############################################################################
+
+ncell          = 512.0
+
+#boxsize_cmpc   = 10.0
+#cell_size_cmpc = boxsize_cmpc / ncell
+#coarse_cell_MaxLength_cmpc = 3.**(0.5) * cell_size_cmpc # comoving Mpc
+#coarse_cell_MaxLength_pmpc = coarse_cell_MaxLength_cmpc / (1.0+redshift) # physical Mpc
+#pc2cm       = 3.086e18
+#cm2pc       = 1./pc2cm
+#unit_l_pmpc = hcat.info['unit_l'] * cm2pc / 1.e6 # converts comoving code units to phys. Mpc
+#coarse_cell_MaxLength_comoving_cu = coarse_cell_MaxLength_pmpc / unit_l_pmpc # comoving code units
+
+# actually, boxsize=1 in cu, so i can do: coarse_cell_MaxLength_comoving_cu = 1 / 512...
+coarse_cell_MaxLength_comoving_cu = 3.**(0.5) * 1.0 / 512.0
+
+###############################################################################
+
+
+
 #ids = np.where(mstar > 1.e-3) 
 ids = np.where(sfr100 > 1.e-4)
+#ids = np.where(sfr100 > 1.e-6)
+#ids = np.where(mvir > 1.e7)
+#ids = np.where((mvir > 1.e7) & (mstar > 0.0e0))
+
+print(len(mstar),len(mvir),len(mstar[ids]))
 
 #TIBO------------
 # Create haloid list array
@@ -92,7 +120,9 @@ for i in range(len(mstar[ids])):
     decomp_dom_xc      = xh
     decomp_dom_yc      = yh
     decomp_dom_zc      = zh
-    decomp_dom_rsp     = rh*1.10
+
+    # Use rh*1.10 + coarser cell max length (in comoving code units) to ensure small haloes can access neighbor cells info
+    decomp_dom_rsp     = rh*1.10 + coarse_cell_MaxLength_comoving_cu
     DomainDecomposition = OrderedDict([('decomp_dom_type',decomp_dom_type),
                         ('decomp_dom_ndomain',decomp_dom_ndomain),('decomp_dom_xc',decomp_dom_xc),
                         ('decomp_dom_yc',decomp_dom_yc),('decomp_dom_zc',decomp_dom_zc),
