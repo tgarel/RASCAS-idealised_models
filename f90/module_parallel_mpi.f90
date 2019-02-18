@@ -17,7 +17,8 @@ module module_parallel_mpi
   integer(kind=4),parameter                       :: nbloc=10
   integer(kind=4),dimension(nbloc)                :: types, longueurs_blocs
   integer(kind=MPI_ADDRESS_KIND),dimension(nbloc) :: deplacements, adresses
-  integer(kind=4)                                 :: mpi_type_photon
+  integer(kind=MPI_ADDRESS_KIND)                  :: lb,extent,nextelement
+  integer(kind=4)                                 :: mpi_type_photon,temp
 
 
 contains
@@ -69,7 +70,7 @@ contains
     ! Create an MPI datatype for sending photons
 
     integer(kind=4)      :: i
-    type(photon_current) :: p
+    type(photon_current),dimension(10) :: p
 
     ! type photon_current
     !    integer(kind=4)           :: ID
@@ -100,24 +101,35 @@ contains
     ! block lengths
     longueurs_blocs = (/1,1,3,3,1,3,1,1,1,1/)
   
-    call MPI_GET_ADDRESS(p%id,           adresses(1),code)
-    call MPI_GET_ADDRESS(p%status,       adresses(2),code)
-    call MPI_GET_ADDRESS(p%xlast,        adresses(3),code)
-    call MPI_GET_ADDRESS(p%xcurr,        adresses(4),code)
-    call MPI_GET_ADDRESS(p%nu_ext,       adresses(5),code)
-    call MPI_GET_ADDRESS(p%k,            adresses(6),code)
-    call MPI_GET_ADDRESS(p%nb_abs,       adresses(7),code)
-    call MPI_GET_ADDRESS(p%time,         adresses(8),code)
-    call MPI_GET_ADDRESS(p%tau_abs_curr, adresses(9),code)
-    call MPI_GET_ADDRESS(p%iran,         adresses(10),code)
+    call MPI_GET_ADDRESS(p(1)%id,           adresses(1),code)
+    call MPI_GET_ADDRESS(p(1)%status,       adresses(2),code)
+    call MPI_GET_ADDRESS(p(1)%xlast,        adresses(3),code)
+    call MPI_GET_ADDRESS(p(1)%xcurr,        adresses(4),code)
+    call MPI_GET_ADDRESS(p(1)%nu_ext,       adresses(5),code)
+    call MPI_GET_ADDRESS(p(1)%k,            adresses(6),code)
+    call MPI_GET_ADDRESS(p(1)%nb_abs,       adresses(7),code)
+    call MPI_GET_ADDRESS(p(1)%time,         adresses(8),code)
+    call MPI_GET_ADDRESS(p(1)%tau_abs_curr, adresses(9),code)
+    call MPI_GET_ADDRESS(p(1)%iran,         adresses(10),code)
 
     ! Compute array of displacements
     do i=1,nbloc
        deplacements(i)=adresses(i) - adresses(1)
+       if (i>1)then
+          print*,'displacement',i,deplacements(i),adresses(i)-adresses(i-1)
+       else
+          print*,'displacement',i,deplacements(i)
+       end if
     end do
     ! Create mpi_type_photon
-    call MPI_TYPE_CREATE_STRUCT (nbloc,longueurs_blocs,deplacements,types,mpi_type_photon,&
-         code)
+    call MPI_TYPE_CREATE_STRUCT(nbloc,longueurs_blocs,deplacements,types,temp,code)
+    ! Extent correct
+    call MPI_GET_ADDRESS(p(2)%id,nextelement,code)
+    lb = 0
+    extent = nextelement-adresses(1)
+    print*,'extent =',extent, nextelement-adresses(10)
+    call MPI_TYPE_CREATE_RESIZED(temp,lb,extent,mpi_type_photon,code)
+
     ! Commits the new type
     call MPI_TYPE_COMMIT(mpi_type_photon,code)
 
