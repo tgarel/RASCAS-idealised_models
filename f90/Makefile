@@ -4,8 +4,8 @@
 #SYSTYPE="CCF"
 #SYSTYPE="lyocral"
 #SYSTYPE="lyocralP"
-SYSTYPE="mac"
-#SYSTYPE="macP"
+#SYSTYPE="mac"
+SYSTYPE="macP"
 #SYSTYPE="ccage"
 
 OPTIONS = -cpp
@@ -51,7 +51,7 @@ endif
 
 
 ifeq ($(SYSTYPE),"macP")
-F90         = mpif90-openmpi-mp
+F90         = mpif90-openmpi-gcc8
 FFLAGS      = -g -fcheck=all -ffree-line-length-none -ffree-form -ftrapv -fbounds-check -fbacktrace -Wall
 #FFLAGS      = -O3
 FFLAGS += $(OPTIONS)
@@ -116,6 +116,9 @@ OBJSMPI = $(OBJSPHO) module_parallel_mpi.o module_worker.o module_master.o
 
 #############################################################################
 all: clean CreateDomDump PhotonsFromSourceModel PhotonsFromStars rascas-serial
+
+test_mpi_photons: $(OBJSMPI) test_mpi_photons.o
+	$(F90) $(FFLAGS) $(LDFLAGS) -o $@ $(OBJSMPI) test_mpi_photons.o
 
 PhotonsFromSourceModel: $(OBJSPHO) PhotonsFromSourceModel.o
 	$(F90) $(FFLAGS) $(LDFLAGS) -o $@ $(OBJSPHO) PhotonsFromSourceModel.o
