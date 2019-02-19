@@ -542,7 +542,7 @@ contains
     select case(trim(dom%type))
 
     case('sphere')
-       ! correct position for periodic boudaries
+       ! correct position for periodic boundaries
        ddx = x(1)-dom%sp%center(1)
        if (ddx > 0.5d0) then 
           ddx = ddx -1.0d0 
@@ -566,7 +566,7 @@ contains
        domain_distance_to_border = dom%sp%radius - rr
        
     case('shell')
-       ! correct position for periodic boudaries
+       ! correct position for periodic boundaries
        ddx = x(1)-dom%sh%center(1)
        if (ddx > 0.5d0) then 
           ddx = ddx -1.0d0 
@@ -660,7 +660,7 @@ contains
     select case(trim(dom%type))
        
     case('sphere')
-       ! correct position for periodic boudaries
+       ! correct position for periodic boundaries
        dx = x(1)-dom%sp%center(1)
        if (dx > 0.5d0) then 
           dx = dx -1.0d0 
@@ -692,7 +692,7 @@ contains
        domain_distance_to_border_along_k = (-b + sqrt(delta))*0.5d0 ! select the only positive solution
 
     case('shell')
-       ! correct position for periodic boudaries
+       ! correct position for periodic boundaries
        dx = x(1) - dom%sh%center(1)
        if (dx > 0.5d0) then 
           dx = dx -1.0d0 
@@ -753,7 +753,7 @@ contains
        endif
 
     case('cube')  
-       ! correct position for periodic boudaries
+       ! correct position for periodic boundaries
        do i = 1,3
           xc(i) = x(i)
           ddx = xc(i) - dom%cu%center(i)
