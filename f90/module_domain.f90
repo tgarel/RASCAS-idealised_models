@@ -146,154 +146,27 @@ contains
     real(kind=8),dimension(1:n,1:3),intent(in)           :: xp
     integer(kind=4),dimension(:),allocatable,intent(out) :: indsel
     integer(kind=4)                                      :: i,ii,nsel
-    integer(kind=4),dimension(:),allocatable             :: tmpi
-    real(kind=8)                                         :: dd,dx,dy,dz
+    integer(kind=4),dimension(:),allocatable             :: tmpi 
+    real(kind=8),dimension(1:3)                          :: xc
+   
+    allocate(indsel(1:n))
+    indsel=0
+    ii=0
+    do i=1,n
+       xc(1:3) = xp(i,1:3)
+       if(domain_contains_point(xc,dom))then
+          ii=ii+1
+          indsel(ii)=i
+       endif
+    enddo
+    nsel=ii
+    allocate(tmpi(1:nsel))
+    tmpi(1:nsel) = indsel(1:nsel)
+    deallocate(indsel)
+    allocate(indsel(1:nsel))
+    indsel=tmpi
+    deallocate(tmpi)
     
-    select case(trim(dom%type))
-       
-    case('sphere')
-       allocate(indsel(1:n))
-       indsel=0
-       ii=0
-       do i=1,n
-          ! correct positions for periodic boundaries 
-          dx = xp(i,1)-dom%sp%center(1)
-          if (dx > 0.5d0) then 
-             dx = dx -1.0d0 
-          else if (dx < -0.5d0) then 
-             dx = dx + 1.0d0
-          end if
-          dy = xp(i,2)-dom%sp%center(2)
-          if (dy > 0.5d0) then 
-             dy = dy -1.0d0 
-          else if (dy < -0.5d0) then 
-             dy = dy + 1.0d0
-          end if
-          dz = xp(i,3)-dom%sp%center(3)
-          if (dz > 0.5d0) then 
-             dz = dz -1.0d0 
-          else if (dz < -0.5d0) then 
-             dz = dz + 1.0d0
-          end if
-          !dd = (xp(i,1)-dom%sp%center(1))**2 + (xp(i,2)-dom%sp%center(2))**2 + (xp(i,3)-dom%sp%center(3))**2
-          dd = dx**2 + dy**2 + dz**2
-          if(sqrt(dd)<=dom%sp%radius)then
-             ii=ii+1
-             indsel(ii)=i
-          endif
-       enddo
-       nsel=ii
-       allocate(tmpi(1:nsel))
-       tmpi(1:nsel) = indsel(1:nsel)
-       deallocate(indsel)
-       allocate(indsel(1:nsel))
-       indsel=tmpi
-       deallocate(tmpi)
-       
-    case('shell')
-       allocate(indsel(1:n))
-       indsel=0
-       ii=0
-       do i=1,n
-          ! correct positions for periodic boundaries 
-          dx = xp(i,1)-dom%sh%center(1)
-          if (dx > 0.5d0) then 
-             dx = dx -1.0d0 
-          else if (dx < -0.5d0) then 
-             dx = dx + 1.0d0
-          end if
-          dy = xp(i,2)-dom%sh%center(2)
-          if (dy > 0.5d0) then 
-             dy = dy -1.0d0 
-          else if (dy < -0.5d0) then 
-             dy = dy + 1.0d0
-          end if
-          dz = xp(i,3)-dom%sh%center(3)
-          if (dz > 0.5d0) then 
-             dz = dz -1.0d0 
-          else if (dz < -0.5d0) then 
-             dz = dz + 1.0d0
-          end if
-          dd = dx*dx + dy*dy + dz*dz
-          !!dd = (xp(i,1)-dom%sh%center(1))**2 + (xp(i,2)-dom%sh%center(2))**2 + (xp(i,3)-dom%sh%center(3))**2
-          if((sqrt(dd)>=dom%sh%r_inbound).and.(sqrt(dd)<dom%sh%r_outbound))then
-             ii=ii+1
-             indsel(ii)=i
-          endif
-       enddo
-       nsel=ii
-       allocate(tmpi(1:nsel))
-       tmpi(1:nsel) = indsel(1:nsel)
-       deallocate(indsel)
-       allocate(indsel(1:nsel))
-       indsel=tmpi
-       deallocate(tmpi)
-
-
-    case('cube')
-       allocate(indsel(1:n))
-       indsel=0
-       ii=0
-       do i=1,n
-          dx = xp(i,1)-dom%cu%center(1)
-          ! correct positions for periodic boundaries 
-          if (dx > 0.5d0) then 
-             dx = dx -1.0d0 
-          else if (dx < -0.5d0) then 
-             dx = dx + 1.0d0
-          end if
-          if (abs(dx) <= dom%cu%size*0.5d0) then 
-             dx = xp(i,2)-dom%cu%center(2)
-             if (dx > 0.5d0) then 
-                dx = dx -1.0d0 
-             else if (dx < -0.5d0) then 
-                dx = dx + 1.0d0
-             end if
-             if (abs(dx) <= dom%cu%size*0.5d0) then 
-                dx = xp(i,3)-dom%cu%center(3)
-                if (dx > 0.5d0) then 
-                   dx = dx -1.0d0 
-                else if (dx < -0.5d0) then 
-                   dx = dx + 1.0d0
-                end if
-                if (abs(dx) <= dom%cu%size*0.5d0) then
-                   ii = ii + 1
-                   indsel(ii) = I
-                endif
-             endif
-          endif
-       enddo
-       nsel=ii
-       allocate(tmpi(1:nsel))
-       tmpi(1:nsel) = indsel(1:nsel)
-       deallocate(indsel)
-       allocate(indsel(1:nsel))
-       indsel=tmpi
-       deallocate(tmpi)
-
-    case('slab')
-       allocate(indsel(1:n))
-       indsel=0
-       ii=0
-       do i=1,n
-          if(abs(xp(i,3)-dom%sl%zc) <= dom%sl%thickness*0.5d0)then
-             ii=ii+1
-             indsel(ii)=i
-          endif
-       enddo
-       nsel=ii
-       allocate(tmpi(1:nsel))
-       tmpi(1:nsel) = indsel(1:nsel)
-       deallocate(indsel)
-       allocate(indsel(1:nsel))
-       indsel=tmpi
-       deallocate(tmpi)
-
-    case default
-       print *,'ERROR: type not defined ',trim(dom%type)
-       stop
-    end select
-
   end subroutine select_in_domain
 
 
