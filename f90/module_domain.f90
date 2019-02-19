@@ -366,21 +366,21 @@ contains
        else if (dx < -0.5d0) then 
           dx = dx + 1.0d0
        end if
-       if (abs(dx) <= dom%cu%size*0.5d0) then 
+       if (abs(dx) < dom%cu%size*0.5d0) then 
           dx = x(2)-dom%cu%center(2)
           if (dx > 0.5d0) then 
              dx = dx -1.0d0 
           else if (dx < -0.5d0) then 
              dx = dx + 1.0d0
           end if
-          if (abs(dx) <= dom%cu%size*0.5d0) then 
+          if (abs(dx) < dom%cu%size*0.5d0) then 
              dx = x(3)-dom%cu%center(3)
              if (dx > 0.5d0) then 
                 dx = dx -1.0d0 
              else if (dx < -0.5d0) then 
                 dx = dx + 1.0d0
              end if
-             if (abs(dx) <= dom%cu%size*0.5d0) then
+             if (abs(dx) < dom%cu%size*0.5d0) then
                 domain_contains_point=.true.
              end if
           end if
