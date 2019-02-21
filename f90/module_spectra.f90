@@ -3,7 +3,7 @@ MODULE spectrum_integrator_module
   implicit none
 
   PUBLIC integrateSpectrum, f1, fLambda, fdivLambda, fSig, fSigLambda,   &
-       fSigdivLambda, trapz1
+       fSigdivLambda, trapz1, get_prop
 
   PRIVATE   ! default
 
@@ -223,6 +223,49 @@ CONTAINS
 
   END FUNCTION getCrosssection_Hui
 
+  function get_prop(n_elements,elements,nIons)
+
+    implicit none
+
+    integer(kind=4),intent(in)  :: n_elements, elements(n_elements), nIons(n_elements)
+    integer(kind=4),allocatable :: get_prop(:)
+    integer(kind=4)             :: nProp, i, j, k
+
+    do i=1,n_elements
+       if(elements(i) /= 6 .and. elements(i) /= 8 .and. elements(i) /= 12 .and. elements(i) /= 14) then
+          print*, 'The photoionization is not yet implemented for elements other than Carbon(6), Oxygen(8), Magnesium(12) and Silicone(14), please use those ones, sorry'
+          stop
+       end if
+       if(nIons(i) > 4) then
+          print*, 'The photoionization is not yet implemented for nIons>4, sorry'
+          stop
+       end if
+    end do
+    
+    nProp = sum(nIons)
+    allocate(get_prop(nProp))
+
+    j=1
+    do i=1,n_elements
+       if(elements(i) == 6) then
+          get_prop(j) = 4
+       else if(elements(i) == 8) then
+          get_prop(j) = 8
+       else if(elements(i) == 12) then
+          get_prop(j) = 12
+       else
+          get_prop(j) = 16
+       end if
+
+       do k=1,Nions(i)-1
+          get_prop(j+k) = get_prop(j)+k
+       end do
+
+       j = Nions(i)+j
+    end do
+  end function get_prop
+    
+
 
 END MODULE spectrum_integrator_module
 
@@ -238,7 +281,7 @@ module module_spectra
 
   implicit none
 
-  public init_SED_table, inp_SED_table, get_nOptBins, deallocate_table, read_spectra_params, print_spectra_params
+  public init_SED_table, inp_SED_table, get_nOptBins, get_csn_indices, deallocate_table, read_spectra_params, print_spectra_params
 
   private
 
@@ -402,8 +445,23 @@ contains
   end subroutine init_SED_table
   !#################################################################################################
 
+  !*************************************************************************
+  function get_csn_indices(n_elements, elements, nIons)
 
-    !*************************************************************************
+    use spectrum_integrator_module
+
+    implicit none
+
+    integer(kind=4),intent(in)  :: n_elements, elements(n_elements), nIons(n_elements)
+    integer(kind=4),allocatable :: get_csn_indices(:)
+
+    get_csn_indices = get_prop(n_elements, elements, nIons)   !In spectrum_integrator_module
+
+  end function get_csn_indices
+  !*************************************************************************
+
+
+  !*************************************************************************
   SUBROUTINE inp_SED_table(age, Z, nProp, same, ret)!, na, nz, SED_ages, SED_zeds)
 
     ! Compute SED property by interpolation from table.

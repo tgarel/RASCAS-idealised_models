@@ -119,6 +119,7 @@ module module_ramses
   public :: ramses_get_velocity_cgs, ramses_get_T_nhi_cgs, ramses_get_metallicity, ramses_get_nh_cgs, ramses_get_T_nSiII_cgs, ramses_get_T_nMgII_cgs, ramses_get_fractions, ramses_get_flux
   public :: ramses_get_T_nFeII_cgs
   public :: ramses_read_stars_in_domain
+  public :: compute_csn_in_domain, compute_csn_in_box
   public :: read_ramses_params, print_ramses_params, dump_ramses_info
   public :: ramses_get_LyaEmiss_HIDopwidth,ramses_get_cooling_time
   
@@ -3295,6 +3296,127 @@ contains
     return
 
   end function get_tot_nstars
+
+
+  !*************************************************************************
+  subroutine compute_csn_in_domain(repository, snapnum, dom, n_elements, elements, nIons, csn)
+
+    use module_spectra
+    use module_domain
+
+    character(2000),intent(in)           :: repository 
+    type(domain),intent(in)              :: dom
+    integer(kind=4),intent(in)           :: n_elements, elements(n_elements), nIons(n_elements), snapnum
+    real(kind=8),allocatable             :: star_pos(:,:),star_age(:),star_mass(:),star_vel(:,:),star_met(:), star_L(:), star_L_tot(:), csn_help(:,:)
+    integer(kind=4)                      :: nstars, nSEDgroups, i,j,k, nProp
+    real(kind=8),allocatable,intent(out) :: csn(:,:)
+    character(10)                        :: type
+    integer(kind=4),allocatable          :: prop(:)
+
+    prop = get_csn_indices(n_elements,elements,nIons)
+    nProp = size(prop)
+
+    nSEDgroups = get_nSEDgroups(repository,snapnum)
+    allocate(csn(nSEDgroups,nProp)) ; csn = 0d0
+
+    call ramses_read_stars_in_domain(repository,snapnum,dom,star_pos,star_age,star_mass,star_vel,star_met) ; deallocate(star_vel)
+    nstars = size(star_age)
+    print*, 'number of stars : ', nstars
+
+    !initialize SED properties
+    call init_SED_table()
+
+    allocate(star_L(nSEDgroups), star_L_tot(nSEDgroups), csn_help(nSEDgroups,nProp)) ; star_L_tot = 0d0
+
+    do i=1,nstars
+       call inp_sed_table(star_age(i)/1d3, star_met(i), 1, .false., star_L(:))    !Third variable :  1 for L[#photons/s],  3 for mean energy in bin,  2+2*Iion for mean cross-section,  Iion: 1:HI,2:HeI,3:HeII,4:CI, etc, see module_spectra.f90
+       star_L(:) = star_mass(i)*star_L(:)
+       do j=1,nProp
+          call inp_sed_table(star_age(i)/1d3, star_met(i), 2+prop(j)*2, .false., csn_help(:,j))
+       end do
+
+       do j=1,nSEDgroups
+          csn(j,:) = csn(j,:) + star_L(j)*csn_help(j,:)
+          star_L_tot(j) = star_L_tot(j) + star_L(j)
+       end do
+    end do
+
+    call deallocate_table()
+
+    print*, 'csn (nSEDgroups * nIons)'
+    do j=1,nSEDgroups
+       csn(j,:) = csn(j,:)/star_L_tot(j)
+       print*, csn(j,:)
+    end do
+    deallocate(star_age, star_met, star_mass, csn_help)
+
+
+  end subroutine compute_csn_in_domain
+  !*************************************************************************
+
+  !*************************************************************************
+  subroutine compute_csn_in_box(repository, snapnum, n_elements, elements, nIons, csn)
+
+    use module_spectra
+    use module_domain
+
+    character(2000),intent(in)           :: repository 
+    type(domain)                         :: dom
+    integer(kind=4),intent(in)           :: n_elements, elements(n_elements), nIons(n_elements), snapnum
+    real(kind=8),allocatable             :: star_pos(:,:),star_age(:),star_mass(:),star_vel(:,:),star_met(:), star_L(:), star_L_tot(:), csn_help(:,:)
+    integer(kind=4)                      :: nstars, nSEDgroups, i,j,k, nProp
+    real(kind=8),allocatable,intent(out) :: csn(:,:)
+    character(10)                        :: type
+    integer(kind=4),allocatable          :: prop(:)
+
+
+    prop = get_csn_indices(n_elements,elements,nIons)
+    nProp = size(prop)
+
+    nSEDgroups = get_nSEDgroups(repository,snapnum)
+    allocate(csn(nSEDgroups,nProp)) ; csn = 0d0
+
+    type = 'sphere'
+    call domain_constructor_from_scratch(dom, type, 5d-1, 5d-1, 5d-1, 1d3)
+
+    call ramses_read_stars_in_domain(repository,snapnum,dom,star_pos,star_age,star_mass,star_vel,star_met) ; deallocate(star_vel)
+    nstars = size(star_age)
+    print*, 'number of stars : ', nstars
+
+    !initialize SED properties
+    call init_SED_table()
+
+    allocate(star_L(nSEDgroups), star_L_tot(nSEDgroups), csn_help(nSEDgroups,nProp)) ; star_L_tot = 0d0
+
+    do i=1,nstars
+       call inp_sed_table(star_age(i)/1d3, star_met(i), 1, .false., star_L(:))    !Third variable :  1 for L[#photons/s],  3 for mean energy in bin,  2+2*Iion for mean cross-section,  Iion: 1:HI,2:HeI,3:HeII,4:CI, etc, see module_spectra.f90
+       star_L(:) = star_mass(i)*star_L(:)
+       do j=1,nProp
+          call inp_sed_table(star_age(i)/1d3, star_met(i), 2+prop(j)*2, .false., csn_help(:,j))
+       end do
+
+       do j=1,nSEDgroups
+          csn(j,:) = csn(j,:) + star_L(j)*csn_help(j,:)
+          star_L_tot(j) = star_L_tot(j) + star_L(j)
+       end do
+    end do
+
+    call deallocate_table()
+
+    print*, 'csn (nSEDgroups * nIons)'
+    do j=1,nSEDgroups
+       csn(j,:) = csn(j,:)/star_L_tot(j)
+       print*, csn(j,:)
+    end do
+    deallocate(star_age, star_met, star_mass, csn_help)
+
+
+  end subroutine compute_csn_in_box
+  !*************************************************************************
+
+
+
+  
 
   ! conformal time utils :
     function ct_conftime2time(tau)
