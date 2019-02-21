@@ -125,19 +125,91 @@ class slab(domain):
         print("|_thickness =",self.thickness)
 
 
-def overplot_limits(domain, color=None, linestyle=None, linewidth=None):
+def overplot_limits(domain, color=None, linestyle=None, linewidth=None, projection=None):
     # OVERPLOT DOMAIN LIMITS
     from matplotlib.patches import Circle, Wedge, Polygon,Rectangle
     from matplotlib.collections import PatchCollection
     patches=[]
+    if projection is None:
+        projection = 'yx'
+    
     if (domain.shape == 'sphere'):
-        wedge = Wedge((domain.center[0], domain.center[1]), domain.radius, 0., 360.)
+        if (projection == 'yx'):
+            xc = domain.center[0]
+            yc = domain.center[1]
+        elif (projection == 'xy'):
+            xc = domain.center[1]
+            yc = domain.center[0]
+        elif (projection == 'zx'):
+            xc = domain.center[0]
+            yc = domain.center[2]
+        elif (projection == 'xz'):
+            xc = domain.center[2]
+            yc = domain.center[0]
+        elif (projection == 'yz'):
+            xc = domain.center[2]
+            yc = domain.center[1]
+        elif (projection == 'zy'):
+            xc = domain.center[1]
+            yc = domain.center[2]
+        wedge = Wedge((xc, yc), domain.radius, 0., 360.)
+
     elif (domain.shape == 'shell'):
-        wedge = Wedge((domain.center[0], domain.center[1]), domain.rout, 0., 360., width=domain.rout-domain.rin)
+        if (projection == 'yx'):
+            xc = domain.center[0]
+            yc = domain.center[1]
+        elif (projection == 'xy'):
+            xc = domain.center[1]
+            yc = domain.center[0]
+        elif (projection == 'zx'):
+            xc = domain.center[0]
+            yc = domain.center[2]
+        elif (projection == 'xz'):
+            xc = domain.center[2]
+            yc = domain.center[0]
+        elif (projection == 'yz'):
+            xc = domain.center[2]
+            yc = domain.center[1]
+        elif (projection == 'zy'):
+            xc = domain.center[1]
+            yc = domain.center[2]
+        wedge = Wedge((xc,yc), domain.rout, 0., 360., width=domain.rout-domain.rin)
+
     elif (domain.shape == 'cube'):
-        wedge = Rectangle((domain.center[0]-domain.size/2.,domain.center[1]-domain.size/2.),domain.size,domain.size)
+        if (projection == 'yx'):
+            xc = domain.center[0]-domain.size/2.
+            yc = domain.center[1]-domain.size/2.
+        elif (projection == 'xy'):
+            xc = domain.center[1]-domain.size/2.
+            yc = domain.center[0]-domain.size/2.
+        elif (projection == 'zx'):
+            xc = domain.center[0]-domain.size/2.
+            yc = domain.center[2]-domain.size/2.
+        elif (projection == 'xz'):
+            xc = domain.center[2]-domain.size/2.
+            yc = domain.center[0]-domain.size/2.
+        elif (projection == 'zy'):
+            xc = domain.center[1]-domain.size/2.
+            yc = domain.center[2]-domain.size/2.
+        elif (projection == 'yz'):
+            xc = domain.center[2]-domain.size/2.
+            yc = domain.center[1]-domain.size/2.
+            wedge = Rectangle((xc,yc),domain.size,domain.size)
+
     elif (domain.shape == 'slab'):
-        wedge = Rectangle((0., domain.zc-domain.thickness/2.),1.,domain.thickness)
+        if (projection == 'yx'):
+                wedge = Rectangle((0.,0.), 1.,1.)
+        elif (projection == 'xy'):
+                wedge = Rectangle((0.,0.), 1.,1.)
+        elif (projection == 'zx'):
+            wedge = Rectangle((0., domain.zc-domain.thickness/2.),1.,domain.thickness)
+        elif (projection == 'xz'):
+            wedge = Rectangle((domain.zc-domain.thickness/2., 0.),domain.thickness, 1.)
+        elif (projection == 'zy'):
+            wedge = Rectangle((0., domain.zc-domain.thickness/2.),1.,domain.thickness)
+        elif (projection == 'yz'):
+            wedge = Rectangle((domain.zc-domain.thickness/2., 0.),domain.thickness, 1.)
+
     patches.append(wedge)
     if color is None:
         color='k'
