@@ -393,7 +393,7 @@ contains
        else if (dz < -0.5d0) then 
           dz = dz + 1.0d0
        end if
-       if(dz < dom%sl%thickness*0.5d0)domain_contains_point=.true.
+       if(abs(dz) < dom%sl%thickness*0.5d0)domain_contains_point=.true.
     end select
     return
   end function domain_contains_point
