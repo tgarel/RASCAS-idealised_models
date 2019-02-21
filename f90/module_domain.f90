@@ -387,7 +387,13 @@ contains
        end if
        
     case('slab')
-       if(abs(x(3)-dom%sl%zc) < dom%sl%thickness*0.5d0)domain_contains_point=.true.
+       dz = x(3) - dom%sl%zc
+       if (dz > 0.5d0) then 
+          dz = dz - 1.0d0
+       else if (dz < -0.5d0) then 
+          dz = dz + 1.0d0
+       end if
+       if(dz < dom%sl%thickness*0.5d0)domain_contains_point=.true.
     end select
     return
   end function domain_contains_point
@@ -492,9 +498,16 @@ contains
        end if
        
     case('slab')
-       if((x(3)+dx*0.5d0 < dom%sl%zc+dom%sl%thickness*0.5d0).and. &
-          (x(3)-dx*0.5d0 > dom%sl%zc-dom%sl%thickness*0.5d0)) domain_contains_cell=.true.
-
+       dd = x(3) - dom%sl%zc
+       xc = x(3)
+       if (dd > 0.5d0) then 
+          xc = xc -1.0d0 
+       else if (dd < -0.5d0) then 
+          xc = xc + 1.0d0
+       end if
+       if((xc+dx*0.5d0 < dom%sl%zc+dom%sl%thickness*0.5d0).and. &
+            (xc-dx*0.5d0 > dom%sl%zc-dom%sl%thickness*0.5d0)) domain_contains_cell=.true.
+       
     end select
 
     return
@@ -624,7 +637,14 @@ contains
        endif
 
     case('slab')
-       domain_distance_to_border = min((dom%sl%zc+dom%sl%thickness*0.5d0-x(3)), (x(3)-dom%sl%zc+dom%sl%thickness*0.5d0)) 
+       zc = x(3)
+       ddz = zc - dom%sl%zc
+       if (ddz > 0.5d0) then 
+          zc = zc -1.0d0 
+       else if (ddz < -0.5d0) then 
+          zc = zc + 1.0d0
+       end if
+       domain_distance_to_border = min((dom%sl%zc+dom%sl%thickness*0.5d0-zc), (zc-dom%sl%zc+dom%sl%thickness*0.5d0)) 
 
     end select
 
@@ -742,10 +762,17 @@ contains
        domain_distance_to_border_along_k = min(tin,tout)
        
     case('slab')
+       zc = x(3)
+       ddz = zc - dom%sl%zc
+       if (ddz > 0.5d0) then 
+          zc = zc - 1.0d0 
+       else if (ddz < -0.5d0) then 
+          zc = zc + 1.0d0
+       end if
        if(k(3)<0.0d0)then
-          domain_distance_to_border_along_k = (dom%sl%zc-dom%sl%thickness*0.5d0-x(3))/k(3)
+          domain_distance_to_border_along_k = (dom%sl%zc-dom%sl%thickness*0.5d0-zc)/k(3)
        else
-          domain_distance_to_border_along_k = (dom%sl%zc+dom%sl%thickness*0.5d0-x(3))/k(3)
+          domain_distance_to_border_along_k = (dom%sl%zc+dom%sl%thickness*0.5d0-zc)/k(3)
        endif
        if (domain_distance_to_border_along_k < 0.0d0)then
           print *,'ERROR: pb with distance to border along k, slab case, point outside domain...'
