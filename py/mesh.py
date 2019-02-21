@@ -74,7 +74,12 @@ class mesh(object):
             elif domainType == 'cube':
                 center = f.read_reals('d')
                 size   = f.read_reals('d')
-                self.domain    = d.cube(center,size)     
+                self.domain    = d.cube(center,size)
+            elif domainType == 'slab':
+                zc = f.read_reals('d')
+                thickness = f.read_reals('d')
+                center = zc
+                self.domain = d.slab(zc,thickness)
             else:
                 return IOError("type not defined",domainType)
             print("domain center =",center)

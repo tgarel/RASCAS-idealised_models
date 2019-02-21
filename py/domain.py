@@ -39,6 +39,14 @@ class domain(object):
             f.close()
             return cube(center,size)
 
+        elif shape=='slab':
+            line      = f.readline()
+            zc        = np.float(line)
+            line      = f.readline()
+            thickness = np.float(line)
+            f.close()
+            return slab(zc,thickness)
+        
         else:
             return IOError('bouh')
         
@@ -79,7 +87,7 @@ class cube(domain):
     def info(self):
         print("domain INFO:")
         print("|_shape  =",self.shape)
-        print("|_size   =",self.radius)
+        print("|_size   =",self.size)
         print("|_center =",self.center)
 
 class shell(domain):
@@ -103,16 +111,33 @@ class shell(domain):
         print("|_rin    =",self.rin)
         print("|_rout   =",self.rout)
 
-        
+class slab(domain):
+
+    def __init__(self, zc, thickness):
+        domain.__init__(self, 'slab')
+        self.zc = zc
+        self.thickness = thickness
+
+    def info(self):
+        print("domain INFO:")
+        print("|_shape     =",self.shape)
+        print("|_zc        =",self.zc)
+        print("|_thickness =",self.thickness)
+
+
 def overplot_limits(domain, color=None, linestyle=None, linewidth=None):
     # OVERPLOT DOMAIN LIMITS
-    from matplotlib.patches import Circle, Wedge, Polygon
+    from matplotlib.patches import Circle, Wedge, Polygon,Rectangle
     from matplotlib.collections import PatchCollection
     patches=[]
     if (domain.shape == 'sphere'):
         wedge = Wedge((domain.center[0], domain.center[1]), domain.radius, 0., 360.)
-    elif (meshDom.shape == 'shell'):
+    elif (domain.shape == 'shell'):
         wedge = Wedge((domain.center[0], domain.center[1]), domain.rout, 0., 360., width=domain.rout-domain.rin)
+    elif (domain.shape == 'cube'):
+        wedge = Rectangle((domain.center[0]-domain.size/2.,domain.center[1]-domain.size/2.),domain.size,domain.size)
+    elif (domain.shape == 'slab'):
+        wedge = Rectangle((0., domain.zc-domain.thickness/2.),1.,domain.thickness)
     patches.append(wedge)
     if color is None:
         color='k'
