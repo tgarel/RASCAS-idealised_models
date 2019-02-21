@@ -670,6 +670,8 @@ contains
     ! variables for the cube case
     real(kind=8),dimension(3) :: x_dom,xc
     integer(kind=4) :: i
+    ! variables for the slab case
+    real(kind=8) :: zc
     
     ! point x should be inside domain dom
     if(.not.(domain_contains_point(x,dom)))then
@@ -763,10 +765,10 @@ contains
        
     case('slab')
        zc = x(3)
-       ddz = zc - dom%sl%zc
-       if (ddz > 0.5d0) then 
+       dz = zc - dom%sl%zc
+       if (dz > 0.5d0) then 
           zc = zc - 1.0d0 
-       else if (ddz < -0.5d0) then 
+       else if (dz < -0.5d0) then 
           zc = zc + 1.0d0
        end if
        if(k(3)<0.0d0)then
