@@ -2830,12 +2830,15 @@ contains
 
   subroutine ramses_read_stars_in_domain(repository,snapnum,selection_domain,star_pos,star_age,star_mass,star_vel,star_met)
 
+    !$ use OMP_LIB
+
     implicit none
 
     character(1000),intent(in)             :: repository
     integer(kind=4),intent(in)             :: snapnum
     type(domain),intent(in)                :: selection_domain
     real(kind=8),allocatable,intent(inout) :: star_pos(:,:),star_age(:),star_mass(:),star_vel(:,:),star_met(:)
+    real(kind=8),allocatable               :: star_pos_all(:,:),star_age_all(:),star_mass_all(:),star_vel_all(:,:),star_met_all(:)
     integer(kind=4)                        :: nstars
     real(kind=8)                           :: omega_0,lambda_0,little_h,omega_k,H0
     real(kind=8)                           :: aexp,stime,time_cu,boxsize
@@ -2844,7 +2847,8 @@ contains
     integer(kind=4),allocatable            :: id(:)
     real(kind=8),allocatable               :: age(:),m(:),x(:,:),v(:,:),mets(:),skipy(:),imass(:)
     real(kind=8)                           :: temp(3)
-        
+    integer(kind=4)                        :: rank, iunit, ilast_all
+    
     ! get cosmological parameters to convert conformal time into ages
     call read_cosmo_params(repository,snapnum,omega_0,lambda_0,little_h)
     omega_k = 0.0d0
@@ -2853,13 +2857,13 @@ contains
     ! compute cosmic time of simulation output (Myr)
     aexp  = get_param_real(repository,snapnum,'aexp') ! exp. factor of output
     stime = ct_aexp2time(aexp) ! cosmic time
- 
+    
     ! read units
     if (.not. conversion_scales_are_known) then 
        call read_conversion_scales(repository,snapnum)
        conversion_scales_are_known = .True.
     end if
-
+    
     if(.not.cosmo)then
        ! read time
        time_cu = get_param_real(repository,snapnum,'time') ! code unit
@@ -2867,7 +2871,7 @@ contains
        boxsize = get_param_real(repository,snapnum,'boxlen') !!!* dp_scale_l  ! [ cm ]
        write(*,*)'boxlen =',boxsize
     endif
-
+    
     ! read stars 
     nstars = get_tot_nstars(repository,snapnum)
     if (nstars == 0) then
@@ -2875,21 +2879,32 @@ contains
        stop
     end if
     allocate(star_pos(3,nstars),star_age(nstars),star_mass(nstars),star_vel(3,nstars),star_met(nstars))
+    allocate(star_pos_all(3,nstars),star_age_all(nstars),star_mass_all(nstars),star_vel_all(3,nstars),star_met_all(nstars))
     ! get list of particle fields in outputs 
     call get_fields_from_header(repository,snapnum,nfields)
     ncpu  = get_ncpu(repository,snapnum)
-    ilast = 1
+    ilast_all = 1
+    
+!$OMP PARALLEL &
+!$OMP DEFAULT(private) &
+!$OMP SHARED(ncpu, repository, snapnum, ParticleFields, nfields, selection_domain) &
+!$OMP SHARED(h0, stime, dp_scale_t, dp_scale_m, dp_scale_v, boxsize, time_cu, aexp, cosmo, use_initial_mass, use_proper_time) &
+!$OMP SHARED(ilast_all, star_pos_all, star_age_all, star_vel_all, star_mass_all, star_met_all)
+!$OMP DO
     do icpu = 1, ncpu
+       rank = 1
+       !$ rank = OMP_GET_THREAD_NUM()
+       iunit=10+rank*2
        write(filename,'(a,a,i5.5,a,i5.5,a,i5.5)') trim(repository), '/output_', snapnum, '/part_', snapnum, '.out', icpu
-       open(unit=11,file=filename,status='old',form='unformatted')
-       read(11)
-       read(11)
-       read(11)npart
-       read(11)
-       read(11)
-       read(11)
-       read(11)
-       read(11)
+       open(unit=iunit,file=filename,status='old',form='unformatted')
+       read(iunit)
+       read(iunit)
+       read(iunit)npart
+       read(iunit)
+       read(iunit)
+       read(iunit)
+       read(iunit)
+       read(iunit)
        allocate(age(1:npart))
        allocate(x(1:npart,1:ndim),m(npart),imass(npart))
        allocate(id(1:npart))
@@ -2900,41 +2915,43 @@ contains
           select case(trim(ParticleFields(ifield)))
           case('pos')
              do i = 1,ndim
-                read(11) x(1:npart,i)
+                read(iunit) x(1:npart,i)
              end do
           case('vel')
              do i = 1,ndim 
-                read(11) v(1:npart,i)
+                read(iunit) v(1:npart,i)
              end do
           case('mass')
-             read(11) m(1:npart)
+             read(iunit) m(1:npart)
           case('iord') 
-             read(11) id(1:npart)
+             read(iunit) id(1:npart)
           case('level')
-             read(11)
+             read(iunit)
           case('tform')
-             read(11) age(1:npart)
+             read(iunit) age(1:npart)
           case('metal')
-             read(11) mets(1:npart)
+             read(iunit) mets(1:npart)
           case('imass')
-             read(11) imass(1:npart)
+             read(iunit) imass(1:npart)
           case default
              ! Note: we presume here that the unknown field is an 1d array of size 1:npart
-             read(11) skipy(1:npart)
+             read(iunit) skipy(1:npart)
              print*,'Error, Field unknown: ',trim(ParticleFields(ifield))
           end select
        end do
-       close(11)
+       close(iunit)
 
        if(.not.cosmo)then
           x=x/boxsize
        endif
 
        ! save star particles within selection region
+       ilast = 0
        do i = 1,npart
           if (age(i).ne.0.0d0) then ! This is a star
              temp(:) = x(i,:)
              if (domain_contains_point(temp,selection_domain)) then ! it is inside the domain
+                ilast = ilast + 1
                 if(cosmo)then
                    if (use_proper_time) then
                       star_age(ilast) = (stime - ct_proptime2time(age(i),h0))*1.d-6 ! Myr
@@ -2954,56 +2971,54 @@ contains
                 star_pos(:,ilast) = x(i,:)              ! [code units]
                 star_vel(:,ilast) = v(i,:) * dp_scale_v ! [cm/s]
                 star_met(ilast) = mets(i) 
-                ilast = ilast + 1
              end if
           end if
        end do
           
        deallocate(age,m,x,id,mets,v,skipy,imass)
-
+       
+!$OMP CRITICAL
+       if(ilast .gt. 0) then
+          star_age_all(ilast_all:ilast_all+ilast-1) = star_age(1:ilast)
+          star_mass_all(ilast_all:ilast_all+ilast-1) = star_mass(1:ilast)
+          star_pos_all(1:3,ilast_all:ilast_all+ilast-1) = star_pos(1:3,1:ilast)
+          star_vel_all(1:3,ilast_all:ilast_all+ilast-1) = star_vel(1:3,1:ilast)
+          star_met_all(ilast_all:ilast_all+ilast-1) = star_met(1:ilast)
+       endif
+       ilast_all = ilast_all + ilast
+!$OMP END CRITICAL
     end do
-
+!$OMP END PARALLEL
+    
+    deallocate(star_age,star_pos,star_vel,star_met,star_mass)
+    
     ! resize star arrays
-    nstars = ilast-1
+    nstars = ilast_all-1
+    print*,'Nstars in domain =',nstars
     ! ages
-    allocate(age(nstars))
-    age = star_age(1:nstars)
-    deallocate(star_age)
     allocate(star_age(nstars))
-    star_age = age
-    deallocate(age)
+    star_age = star_age_all(1:nstars)
+    deallocate(star_age_all)
     ! masses
-    allocate(m(nstars))
-    m = star_mass(1:nstars)
-    deallocate(star_mass)
     allocate(star_mass(nstars))
-    star_mass = m
-    deallocate(m)
+    star_mass = star_mass_all(1:nstars)
+    deallocate(star_mass_all)
     ! positions
-    allocate(x(3,nstars))
-    do i = 1,nstars 
-       x(:,i) = star_pos(:,i)
-    end do
-    deallocate(star_pos)
     allocate(star_pos(3,nstars))
-    star_pos = x
-    deallocate(x)
-    ! velocities
-    allocate(v(3,nstars))
     do i = 1,nstars 
-       v(:,i) = star_vel(:,i)
+       star_pos(:,i) = star_pos_all(:,i)
     end do
-    deallocate(star_vel)
+    deallocate(star_pos_all)
+    ! velocities
     allocate(star_vel(3,nstars))
-    star_vel = v
-    deallocate(v)
+    do i = 1,nstars 
+       star_vel(:,i) = star_vel_all(:,i)
+    end do
+    deallocate(star_vel_all)
     ! metals
-    allocate(mets(nstars))
-    mets = star_met(1:nstars)
-    deallocate(star_met)
     allocate(star_met(nstars))
-    star_met = mets
-    deallocate(mets)
+    star_met = star_met_all(1:nstars)
+    deallocate(star_met_all)
     
     return
   end subroutine ramses_read_stars_in_domain
