@@ -15,6 +15,7 @@ program CreateDomDump
 
   real(kind=8),dimension(:,:),allocatable  :: x_leaf, xleaf_sel
   real(kind=8),dimension(:,:),allocatable  :: ramses_var
+  real(kind=8),dimension(:),allocatable    :: ion_density
   integer,dimension(:),allocatable         :: leaf_level, leaflevel_sel, ind_sel
 
   integer :: noctsnap,nleaftot,nvar,nleaf_sel,i, narg, j
@@ -31,6 +32,8 @@ program CreateDomDump
   ! --- input / outputs
   character(2000)           :: DomDumpDir = 'test/'       ! directory to which outputs will be written
   character(2000)           :: repository = './'          ! ramses run directory (where all output_xxxxx dirs are).
+  character(2000)           :: ion_data_path = './'       ! directory where the files like OI_00023.out00038 are
+  character(2000)           :: ion = 'OI'                 ! Name of the ion read by CreateDomDump
   integer(kind=4)           :: snapnum = 1                ! ramses output number to use
   character(20)             :: reading_method = 'fullbox' ! strategy to read ramses data
   ! --- computational domain  
@@ -247,6 +250,48 @@ program CreateDomDump
            print '(" --> Time to read leaves in hilbert domain = ",f12.3," seconds.")',finish-intermed
         endif
 
+        if (reading_method == 'hilbert_ion') then
+           call cpu_time(intermed)
+           ! read leaf cells in domain on the fly...
+           ! define max extent of domain i
+           select case(decomp_dom_type)
+           case('sphere')
+              xmax = decomp_dom_xc(i) + decomp_dom_rsp(i)
+              xmin = decomp_dom_xc(i) - decomp_dom_rsp(i)
+              ymax = decomp_dom_yc(i) + decomp_dom_rsp(i)
+              ymin = decomp_dom_yc(i) - decomp_dom_rsp(i)
+              zmax = decomp_dom_zc(i) + decomp_dom_rsp(i)
+              zmin = decomp_dom_zc(i) - decomp_dom_rsp(i)
+           case('shell')
+              xmax = decomp_dom_xc(i) + decomp_dom_rout(i)
+              xmin = decomp_dom_xc(i) - decomp_dom_rout(i)
+              ymax = decomp_dom_yc(i) + decomp_dom_rout(i)
+              ymin = decomp_dom_yc(i) - decomp_dom_rout(i)
+              zmax = decomp_dom_zc(i) + decomp_dom_rout(i)
+              zmin = decomp_dom_zc(i) - decomp_dom_rout(i)
+           case('cube')
+              xmax = decomp_dom_xc(i) + decomp_dom_size(i)*0.5d0
+              xmin = decomp_dom_xc(i) - decomp_dom_size(i)*0.5d0
+              ymax = decomp_dom_yc(i) + decomp_dom_size(i)*0.5d0
+              ymin = decomp_dom_yc(i) - decomp_dom_size(i)*0.5d0
+              zmax = decomp_dom_zc(i) + decomp_dom_size(i)*0.5d0
+              zmin = decomp_dom_zc(i) - decomp_dom_size(i)*0.5d0
+           case('slab')
+              xmax = 1.0d0
+              xmin = 0.0d0
+              ymax = 1.0d0
+              ymin = 0.0d0
+              zmax = decomp_dom_zc(i) + decomp_dom_thickness(i)*0.5d0
+              zmin = decomp_dom_zc(i) - decomp_dom_thickness(i)*0.5d0
+           end select
+           call get_cpu_list_periodic(repository, snapnum, xmin,xmax,ymin,ymax,zmin,zmax, ncpu_read, cpu_list)
+           call read_leaf_cells_omp_ions(repository, snapnum, ion_data_path, ion, ncpu_read, cpu_list, nleaftot, nvar, x_leaf, ramses_var, leaf_level, ion_density)
+           ! Extract and convert properties of cells into gas mix properties
+           call gas_from_ramses_leaves_ions(repository,snapnum,nleaftot,nvar,ramses_var,ion_density,gas_leaves)
+           call cpu_time(finish)
+           print '(" --> Time to read leaves in hilbert domain = ",f12.3," seconds.")',finish-intermed
+        endif
+
         ! another last option would be to read all cpu files but to select cells on the fly to maintain low memory
         ! this would be for zoom-in simulations with -Dquadhilbert
         if (reading_method == 'select_onthefly') then
@@ -351,6 +396,10 @@ contains
              write(DomDumpDir,'(a)') trim(value)
           case ('repository')
              write(repository,'(a)') trim(value)
+          case ('ion_data_path')
+             write(ion_data_path,'(a)') trim(value)
+          case ('ion')
+             write(ion,'(a)') trim(value)
           case ('snapnum')
              read(value,*) snapnum
           case('decomp_dom_type')
@@ -420,6 +469,8 @@ contains
        write(unit,'(a)')             '# input / output parameters'
        write(unit,'(a,a)')           '  DomDumpDir      = ',trim(DomDumpDir)
        write(unit,'(a,a)')           '  repository      = ',trim(repository)
+       write(unit,'(a,a)')           '  ion_data_path   = ',trim(ion_data_path)
+       write(unit,'(a,a)')           '  ion             = ',trim(ion)
        write(unit,'(a,i5)')          '  snapnum         = ',snapnum
        write(unit,'(a,a)')           '  reading_method  = ',trim(reading_method)
        write(unit,'(a)')             '# computational domain parameters'
@@ -466,6 +517,8 @@ contains
        write(*,'(a)')             '# input / output parameters'
        write(*,'(a,a)')           '  DomDumpDir = ',trim(DomDumpDir)
        write(*,'(a,a)')           '  repository = ',trim(repository)
+       write(*,'(a,a)')           '  ion_data_path   = ',trim(ion_data_path)
+       write(*,'(a,a)')           '  ion             = ',trim(ion)
        write(*,'(a,i5)')          '  snapnum    = ',snapnum
        write(*,'(a,a)')           '  reading_method  = ',trim(reading_method)
        write(*,'(a)')             '# computational domain parameters'

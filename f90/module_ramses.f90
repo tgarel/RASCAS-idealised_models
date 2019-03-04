@@ -114,7 +114,7 @@ module module_ramses
   ! --------------------------------------------------------------------------
   
   
-  public :: read_leaf_cells, read_leaf_cells_omp, read_leaf_cells_in_domain
+  public :: read_leaf_cells, read_leaf_cells_omp, read_leaf_cells_omp_ions, read_leaf_cells_in_domain
   public :: get_ngridtot, ramses_get_box_size_cm, get_cpu_list, get_cpu_list_periodic, get_ncpu, get_nSEDgroups, get_xH
   public :: ramses_get_velocity_cgs, ramses_get_T_nhi_cgs, ramses_get_metallicity, ramses_get_nh_cgs, ramses_get_T_nSiII_cgs, ramses_get_T_nMgII_cgs, ramses_get_fractions, ramses_get_flux
   public :: ramses_get_T_nFeII_cgs
@@ -224,11 +224,13 @@ contains
     ileaf = 0
     iloop = 0
     ilast = 1
+    
 !$OMP PARALLEL &
 !$OMP DEFAULT(private) &
 !$OMP SHARED(iloop, ilast, xleaf_all, leaf_level_all, ramses_var_all, repository, snapnum, nvar, nleaftot, ncpu_read, cpu_list)
     do_allocs = .true.
 !$OMP DO
+       
     do k=1,ncpu_read
        icpu=cpu_list(k)
        call read_amr_hydro(repository,snapnum,icpu,&
@@ -250,7 +252,7 @@ contains
              leaf_level(ileaf) = cell_level(icell)
           end if
        end do
-
+      
 !$OMP CRITICAL
        ! only one CRITICAL zone
        !write (*, "(A, f5.2, A, A)", advance='no') &           ! Progress bar
@@ -279,6 +281,113 @@ contains
     return
 
   end subroutine read_leaf_cells_omp
+
+
+  subroutine read_leaf_cells_omp_ions(repository, snapnum, ion_data_path, ion, ncpu_read, cpu_list, &
+       & nleaftot, nvar, xleaf_all, ramses_var_all, leaf_level_all, nIon_all)
+    !$ use OMP_LIB
+    ! read all leaf cell from a selection of cpu files in a simulation snapshot.
+    ! Return standard ramses variables through ramses_var(nvar,nleaftot) and
+    ! positions (xleaf(3,nleaftot)) and levels (leaf_level).
+    implicit none 
+    
+    character(2000),intent(in)                :: repository, ion_data_path, ion
+    integer(kind=4),intent(in)                :: snapnum, ncpu_read
+    integer(kind=4),dimension(:),allocatable,intent(in) :: cpu_list
+    integer(kind=4),intent(inout)             :: nleaftot, nvar
+    real(kind=8),allocatable, intent(inout)   :: ramses_var_all(:,:), nIon_all(:)
+    real(kind=8),allocatable,intent(inout)    :: xleaf_all(:,:)
+    integer(kind=4),allocatable,intent(inout) :: leaf_level_all(:)
+    real(kind=8),allocatable                  :: ramses_var(:,:)
+    real(kind=8),allocatable                  :: xleaf(:,:), nIon(:)
+    integer(kind=4),allocatable               :: leaf_level(:)
+    integer(kind=4)                           :: k, icpu, ileaf, icell, ivar, ilast, iloop, nleaf, rank, iunit, ilast2
+    logical                                   :: do_allocs
+    character(1000)                           :: nomfich
+    
+    if(verbose)then
+       print *,' '
+       print *,'...reading RAMSES cells...'
+       print *,' '
+    endif
+
+    nleaftot = get_nleaf(repository,snapnum)  ! sets ncpu too 
+    nvar     = get_nvar(repository,snapnum)
+    allocate(ramses_var_all(nvar,nleaftot), xleaf_all(nleaftot,3), leaf_level_all(nleaftot), nIon_all(nleaftot))
+
+    if(verbose) print *,'-- read_leaf_cells_omp_ions --> nleaftot, nvar, ncpu =',nleaftot,nvar,ncpu_read
+
+    ileaf = 0
+    iloop = 0
+    ilast = 1 ; ilast2 = 1
+    !$ rank = OMP_GET_THREAD_NUM()
+    iunit=100+rank*2
+!$OMP PARALLEL &
+!$OMP DEFAULT(private) &
+!$OMP SHARED(iloop, ilast, ilast2, xleaf_all, leaf_level_all, ramses_var_all, nIon_all, repository, ion_data_path, ion, snapnum, nvar, nleaftot, ncpu_read, cpu_list)
+    do_allocs = .true.
+!$OMP DO
+    
+    
+    do k=1,ncpu_read
+       icpu=cpu_list(k)
+       call read_amr_hydro(repository,snapnum,icpu,&
+            & son,cpu_map,var,cell_x,cell_y,cell_z,cell_level,ncell)
+       
+       if (do_allocs) allocate(ramses_var(nvar,ncell), xleaf(ncell,3), leaf_level(ncell))
+       do_allocs = .false.
+       ! collect leaf cells
+       ileaf = 0
+       do icell = 1,ncell
+          if (son(icell)==0 .and. cpu_map(icell) == icpu) then
+             ileaf = ileaf + 1
+             do ivar = 1,nvar
+                ramses_var(ivar,ileaf) = var(icell,ivar)
+             end do
+             xleaf(ileaf,1)    = cell_x(icell)
+             xleaf(ileaf,2)    = cell_y(icell)
+             xleaf(ileaf,3)    = cell_z(icell)
+             leaf_level(ileaf) = cell_level(icell)
+          end if
+       end do
+
+       write(nomfich,'(a,a,a,a,i5.5,a,i5.5)') ion_data_path,'/',ion,'_',snapnum,'.out',icpu
+       open(unit=iunit,file=trim(nomfich),form='unformatted',action='read')
+       read(iunit) nleaf
+       allocate(nIon(nleaf))
+       read(iunit) nIon
+       close(iunit)
+
+!$OMP CRITICAL
+       ! only one CRITICAL zone
+       !write (*, "(A, f5.2, A, A)", advance='no') &           ! Progress bar
+       !     ' Reading leaves ',dble(iloop) / ncpu_read * 100,' % ',char(13)
+       !iloop=iloop+1
+
+       ! ileaf is now the number of leaves on local cpu
+       if(ileaf .gt. 0) then
+          ! save leaf cells to return arrays
+          xleaf_all(ilast:ilast-1+ileaf,1:3)  = xleaf(1:ileaf,1:3)
+          leaf_level_all(ilast:ilast-1+ileaf) = leaf_level(1:ileaf)
+          ramses_var_all(1:nvar,ilast:ilast-1+ileaf) = ramses_var(1:nvar,1:ileaf)
+       endif
+       nIon_all(ilast2:ilast2-1+nleaf) = nIon(1:nleaf)
+       ilast=ilast+ileaf
+       ilast2=ilast2+nleaf
+!$OMP END CRITICAL
+    end do
+!$OMP END DO
+    if(.not. do_allocs) deallocate(ramses_var,xleaf,leaf_level,nIon)
+!$OMP END PARALLEL
+    if(verbose)then
+       print*,' '
+       print*,'--> Nleaves read =',ilast-1
+       print*,' '
+    end if
+
+    return
+
+  end subroutine read_leaf_cells_omp_ions
 
 
   subroutine read_leaf_cells_in_domain(repository, snapnum, selection_domain, &

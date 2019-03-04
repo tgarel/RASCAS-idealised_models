@@ -8,6 +8,7 @@ module module_gas_composition
   use module_random
   use module_ramses
   use module_constants
+  use module_spectra
 
   implicit none
 
@@ -38,7 +39,7 @@ module module_gas_composition
   real(kind=8)             :: Zref            = 0.005       ! reference metallicity. Should be ~ 0.005 for SMC and ~ 0.01 for LMC. 
   ! possibility to overwrite ramses values with an ad-hoc model 
   logical                  :: gas_overwrite       = .false. ! if true, define cell values from following parameters
-  real(kind=8)             :: fix_nOI           = 1.0d0   ! ad-hoc SiII density (1/cm3)
+  real(kind=8)             :: fix_nOI             = 1.0d0   ! ad-hoc SiII density (1/cm3)
   real(kind=8)             :: fix_vth             = 1.0d5   ! ad-hoc thermal velocity (cm/s)
   real(kind=8)             :: fix_vel             = 0.0d0   ! ad-hoc cell velocity (cm/s) -> NEED BETTER PARAMETERIZATION for more than static... 
   real(kind=8)             :: fix_ndust           = 0.0d0
@@ -49,12 +50,12 @@ module module_gas_composition
   ! --------------------------------------------------------------------------
 
   ! public functions:
-  public :: gas_from_ramses_leaves, gas_from_list, get_gas_velocity,gas_get_scatter_flag,gas_scatter,dump_gas
+  public :: gas_from_ramses_leaves, gas_from_ramses_leaves_ions, gas_from_list, get_gas_velocity,gas_get_scatter_flag,gas_scatter,dump_gas
   public :: read_gas,gas_destructor,read_gas_composition_params,print_gas_composition_params
   !Val
   public :: gas_get_CD !, gas_get_n_CD
   !laV
-    !--PEEL--
+  !--PEEL--
   public :: gas_peeloff_weight,gas_get_tau!,gas_get_tau_gray
   !--LEEP--
 
@@ -62,8 +63,8 @@ module module_gas_composition
 
 
 contains
-  
-  !Val --
+
+    
   subroutine gas_from_list(ncells, cell_pos, cell_l, gas_leaves)
 
     integer(kind=4), intent(out)		:: ncells
@@ -100,7 +101,7 @@ contains
     read(21) gas_leaves%nOI ! to comment for test
 
     close(20) ; close(21)
-    
+
     gas_leaves%ndust = metallicity / Zref * ( nhi + f_ion*nhii )   ! [ /cm3 ] ! to comment for test
 
 
@@ -115,26 +116,226 @@ contains
   end subroutine gas_from_list
   ! --------------------------------------------------------------------------
   !--laV
-  
+
+  !Val--
+  ! --------------------------------------------------------------------------
+  subroutine gas_from_ramses_leaves_ions(repository,snapnum,nleaf,nvar,ramses_var,OI_density,g)
+
+    use module_ramses
+
+    character(2000),intent(in)                     :: repository 
+    integer(kind=4),intent(in)                     :: snapnum
+    integer(kind=4),intent(in)                     :: nleaf,nvar
+    real(kind=8),intent(in),dimension(nvar,nleaf)  :: ramses_var
+    real(kind=8),intent(in),dimension(nleaf)       :: OI_density
+    type(gas),dimension(:),allocatable,intent(out) :: g
+    integer(kind=4)                                :: ileaf
+    real(kind=8),dimension(:),allocatable          :: T, nhi, metallicity, nhii
+    real(kind=8),dimension(:,:),allocatable        :: v
+
+    ! allocate gas-element array
+    allocate(g(nleaf))
+
+    if (gas_overwrite) then
+       call overwrite_gas(g)
+    else
+       
+       box_size_cm = ramses_get_box_size_cm(repository,snapnum)
+
+       ! compute velocities in cm / s
+       write(*,*) '-- module_gas_composition_OI_1302_dust : extracting velocities from ramses '
+       allocate(v(3,nleaf))
+       call ramses_get_velocity_cgs(repository,snapnum,nleaf,nvar,ramses_var,v)
+       do ileaf = 1,nleaf
+          g(ileaf)%v = v(:,ileaf)
+       end do
+       deallocate(v)
+
+       ! get nHI and temperature from ramses
+       write(*,*) '-- module_gas_composition_OI_1302_dust : extracting nHI and T from ramses '
+       allocate(T(nleaf),nhi(nleaf))
+       call ramses_get_T_nhi_cgs(repository,snapnum,nleaf,nvar,ramses_var,T,nhi)
+       
+       ! compute thermal velocity 
+       ! ++++++ TURBULENT VELOCITY >>>>> parameter to add and use here
+       g(:)%dopwidth = sqrt((2.0d0*kb/mp/15.999)*T) ! [ cm/s ]   !15.999 is the atomic mass of oxygen
+
+       ! get ndust (pseudo dust density from Laursen, Sommer-Larsen, Andersen 2009)
+       write(*,*) '-- module_gas_composition_OI_1302_dust : extracting ndust from ramses '
+       allocate(metallicity(nleaf),nhii(nleaf))
+       call ramses_get_metallicity(nleaf,nvar,ramses_var,metallicity)
+       call ramses_get_nh_cgs(repository,snapnum,nleaf,nvar,ramses_var,nhii)
+       nhii = nhii - nhi
+       do ileaf = 1,nleaf
+          g(ileaf)%ndust = metallicity(ileaf) / Zref * ( nhi(ileaf) + f_ion*nhii(ileaf) )   ! [ /cm3 ]
+       end do
+       deallocate(metallicity,T,nhi,nhii)
+
+       g(:)%nOI = OI_density
+    end if
+
+    return
+
+
+  end subroutine gas_from_ramses_leaves_ions
+  ! --------------------------------------------------------------------------
   
   ! --------------------------------------------------------------------------
-  subroutine gas_from_ramses_leaves(repository,snapnum,nleaf,nvar,ramses_var, g)
+  subroutine gas_from_ramses_leaves(repository,snapnum,nleaf,nvar,ramses_var,g,dom)
 
-    character(2000),intent(in)        :: repository 
-    integer(kind=4),intent(in)        :: snapnum
-    integer(kind=4),intent(in)        :: nleaf,nvar
-    real(kind=8),intent(in)           :: ramses_var(nvar,nleaf)
+    ! define gas contents from ramses raw data, using Krome
+    !NOT READY YET !!!!!!
+
+    use module_ramses
+    use module_spectra
+    use module_domain
+    !use krome_main
+    !use krome_user
+    !use krome_user_commons
+
+    character(2000),intent(in)                     :: repository 
+    integer(kind=4),intent(in)                     :: snapnum
+    integer(kind=4),intent(in)                     :: nleaf,nvar
+    type(domain),optional,intent(in)               :: dom
+    real(kind=8),intent(in),dimension(nvar,nleaf)  :: ramses_var
     type(gas),dimension(:),allocatable,intent(out) :: g
+    integer(kind=4)                                :: ileaf, count, nSEDgroups, i
+    real(kind=8),dimension(:),allocatable          :: T, nhi, metallicity, nhii
+    real(kind=8),dimension(:,:),allocatable        :: v, fractions, flux, csn
+    !integer,parameter	                           :: nsp=krome_nmols, nIon=2, nPhoto=krome_nPhotoRates
+   ! real(kind=8)                                   :: x(nsp),nHe,nhi_i,nhii_i,nhei,nheii,nheiii, nO, Tgas, rates(nPhoto)
 
-    print*, 'You cannot use gas_from_ramses_leaves with module_gas_composition_OI1302'
-    print*, 'Stopping the program'
-    stop
+    ! allocate gas-element array
+    allocate(g(nleaf))
+
+    if (gas_overwrite) then
+       call overwrite_gas(g)
+    else
+
+       box_size_cm = ramses_get_box_size_cm(repository,snapnum)
+
+       ! compute velocities in cm / s
+       write(*,*) '-- module_gas_composition_OI_1302_dust : extracting velocities from ramses '
+       allocate(v(3,nleaf))
+       call ramses_get_velocity_cgs(repository,snapnum,nleaf,nvar,ramses_var,v)
+       do ileaf = 1,nleaf
+          g(ileaf)%v = v(:,ileaf)
+       end do
+       deallocate(v)
+
+       ! get nHI and temperature from ramses
+       write(*,*) '-- module_gas_composition_OI_1302_dust : extracting nHI and T from ramses '
+       allocate(T(nleaf),nhi(nleaf))
+       call ramses_get_T_nhi_cgs(repository,snapnum,nleaf,nvar,ramses_var,T,nhi)
+
+       ! compute thermal velocity 
+       ! ++++++ TURBULENT VELOCITY >>>>> parameter to add and use here
+       g(:)%dopwidth = sqrt((2.0d0*kb/15.999/mp)*T) ! [ cm/s ]
+
+       ! get ndust (pseudo dust density from Laursen, Sommer-Larsen, Andersen 2009)
+       write(*,*) '-- module_gas_composition_OI_1302_dust : extracting ndust from ramses '
+       allocate(metallicity(nleaf),nhii(nleaf))
+       call ramses_get_metallicity(nleaf,nvar,ramses_var,metallicity)
+       call ramses_get_nh_cgs(repository,snapnum,nleaf,nvar,ramses_var,nhii)
+       nhii = nhii - nhi
+       do ileaf = 1,nleaf
+          g(ileaf)%ndust = metallicity(ileaf) / Zref * ( nhi(ileaf) + f_ion*nhii(ileaf) )   ! [ /cm3 ]
+       end do
+   
+       !get H and He ionization fractions from Ramses
+       allocate(fractions(3,nleaf))
+       call ramses_get_fractions(nleaf,nvar,ramses_var,fractions)
+       !get flux from Ramses
+       nSEDgroups = get_nSEDgroups(repository,snapnum)
+       allocate(flux(nSEDgroups,nleaf))
+       call ramses_get_flux(repository,snapnum,nleaf,nvar,nSEDgroups,ramses_var,flux)
+       
+       !call compute_csn_in_domain(repository,snapnum,dom,nIon,8,csn)
+
+       ! !init krome (mandatory)
+       ! call krome_init()
+
+       ! !Loop on leaf cells to compute nOI with Krome
+       ! count = 0 !Count the number of Krome bugs
+       ! print*, 'Beginning of the loop on leaf cells !'
+
+       ! !$OMP PARALLEL &
+       ! !$OMP PRIVATE(ileaf, rates, x) &
+       ! !$OMP SHARED(nleaf, nhi, nhii, fractions, metallicity, T, flux, csn, g)
+       ! !$OMP DO
+       
+       ! do ileaf=1,nleaf
+
+       !    rates(:) = (/ (sum(flux(:,ileaf)*csn(:,i)), i=1,nIon) /)
+       !    call krome_set_photoBin_rates(rates)
+          
+       !    x(:) = (/ max(nhii(ileaf) + 7.895d-2*(nhi(ileaf)+nhii(ileaf))*fractions(2,ileaf) + 2*7.895d-2*(nhi(ileaf)+nhii(ileaf))*fractions(3,ileaf),1d-18), max(nhi(ileaf),1d-18), max(7.895d-2*(nhi(ileaf)+nhii(ileaf))*(1d0-fractions(2,ileaf)-fractions(3,ileaf)),1d-18), max(metallicity(ileaf)/0.0134*4.9d-4*(nhi(ileaf)+nhii(ileaf)),1d-18), max(nhii(ileaf),1d-18), max(7.895d-2*(nhi(ileaf)+nhii(ileaf))*fractions(2,ileaf),1d-18), 1d-18, max(7.895d-2*(nhi(ileaf)+nhii(ileaf))*fractions(3,ileaf),1d-18), 1d-18 /)
+       !    print*,'1',x(4)
+       !    call krome_equilibrium(x(:), T(ileaf))
+       !    print*,'2',x(4)
+
+       !    g(ileaf)%nOI = max(x(4),1d-18)
+
+       ! end do
+       ! !$OMP END DO
+       ! !$OMP END PARALLEL
+
+
+       ! ! do ileaf=1,nleaf
+
+       ! !    if(modulo(ileaf,1000)==0 .and. verbose) print*,ileaf, 'cells computed'
+          
+       ! !    nhi_i = nhi(ileaf) ; nhii_i = nhii(ileaf)
+       ! !    nHe = 7.895d-2*(nhi_i+nhii_i) !Assuming mass fraction of helium of 0.24
+       ! !    nhei = nHe*(1d0-fractions(2,ileaf)-fractions(3,ileaf)) ; nheii = nHe*fractions(2,ileaf) ; nheiii = nHe*fractions(3,ileaf)
+       ! !    nO = metallicity(ileaf)/0.0134*4.9d-4*(nhi_i+nhii_i) !Assuming solar abundances
+       ! !    Tgas = T(ileaf)
+          
+       ! !    rates(:) = (/ (sum(flux(:,ileaf)*csn(:,i)), i=1,nIon) /)
+       ! !    call krome_set_photoBin_rates(rates)
+          
+       ! !    !To gain time on convergence to equilibrium, distinguish cases based on temperature
+       ! !    if(Tgas > 1d6) then
+       ! !       g(ileaf)%nOI = 1d-18
+       ! !    else
+       ! !       !Here, the gas is ~dominated by OIII   
+       ! !       if(Tgas > 5.5d4) then
+       ! !          x(:) = (/ max(nhii_i + nheii + 2*nheiii + 2*nO,1d-18), max(nhi_i,1d-18), max(nhei,1d-18), 1d-18, max(nhii_i,1d-18), max(nheii,1d-18), 1d-18, max(nheiii,1d-18), max(nO,1d-18) /)
+       ! !          !Here, the gas is ~dominated by OII
+       ! !       elseif(Tgas > 1.6d4) then
+       ! !          x(:) = (/ max(nhii_i + nheii + 2*nheiii + nO,1d-18), max(nhi_i,1d-18), max(nhei,1d-18), 1d-18, max(nhii_i,1d-18), max(nheii,1d-18), max(nO,1d-18), max(nheiii,1d-18), 1d-18 /)
+       ! !          !Dominated by OI
+       ! !       else
+       ! !          x(:) = (/ max(nhii_i + nheii + 2*nheiii,1d-18), max(nhi_i,1d-18), max(nhei,1d-18), max(nO,1d-18), max(nhii_i,1d-18), max(nheii,1d-18), 1d-18, max(nheiii,1d-18), 1d-18 /)
+       ! !       end if
+             
+       ! !       call krome_equilibrium(x(:), Tgas)
+             
+       ! !       !Case where there is a bug (rare !)
+       ! !       if(max(x(4), x(7), x(9))/nO > 1.0001) then  !cell bugs,  < 1/100000,   no real solution
+       ! !          count = count + 1
+       ! !          print*, 'bug'
+       ! !          if(Tgas < 1.6d4) then
+       ! !             g(ileaf)%nOI =  nO
+       ! !          else
+       ! !             g(ileaf)%nOI =  1d-18
+       ! !          end if
+       ! !       else !no bug
+       ! !          g(ileaf)%nOI = max(x(4),1d-18)
+       ! !       end if
+       ! !    end if
+       ! !    print*,'test6'
+          
+       ! ! end do
+       ! deallocate(metallicity,nhi,nhii,fractions,flux,T)
+    end if
 
     return
 
   end subroutine gas_from_ramses_leaves
   ! --------------------------------------------------------------------------
-  
+  !--laV
+
 
   ! ! --------------------------------------------------------------------------
   ! function gas_get_tau_gray(cell_gas, distance_cm, nu_cell)
@@ -186,7 +387,7 @@ contains
 
   end function gas_get_CD
   !laV
-  
+
 
   subroutine overwrite_gas(g)
 
@@ -199,7 +400,7 @@ contains
     g(:)%v(3)     = fix_vel
     g(:)%dopwidth = fix_vth
     g(:)%ndust    = fix_ndust
-    
+
   end subroutine overwrite_gas
 
 
@@ -212,7 +413,7 @@ contains
   end function get_gas_velocity
 
 
-  
+
   function  gas_get_scatter_flag(cell_gas, distance_to_border_cm, nu_cell, tau_abs,iran)
 
     ! --------------------------------------------------------------------------
@@ -237,7 +438,7 @@ contains
     integer,intent(inout)                 :: iran 
     integer(kind=4)                       :: gas_get_scatter_flag 
     real(kind=8)                          :: tau_OI_1302, tau_dust, tau_cell, proba60, x
-    
+
     ! compute optical depths for different components of the gas.
     tau_OI_1302   = get_tau_OI_1302(cell_gas%nOI, cell_gas%dopwidth, distance_to_border_cm, nu_cell)
     tau_dust      = get_tau_dust(cell_gas%ndust, distance_to_border_cm, nu_cell)
@@ -266,10 +467,10 @@ contains
     return
 
   end function gas_get_scatter_flag
-  
-  
-  
-    !--PEEL--
+
+
+
+  !--PEEL--
   function  gas_get_tau(cell_gas, distance_cm, nu_cell)
 
     ! --------------------------------------------------------------------------
@@ -296,14 +497,14 @@ contains
     gas_get_tau = tau_OI + tau_dust
 
     return
-    
+
   end function gas_get_tau
-  
-    ! --------------------------------------------------------------------------
+
+  ! --------------------------------------------------------------------------
 
   !--LEEP--
-  
-    !--PEEL--
+
+  !--PEEL--
   function gas_peeloff_weight(flag,cell_gas,nu_ext,kin,kout,iran)
 
     integer(kind=4),intent(in)            :: flag
@@ -367,7 +568,7 @@ contains
     integer,intent(in)                             :: unit,n
     type(gas),dimension(:),allocatable,intent(out) :: g
     integer                                        :: i
-    
+
     allocate(g(1:n))
     if (gas_overwrite) then
        call overwrite_gas(g)
@@ -383,7 +584,7 @@ contains
 
   end subroutine read_gas
 
-  
+
 
   subroutine gas_destructor(g)
     type(gas),dimension(:),allocatable,intent(inout) :: g
@@ -429,12 +630,12 @@ contains
           i = scan(value,'!')
           if (i /= 0) value = trim(adjustl(value(:i-1)))
           select case (trim(name))
-          !Val---
+             !Val---
           case ('input_ramses_file')
              write(input_ramses_file,'(a)') trim(value)
           case ('Ion_file')
              write(Ion_file,'(a)') trim(value)
-          !--Val
+             !--Val
           case ('f_ion')
              read(value,*) f_ion
           case ('Zref')
@@ -459,6 +660,7 @@ contains
     call read_ramses_params(pfile)
     call read_dust_params(pfile)
     call read_OI_1302_params(pfile)
+    call read_spectra_params(pfile)
 
     return
 
@@ -495,6 +697,7 @@ contains
        write(unit,'(a)')             ' '
        call print_dust_params
        call print_OI_1302_params(unit)
+       call print_spectra_params(unit)
     else
        write(*,'(a,a,a)') '[gas_composition]'
        !Val---
@@ -514,7 +717,8 @@ contains
        call print_ramses_params
        write(*,'(a)')             ' '
        call print_dust_params
-	   call print_OI_1302_params()
+       call print_OI_1302_params()
+       call print_spectra_params
     end if
 
     return
