@@ -114,6 +114,7 @@ module module_ramses
   public :: ramses_read_stars_in_domain
   public :: read_ramses_params, print_ramses_params, dump_ramses_info
   public :: ramses_get_LyaEmiss_HIDopwidth,ramses_get_cooling_time
+  public :: ramses_get_HaEmiss_HIDopwidth
   
   !==================================================================================
 contains
@@ -1351,6 +1352,75 @@ contains
     end if
     
   end subroutine ramses_get_LyaEmiss_HIDopwidth
+
+
+  subroutine ramses_get_HaEmiss_HIDopwidth(repository,snapnum,nleaf,nvar,var,HaEm,HIDopwidth,sample)
+
+    implicit none
+
+    character(1000),intent(in)  :: repository
+    integer(kind=4),intent(in)  :: snapnum
+    integer(kind=4),intent(in) :: nleaf,nvar
+    real(kind=8),intent(in)    :: var(nvar,nleaf)
+    real(kind=8),intent(inout) :: HaEm(:),HIDopwidth(:)
+    integer(kind=4),intent(in),optional :: sample(:)
+
+    integer(kind=4)            :: n,j,i
+    real(kind=8),parameter     :: e_lya = planck * clight / (1215.67d0/cmtoA) ! [erg] energy of a Lya photon (consistent with HI_model)
+    real(kind=8)               :: xhii,xheii,xheiii,nh,nhi,nhii,n_e,mu,TK,Ta,prob_case_B,alpha_B,collExrate_HI,lambda,nhe,LyaEm
+    logical                    :: subsample
+    
+    ! get conversion factors if necessary
+    if (.not. conversion_scales_are_known) then 
+       call read_conversion_scales(repository,snapnum)
+       conversion_scales_are_known = .True.
+    end if
+
+    if (present(sample)) then
+       n = size(sample)
+       subsample = .true.
+    else
+       n = nleaf
+       subsample = .false. 
+    end if
+
+    if(ramses_rt)then
+       do j=1,n
+
+          if (subsample) then
+             i = sample(j)
+          else
+             i = j
+          end if
+
+          xhii   = var(ihii,i)
+          xheii  = var(iheii,i)
+          xheiii = var(iheiii,i)
+          nh     = var(1,i) * dp_scale_nh
+          nhe    = 0.25*nh*(1.0d0-XH)/XH
+          nhii   = nh * xhii
+          nhi    = nh * (1.0d0 - xhii)
+          n_e    = nHII + nHe * (xHeII + 2.0d0*xHeIII)
+          mu     = 1./( XH*(1.+xHII) + 0.25d0*(1.0d0-XH)*(1.+xHeII+2.*xHeIII) )
+          TK     = var(itemp,i)/var(1,i)*mu*dp_scale_T2
+          HIDopwidth(j) = sqrt((2.0d0*kb/mp)*TK)
+          ! Cantalupo+(08)
+          Ta = max(TK,100.0) ! no extrapolation..
+          prob_case_B = 0.686 - 0.106*log10(Ta/1e4) - 0.009*(Ta/1e4)**(-0.44)
+          ! Hui & Gnedin (1997)
+          lambda = 315614.d0/TK
+          alpha_B = 2.753d-14*(lambda**(1.5))/(1+(lambda/2.74)**0.407)**(2.242) ![cm3/s]
+          LyaEm = prob_case_B * alpha_B * n_e * nhii * e_lya ! [erg/cm3/s]
+          ! convert Lya to Ha using a simple ratio ... 
+          HaEm(j) = LyaEm / 8.7 
+          
+       end do
+    else
+       print*,'Not implemented ... '
+       stop
+    end if
+    
+  end subroutine ramses_get_HaEmiss_HIDopwidth
 
   
   subroutine ramses_get_T_nSiII_cgs(repository,snapnum,nleaf,nvar,ramses_var,temp,nSiII)

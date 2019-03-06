@@ -42,8 +42,8 @@ endif
 ifeq ($(SYSTYPE),"mac")
 #F90         = gfortran-mp-4.7 -ffree-line-length-none -ffree-form  ###-fopenmp
 F90         = gfortran-mp-6 -ffree-line-length-none -ffree-form -fopenmp
-#FFLAGS      = -g -fcheck=all -ftrapv -fbacktrace -Wall -fbounds-check
-FFLAGS      = -O2
+FFLAGS      = -g -fcheck=all -ftrapv -fbacktrace -Wall -fbounds-check
+#FFLAGS      = -O2
 FFLAGS += $(OPTIONS)
 LDFLAGS     = 
 endif
@@ -128,6 +128,9 @@ PhotonsFromStars: $(OBJSPHO) PhotonsFromStars.o
 
 LyaPhotonsFromGas: $(LYAFG)  LyaPhotonsFromGas.o
 	$(F90) $(FFLAGS) $(LDFLAGS) -o $@ $(LYAFG)  LyaPhotonsFromGas.o
+
+HaPhotonsFromGas: $(LYAFG)  HaPhotonsFromGas.o
+	$(F90) $(FFLAGS) $(LDFLAGS) -o $@ $(LYAFG)  HaPhotonsFromGas.o
 
 CreateDomDump: $(OBJSDOM) CreateDomDump.o
 	$(F90) $(FFLAGS) $(LDFLAGS) -o $@ $(OBJSDOM) CreateDomDump.o
