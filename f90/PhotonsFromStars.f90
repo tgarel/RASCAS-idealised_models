@@ -17,7 +17,7 @@ program PhotonsFromStars
   real(kind=8),allocatable :: star_pos(:,:),star_age(:),star_mass(:),star_vel(:,:),star_met(:)
   integer(kind=4) :: iran,i,nstars,narg
   !!integer(kind=8) :: ilast,j
-  real(kind=8)    :: scalar,r1,r2
+  real(kind=8)    :: scalar,r1,r2, r3
   ! for analysis purposes (a posteriori weighting) we want to save the emitter-frame
   ! frequency (here the freq. in the emitting stellar particle's frame)
   real(kind=8),allocatable    :: nu_star(:)
@@ -33,7 +33,7 @@ program PhotonsFromStars
   type(SSPgrid) :: NdotGrid
   real(kind=8),allocatable :: low_prob(:), low_prob2(:), x_em(:,:), k_em(:,:), nu_em(:), Ndot(:), NdotStar(:,:), sweight(:)
   integer(kind=4) :: ilow, iup, imid, iphot, iseed, ilow2, iup2, imid2
-  real(kind=8) :: lambda0, mid, k(3), lambdamin, lambdamax, mid2
+  real(kind=8) :: lambda0, mid, k(3), lambdamin, lambdamax, mid2, nu, spec_gauss_nu0
 
   
   ! --------------------------------------------------------------------------
@@ -56,7 +56,7 @@ program PhotonsFromStars
   ! --- define how star particles emit (i.e. the star-particle-frame spectral shape)
   ! Four options here :
   ! - spec_type=='Mono'   : we emit all photons at the same wavelength (in star's frame)
-  ! - spec_type=='LyaGauss'  : we sample a Gaussian distribution ...
+  ! - spec_type=='Gauss'  : we sample a Gaussian distribution ...
   ! - spec_type=='PowLaw' : we sample a power-law continuum between two wavelengths. 
   ! - spec_type=='Table'  : we sample a tabulated spectrum. 
   character(30)             :: spec_type = 'Mono'           ! May be 'Mono', 'Gauss', 'PowLaw' ...   
@@ -64,7 +64,7 @@ program PhotonsFromStars
   ! parameters for spec_type == 'Mono'
   real(kind=8)              :: spec_mono_lambda0 = 1216.                ! emission frequency [Hz] -> computed from weight_l0_Ang
   ! parameters for spec_type == 'Gauss'
-  real(kind=8)              :: spec_gauss_nu0                ! central frequency [Hz] -> computed from weight_l0_Ang
+  real(kind=8)              :: spec_gauss_lambda0 = 1216.                ! central frequency [Hz] -> computed from weight_l0_Ang
   real(kind=8)              :: spec_gauss_sigma_kms = 10.0   ! line width in velocity [km/s] -> read from file. 
   ! parameters for spec_type == 'PowLaw' : a power-law fit to continuum of each star particle, vs. its age and met.
   real(kind=8)              :: spec_powlaw_lmin_Ang = 1120.  ! min wavelength to sample (should be in the range where fit was made ...)
@@ -143,12 +143,101 @@ program PhotonsFromStars
   call init_ssp_lib(spec_SSPdir)
 
   select case(trim(spec_type))
+!--------------------------------------------------------------------------------------
+!--------------------------------------------------------------------------------------
   case('PowLaw')
      print*,'Not implemented yet...'
      stop
-  case('LyaGauss')
-     print*,'Not implemented yet...'
-     stop
+
+     ! steps
+     ! 1/ linear fit -> get grid of (Fo,Beta) = f(age,met)
+     ! 2/ integrate this to get NdotGrid
+     ! 3/ age-Z interpolation to get NdotStar
+     ! 4/ draw emitting stars from the weights
+     ! 5/ draw frequency?
+     
+     
+!--------------------------------------------------------------------------------------
+!--------------------------------------------------------------------------------------
+  case('Gauss')
+
+     lambda0 = spec_gauss_lambda0
+     call ssp_lib_extract_subset(lambda0, lambda0, NdotGrid)  ! charge les SEDs si pas deja fait, et extrait les flux a weight_l0_Ang
+     ! -> def le nb phots (at weight_l0_Ang) per sec, per solar mass -> dans un objet class_twod_table (nAge, nZ, 1)
+     print*,spec_gauss_lambda0, lambda0
+     spec_gauss_nu0 = clight / (lambda0*1e-8) ! Hz
+     
+     ! compute the nb of photons per second emitted by each star particle
+     allocate(Ndot(1))
+     nstars = size(star_age)
+     allocate(sweight(nstars))
+     do i = 1,nstars
+        !print*,i,star_age(i), star_age(i)/1.e3, log10(star_met(i))
+        call ssp_lib_interpolate(NdotGrid, star_age(i)/1.e3, log10(star_met(i)), Ndot)    ! Ndot number of photons / s / A / Msun
+        sweight(i) = Ndot(1) * star_mass(i) / msun  ! M_sun
+        !if (sed_age(iage) < tdelay_SN) then ! SNs go off at 10Myr ... 
+        !   sweight(i) = sweight(i)/recyc_frac  !! correct for recycling ... we want the mass of stars formed ...
+        !end if
+     end do
+     ! compute the total number of photons emitted per second by the sources
+     total_flux = 0.0d0
+     do i=1,nstars
+        total_flux = total_flux + sweight(i)
+     end do
+     if (verbose) write(*,*) '> Total luminosity (nb of photons per second): ',total_flux
+  
+     ! calcul pour chaque particule la luminosite inferieure de son bin dans la distribution cumulative.. 
+     allocate(low_prob(nstars+1))
+     low_prob(1) = 0.0d0
+     do i = 2,nstars
+        low_prob(i) = low_prob(i-1) + sweight(i-1)
+     end do
+     low_prob = low_prob / low_prob(nstars)
+     low_prob(nstars+1) = 1.1  ! higher than upper limit 
+
+     ! for each photon packet, draw the emitting star
+     allocate(x_em(1:3,1:nphot), k_em(1:3,1:nphot), nu_em(1:nphot), nu_star(1:nphot))
+
+     iseed = ranseed
+     do iphot = 1,nphot
+        r1 = ran3(iseed)
+        ! binary search
+        iup = nstars
+        ilow = 1
+        do while (iup - ilow > 1)
+           imid = (iup+ilow)/2
+           mid  = low_prob(imid)
+           if (r1 >= mid) then 
+              ilow = imid
+           else
+              iup = imid
+           end if
+        end do
+        ! check
+        if (.not. (r1 >= low_prob(ilow) .and. r1 < low_prob(iup) )) then
+           print*,'hi Harley ;) '
+        end if
+        ! draw photon's ICs from star ilow
+        ! give photon the position of the star
+        !print*,iphot,ilow
+        x_em(:,iphot) = star_pos(:,ilow) 
+        ! draw propagation direction
+        call isotropic_direction(k,iseed)
+        k_em(:,iphot) = k
+        ! compute frequency in star frame
+        r2 = ran3(iran)
+        r3 = ran3(iran)
+        nu = sqrt(-2.*log(r3)) * cos(2.0d0*pi*r3)
+        nu = (spec_gauss_sigma_kms * 1d5 * spec_gauss_nu0 / clight) * nu + spec_gauss_nu0
+        nu_star(iphot) =  nu    ! clight / (lambda0*1e-8)  ! Hz
+        ! compute frequency in external frame 
+        scalar = k(1)*star_vel(1,ilow) + k(2)*star_vel(2,ilow) + k(3)*star_vel(3,ilow)
+        nu_em(iphot)  = nu_star(iphot) / (1d0 - scalar/clight)
+     end do
+
+     
+!--------------------------------------------------------------------------------------
+!--------------------------------------------------------------------------------------
   case('Table')
      !print*,'Not implemented yet...'
      !stop
@@ -251,7 +340,8 @@ program PhotonsFromStars
      enddo
      
 
-
+! --------------------------------------------------------------------------------------
+! --------------------------------------------------------------------------------------
   case('Mono')
      
      lambda0 = spec_mono_lambda0
@@ -277,9 +367,7 @@ program PhotonsFromStars
         total_flux = total_flux + sweight(i)
      end do
      if (verbose) write(*,*) '> Total luminosity (nb of photons per second): ',total_flux
-  
-     ! --------------------------------------------------------------------------------------
-     ! --------------------------------------------------------------------------------------
+     
      ! calcul pour chaque particule la luminosite inferieure de son bin dans la distribution cumulative.. 
      allocate(low_prob(nstars+1))
      low_prob(1) = 0.0d0
@@ -320,14 +408,14 @@ program PhotonsFromStars
         k_em(:,iphot) = k
         ! compute frequency in star frame
         nu_star(iphot) =  clight / (lambda0*1e-8)  ! Hz
-        ! compute frequency in exteral frame 
+        ! compute frequency in external frame 
         scalar = k(1)*star_vel(1,ilow) + k(2)*star_vel(2,ilow) + k(3)*star_vel(3,ilow)
         nu_em(iphot)  = nu_star(iphot) / (1d0 - scalar/clight)
      end do
 
   end select
-  
-
+!--------------------------------------------------------------------------------------
+!--------------------------------------------------------------------------------------
 
 
   ! --------------------------------------------------------------------------------------
