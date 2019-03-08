@@ -161,6 +161,7 @@ program PhotonsFromStars
 !--------------------------------------------------------------------------------------
   case('Gauss')
 
+     print*,'Gauss spectral type'
      lambda0 = spec_gauss_lambda0
      call ssp_lib_extract_subset(lambda0, lambda0, NdotGrid)  ! charge les SEDs si pas deja fait, et extrait les flux a weight_l0_Ang
      ! -> def le nb phots (at weight_l0_Ang) per sec, per solar mass -> dans un objet class_twod_table (nAge, nZ, 1)
@@ -225,9 +226,10 @@ program PhotonsFromStars
         call isotropic_direction(k,iseed)
         k_em(:,iphot) = k
         ! compute frequency in star frame
+        ! using the Box-Muller method
         r2 = ran3(iran)
         r3 = ran3(iran)
-        nu = sqrt(-2.*log(r3)) * cos(2.0d0*pi*r3)
+        nu = sqrt(-2.*log(r2)) * cos(2.0d0*pi*r3)
         nu = (spec_gauss_sigma_kms * 1d5 * spec_gauss_nu0 / clight) * nu + spec_gauss_nu0
         nu_star(iphot) =  nu    ! clight / (lambda0*1e-8)  ! Hz
         ! compute frequency in external frame 
@@ -242,6 +244,7 @@ program PhotonsFromStars
      !print*,'Not implemented yet...'
      !stop
 
+     print*,'Table spectral type'
      lambdamin = spec_table_lmin_Ang
      lambdamax = spec_table_lmax_Ang
      call ssp_lib_extract_subset(lambdamin,lambdamax,NdotGrid) ! extract the SSP age-met grid of Nphot in lambda range [lambdamin;lambdamax]
@@ -344,6 +347,7 @@ program PhotonsFromStars
 ! --------------------------------------------------------------------------------------
   case('Mono')
      
+     print*,'Monochromatic spectral type'
      lambda0 = spec_mono_lambda0
      call ssp_lib_extract_subset(lambda0, lambda0, NdotGrid)  ! charge les SEDs si pas deja fait, et extrait les flux a weight_l0_Ang
      ! -> def le nb phots (at weight_l0_Ang) per sec, per solar mass -> dans un objet class_twod_table (nAge, nZ, 1)
