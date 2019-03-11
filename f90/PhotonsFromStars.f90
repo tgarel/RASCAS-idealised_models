@@ -60,7 +60,7 @@ program PhotonsFromStars
   ! - spec_type=='PowLaw' : we sample a power-law continuum between two wavelengths. 
   ! - spec_type=='Table'  : we sample a tabulated spectrum. 
   character(30)             :: spec_type = 'Mono'           ! May be 'Mono', 'Gauss', 'PowLaw' ...   
-  character(1000)           :: spec_SSPdir = '/Users/leo/ASTROPHYSICS/ASTRO/SSPlibs/'
+  character(1000)           :: spec_SSPdir = '/Users/leo/ASTROPHYSICS/ASTRO/SSPlibs/' ! the SSP lib directory
   ! parameters for spec_type == 'Mono'
   real(kind=8)              :: spec_mono_lambda0 = 1216.                ! emission frequency [Hz] -> computed from weight_l0_Ang
   ! parameters for spec_type == 'Gauss'
@@ -74,7 +74,7 @@ program PhotonsFromStars
   real(kind=8)              :: spec_table_lmax_Ang = 1320.  ! max ...
 
   ! --- parameters for star particles/feedback in simulation
-  real(kind=8)              :: tdelay_SN = 10.        ![Myr] SNs go off at tdelay_SN ... 
+  real(kind=8)              :: tdelay_SN = 10.        ! [Myr] SNs go off at tdelay_SN ... 
   real(kind=8)              :: recyc_frac = 0.8       ! correct for recycling ... we want the mass of stars formed ...
   
   ! --- miscelaneous
@@ -374,11 +374,11 @@ contains
   subroutine compute_cum_low_prob(n, weight, low_prob, cumtot)
     
     implicit none
-    integer(kind=4), intent(in) :: n
-    real(kind=8), dimension(n), intent(in) :: weight
+    integer(kind=4), intent(in)                          :: n
+    real(kind=8), dimension(n), intent(in)               :: weight
     real(kind=8), dimension(:), allocatable, intent(out) :: low_prob
-    real(kind=8), intent(out) :: cumtot
-    integer(kind=4) :: i
+    real(kind=8), intent(out)                            :: cumtot
+    integer(kind=4)                                      :: i
     
     ! compute the total number of photons emitted per second by the sources
     cumtot = 0.0d0
@@ -402,12 +402,12 @@ contains
   subroutine binary_search(iseed, nbin, low_prob, ilow)
     
     implicit none
-    integer(kind=4), intent(inout) :: iseed
-    integer(kind=4), intent(in)    :: nbin
+    integer(kind=4), intent(inout)              :: iseed
+    integer(kind=4), intent(in)                 :: nbin
     real(kind=8), intent(in), dimension(nbin+1) :: low_prob
-    integer(kind=4), intent(out) :: ilow
-    integer(kind=4) :: iup, imid
-    real(kind=8) :: mid
+    integer(kind=4), intent(out)                :: ilow
+    integer(kind=4)                             :: iup, imid
+    real(kind=8)                                :: mid
     
     r1 = ran3(iseed)
     ! binary search
@@ -440,7 +440,7 @@ contains
     character(*),intent(in) :: pfile
     character(1000) :: line,name,value
     integer(kind=4) :: err,i
-    logical         :: section_present,ok
+    logical         :: section_present
     
     section_present = .false.
     open(unit=10,file=trim(pfile),status='old',form='formatted')
@@ -488,12 +488,22 @@ contains
              read(value,*) star_dom_thickness
           case ('spec_type')
              write(spec_type,'(a)') trim(value)
+          case ('spec_SSPdir')
+             write(spec_SSPdir,'(a)') trim(value)
+          case ('spec_mono_lambda0')
+             read(value,*) spec_mono_lambda0
+          case ('spec_gauss_lambda0')
+             read(value,*) spec_gauss_lambda0
           case ('spec_gauss_sigma_kms')
              read(value,*) spec_gauss_sigma_kms
           case ('spec_powlaw_lmin_Ang')
              read(value,*) spec_powlaw_lmin_Ang
           case ('spec_powlaw_lmax_Ang')
              read(value,*) spec_powlaw_lmax_Ang
+          case ('spec_table_lmin_Ang')
+             read(value,*) spec_table_lmin_Ang
+          case ('spec_table_lmax_Ang')
+             read(value,*) spec_table_lmax_Ang
           case ('nphot')
              read(value,*) nphot
           case ('ranseed')
@@ -506,17 +516,8 @@ contains
        end do
     end if
     close(10)
-
-    ! test for compatibility of parameters
-    !ok = (weight_type=='Mono' .and. spec_type=='Mono') .or. (weight_type=='Mono' .and. spec_type=='Gauss')
-    !ok = ok .or. (weight_type=='PowLaw' .and. spec_type=='PowLaw') .or. (weight_type=='Table' .and. spec_type=='Table')
-    !if (.not. ok) then
-    !   write(*,'(a,a,a,a)') '> ERROR: incompatible options : weight_type==',trim(weight_type),' and spec_type==',trim(spec_type)
-    !   stop
-    !end if
-
+    
     call read_ramses_params(pfile)
-
     
     return
 
@@ -554,12 +555,19 @@ contains
        end select
        write(unit,'(a)')             '# Spectral shape '
        write(unit,'(a,a)')           '  spec_type               = ',trim(spec_type)
+       write(unit,'(a,a)')           '  spec_SSPdir             = ',trim(spec_SSPdir)
        select case(trim(spec_type))
+       case('Mono')
+          write(unit,'(a,ES10.3,a)')     '  spec_mono_lambda0   = ',spec_mono_lambda0, ' ! [A]'
        case('Gauss')
-          write(unit,'(a,ES10.3,a)')     '  spec_gauss_sigma_kms = ',spec_gauss_sigma_kms, ' ! [km/s]'
+          write(unit,'(a,ES10.3,a)')     '  spec_gauss_lambda0    = ',spec_gauss_lambda0,   ' ! [A]'
+          write(unit,'(a,ES10.3,a)')     '  spec_gauss_sigma_kms  = ',spec_gauss_sigma_kms, ' ! [km/s]'
        case('PowLaw')
           write(unit,'(a,es10.3,a)')     '  spec_powlaw_lmin_Ang    = ',spec_powlaw_lmin_Ang, ' ! [A]' 
           write(unit,'(a,es10.3,a)')     '  spec_powlaw_lmax_Ang    = ',spec_powlaw_lmax_Ang, ' ! [A]'
+       case('Table')
+          write(unit,'(a,es10.3,a)')     '  spec_table_lmin_Ang    = ',spec_table_lmin_Ang, ' ! [A]' 
+          write(unit,'(a,es10.3,a)')     '  spec_table_lmax_Ang    = ',spec_table_lmax_Ang, ' ! [A]'
        end select
        write(unit,'(a)')             '# miscelaneous parameters'
        write(unit,'(a,i8)')          '  nphot           = ',nphot
@@ -589,12 +597,19 @@ contains
        end select
        write(*,'(a)')             '# Spectral shape '
        write(*,'(a,a)')           '  spec_type               = ',trim(spec_type)
+       write(*,'(a,a)')           '  spec_SSPdir             = ',trim(spec_SSPdir)
        select case(trim(spec_type))
+       case('Mono')
+          write(*,'(a,ES10.3,a)')     '  spec_mono_lambda0   = ',spec_mono_lambda0, ' ! [A]'
        case('Gauss')
-          write(*,'(a,es10.3,a)')     '  spec_gauss_sigma_kms = ',spec_gauss_sigma_kms, ' ! [km/s]'
+          write(*,'(a,ES10.3,a)')     '  spec_gauss_lambda0    = ',spec_gauss_lambda0, ' ! [A]'
+          write(*,'(a,es10.3,a)')     '  spec_gauss_sigma_kms  = ',spec_gauss_sigma_kms, ' ! [km/s]'
        case('PowLaw')
           write(*,'(a,es10.3,a)')     '  spec_powlaw_lmin_Ang    = ',spec_powlaw_lmin_Ang, ' ! [A]' 
           write(*,'(a,es10.3,a)')     '  spec_powlaw_lmax_Ang    = ',spec_powlaw_lmax_Ang, ' ! [A]'
+       case('Table')
+          write(*,'(a,es10.3,a)')     '  spec_table_lmin_Ang    = ',spec_table_lmin_Ang, ' ! [A]' 
+          write(*,'(a,es10.3,a)')     '  spec_table_lmax_Ang    = ',spec_table_lmax_Ang, ' ! [A]'
        end select
        write(*,'(a)')             '# miscelaneous parameters'
        write(*,'(a,i8)')          '  nphot           = ',nphot
