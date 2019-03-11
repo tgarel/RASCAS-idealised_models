@@ -32,8 +32,8 @@ program PhotonsFromStars
 
   type(SSPgrid) :: NdotGrid
   real(kind=8),allocatable :: low_prob(:), low_prob2(:), x_em(:,:), k_em(:,:), nu_em(:), Ndot(:), NdotStar(:,:), sweight(:)
-  integer(kind=4) :: ilow, iup, imid, iphot, iseed, ilow2, iup2, imid2
-  real(kind=8) :: lambda0, mid, k(3), lambdamin, lambdamax, mid2, nu, spec_gauss_nu0
+  integer(kind=4) :: ilow, iphot, iseed, ilow2
+  real(kind=8) :: lambda0, k(3), lambdamin, lambdamax, nu, spec_gauss_nu0
 
   
   ! --------------------------------------------------------------------------
@@ -180,44 +180,19 @@ program PhotonsFromStars
         !   sweight(i) = sweight(i)/recyc_frac  !! correct for recycling ... we want the mass of stars formed ...
         !end if
      end do
-     ! compute the total number of photons emitted per second by the sources
-     total_flux = 0.0d0
-     do i=1,nstars
-        total_flux = total_flux + sweight(i)
-     end do
-     if (verbose) write(*,*) '> Total luminosity (nb of photons per second): ',total_flux
-  
+
      ! calcul pour chaque particule la luminosite inferieure de son bin dans la distribution cumulative.. 
-     allocate(low_prob(nstars+1))
-     low_prob(1) = 0.0d0
-     do i = 2,nstars
-        low_prob(i) = low_prob(i-1) + sweight(i-1)
-     end do
-     low_prob = low_prob / low_prob(nstars)
-     low_prob(nstars+1) = 1.1  ! higher than upper limit 
+     ! compute the total number of photons emitted per second by the sources
+     call compute_cum_low_prob(nstars, sweight, low_prob, total_flux)
+     if (verbose) write(*,*) '> Total luminosity (nb of photons per second): ',total_flux
 
      ! for each photon packet, draw the emitting star
      allocate(x_em(1:3,1:nphot), k_em(1:3,1:nphot), nu_em(1:nphot), nu_star(1:nphot))
 
      iseed = ranseed
      do iphot = 1,nphot
-        r1 = ran3(iseed)
-        ! binary search
-        iup = nstars
-        ilow = 1
-        do while (iup - ilow > 1)
-           imid = (iup+ilow)/2
-           mid  = low_prob(imid)
-           if (r1 >= mid) then 
-              ilow = imid
-           else
-              iup = imid
-           end if
-        end do
-        ! check
-        if (.not. (r1 >= low_prob(ilow) .and. r1 < low_prob(iup) )) then
-           print*,'hi Harley ;) '
-        end if
+
+        call binary_search(iseed, nstars, low_prob, ilow)
         ! draw photon's ICs from star ilow
         ! give photon the position of the star
         !print*,iphot,ilow
@@ -263,44 +238,20 @@ program PhotonsFromStars
         ! integrate nphotPerSecPerMsun(nlambda)
         sweight(i) = trapz1(NdotGrid%lambda, Ndot, NdotGrid%nlambda)
      enddo
-     ! compute the total number of photons emitted per second by the sources
-     total_flux = 0.0d0
-     do i=1,nstars
-        total_flux = total_flux + sweight(i)
-     end do
-     if (verbose) write(*,*) '> Total luminosity (nb of photons per second): ',total_flux
      
      ! calcul pour chaque particule la luminosite inferieure de son bin dans la distribution cumulative.. 
-     allocate(low_prob(nstars+1))
-     low_prob(1) = 0.0d0
-     do i = 2,nstars
-        low_prob(i) = low_prob(i-1) + sweight(i-1)
-     end do
-     low_prob = low_prob / low_prob(nstars)
-     low_prob(nstars+1) = 1.1  ! higher than upper limit 
-
+     ! compute the total number of photons emitted per second by the sources
+     call compute_cum_low_prob(nstars, sweight, low_prob, total_flux)
+     if (verbose) write(*,*) '> Total luminosity (nb of photons per second): ',total_flux
+     
      ! for each photon packet, draw the emitting star
      allocate(x_em(1:3,1:nphot), k_em(1:3,1:nphot), nu_em(1:nphot), nu_star(1:nphot))
      allocate(low_prob2(NdotGrid%nlambda+1))
      iseed = ranseed
      do iphot = 1,nphot
-        r1 = ran3(iseed)
-        ! binary search
-        iup = nstars
-        ilow = 1
-        do while (iup - ilow > 1)
-           imid = (iup+ilow)/2
-           mid  = low_prob(imid)
-           if (r1 >= mid) then 
-              ilow = imid
-           else
-              iup = imid
-           end if
-        end do
-        ! check
-        if (.not. (r1 >= low_prob(ilow) .and. r1 < low_prob(iup) )) then
-           print*,'hi Harley ;) '
-        end if
+
+        call binary_search(iseed, nstars, low_prob, ilow)
+
         ! photon emitted from star ilow
         ! give photon the position of the star
         !print*,iphot,ilow
@@ -316,23 +267,8 @@ program PhotonsFromStars
         end do
         low_prob2 = low_prob2 / low_prob2(NdotGrid%nlambda)
         low_prob2(NdotGrid%nlambda+1) = 1.1  ! higher than upper limit 
-        r2 = ran3(iseed)
-        ! binary search
-        iup2 = NdotGrid%nlambda
-        ilow2 = 1
-        do while (iup2 - ilow2 > 1)
-           imid2 = (iup2+ilow2)/2
-           mid2  = low_prob2(imid2)
-           if (r2 >= mid2) then 
-              ilow2 = imid2
-           else
-              iup2 = imid2
-           end if
-        end do
-        ! check
-        if (.not. (r2 >= low_prob2(ilow2) .and. r2 < low_prob2(iup2) )) then
-           print*,'hi Harley ;) '
-        end if
+
+        call binary_search(iseed, NdotGrid%nlambda, low_prob2, ilow2)
         ! photon emitted in the bin ilow2;ilow2+1
         ! get lamba_em
         ! TO DO
@@ -359,51 +295,27 @@ program PhotonsFromStars
      allocate(sweight(nstars))
      do i = 1,nstars
         !print*,i,star_age(i), star_age(i)/1.e3, log10(star_met(i))
-        call ssp_lib_interpolate(NdotGrid, star_age(i)/1.e3, log10(star_met(i)), Ndot)    ! Ndot number of photons / s / A / Msun
-        sweight(i) = Ndot(1) * star_mass(i) / msun  ! M_sun
+        call ssp_lib_interpolate(NdotGrid, star_age(i)/1.e3, log10(star_met(i)), Ndot) ! Ndot number of photons / s / A / Msun
+        sweight(i) = Ndot(1) * star_mass(i) / msun  ! number of photons / s / A
         !if (sed_age(iage) < tdelay_SN) then ! SNs go off at 10Myr ... 
         !   sweight(i) = sweight(i)/recyc_frac  !! correct for recycling ... we want the mass of stars formed ...
         !end if
      end do
-     ! compute the total number of photons emitted per second by the sources
-     total_flux = 0.0d0
-     do i=1,nstars
-        total_flux = total_flux + sweight(i)
-     end do
-     if (verbose) write(*,*) '> Total luminosity (nb of photons per second): ',total_flux
      
      ! calcul pour chaque particule la luminosite inferieure de son bin dans la distribution cumulative.. 
-     allocate(low_prob(nstars+1))
-     low_prob(1) = 0.0d0
-     do i = 2,nstars
-        low_prob(i) = low_prob(i-1) + sweight(i-1)
-     end do
-     low_prob = low_prob / low_prob(nstars)
-     low_prob(nstars+1) = 1.1  ! higher than upper limit 
-
+     ! compute the total number of photons emitted per second by the sources
+     call compute_cum_low_prob(nstars, sweight, low_prob, total_flux)
+     if (verbose) write(*,*) '> Total luminosity (nb of photons per second): ',total_flux
+     
      ! for each photon packet, draw the emitting star
      allocate(x_em(1:3,1:nphot), k_em(1:3,1:nphot), nu_em(1:nphot), nu_star(1:nphot))
 
      iseed = ranseed
      do iphot = 1,nphot
-        r1 = ran3(iseed)
-        ! binary search
-        iup = nstars
-        ilow = 1
-        do while (iup - ilow > 1)
-           imid = (iup+ilow)/2
-           mid  = low_prob(imid)
-           if (r1 >= mid) then 
-              ilow = imid
-           else
-              iup = imid
-           end if
-        end do
-        ! check
-        if (.not. (r1 >= low_prob(ilow) .and. r1 < low_prob(iup) )) then
-           print*,'hi Harley ;) '
-        end if
+
+        call binary_search(iseed, nstars, low_prob, ilow)
         ! draw photon's ICs from star ilow
+
         ! give photon the position of the star
         !print*,iphot,ilow
         x_em(:,iphot) = star_pos(:,ilow) 
@@ -458,6 +370,65 @@ program PhotonsFromStars
 
   
 contains
+
+  subroutine compute_cum_low_prob(n, weight, low_prob, cumtot)
+    
+    implicit none
+    integer(kind=4), intent(in) :: n
+    real(kind=8), dimension(n), intent(in) :: weight
+    real(kind=8), dimension(:), allocatable, intent(out) :: low_prob
+    real(kind=8), intent(out) :: cumtot
+    integer(kind=4) :: i
+    
+    ! compute the total number of photons emitted per second by the sources
+    cumtot = 0.0d0
+    do i=1,n
+       cumtot = cumtot + weight(i)
+    end do
+    
+    ! calcul pour chaque particule la luminosite inferieure de son bin dans la distribution cumulative.. 
+    allocate(low_prob(n+1))
+    low_prob(1) = 0.0d0
+    do i = 2,n
+       low_prob(i) = low_prob(i-1) + weight(i-1)
+    end do
+    low_prob = low_prob / low_prob(n)
+    low_prob(n+1) = 1.1  ! higher than upper limit 
+    
+    return
+  end subroutine compute_cum_low_prob
+  
+  
+  subroutine binary_search(iseed, nbin, low_prob, ilow)
+    
+    implicit none
+    integer(kind=4), intent(inout) :: iseed
+    integer(kind=4), intent(in)    :: nbin
+    real(kind=8), intent(in), dimension(nbin+1) :: low_prob
+    integer(kind=4), intent(out) :: ilow
+    integer(kind=4) :: iup, imid
+    real(kind=8) :: mid
+    
+    r1 = ran3(iseed)
+    ! binary search
+    iup = nbin
+    ilow = 1
+    do while (iup - ilow > 1)
+       imid = (iup+ilow)/2
+       mid  = low_prob(imid)
+       if (r1 >= mid) then 
+          ilow = imid
+       else
+          iup = imid
+       end if
+    end do
+    ! check
+    if (.not. (r1 >= low_prob(ilow) .and. r1 < low_prob(iup) )) then
+       print*,'hi Harley ;) '
+    end if
+    return
+  end subroutine binary_search
+  
   
   subroutine read_PhotonsFromStars_params(pfile)
 
