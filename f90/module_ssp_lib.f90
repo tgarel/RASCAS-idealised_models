@@ -24,8 +24,8 @@ module module_ssp_lib
   end type SSPgrid
   
   type(SSPgrid) :: fullLib
-  logical :: isLoaded = .false.
-  real(kind=8) :: Lsun_in_cgs = 3.826d33          ! erg/s using the same convention as in BC03
+  logical       :: isLoaded = .false.
+  real(kind=8)  :: Lsun_in_cgs = 3.826d33          ! erg/s using the same convention as in BC03
   
   public :: init_ssp_lib, ssp_lib_extract_subset, ssp_lib_interpolate, trapz1
 
@@ -38,7 +38,7 @@ contains
 
     implicit none
 
-    character(1000),intent(in) :: SSPdir
+    character(1000),intent(in)       :: SSPdir
     real(kind=8),intent(in),optional :: lambdamin, lambdamax
     
     ! read data
@@ -70,7 +70,10 @@ contains
     print*,'check reshaping...'
     print*,minval(fullLib%grid(200,5,:)),maxval(fullLib%grid(200,5,:))
     print*,minval(fullLib%grid(15,1,:)),maxval(fullLib%grid(15,1,:))
-
+    
+    ! deallocate
+    deallocate(metallicities, agebins, lambda, sed_list)
+    
     
     ! spectra are in [Lsun / A / Msun]
     ! with Lsun = 3.826e33 erg/s and Msun = 2e33g
@@ -85,29 +88,29 @@ contains
 
     real(kind=8),intent(inout) :: lmin,lmax
     type(SSPgrid), intent(out) :: subLib
-    integer(kind=4) :: i0,i1,nl,i,j
-    real(kind=8) :: nu0, lambda0
-    real(kind=8),allocatable :: nu(:)
+    integer(kind=4)            :: i0,i1,nl,i,j
+    real(kind=8)               :: lambda0
+    real(kind=8),allocatable   :: nu(:)
 
     if (lmin==lmax) then
-       call locatedb(lambda, nlambda, lmin, i0)
-       if( (lmin-lambda(i0)) > (lambda(i0+1)-lmin))then
+       call locatedb(fullLib%lambda, fullLib%nlambda, lmin, i0)
+       if( (lmin-fullLib%lambda(i0)) > (fullLib%lambda(i0+1)-lmin))then
           i0 = i0+1
        endif
-       lambda0 = lambda(i0)
+       lambda0 = fullLib%lambda(i0)
        nl = 1
        i1 = i0
     else
-       call locatedb(lambda, nlambda, lmin, i0)
-       if( (lmin-lambda(i0)) > (lambda(i0+1)-lmin))then
+       call locatedb(fullLib%lambda, fullLib%nlambda, lmin, i0)
+       if( (lmin-fullLib%lambda(i0)) > (fullLib%lambda(i0+1)-lmin))then
           i0 = i0+1
        endif
-       lmin = lambda(i0)
-       call locatedb(lambda, nlambda, lmax, i1)
-       if( (lmax-lambda(i1)) > (lambda(i1+1)-lmax))then
+       lmin = fullLib%lambda(i0)
+       call locatedb(fullLib%lambda, fullLib%nlambda, lmax, i1)
+       if( (lmax-fullLib%lambda(i1)) > (fullLib%lambda(i1+1)-lmax))then
           i1 = i1+1
        endif
-       lmax = lambda(i1)
+       lmax = fullLib%lambda(i1)
        nl = i1-i0+1
     endif
     
@@ -139,11 +142,11 @@ contains
   subroutine ssp_lib_interpolate(lib, x, y, res)
 
     implicit none
-    type(SSPgrid),intent(in) :: lib
-    real(kind=8), intent(in) :: x,y
-    real(kind=8),dimension(:),intent(out):: res
-    integer(kind=4) :: j1,j2,ny,i1,i2,nx
-    real(kind=8) :: wy1,wy2,norm,wx1,wx2
+    type(SSPgrid),intent(in)              :: lib
+    real(kind=8), intent(in)              :: x,y
+    real(kind=8),dimension(:),intent(out) :: res
+    integer(kind=4)                       :: j1,j2,ny,i1,i2,nx
+    real(kind=8)                          :: wy1,wy2,norm,wx1,wx2
     
     ny = size(lib%met)
     ! locate bins and compute weights
