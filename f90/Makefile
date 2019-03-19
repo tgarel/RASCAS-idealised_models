@@ -95,7 +95,7 @@ endif
 # TIBO-1/ pure HI + idealised_models
 #COMPOBJS = module_HI_model.o module_idealised_models.o module_gas_composition_HI.o
 # TIBO-1bis/ HI + dust + idealised_models
-# COMPOBJS = module_dust_model.o module_HI_model.o module_idealised_models.o module_gas_composition_HI_dust.o
+ COMPOBJS = module_dust_model.o module_HI_model.o module_idealised_models.o module_gas_composition_HI_dust.o
 # TIBO-2/ SiII_dust + idealised_models
 #COMPOBJS = module_dust_model.o module_SiII_1190_model.o module_SiII_1193_model.o module_idealised_models.o module_gas_composition_SiII_dust.o
 # TIBO-3/ MgII_dust + idealised_models
@@ -109,7 +109,7 @@ endif
 # TIBO-7/ SiII-1190 + idealised_models
 #COMPOBJS =  module_SiII_1190_model.o module_SiII_1193_model.o module_idealised_models.o module_gas_composition_SiII_1190_1193.o
 # TIBO-8/ SiII-1190 + dust + idealised_models
- COMPOBJS =  module_dust_model.o module_SiII_1190_model.o module_SiII_1193_model.o module_idealised_models.o module_gas_composition_SiII_1190_1193_dust.o
+# COMPOBJS =  module_dust_model.o module_SiII_1190_model.o module_SiII_1193_model.o module_idealised_models.o module_gas_composition_SiII_1190_1193_dust.o
 # TIBO-9/ SiII-1260 + idealised_models
 #COMPOBJS =  module_SiII_1260_model.o module_idealised_models.o module_gas_composition_SiII_1260.o
 # TIBO-10/ SiII-1260 + dust + idealised_models

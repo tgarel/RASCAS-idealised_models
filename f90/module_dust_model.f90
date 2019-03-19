@@ -74,7 +74,7 @@ contains
     ! INPUTS :
     ! - v        : bulk velocity of the gas (i.e. cell velocity)       [ cm / s ] 
     ! - nu_cell  : frequency of incoming photon in cell's rest-frame   [ Hz ] 
-    ! - k        : propagaction vector (normalized) 
+    ! - k        : propagation vector (normalized) 
     ! - nu_ext   : frequency of incoming photon, in external frame     [ Hz ]
     ! - iran     : random number generator seed
     ! OUTPUTS :
