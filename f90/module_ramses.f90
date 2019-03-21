@@ -320,14 +320,16 @@ contains
     ileaf = 0
     iloop = 0
     ilast = 1 ; ilast2 = 1
-    !$ rank = OMP_GET_THREAD_NUM()
-    iunit=100+rank*2
+    
 !$OMP PARALLEL &
 !$OMP DEFAULT(private) &
 !$OMP SHARED(iloop, ilast, ilast2, xleaf_all, leaf_level_all, ramses_var_all, nIon_all, repository, ion_data_path, ion, snapnum, nvar, nleaftot, ncpu_read, cpu_list)
+    rank = 1
+    !$ rank = OMP_GET_THREAD_NUM()
+    iunit=100+rank*2
     do_allocs = .true.
-!$OMP DO
     
+!$OMP DO
     
     do k=1,ncpu_read
        icpu=cpu_list(k)
@@ -351,7 +353,7 @@ contains
           end if
        end do
 
-       write(nomfich,'(a,a,a,a,i5.5,a,i5.5)') ion_data_path,'/',ion,'_',snapnum,'.out',icpu
+       write(nomfich,'(a,a,a,a,i5.5,a,i5.5)') trim(ion_data_path),'/',trim(ion),'_',snapnum,'.out',icpu
        open(unit=iunit,file=trim(nomfich),form='unformatted',action='read')
        read(iunit) nleaf
        allocate(nIon(nleaf))
@@ -375,9 +377,10 @@ contains
        ilast=ilast+ileaf
        ilast2=ilast2+nleaf
 !$OMP END CRITICAL
+       deallocate(nIon)
     end do
 !$OMP END DO
-    if(.not. do_allocs) deallocate(ramses_var,xleaf,leaf_level,nIon)
+    if(.not. do_allocs) deallocate(ramses_var,xleaf,leaf_level)
 !$OMP END PARALLEL
     if(verbose)then
        print*,' '
@@ -3489,6 +3492,15 @@ contains
     call domain_constructor_from_scratch(dom, type, 5d-1, 5d-1, 5d-1, 1d3)
 
     call ramses_read_stars_in_domain(repository,snapnum,dom,star_pos,star_age,star_mass,star_vel,star_met) ; deallocate(star_vel)
+    if(star_mass(1) <= 0d0) then
+       print*, 'Problem with star mass, try using use_initial_mass = False  in the [ramses] section of the parameter file'
+       stop
+    end if
+    if(star_age(1) <= 0d0) then
+       print*, 'Problem with star age, try using use_proper_time = True  in the [ramses] section of the parameter file'
+       stop
+    end if
+    
     nstars = size(star_age)
     print*, 'number of stars : ', nstars
 
@@ -3513,6 +3525,7 @@ contains
     call deallocate_table()
 
     print*, 'csn (nSEDgroups * nIons)'
+    print*, 'star_L_tot, ', star_L_tot
     do j=1,nSEDgroups
        csn(j,:) = csn(j,:)/star_L_tot(j)
        print*, csn(j,:)
