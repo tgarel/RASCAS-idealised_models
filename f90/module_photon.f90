@@ -262,6 +262,11 @@ contains
                    ppos(1) = ppos(1) + merge(-1.0d0,1.0d0,p%k(1)<0.0d0) * epsilon(ppos(1))
                    ppos(2) = ppos(2) + merge(-1.0d0,1.0d0,p%k(2)<0.0d0) * epsilon(ppos(2))
                    ppos(3) = ppos(3) + merge(-1.0d0,1.0d0,p%k(3)<0.0d0) * epsilon(ppos(3))
+                   ! correct for periodicity
+                   do i=1,3
+                      if (ppos(i) < 0.0d0) ppos(i)=ppos(i)+1.0d0
+                      if (ppos(i) > 1.0d0) ppos(i)=ppos(i)-1.0d0
+                   enddo
                    call whereIsPhotonGoing(domesh,icell,ppos,icellnew,flagoutvol)
                 end do
                 if (npush > 1) print*,'WARNING : npush > 1 needed in module_photon:propagate.'
@@ -315,7 +320,7 @@ contains
              enddo
              ! update ppos according to ppos_cell
              ppos = ppos_cell * cell_size + cell_corner
-
+             
              !------------
              ! scattering
              !------------
