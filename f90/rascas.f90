@@ -15,14 +15,14 @@ program main
   ! user-defined parameters - read from section [RASCAS] of the parameter file
   ! --------------------------------------------------------------------------
   ! --- inputs 
-  character(2000)           :: DomDumpDir   = 'test/'                   ! where outputs of CreateDomDump are
-  character(2000)           :: PhotonICFile = 'Photon_IC_file.dat'      ! the file containing photons to cast (incl. full path)
+  character(2000)           :: DomDumpDir   = '.' !data/jvielfaure/JEREMY/DATA_simu/HI_D_SMC/00164/' !test/' ! where outputs of CreateDomDump are
+  character(2000)           :: PhotonICFile = 'LyaPhotIC.recLya.1' !Photon_IC_file.dat'      ! the file containing photons to cast (incl. full path)
   character(2000)           :: DomDumpFile  = 'domain_decomposition_params.dat' ! the file describing the outputs of CreateDomDump (in DomDumpDir)
   ! --- outputs
-  character(2000)           :: fileout = 'photons_done.dat'   ! output file ... 
+  character(2000)           :: fileout = 'LyaPhotIC.recLya.result.1 ' !photons_done.dat'   ! output file ... 
   ! --- miscelaneous
-  integer(kind=4)           :: nbuffer = 1000
-  logical                   :: verbose = .false.
+  integer(kind=4)           :: nbuffer = 2 !1000
+  logical                   :: verbose = T !.false.
   ! --------------------------------------------------------------------------
 
   
