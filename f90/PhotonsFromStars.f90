@@ -33,7 +33,7 @@ program PhotonsFromStars
   type(SSPgrid) :: NdotGrid
   real(kind=8),allocatable :: low_prob(:), low_prob2(:), x_em(:,:), k_em(:,:), nu_em(:), Ndot(:), NdotStar(:,:), sweight(:), lbin(:)
   integer(kind=4) :: ilow, iphot, iseed, ilow2
-  real(kind=8) :: lambda0, k(3), lambdamin, lambdamax, nu, spec_gauss_nu0, lambda_star
+  real(kind=8) :: lambda0, k(3), lambdamin, lambdamax, nu, spec_gauss_nu0, lambda_star, weight
 
   
   ! --------------------------------------------------------------------------
@@ -234,7 +234,8 @@ program PhotonsFromStars
         Ndot = Ndot * star_mass(i) / msun  ! nb of photons / s / A
         NdotStar(i,:) = Ndot(:)
         ! integrate nphotPerSecPerMsun(nlambda)
-        sweight(i) = trapz1(NdotGrid%lambda, Ndot, NdotGrid%nlambda)
+        call ssp_lib_integrate(NdotGrid%lambda, Ndot, NdotGrid%nlambda, weight)
+        sweight(i) = weight
      enddo
      
      ! calcul pour chaque particule la luminosite inferieure de son bin dans la distribution cumulative.. 

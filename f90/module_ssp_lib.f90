@@ -27,7 +27,7 @@ module module_ssp_lib
   logical       :: isLoaded = .false.
   real(kind=8)  :: Lsun_in_cgs = 3.826d33          ! erg/s using the same convention as in BC03
   
-  public :: init_ssp_lib, ssp_lib_extract_subset, ssp_lib_interpolate, trapz1
+  public :: init_ssp_lib, ssp_lib_extract_subset, ssp_lib_interpolate, ssp_lib_integrate
 
 
 contains
@@ -205,7 +205,16 @@ contains
   end subroutine ssp_lib_interpolate
     
 !*******************************************************************************************************
-!*************************************************************************
+  subroutine ssp_lib_integrate(x,y,n,integral)
+    real(kind=8),intent(in)  :: x(n), y(n)
+    integer,intent(in)       :: n
+    real(kind=8),intent(out) :: integral
+    integral = trapz1(x,y,n)
+    return
+  end subroutine ssp_lib_integrate
+  
+!*******************************************************************************************************
+  !*************************************************************************
   FUNCTION trapz1(X,Y,N,cum)
     
     ! Integrates function Y(X) along the whole interval 1..N, using a very 
