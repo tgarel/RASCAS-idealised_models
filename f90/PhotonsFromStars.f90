@@ -17,7 +17,7 @@ program PhotonsFromStars
   real(kind=8),allocatable :: star_pos(:,:),star_age(:),star_mass(:),star_vel(:,:),star_met(:)
   integer(kind=4) :: iran,i,nstars,narg
   !!integer(kind=8) :: ilast,j
-  real(kind=8)    :: scalar,r1,r2, r3
+  real(kind=8)    :: scalar, r2, r3
   ! for analysis purposes (a posteriori weighting) we want to save the emitter-frame
   ! frequency (here the freq. in the emitting stellar particle's frame)
   real(kind=8),allocatable    :: nu_star(:)
@@ -31,9 +31,9 @@ program PhotonsFromStars
   !real(kind=8) :: dxage1,dxmet1,w,dxage2,dxmet2
 
   type(SSPgrid) :: NdotGrid
-  real(kind=8),allocatable :: low_prob(:), low_prob2(:), x_em(:,:), k_em(:,:), nu_em(:), Ndot(:), NdotStar(:,:), sweight(:)
+  real(kind=8),allocatable :: low_prob(:), low_prob2(:), x_em(:,:), k_em(:,:), nu_em(:), Ndot(:), NdotStar(:,:), sweight(:), lbin(:)
   integer(kind=4) :: ilow, iphot, iseed, ilow2
-  real(kind=8) :: lambda0, k(3), lambdamin, lambdamax, nu, spec_gauss_nu0
+  real(kind=8) :: lambda0, k(3), lambdamin, lambdamax, nu, spec_gauss_nu0, lambda_star
 
   
   ! --------------------------------------------------------------------------
@@ -117,7 +117,7 @@ program PhotonsFromStars
           xc=star_dom_pos(1),yc=star_dom_pos(2),zc=star_dom_pos(3),thickness=star_dom_thickness)
   end select
   ! --------------------------------------------------------------------------------------
-
+  
   
   ! --------------------------------------------------------------------------------------
   ! read star particles within domain
@@ -126,14 +126,14 @@ program PhotonsFromStars
   call ramses_read_stars_in_domain(repository,snapnum,emission_domain,star_pos,star_age,star_mass,star_vel,star_met)
   ! --------------------------------------------------------------------------------------
   
-
+  
   print*,size(star_mass)
   print*,'minmax pos =',minval(star_pos),maxval(star_pos)
   print*,'minmax vel =',minval(star_vel),maxval(star_vel)
   print*,'minmax mass =',minval(star_mass),maxval(star_mass)
   print*,'minmax age =',minval(star_age),maxval(star_age)
   print*,'minmax met =',minval(star_met),maxval(star_met)
-
+  
   
   ! --------------------------------------------------------------------------------------
   ! Compute luminosity/spectrum for each star-particles
@@ -141,14 +141,14 @@ program PhotonsFromStars
   
   
   call init_ssp_lib(spec_SSPdir)
-
+  
   select case(trim(spec_type))
 !--------------------------------------------------------------------------------------
 !--------------------------------------------------------------------------------------
   case('PowLaw')
      print*,'Not implemented yet...'
      stop
-
+     
      ! steps
      ! 1/ linear fit -> get grid of (Fo,Beta) = f(age,met)
      ! 2/ integrate this to get NdotGrid
@@ -195,13 +195,11 @@ program PhotonsFromStars
         call binary_search(iseed, nstars, low_prob, ilow)
         ! draw photon's ICs from star ilow
         ! give photon the position of the star
-        !print*,iphot,ilow
         x_em(:,iphot) = star_pos(:,ilow) 
         ! draw propagation direction
         call isotropic_direction(k,iseed)
         k_em(:,iphot) = k
-        ! compute frequency in star frame
-        ! using the Box-Muller method
+        ! compute frequency in star frame using the Box-Muller method
         r2 = ran3(iran)
         r3 = ran3(iran)
         nu = sqrt(-2.*log(r2)) * cos(2.0d0*pi*r3)
@@ -248,6 +246,15 @@ program PhotonsFromStars
      allocate(x_em(1:3,1:nphot), k_em(1:3,1:nphot), nu_em(1:nphot), nu_star(1:nphot))
      allocate(low_prob2(NdotGrid%nlambda+1))
      iseed = ranseed
+
+     ! compute lbin
+     allocate(lbin(NdotGrid%nlambda))
+     lbin(1) = NdotGrid%lambda(1)
+     do i = 2,NdotGrid%nlambda-1
+        lbin(i) = (NdotGrid%lambda(i+1) + NdotGrid%lambda(i))/2.0d0
+     enddo
+     lbin(NdotGrid%nlambda) = NdotGrid%lambda(NdotGrid%nlambda)
+
      do iphot = 1,nphot
 
         call binary_search(iseed, nstars, low_prob, ilow)
@@ -259,20 +266,29 @@ program PhotonsFromStars
         ! draw propagation direction
         call isotropic_direction(k,iseed)
         k_em(:,iphot) = k
+
         ! compute frequency in star frame... here is the difficulty....
+
         ! 1/ find the frequency/lambda bin
         low_prob2(1) = 0.0d0
-        do i = 2,NdotGrid%nlambda
-           low_prob2(i) = low_prob2(i-1) + NdotStar(ilow,i-1)
+        low_prob2(2) = NdotStar(ilow,1) * (NdotGrid%lambda(2) - NdotGrid%lambda(1))/2.  ! => P(lambda(1)
+        do i = 3,NdotGrid%nlambda
+           low_prob2(i) = low_prob2(i-1) + NdotStar(ilow,i-1) * (NdotGrid%lambda(i) - NdotGrid%lambda(i-2))/2.
         end do
         low_prob2 = low_prob2 / low_prob2(NdotGrid%nlambda)
         low_prob2(NdotGrid%nlambda+1) = 1.1  ! higher than upper limit 
-
         call binary_search(iseed, NdotGrid%nlambda, low_prob2, ilow2)
         ! photon emitted in the bin ilow2;ilow2+1
-        ! get lamba_em
-        ! TO DO
-        nu_star(iphot) = clight / (NdotGrid%lambda(ilow2)*1e-8) ! Hz
+        ! => photon emitted at Ndot(ilow2), which means lambda between lambda(ilow2)+lambda(ilow2-1)/2. and  lambda(ilow2+1)+lambda(ilow2)/2. 
+        ! if ilow2 = 1 => lambda between lambda(1) and  lambda(2)+lambda(1)/2.
+        ! if ilow2 = nlambda => lambda between lambda(ilow2)+lambda(ilow2-1)/2. and lambda(ilow2)
+        
+        ! 2/ get lamba_em
+        ! 0th order solution is a flat distribution in this bin
+        r2 = ran3(iseed)
+        lambda_star = lbin(ilow2) + r2 * (lbin(ilow2+1)-lbin(ilow2))
+        
+        nu_star(iphot) = clight / (lambda_star*1e-8) ! Hz
         ! compute frequency in external frame 
         scalar = k(1)*star_vel(1,ilow) + k(2)*star_vel(2,ilow) + k(3)*star_vel(3,ilow)
         nu_em(iphot)  = nu_star(iphot) / (1d0 - scalar/clight)
@@ -407,7 +423,7 @@ contains
     real(kind=8), intent(in), dimension(nbin+1) :: low_prob
     integer(kind=4), intent(out)                :: ilow
     integer(kind=4)                             :: iup, imid
-    real(kind=8)                                :: mid
+    real(kind=8)                                :: mid, r1
     
     r1 = ran3(iseed)
     ! binary search
@@ -600,16 +616,16 @@ contains
        write(*,'(a,a)')           '  spec_SSPdir             = ',trim(spec_SSPdir)
        select case(trim(spec_type))
        case('Mono')
-          write(*,'(a,ES10.3,a)')     '  spec_mono_lambda0   = ',spec_mono_lambda0, ' ! [A]'
+          write(*,'(a,ES10.3,a)')     '  spec_mono_lambda0       = ',spec_mono_lambda0, ' ! [A]'
        case('Gauss')
-          write(*,'(a,ES10.3,a)')     '  spec_gauss_lambda0    = ',spec_gauss_lambda0, ' ! [A]'
-          write(*,'(a,es10.3,a)')     '  spec_gauss_sigma_kms  = ',spec_gauss_sigma_kms, ' ! [km/s]'
+          write(*,'(a,ES10.3,a)')     '  spec_gauss_lambda0      = ',spec_gauss_lambda0, ' ! [A]'
+          write(*,'(a,es10.3,a)')     '  spec_gauss_sigma_kms    = ',spec_gauss_sigma_kms, ' ! [km/s]'
        case('PowLaw')
           write(*,'(a,es10.3,a)')     '  spec_powlaw_lmin_Ang    = ',spec_powlaw_lmin_Ang, ' ! [A]' 
           write(*,'(a,es10.3,a)')     '  spec_powlaw_lmax_Ang    = ',spec_powlaw_lmax_Ang, ' ! [A]'
        case('Table')
-          write(*,'(a,es10.3,a)')     '  spec_table_lmin_Ang    = ',spec_table_lmin_Ang, ' ! [A]' 
-          write(*,'(a,es10.3,a)')     '  spec_table_lmax_Ang    = ',spec_table_lmax_Ang, ' ! [A]'
+          write(*,'(a,es10.3,a)')     '  spec_table_lmin_Ang     = ',spec_table_lmin_Ang, ' ! [A]' 
+          write(*,'(a,es10.3,a)')     '  spec_table_lmax_Ang     = ',spec_table_lmax_Ang, ' ! [A]'
        end select
        write(*,'(a)')             '# miscelaneous parameters'
        write(*,'(a,i8)')          '  nphot           = ',nphot
