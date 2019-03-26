@@ -10,11 +10,11 @@ class photonlist(object):
         self.resFile = resFile
         self.bakFile = bakFile
         if load: 
-            self.load_ic(stars=stars)
+            self.load_ic(stars=stars)	# 1 load les IC des phtons
             if self.bakFile is not None:
                 self.load_bak()
             else:
-                self.load_res()
+                self.load_res()		# 2 load les cubes results de rascas
 
 
     def get_nRealPhotons(self):
