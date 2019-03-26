@@ -373,15 +373,7 @@ program PhotonsFromStars
   ! deallocations 
   ! --------------------------------------------------------------------------------------
   deallocate(star_pos,star_vel,star_mass,star_age,star_met)
-  !select case(trim(weight_type))
-  !case('Mono')
-  !   deallocate(sed_nphot)
-  !case('PowLaw')
-  !   deallocate(sed_F_0,sed_beta,star_beta)
-  !case ('Table')
-  !   deallocate(sed_nphot,spec_table_lofx,star_iage,star_imet)
-  !end select
-  deallocate(sweight)
+  deallocate(sweight, Ndot)
   deallocate(nu_star, nu_em, x_em, k_em)
   ! --------------------------------------------------------------------------------------
 
@@ -391,11 +383,11 @@ contains
   subroutine compute_cum_low_prob(n, weight, low_prob, cumtot)
     
     implicit none
-    integer(kind=4), intent(in)                          :: n
-    real(kind=8), dimension(n), intent(in)               :: weight
-    real(kind=8), dimension(:), allocatable, intent(out) :: low_prob
-    real(kind=8), intent(out)                            :: cumtot
-    integer(kind=4)                                      :: i
+    integer(kind=4),intent(in)                        :: n
+    real(kind=8),dimension(n),intent(in)              :: weight
+    real(kind=8),dimension(:),allocatable,intent(out) :: low_prob
+    real(kind=8),intent(out)                          :: cumtot
+    integer(kind=4)                                   :: i
     
     ! compute the total number of photons emitted per second by the sources
     cumtot = 0.0d0
@@ -419,12 +411,12 @@ contains
   subroutine binary_search(iseed, nbin, low_prob, ilow)
     
     implicit none
-    integer(kind=4), intent(inout)              :: iseed
-    integer(kind=4), intent(in)                 :: nbin
-    real(kind=8), intent(in), dimension(nbin+1) :: low_prob
-    integer(kind=4), intent(out)                :: ilow
-    integer(kind=4)                             :: iup, imid
-    real(kind=8)                                :: mid, r1
+    integer(kind=4),intent(inout)             :: iseed
+    integer(kind=4),intent(in)                :: nbin
+    real(kind=8),intent(in),dimension(nbin+1) :: low_prob
+    integer(kind=4),intent(out)               :: ilow
+    integer(kind=4)                           :: iup, imid
+    real(kind=8)                              :: mid, r1
     
     r1 = ran3(iseed)
     ! binary search
