@@ -72,15 +72,16 @@ program PhotonsFromStars
   ! parameters for spec_type == 'Table'
   real(kind=8)              :: spec_table_lmin_Ang = 1120.  ! min wavelength to sample
   real(kind=8)              :: spec_table_lmax_Ang = 1320.  ! max ...
-
-  ! --- parameters for star particles/feedback in simulation
-  real(kind=8)              :: tdelay_SN = 10.        ! [Myr] SNs go off at tdelay_SN ... 
-  real(kind=8)              :: recyc_frac = 0.8       ! correct for recycling ... we want the mass of stars formed ...
   
   ! --- miscelaneous
   integer(kind=4)           :: nphot   = 1000000      ! number of photons to generate
   integer(kind=4)           :: ranseed = -100         ! seed for random generator
   logical                   :: verbose = .true.
+  ! --- parameters for star particles/feedback in simulation
+  logical                   :: recompute_particle_initial_mass = .false.
+  real(kind=8)              :: tdelay_SN = 10.        ! [Myr] SNs go off at tdelay_SN ... 
+  real(kind=8)              :: recyc_frac = 0.8       ! correct for recycling ... we want the mass of stars formed ...
+  
   ! --------------------------------------------------------------------------
 
 
@@ -176,9 +177,11 @@ program PhotonsFromStars
         !print*,i,star_age(i), star_age(i)/1.e3, log10(star_met(i))
         call ssp_lib_interpolate(NdotGrid, star_age(i)/1.e3, log10(star_met(i)), Ndot)    ! Ndot number of photons / s / A / Msun
         sweight(i) = Ndot(1) * star_mass(i) / msun  ! M_sun
-        !if (sed_age(iage) < tdelay_SN) then ! SNs go off at 10Myr ... 
-        !   sweight(i) = sweight(i)/recyc_frac  !! correct for recycling ... we want the mass of stars formed ...
-        !end if
+        if(recompute_particle_initial_mass)then
+           if (star_age(i) < tdelay_SN) then       ! SNs go off at tdelay_SN ... 
+              sweight(i) = sweight(i)/recyc_frac   ! correct for recycling ... we want the mass of stars formed ...
+           end if
+        end if
      end do
 
      ! calcul pour chaque particule la luminosite inferieure de son bin dans la distribution cumulative.. 
@@ -232,6 +235,11 @@ program PhotonsFromStars
         ! interpolate NdotGrid(lambda)
         call ssp_lib_interpolate(NdotGrid, star_age(i)/1.e3, log10(star_met(i)), Ndot)
         Ndot = Ndot * star_mass(i) / msun  ! nb of photons / s / A
+        if(recompute_particle_initial_mass)then
+           if (star_age(i) < tdelay_SN) then       ! SNs go off at tdelay_SN ... 
+              Ndot = Ndot/recyc_frac               ! correct for recycling ... we want the mass of stars formed ...
+           end if
+        end if
         NdotStar(i,:) = Ndot(:)
         ! integrate nphotPerSecPerMsun(nlambda)
         call ssp_lib_integrate(NdotGrid%lambda, Ndot, NdotGrid%nlambda, weight)
@@ -314,10 +322,12 @@ program PhotonsFromStars
         !print*,i,star_age(i), star_age(i)/1.e3, log10(star_met(i))
         call ssp_lib_interpolate(NdotGrid, star_age(i)/1.e3, log10(star_met(i)), Ndot) ! Ndot number of photons / s / A / Msun
         sweight(i) = Ndot(1) * star_mass(i) / msun  ! number of photons / s / A
-        !if (sed_age(iage) < tdelay_SN) then ! SNs go off at 10Myr ... 
-        !   sweight(i) = sweight(i)/recyc_frac  !! correct for recycling ... we want the mass of stars formed ...
-        !end if
-     end do
+        if(recompute_particle_initial_mass)then
+           if (star_age(i) < tdelay_SN) then       ! SNs go off at tdelay_SN ... 
+              sweight(i) = sweight(i)/recyc_frac   ! correct for recycling ... we want the mass of stars formed ...
+           end if
+        end if
+      end do
      
      ! calcul pour chaque particule la luminosite inferieure de son bin dans la distribution cumulative.. 
      ! compute the total number of photons emitted per second by the sources
@@ -519,6 +529,12 @@ contains
              read(value,*) ranseed
           case ('verbose')
              read(value,*) verbose
+          case ('recompute_particle_initial_mass')
+             read(value,*) recompute_particle_initial_mass
+          case ('tdelay_SN')
+             read(value,*) tdelay_SN
+          case ('recyc_frac')
+             read(value,*) recyc_frac
           case default
              write(*,'(a,a,a)') '> WARNING: parameter ',trim(name),' unknown '
           end select
@@ -582,6 +598,11 @@ contains
        write(unit,'(a,i8)')          '  nphot           = ',nphot
        write(unit,'(a,i8)')          '  ranseed         = ',ranseed
        write(unit,'(a,L1)')          '  verbose         = ',verbose
+       write(unit,'(a,L1)')          '  recompute_particle_initial_mass = ',recompute_particle_initial_mass
+       if(recompute_particle_initial_mass)then
+          write(unit,'(a,L1)')          '  tdelay_SN       = ',tdelay_SN
+          write(unit,'(a,L1)')          '  recyc_frac      = ',recyc_frac
+       endif
        write(unit,'(a)')             ' '
        call print_ramses_params(unit)
     else
@@ -624,6 +645,11 @@ contains
        write(*,'(a,i8)')          '  nphot           = ',nphot
        write(*,'(a,i8)')          '  ranseed         = ',ranseed
        write(*,'(a,L1)')          '  verbose         = ',verbose
+       write(*,'(a,L1)')          '  recompute_particle_initial_mass = ',recompute_particle_initial_mass
+       if(recompute_particle_initial_mass)then
+          write(*,'(a,L1)')          '  tdelay_SN       = ',tdelay_SN
+          write(*,'(a,L1)')          '  recyc_frac      = ',recyc_frac
+       endif
        write(*,'(a)')             ' '
        call print_ramses_params
     end if
