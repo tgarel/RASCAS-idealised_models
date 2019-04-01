@@ -1,30 +1,31 @@
 module module_MgII_2804_model
 
-  ! This module describes the absorption of photons by MgII from level 2p^6 3p 2P 1/2 to level 2p^6 3s 2S
+  ! This module describes the absorption of photons by MgII from level 2p^6 3p 2P^0 1/2 to level 2p^6 3s 2S 1/2
   ! This transition is 2803.53 A.
   ! The module also implements one decay channel (resonant) at 2803.25 A.
 
   use module_constants
-  use module_utils, only : voigt_fit, isotropic_direction
+  use module_utils, only : isotropic_direction
   use module_uparallel
   use module_random
+  use module_voigt
 
   implicit none
 
   private
 
-  ! Atomic data, taken from Zhu et al., ApJ 815, 2015 (table 2)
+  ! Atomic data, from the NIST database (https://www.nist.gov)
   ! In this module, we use the following convention :
-  ! level 1 is 2p^6 3s 2S
-  ! level 2 is 2p^6 3p 2P 1/2
+  ! level 1 is 2p^6 3s 2S 1/2
+  ! level 2 is 2p^6 3p 2P^0 1/2
 
   ! transition between levels 2 and 1
-  real(kind=8),parameter :: lambda12       = 2803.53d0                ! transition wavelength [A]
-  real(kind=8),parameter :: lambda12_cm    = lambda12 / cmtoA         ! [cm]
-  real(kind=8),parameter :: nu12           = clight / lambda12_cm     ! [Hz]
-  real(kind=8),parameter :: f12            = 0.303d0                  ! oscillator strength
-  real(kind=8),parameter :: sigma12_factor = pi*e_ch**2*f12/me/clight ! multiply by Voigt(x,a)/delta_nu_doppler to get sigma.
-  real(kind=8),parameter :: A21            = 2.57d8                   ! spontaneous decay [/s]
+  real(kind=8),parameter :: lambda12       = 2803.53d0                    ! transition wavelength [A]
+  real(kind=8),parameter :: lambda12_cm    = lambda12 / cmtoA             ! [cm]
+  real(kind=8),parameter :: nu12           = clight / lambda12_cm         ! [Hz]
+  real(kind=8),parameter :: f12            = 0.303d0                      ! oscillator strength
+  real(kind=8),parameter :: sigma12_factor = sqrtpi*e_ch**2*f12/me/clight ! multiply by Voigt(x,a)/delta_nu_doppler to get sigma.
+  real(kind=8),parameter :: A21            = 2.57d8                       ! spontaneous decay [/s]
 
   public :: get_tau_MgII_2804, scatter_MgII_2804, read_MgII_2804_params, print_MgII_2804_params
 
@@ -45,7 +46,7 @@ contains
     ! --------------------------------------------------------------------------
     
     real(kind=8),intent(in) :: nMgII,vth,distance_to_border_cm,nu_cell
-    real(kind=8)            :: delta_nu_doppler,x_cell,sigma,a,h,get_tau_MgII_2804
+    real(kind=8)            :: delta_nu_doppler,x_cell,sigma,a,h_cell,get_tau_MgII_2804
 
     ! compute Doppler width and a-parameter
     delta_nu_doppler = vth / lambda12_cm
@@ -53,8 +54,8 @@ contains
 
     ! cross section of MgII-2804
     x_cell = (nu_cell - nu12) / delta_nu_doppler
-    h      = voigt_fit(x_cell,a)
-    sigma  = sigma12_factor / delta_nu_doppler * h
+    h_cell = voigt_function(x_cell,a)
+    sigma  = sigma12_factor / delta_nu_doppler * h_cell
 
     get_tau_MgII_2804 = sigma * nMgII * distance_to_border_cm
    
@@ -136,6 +137,7 @@ contains
     character(*),intent(in) :: pfile
     
     call read_uparallel_params(pfile)
+    call read_voigt_params(pfile)
     
     return
     
@@ -154,8 +156,10 @@ contains
     
     if (present(unit)) then 
        call print_uparallel_params(unit)
+       call print_voigt_params(unit)
     else
        call print_uparallel_params()
+       call print_voigt_params()
     end if
     
     return
