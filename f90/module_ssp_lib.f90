@@ -52,9 +52,9 @@ contains
     print*,minval(lambda), maxval(lambda)
     print*, nagebins,num_mets,nlambda
 
-    print*,'check reshaping...'
-    print*,minval(sed_list(:,200,5)), maxval(sed_list(:,200,5))
-    print*,minval(sed_list(:,15,1)), maxval(sed_list(:,15,1))
+!!$    print*,'check reshaping...'
+!!$    print*,minval(sed_list(:,200,5)), maxval(sed_list(:,200,5))
+!!$    print*,minval(sed_list(:,15,1)), maxval(sed_list(:,15,1))
 
     fullLib%nage = nagebins
     fullLib%nmet = num_mets
@@ -67,9 +67,9 @@ contains
 
     isLoaded=.true.
 
-    print*,'check reshaping...'
-    print*,minval(fullLib%grid(200,5,:)),maxval(fullLib%grid(200,5,:))
-    print*,minval(fullLib%grid(15,1,:)),maxval(fullLib%grid(15,1,:))
+!!$    print*,'check reshaping...'
+!!$    print*,minval(fullLib%grid(200,5,:)),maxval(fullLib%grid(200,5,:))
+!!$    print*,minval(fullLib%grid(15,1,:)),maxval(fullLib%grid(15,1,:))
     
     ! deallocate
     deallocate(metallicities, agebins, lambda, sed_list)

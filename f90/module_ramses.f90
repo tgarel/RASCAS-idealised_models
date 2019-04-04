@@ -85,7 +85,10 @@ module module_ramses
   logical                  :: use_initial_mass  = .false.  ! if true, use initial masses of star particles instead of mass at output time
   logical                  :: cosmo             = .true.   ! if false, assume idealised simulation
   logical                  :: use_proper_time   = .false.  ! if true, use proper time instead of conformal time for cosmo runs. 
-  logical                  :: QuadHilbert       = .false.  ! if true, do not use hilbert indexes for now ... 
+  logical                  :: QuadHilbert       = .false.  ! if true, do not use hilbert indexes for now ...
+  !--TRACER
+  logical :: HasTracerParticles = .false.
+  !TRACER---
   ! miscelaneous
   logical                  :: verbose        = .false. ! display some run-time info on this module
   ! RT variable indices
@@ -2918,6 +2921,10 @@ contains
     character(1000)                        :: filename
     integer(kind=4),allocatable            :: id(:)
     real(kind=8),allocatable               :: age(:),m(:),x(:,:),v(:,:),mets(:),skipy(:),imass(:)
+    ! TRACER--
+    integer(kind=4),allocatable :: fam(:)
+    logical :: ok 
+    ! --TRACER 
     real(kind=8)                           :: temp(3)
     integer(kind=4)                        :: rank, iunit, ilast_all
     
@@ -2951,6 +2958,7 @@ contains
     end if
     allocate(star_pos(3,nstars),star_age(nstars),star_mass(nstars),star_vel(3,nstars),star_met(nstars))
     allocate(star_pos_all(3,nstars),star_age_all(nstars),star_mass_all(nstars),star_vel_all(3,nstars),star_met_all(nstars))
+    
     ! get list of particle fields in outputs 
     call get_fields_from_header(repository,snapnum,nfields)
     ncpu  = get_ncpu(repository,snapnum)
@@ -2982,6 +2990,9 @@ contains
        allocate(mets(1:npart))
        allocate(v(1:npart,1:ndim))
        allocate(skipy(1:npart))
+       ! TRACER--
+       if (HasTracerParticles) allocate(fam(npart))
+       ! --TRACER
        do ifield = 1,nfields
           select case(trim(ParticleFields(ifield)))
           case('pos')
@@ -3004,10 +3015,14 @@ contains
              read(iunit) mets(1:npart)
           case('imass')
              read(iunit) imass(1:npart)
+          ! TRACER--
+          case('family')
+             read(iunit) fam(1:npart)
+          ! --TRACER
           case default
              ! Note: we presume here that the unknown field is an 1d array of size 1:npart
-             read(iunit) skipy(1:npart)
              print*,'Error, Field unknown: ',trim(ParticleFields(ifield))
+             read(iunit) skipy(1:npart)
           end select
        end do
        close(iunit)
@@ -3019,7 +3034,12 @@ contains
        ! save star particles within selection region
        ilast = 0
        do i = 1,npart
-          if (age(i).ne.0.0d0) then ! This is a star
+          ! TRACER--
+          !if (age(i).ne.0.0d0) then ! This is a star
+          ok = (age(i).ne.0.0d0)
+          if (HasTracerParticles) ok = ok .and. (fam(i) < 50)
+          if (ok) then 
+          ! --TRACER
              temp(:) = x(i,:)
              if (domain_contains_point(temp,selection_domain)) then ! it is inside the domain
                 ilast = ilast + 1
@@ -3047,6 +3067,10 @@ contains
        end do
           
        deallocate(age,m,x,id,mets,v,skipy,imass)
+       ! TRACER--
+       if (HasTracerParticles) deallocate(fam)
+       ! --TRACER
+
        
 !$OMP CRITICAL
        if(ilast .gt. 0) then
@@ -3396,6 +3420,10 @@ contains
              read(value,*) iheiii
           case('QuadHilbert') ! True if simulation was run with -DQUADHILBERT option  
              read(value,*) QuadHilbert
+          ! TRACER--
+          case('HasTracerParticles') 
+             read(value,*)HasTracerParticles
+          ! --TRACER 
           end select
        end do
     end if
@@ -3417,34 +3445,40 @@ contains
 
     if (present(unit)) then 
        write(unit,'(a,a,a)') '[ramses]'
-       write(unit,'(a,L1)') '  self_shielding    = ',self_shielding
-       write(unit,'(a,L1)') '  ramses_rt         = ',ramses_rt
-       write(unit,'(a,L1)') '  read_rt_variables = ',read_rt_variables
-       write(unit,'(a,L1)') '  use_initial_mass  = ',use_initial_mass
-       write(unit,'(a,L1)') '  cosmo             = ',cosmo
-       write(unit,'(a,L1)') '  use_proper_time   = ',use_proper_time
-       write(unit,'(a,L1)') '  QuadHilbert       = ',QuadHilbert
-       write(unit,'(a,L1)') '  verbose           = ',verbose
-       write(unit,'(a,i2)') '  itemp             = ', itemp
-       write(unit,'(a,i2)') '  imetal            = ', imetal
-       write(unit,'(a,i2)') '  ihii              = ', ihii
-       write(unit,'(a,i2)') '  iheii             = ', iheii
-       write(unit,'(a,i2)') '  iheiii            = ', iheiii
+       write(unit,'(a,L1)') '  self_shielding     = ',self_shielding
+       write(unit,'(a,L1)') '  ramses_rt          = ',ramses_rt
+       write(unit,'(a,L1)') '  read_rt_variables  = ',read_rt_variables
+       write(unit,'(a,L1)') '  use_initial_mass   = ',use_initial_mass
+       write(unit,'(a,L1)') '  cosmo              = ',cosmo
+       write(unit,'(a,L1)') '  use_proper_time    = ',use_proper_time
+       write(unit,'(a,L1)') '  QuadHilbert        = ',QuadHilbert
+       write(unit,'(a,L1)') '  verbose            = ',verbose
+       write(unit,'(a,i2)') '  itemp              = ', itemp
+       write(unit,'(a,i2)') '  imetal             = ', imetal
+       write(unit,'(a,i2)') '  ihii               = ', ihii
+       write(unit,'(a,i2)') '  iheii              = ', iheii
+       write(unit,'(a,i2)') '  iheiii             = ', iheiii
+       ! TRACER--
+       write(unit,'(a,L1)') '  HasTracerParticles = ',HasTracerParticles
+       ! --TRACER 
     else
        write(*,'(a,a,a)') '[ramses]'
-       write(*,'(a,L1)') '  self_shielding    = ',self_shielding
-       write(*,'(a,L1)') '  ramses_rt         = ',ramses_rt
-       write(*,'(a,L1)') '  read_rt_variables = ',read_rt_variables
-       write(*,'(a,L1)') '  use_initial_mass  = ',use_initial_mass
-       write(*,'(a,L1)') '  cosmo             = ',cosmo
-       write(*,'(a,L1)') '  use_proper_time   = ',use_proper_time
-       write(*,'(a,L1)') '  QuadHilbert       = ',QuadHilbert
-       write(*,'(a,L1)') '  verbose           = ',verbose
-       write(*,'(a,i2)') '  itemp             = ', itemp
-       write(*,'(a,i2)') '  imetal            = ', imetal
-       write(*,'(a,i2)') '  ihii              = ', ihii
-       write(*,'(a,i2)') '  iheii             = ', iheii
-       write(*,'(a,i2)') '  iheiii            = ', iheiii
+       write(*,'(a,L1)') '  self_shielding     = ',self_shielding
+       write(*,'(a,L1)') '  ramses_rt          = ',ramses_rt
+       write(*,'(a,L1)') '  read_rt_variables  = ',read_rt_variables
+       write(*,'(a,L1)') '  use_initial_mass   = ',use_initial_mass
+       write(*,'(a,L1)') '  cosmo              = ',cosmo
+       write(*,'(a,L1)') '  use_proper_time    = ',use_proper_time
+       write(*,'(a,L1)') '  QuadHilbert        = ',QuadHilbert
+       write(*,'(a,L1)') '  verbose            = ',verbose
+       write(*,'(a,i2)') '  itemp              = ', itemp
+       write(*,'(a,i2)') '  imetal             = ', imetal
+       write(*,'(a,i2)') '  ihii               = ', ihii
+       write(*,'(a,i2)') '  iheii              = ', iheii
+       write(*,'(a,i2)') '  iheiii             = ', iheiii
+       ! TRACER--
+       write(*,'(a,L1)') '  HasTracerParticles = ',HasTracerParticles
+       ! --TRACER 
     end if
     
     return
