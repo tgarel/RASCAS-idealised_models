@@ -109,6 +109,8 @@ OBJSMPI = module_parallel_mpi.o $(OBJSPHO) module_worker.o module_master.o
 
 LYAFG = module_constants.o module_random.o module_utils.o module_domain.o coolrates_module.o module_ramses.o
 
+OBJLYAFG = module_constants.o module_random.o module_utils.o module_voigt.o module_domain.o coolrates_module.o module_ramses.o module_uparallel.o module_HI_model.o
+
 #############################################################################
 #.SUFFIXES: .o .f90
 #.f90.o:
@@ -123,8 +125,11 @@ all: clean CreateDomDump PhotonsFromSourceModel PhotonsFromStars rascas-serial
 PhotonsFromSourceModel: $(OBJSPHO) PhotonsFromSourceModel.o
 	$(F90) $(FFLAGS) $(LDFLAGS) -o $@ $(OBJSPHO) PhotonsFromSourceModel.o
 
-PhotonsFromStars: $(OBJSPHO) PhotonsFromStars.o
-	$(F90) $(FFLAGS) $(LDFLAGS) -o $@ $(OBJSPHO) PhotonsFromStars.o
+PhotonsFromStars: $(OBJSPHO) module_ssp_lib.o PhotonsFromStars.o
+	$(F90) $(FFLAGS) $(LDFLAGS) -o $@ $(OBJSPHO) module_ssp_lib.o PhotonsFromStars.o
+
+LyaPhotonsFromGas: $(OBJLYAFG)  LyaPhotonsFromGas.o
+	$(F90) $(FFLAGS) $(LDFLAGS) -o $@ $(OBJLYAFG)  LyaPhotonsFromGas.o
 
 LyaPhotonsFromGas: $(LYAFG)  LyaPhotonsFromGas.o
 	$(F90) $(FFLAGS) $(LDFLAGS) -o $@ $(LYAFG)  LyaPhotonsFromGas.o
