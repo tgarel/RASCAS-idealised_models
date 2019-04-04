@@ -86,9 +86,6 @@ module module_ramses
   logical                  :: cosmo             = .true.   ! if false, assume idealised simulation
   logical                  :: use_proper_time   = .false.  ! if true, use proper time instead of conformal time for cosmo runs. 
   logical                  :: QuadHilbert       = .false.  ! if true, do not use hilbert indexes for now ...
-  !--TRACER
-  logical :: HasTracerParticles = .false.
-  !TRACER---
   ! miscelaneous
   logical                  :: verbose        = .false. ! display some run-time info on this module
   ! RT variable indices
@@ -2968,7 +2965,7 @@ contains
 !$OMP DEFAULT(private) &
 !$OMP SHARED(ncpu, repository, snapnum, ParticleFields, nfields, selection_domain) &
 !$OMP SHARED(h0, stime, dp_scale_t, dp_scale_m, dp_scale_v, boxsize, time_cu, aexp, cosmo, use_initial_mass, use_proper_time) &
-!$OMP SHARED(ilast_all, star_pos_all, star_age_all, star_vel_all, star_mass_all, star_met_all)
+!$OMP SHARED(ilast_all, star_pos_all, star_age_all, star_vel_all, star_mass_all, star_met_all) 
 !$OMP DO
     do icpu = 1, ncpu
        rank = 1
@@ -2990,9 +2987,6 @@ contains
        allocate(mets(1:npart))
        allocate(v(1:npart,1:ndim))
        allocate(skipy(1:npart))
-       ! TRACER--
-       if (HasTracerParticles) allocate(fam(npart))
-       ! --TRACER
        do ifield = 1,nfields
           select case(trim(ParticleFields(ifield)))
           case('pos')
@@ -3017,12 +3011,13 @@ contains
              read(iunit) imass(1:npart)
           ! TRACER--
           case('family')
+             allocate(fam(npart))
              read(iunit) fam(1:npart)
           ! --TRACER
           case default
-             ! Note: we presume here that the unknown field is an 1d array of size 1:npart
-             print*,'Error, Field unknown: ',trim(ParticleFields(ifield))
-             read(iunit) skipy(1:npart)
+             print*,'WARNING: Field unknown in particle files: ',trim(ParticleFields(ifield))
+             print*,'+-- skipping the record. '
+             read(iunit) 
           end select
        end do
        close(iunit)
@@ -3030,14 +3025,14 @@ contains
        if(.not.cosmo)then
           x=x/boxsize
        endif
-
+       
        ! save star particles within selection region
        ilast = 0
        do i = 1,npart
           ! TRACER--
           !if (age(i).ne.0.0d0) then ! This is a star
           ok = (age(i).ne.0.0d0)
-          if (HasTracerParticles) ok = ok .and. (fam(i) < 50)
+          if (allocated(fam)) ok = ok .and. (fam(i) < 50)
           if (ok) then 
           ! --TRACER
              temp(:) = x(i,:)
@@ -3068,10 +3063,9 @@ contains
           
        deallocate(age,m,x,id,mets,v,skipy,imass)
        ! TRACER--
-       if (HasTracerParticles) deallocate(fam)
+       if (allocated(fam)) deallocate(fam)
        ! --TRACER
 
-       
 !$OMP CRITICAL
        if(ilast .gt. 0) then
           star_age_all(ilast_all:ilast_all+ilast-1) = star_age(1:ilast)
@@ -3420,10 +3414,6 @@ contains
              read(value,*) iheiii
           case('QuadHilbert') ! True if simulation was run with -DQUADHILBERT option  
              read(value,*) QuadHilbert
-          ! TRACER--
-          case('HasTracerParticles') 
-             read(value,*)HasTracerParticles
-          ! --TRACER 
           end select
        end do
     end if
@@ -3458,9 +3448,6 @@ contains
        write(unit,'(a,i2)') '  ihii               = ', ihii
        write(unit,'(a,i2)') '  iheii              = ', iheii
        write(unit,'(a,i2)') '  iheiii             = ', iheiii
-       ! TRACER--
-       write(unit,'(a,L1)') '  HasTracerParticles = ',HasTracerParticles
-       ! --TRACER 
     else
        write(*,'(a,a,a)') '[ramses]'
        write(*,'(a,L1)') '  self_shielding     = ',self_shielding
@@ -3476,9 +3463,6 @@ contains
        write(*,'(a,i2)') '  ihii               = ', ihii
        write(*,'(a,i2)') '  iheii              = ', iheii
        write(*,'(a,i2)') '  iheiii             = ', iheiii
-       ! TRACER--
-       write(*,'(a,L1)') '  HasTracerParticles = ',HasTracerParticles
-       ! --TRACER 
     end if
     
     return
