@@ -118,19 +118,29 @@ class mockobs(object):
         if smooth:
             cbar.add_lines(cs)
 
-    def show_cube_spec(self,smooth=False,smooth_sigma_angstrom=0.5):
+    def show_cube_spec(self,smooth=False,smooth_sigma_angstrom=(0.5),unit='Angstrom'):
         from numpy import sum
         import matplotlib.pyplot as plt
         #plt.figure()
+        if unit == 'Angstrom':
+            lbdafact = 1.0
+            lbdalab  = r'$[\AA]$'
+        if unit == 'micron':
+            lbdafact = 1e-4
+            lbdalab  = r'$[\mu m]$'
+
         spectrum = sum(self.cube,axis=(0,1)) * self.cube_dx_arcsec * self.cube_dx_arcsec
         if smooth:
             import scipy.ndimage as ndimage
-            smooth_scale_pix = smooth_sigma_angstrom / self.cube_dlbda_Angstrom
-            spectrum = ndimage.gaussian_filter(spectrum,sigma=(smooth_scale_pix))
+            for ssa in smooth_sigma_angstrom:
+                smooth_scale_pix = ssa / self.cube_dlbda_Angstrom
+                sspectrum = ndimage.gaussian_filter(spectrum,sigma=(smooth_scale_pix))
+                plt.plot(self.cube_lbda_Angstrom*lbdafact,sspectrum,label=r'$d\lambda =$ %.1f $\AA$'%(ssa))
 
-        plt.plot(self.cube_lbda_Angstrom,spectrum)
-        plt.axvline(1215.67*4.20039,color='red',alpha=0.5)
-        plt.xlabel(r'$\lambda_{\rm obs} \ [\AA]$',fontsize=15)
+        plt.plot(self.cube_lbda_Angstrom*lbdafact,spectrum,color='gray',alpha=0.5,linewidth=1)
+        plt.legend()
+        #plt.axvline(1215.67*4.20039,color='red',alpha=0.5)
+        plt.xlabel(r'$\lambda_{\rm obs}$ %s'%lbdalab,fontsize=15)
         plt.ylabel(r'$F_\lambda \ [erg s^{-1} cm^{-2} \AA^{-1}]$',fontsize=15)
 
 
