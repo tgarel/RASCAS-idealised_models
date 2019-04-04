@@ -100,14 +100,14 @@ GASOBJS = module_constants.o module_random.o module_utils.o module_voigt.o modul
 
 OBJSDOM = $(GASOBJS) module_select.o module_mesh.o
 
-OBJSPHO = $(GASOBJS) module_mesh.o module_mock.o module_photon.o 
+OBJSPHO = $(GASOBJS) module_mesh.o module_parallel_mpi.o module_mock.o module_photon.o 
 
 # GATHER -- 
 #OBJSMPI = $(OBJSPHO) module_parallel_mpi.o module_worker.o module_master.o
 OBJSMPI = module_parallel_mpi.o $(OBJSPHO) module_worker.o module_master.o
 # -- GATHER
 
-LYAFG = module_constants.o module_random.o module_utils.o module_domain.o coolrates_module.o module_ramses.o
+##LYAFG = module_constants.o module_random.o module_utils.o module_domain.o coolrates_module.o module_ramses.o
 
 OBJLYAFG = module_constants.o module_random.o module_utils.o module_voigt.o module_domain.o coolrates_module.o module_ramses.o module_uparallel.o module_HI_model.o
 
@@ -131,11 +131,8 @@ PhotonsFromStars: $(OBJSPHO) module_ssp_lib.o PhotonsFromStars.o
 LyaPhotonsFromGas: $(OBJLYAFG)  LyaPhotonsFromGas.o
 	$(F90) $(FFLAGS) $(LDFLAGS) -o $@ $(OBJLYAFG)  LyaPhotonsFromGas.o
 
-LyaPhotonsFromGas: $(LYAFG)  LyaPhotonsFromGas.o
-	$(F90) $(FFLAGS) $(LDFLAGS) -o $@ $(LYAFG)  LyaPhotonsFromGas.o
-
-HaPhotonsFromGas: $(LYAFG)  HaPhotonsFromGas.o
-	$(F90) $(FFLAGS) $(LDFLAGS) -o $@ $(LYAFG)  HaPhotonsFromGas.o
+HaPhotonsFromGas: $(OBJLYAFG)  HaPhotonsFromGas.o
+	$(F90) $(FFLAGS) $(LDFLAGS) -o $@ $(OBJLYAFG)  HaPhotonsFromGas.o
 
 CreateDomDump: $(OBJSDOM) CreateDomDump.o
 	$(F90) $(FFLAGS) $(LDFLAGS) -o $@ $(OBJSDOM) CreateDomDump.o

@@ -1097,11 +1097,6 @@ contains
        call read_int( ilun, 'nRTvar', nRTvar)
        nvarH = nvar - nRTvar
        call read_int( ilun, 'nIons', nIons)
-! JB: make sure this is OK for non-Harley cases ... 
-!!$       if (nIons .ne. 3) then
-!!$          print*,'nIons has to be 3 with current implementation ... '
-!!$          stop
-!!$       end if
        call read_int( ilun, 'nGroups', nGroups)
        allocate(group_egy(nGroups),group_csn(ngroups,nions),group_cse(ngroups,nions))
        call read_real(ilun, 'unit_pf', unit_fp)
@@ -1109,10 +1104,10 @@ contains
        close(ilun)
     end if
 
-    !JB: test consistency with hard-coded stuff (ion_egy)
-    if (size(ion_egy) .ne. nions) then
-       print*,'> ERROR : size(ion_egy) is not equal to nIons !!'
-       print*,'--------> make sure things are hard-coded correctly in module_ramses.f90:ramses_get_cooling_time'
+    !JB: implementation is not quite satisfactory ... move back to 3 ions only
+    if (nions .ne. 3) then
+       print*,'> ERROR : nIons .ne. 3'
+       print*,'> To use different number of ions, change the code in module_ramses.f90:ramses_get_cooling_time'
        stop
     end if
        
@@ -1155,13 +1150,13 @@ contains
                      & + nhei * ramses_var(indexgroup,i) * unit_fp * (group_cse(igroup,2)*group_egy(igroup) -group_csn(iGroup,2)*ion_egy(2)) &
                      & + nheii * ramses_var(indexgroup,i) * unit_fp * (group_cse(igroup,3)*group_egy(igroup) -group_csn(iGroup,3)*ion_egy(3)) 
              end do
-          else !!HK addition for nIons=4 (molecular hydrogen case)
-             do igroup=1,ngroups
-                indexgroup = nvarH+1+(igroup-1)*(1+ndim)
-                hrate = hrate + nhi * ramses_var(indexgroup,i) * unit_fp * (group_cse(igroup,2)*group_egy(igroup) -group_csn(iGroup,2)*ion_egy(2)) &
-                     & + nhei * ramses_var(indexgroup,i) * unit_fp * (group_cse(igroup,3)*group_egy(igroup) -group_csn(iGroup,3)*ion_egy(3)) &
-                     & + nheii * ramses_var(indexgroup,i) * unit_fp * (group_cse(igroup,4)*group_egy(igroup) -group_csn(iGroup,4)*ion_egy(4))
-             end do
+!!$          else !!HK addition for nIons=4 (molecular hydrogen case)
+!!$             do igroup=1,ngroups
+!!$                indexgroup = nvarH+1+(igroup-1)*(1+ndim)
+!!$                hrate = hrate + nhi * ramses_var(indexgroup,i) * unit_fp * (group_cse(igroup,2)*group_egy(igroup) -group_csn(iGroup,2)*ion_egy(2)) &
+!!$                     & + nhei * ramses_var(indexgroup,i) * unit_fp * (group_cse(igroup,3)*group_egy(igroup) -group_csn(iGroup,3)*ion_egy(3)) &
+!!$                     & + nheii * ramses_var(indexgroup,i) * unit_fp * (group_cse(igroup,4)*group_egy(igroup) -group_csn(iGroup,4)*ion_egy(4))
+!!$             end do
           endif
           ! -JB 
           crate = max(1.0d-40,crate-hrate)  ! we're only interested in relatively fast cooling rates. 

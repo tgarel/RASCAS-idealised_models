@@ -22,7 +22,8 @@ program PhotonsFromStars
   ! frequency (here the freq. in the emitting stellar particle's frame)
   real(kind=8),allocatable    :: nu_star(:)
   ! SED-related variables
-  real(kind=8)                :: total_flux    type(SSPgrid) :: NdotGrid
+  real(kind=8)                :: total_flux
+  type(SSPgrid) :: NdotGrid
   real(kind=8),allocatable :: low_prob(:), low_prob2(:), x_em(:,:), k_em(:,:), nu_em(:), Ndot(:), NdotStar(:,:), sweight(:), lbin(:)
   integer(kind=4) :: ilow, iphot, iseed, ilow2
   real(kind=8) :: lambda0, k(3), lambdamin, lambdamax, nu, spec_gauss_nu0, lambda_star, weight

@@ -32,8 +32,6 @@ module module_HI_model
   logical                  :: HI_core_skip    = .false.     ! if true, skip scatterings in the core of the line (as in Smith+15).
   real(kind=8)             :: xcritmax        = 1d10        ! core-skipping will truncate at min(xcrit, xcritmax) -> set to a low value to activate. 
   !--PIKSEROC--
-  logical                       :: recoil       = .true.      ! if set to true, recoil effect is computed [default is true]
-  logical                       :: isotropic    = .false.     ! if set to true, scattering events will be isotropic [default is false]
   ! --------------------------------------------------------------------------
 
   public :: get_tau_HI, scatter_HI, read_HI_params, print_HI_params
