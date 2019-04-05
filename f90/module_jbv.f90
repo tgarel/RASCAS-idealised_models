@@ -42,7 +42,7 @@ contains
 !$OMP DO SCHEDULE(DYNAMIC, 100) 
     do i=1,nrays 
        ! initialisation 
-       x_em(:) = rays(i)%x_em(:) + vide * rays(i)%x_em(:)  ! start vide away from star
+       x_em(:) = rays(i)%x_em(:) + vide * rays(i)%k_em(:)  ! start vide away from star
        k_em(:) = rays(i)%k_em(:)
        NHI     = 0.0d0
        dist    = 0.0d0 
