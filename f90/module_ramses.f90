@@ -343,7 +343,8 @@ contains
 !$OMP END DO
 !$OMP END PARALLEL
 
-    if(verbose)print *,'-- read_leaf_cells_in_domain --> nleaftot, nleaf_in_domain, nvar, ncpu =',nleaftot, nleaf_in_domain, nvar, ncpu_read
+    if(verbose)print *,'-- read_leaf_cells_in_domain --> nleaftot, nleaf_in_domain, nvar, ncpu =',nleaftot, nleaf_in_domain, nvar, &
+     ncpu_read
     
     allocate(ramses_var_all(nvar,nleaf_in_domain), xleaf_all(nleaf_in_domain,3), leaf_level_all(nleaf_in_domain))
     ilast = 1
@@ -1144,16 +1145,22 @@ contains
           if (nions.eq.3) then
              do igroup=1,ngroups
                 indexgroup = nvarH+1+(igroup-1)*(1+ndim)
-                hrate = hrate + nhi * ramses_var(indexgroup,i) * unit_fp * (group_cse(igroup,1)*group_egy(igroup) -group_csn(iGroup,1)*ion_egy(1)) &
-                     & + nhei * ramses_var(indexgroup,i) * unit_fp * (group_cse(igroup,2)*group_egy(igroup) -group_csn(iGroup,2)*ion_egy(2)) &
-                     & + nheii * ramses_var(indexgroup,i) * unit_fp * (group_cse(igroup,3)*group_egy(igroup) -group_csn(iGroup,3)*ion_egy(3)) 
+                hrate = hrate + nhi * ramses_var(indexgroup,i) * unit_fp * (group_cse(igroup,1)*group_egy(igroup) &
+                -group_csn(iGroup,1)*ion_egy(1)) &
+                     & + nhei * ramses_var(indexgroup,i) * unit_fp * (group_cse(igroup,2)*group_egy(igroup) &
+                     -group_csn(iGroup,2)*ion_egy(2)) &
+                     & + nheii * ramses_var(indexgroup,i) * unit_fp * (group_cse(igroup,3)*group_egy(igroup) &
+                     -group_csn(iGroup,3)*ion_egy(3)) 
              end do
           else !!HK addition for nIons=4 (molecular hydrogen case)
              do igroup=1,ngroups
                 indexgroup = nvarH+1+(igroup-1)*(1+ndim)
-                hrate = hrate + nhi * ramses_var(indexgroup,i) * unit_fp * (group_cse(igroup,2)*group_egy(igroup) -group_csn(iGroup,2)*ion_egy(2)) &
-                     & + nhei * ramses_var(indexgroup,i) * unit_fp * (group_cse(igroup,3)*group_egy(igroup) -group_csn(iGroup,3)*ion_egy(3)) &
-                     & + nheii * ramses_var(indexgroup,i) * unit_fp * (group_cse(igroup,4)*group_egy(igroup) -group_csn(iGroup,4)*ion_egy(4))
+                hrate = hrate + nhi * ramses_var(indexgroup,i) * unit_fp * (group_cse(igroup,2)*group_egy(igroup) &
+                -group_csn(iGroup,2)*ion_egy(2)) &
+                     & + nhei * ramses_var(indexgroup,i) * unit_fp * (group_cse(igroup,3)*group_egy(igroup) &
+                     -group_csn(iGroup,3)*ion_egy(3)) &
+                     & + nheii * ramses_var(indexgroup,i) * unit_fp * (group_cse(igroup,4)*group_egy(igroup) &
+                     -group_csn(iGroup,4)*ion_egy(4))
              end do
           endif
           ! -JB 
