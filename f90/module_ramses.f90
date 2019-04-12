@@ -2845,7 +2845,7 @@ contains
     integer(kind=4)                        :: ncpu,ilast,icpu,npart,i,ifield,nfields
     character(1000)                        :: filename
     integer(kind=4),allocatable            :: id(:)
-    real(kind=8),allocatable               :: age(:),m(:),x(:,:),v(:,:),mets(:),skipy(:),imass(:)
+    real(kind=8),allocatable               :: age(:),m(:),x(:,:),v(:,:),mets(:),imass(:)
     real(kind=8)                           :: temp(3)
     integer(kind=4)                        :: rank, iunit, ilast_all
     
@@ -2910,7 +2910,6 @@ contains
        allocate(id(1:npart))
        allocate(mets(1:npart))
        allocate(v(1:npart,1:ndim))
-       allocate(skipy(1:npart))
        do ifield = 1,nfields
           select case(trim(ParticleFields(ifield)))
           case('pos')
@@ -2934,8 +2933,7 @@ contains
           case('imass')
              read(iunit) imass(1:npart)
           case default
-             ! Note: we presume here that the unknown field is an 1d array of size 1:npart
-             read(iunit) skipy(1:npart)
+             read(iunit)
              print*,'Error, Field unknown: ',trim(ParticleFields(ifield))
           end select
        end do
@@ -2976,7 +2974,7 @@ contains
           end if
        end do
 
-       deallocate(age,m,x,id,mets,v,skipy,imass)
+       deallocate(age,m,x,id,mets,v,imass)
 
 !$OMP CRITICAL
        if(ilast .gt. 0) then
