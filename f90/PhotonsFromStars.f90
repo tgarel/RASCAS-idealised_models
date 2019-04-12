@@ -7,34 +7,24 @@ program PhotonsFromStars
   use module_random
   use module_constants
   use module_ramses
-
   use module_ssp_lib
   
   implicit none
   
-  type(domain)    :: emission_domain
-  character(2000) :: parameter_file
+  type(domain)             :: emission_domain
+  character(2000)          :: parameter_file
   real(kind=8),allocatable :: star_pos(:,:),star_age(:),star_mass(:),star_vel(:,:),star_met(:)
-  integer(kind=4) :: iran,i,nstars,narg
-  !!integer(kind=8) :: ilast,j
-  real(kind=8)    :: scalar, r2, r3
+  integer(kind=4)          :: iran,i,nstars,narg
+  real(kind=8)             :: scalar, r2, r3
   ! for analysis purposes (a posteriori weighting) we want to save the emitter-frame
   ! frequency (here the freq. in the emitting stellar particle's frame)
-  real(kind=8),allocatable    :: nu_star(:)
-  ! SED-related variables
-  !!!integer(kind=4)             :: sed_nage,sed_nmet,imet,iage
-  !!integer(kind=8)             :: nflux,n,ix
-  !!!real(kind=8),allocatable    :: sed_age(:),sed_met(:),sweight(:),sed_nphot(:,:),sed_F_0(:,:),sed_beta(:,:)
-  !integer(kind=4),allocatable :: star_iage(:),star_imet(:)
-  !real(kind=8),allocatable    :: star_beta(:) 
-  real(kind=8)                :: total_flux   !!!,minflux,check_flux,f0 !!,beta,betaplus2,lambda,x,dx1,dx2,dx
-  !real(kind=8) :: dxage1,dxmet1,w,dxage2,dxmet2
-
-  type(SSPgrid) :: NdotGrid
-  real(kind=8),allocatable :: low_prob(:), low_prob2(:), x_em(:,:), k_em(:,:), nu_em(:), Ndot(:), NdotStar(:,:), sweight(:), lbin(:)
-  integer(kind=4) :: ilow, iphot, iseed, ilow2
-  real(kind=8) :: lambda0, k(3), lambdamin, lambdamax, nu, spec_gauss_nu0, lambda_star, weight
-
+  real(kind=8),allocatable :: nu_star(:)
+  real(kind=8)             :: total_flux
+  type(SSPgrid)            :: NdotGrid
+  real(kind=8),allocatable :: low_prob(:), low_prob2(:), nu_em(:), Ndot(:), sweight(:), lbin(:)
+  real(kind=8),allocatable :: x_em(:,:), k_em(:,:), NdotStar(:,:)
+  integer(kind=4)          :: ilow, iphot, iseed, ilow2
+  real(kind=8)             :: lambda0, k(3), lambdamin, lambdamax, nu, spec_gauss_nu0, lambda_star, weight
   
   ! --------------------------------------------------------------------------
   ! user-defined parameters - read from section [PhotonsFromStars] of the parameter file
@@ -59,19 +49,19 @@ program PhotonsFromStars
   ! - spec_type=='Gauss'  : we sample a Gaussian distribution ...
   ! - spec_type=='PowLaw' : we sample a power-law continuum between two wavelengths. 
   ! - spec_type=='Table'  : we sample a tabulated spectrum. 
-  character(30)             :: spec_type = 'Mono'           ! May be 'Mono', 'Gauss', 'PowLaw' ...   
-  character(1000)           :: spec_SSPdir = '/Users/leo/ASTROPHYSICS/ASTRO/SSPlibs/' ! the SSP lib directory
+  character(30)             :: spec_type = 'Mono'               ! May be 'Mono', 'Gauss', 'PowLaw' ...   
+  character(1000)           :: spec_SSPdir = '../libs/SSPlibs/' ! the SSP lib directory
   ! parameters for spec_type == 'Mono'
-  real(kind=8)              :: spec_mono_lambda0 = 1216.                ! emission frequency [Hz] -> computed from weight_l0_Ang
+  real(kind=8)              :: spec_mono_lambda0 = 1216.        ! emission wavelength [A]
   ! parameters for spec_type == 'Gauss'
-  real(kind=8)              :: spec_gauss_lambda0 = 1216.                ! central frequency [Hz] -> computed from weight_l0_Ang
-  real(kind=8)              :: spec_gauss_sigma_kms = 10.0   ! line width in velocity [km/s] -> read from file. 
+  real(kind=8)              :: spec_gauss_lambda0 = 1216.       ! central wavelength [A]
+  real(kind=8)              :: spec_gauss_sigma_kms = 10.0      ! line width in velocity [km/s] -> read from file. 
   ! parameters for spec_type == 'PowLaw' : a power-law fit to continuum of each star particle, vs. its age and met.
-  real(kind=8)              :: spec_powlaw_lmin_Ang = 1120.  ! min wavelength to sample (should be in the range where fit was made ...)
-  real(kind=8)              :: spec_powlaw_lmax_Ang = 1320.  ! max ...
+  real(kind=8)              :: spec_powlaw_lmin_Ang = 1120.     ! min wavelength to sample (should be in the range where fit was made ...)
+  real(kind=8)              :: spec_powlaw_lmax_Ang = 1320.     ! max ...
   ! parameters for spec_type == 'Table'
-  real(kind=8)              :: spec_table_lmin_Ang = 1120.  ! min wavelength to sample
-  real(kind=8)              :: spec_table_lmax_Ang = 1320.  ! max ...
+  real(kind=8)              :: spec_table_lmin_Ang = 1120.      ! min wavelength to sample
+  real(kind=8)              :: spec_table_lmax_Ang = 1320.      ! max ...
   
   ! --- miscelaneous
   integer(kind=4)           :: nphot   = 1000000      ! number of photons to generate
@@ -83,9 +73,8 @@ program PhotonsFromStars
   real(kind=8)              :: recyc_frac = 0.8       ! correct for recycling ... we want the mass of stars formed ...
   
   ! --------------------------------------------------------------------------
-
-
-
+  
+  
   ! -------------------- read parameters --------------------
   narg = command_argument_count()
   if(narg .lt. 1)then
@@ -97,9 +86,8 @@ program PhotonsFromStars
   call read_PhotonsFromStars_params(parameter_file)
   if (verbose) call print_PhotonsFromStars_params
   ! ------------------------------------------------------------
-
-
-
+  
+  
   ! --------------------------------------------------------------------------------------
   ! define domain within which stars may shine
   ! --------------------------------------------------------------------------------------
@@ -128,7 +116,7 @@ program PhotonsFromStars
   ! --------------------------------------------------------------------------------------
   
   
-  print*,size(star_mass)
+  print*,'Nstars read =',size(star_mass)
   print*,'minmax pos =',minval(star_pos),maxval(star_pos)
   print*,'minmax vel =',minval(star_vel),maxval(star_vel)
   print*,'minmax mass =',minval(star_mass),maxval(star_mass)
