@@ -33,16 +33,18 @@ contains
     integer(kind=4)                                 :: i
     real(kind=8)                                    :: x_em(3),k_em(3), NHI, dist, vide
 
-    vide = 20000.0d0 * 3.0857d18  ! in cm
+
+    vide = 10.0d0 * 3.0857d18  ! in cm
     vide = vide / box_size_cm ! in code units 
 
+    
 !$OMP PARALLEL &
 !$OMP DEFAULT(shared) &
 !$OMP PRIVATE(NHI, dist, k_em, x_em)               
 !$OMP DO SCHEDULE(DYNAMIC, 100) 
     do i=1,nrays 
        ! initialisation 
-       x_em(:) = rays(i)%x_em(:) + vide * rays(i)%x_em(:)  ! start vide away from star
+       x_em(:) = rays(i)%x_em(:) + vide * rays(i)%k_em(:)  ! start vide away from star
        k_em(:) = rays(i)%k_em(:)
        NHI     = 0.0d0
        dist    = 0.0d0 
@@ -67,7 +69,7 @@ contains
     real(kind=8)              :: cell_size, cell_size_cm
     real(kind=8),dimension(3) :: ppos,ppos_cell ! working coordinates of photon (in box and in cell units)
     real(kind=8)              :: distance_to_border,distance_to_border_cm
-    real(kind=8)              :: dborder, vide
+    real(kind=8)              :: dborder, vide, dist_limit
     integer(kind=4)           :: i, icellnew, npush
     real(kind=8),dimension(3) :: kray, cell_corner, posoct
     logical                   :: flagoutvol, in_domain, escape_domain_before_cell
@@ -77,7 +79,9 @@ contains
     kray  = k_em   ! propagation direction
     dist  = 0.0d0  ! distance covered
     NHI   = 0.0d0  !initialise nhtot density along the ray
-    
+    dist_limit = 1000.0d0 * 3.0857d18 	  ! in cm
+    ! dist_limit = dist_limit / box_size_cm ! pc -> in code units
+        
     ! check that the ray starts in the domain
     if (.not. domain_contains_point(ppos,domaine_calcul)) then
        print * ,'Ray outside domain at start '
@@ -118,16 +122,23 @@ contains
        ! compute distance of photon to border of cell or domain along propagation direction
        distance_to_border    = path(ppos_cell,kray) * cell_size            ! in box units
 
+       
        ! Check if ray escapes domain before cell 
        escape_domain_before_cell = .false.
        dborder = domain_distance_to_border_along_k(ppos,kray,domaine_calcul) ! in module_domain
 
+       
        if (dborder < distance_to_border) then
           escape_domain_before_cell = .true.
           distance_to_border = dborder
        end if
        distance_to_border_cm = distance_to_border * box_size_cm ! cm
-       
+     
+       !!!!!!!!! ADD change distance if distance > dist_limit
+       if (dist + distance_to_border_cm > dist_limit) then
+          distance_to_border_cm = dist_limit - dist
+       end if
+            
        
        ! increment column density and traveled distance
        NHI  = NHI  + distance_to_border_cm * cell_gas%nHI 
@@ -144,6 +155,11 @@ contains
        
        if (escape_domain_before_cell) then ! ray escapes domain -> we are done.
           exit ray_propagation  ! ray is done 
+       end if
+       
+       !!!!!!!!! ADD escape if distance = dist_limit
+       if (dist > dist_limit) then ! ray reach integration limit -> we are done.
+         exit ray_propagation     ! ray is done 
        end if
        
        ! check if photon still in computational domain after position update
@@ -233,7 +249,7 @@ contains
 
     np = size(rays)
     open(unit=14, file=trim(file), status='unknown', form='formatted', action='write')
-    write(14,*) np
+    ! write(14,*) np
     do i=1,np
        write(14,'(8(e14.6,1x))') rays(i)%x_em(1),rays(i)%x_em(2),rays(i)%x_em(3),rays(i)%k_em(1), &
        rays(i)%k_em(2),rays(i)%k_em(3),rays(i)%NHI,rays(i)%dist

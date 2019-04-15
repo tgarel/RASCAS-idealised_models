@@ -1,5 +1,9 @@
 
 # -*- coding: utf-8 -*-
+'''
+Modification line115 *unit_kpc to trace domain data and computation
+'''
+
 import numpy as np
 
 class domain(object):
@@ -104,13 +108,14 @@ class shell(domain):
         print("|_rout   =",self.rout)
 
         
-def overplot_limits(domain, color=None, linestyle=None, linewidth=None):
+def overplot_limits(domain, unit_kpc, color=None, linestyle=None, linewidth=None):
     # OVERPLOT DOMAIN LIMITS
     from matplotlib.patches import Circle, Wedge, Polygon
     from matplotlib.collections import PatchCollection
     patches=[]
     if (domain.shape == 'sphere'):
-        wedge = Wedge((domain.center[0], domain.center[1]), domain.radius, 0., 360.)
+#        wedge = Wedge((domain.center[0]*unit_kpc, domain.center[1]*unit_kpc), domain.radius*unit_kpc, 0., 360.)
+	wedge = Wedge((0.0, 0.0), domain.radius*unit_kpc, 0., 360.)
     elif (meshDom.shape == 'shell'):
         wedge = Wedge((domain.center[0], domain.center[1]), domain.rout, 0., 360., width=domain.rout-domain.rin)
     patches.append(wedge)
