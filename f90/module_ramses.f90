@@ -283,25 +283,25 @@ contains
   end subroutine read_leaf_cells_omp
 
 
-  subroutine read_leaf_cells_omp_ions(repository, snapnum, ion_data_path, ion, ncpu_read, cpu_list, &
+  subroutine read_leaf_cells_omp_ions(repository, snapnum, ion_number, ion_data_path, ions, ncpu_read, cpu_list, &
        & nleaftot, nvar, xleaf_all, ramses_var_all, leaf_level_all, nIon_all)
     !$ use OMP_LIB
     ! read all leaf cell from a selection of cpu files in a simulation snapshot.
     ! Return standard ramses variables through ramses_var(nvar,nleaftot) and
     ! positions (xleaf(3,nleaftot)) and levels (leaf_level).
     implicit none 
-    
-    character(2000),intent(in)                :: repository, ion_data_path, ion
-    integer(kind=4),intent(in)                :: snapnum, ncpu_read
+
+    integer(kind=4),intent(in)                :: snapnum, ncpu_read, ion_number                
+    character(2000),intent(in)                :: repository, ion_data_path(ion_number),ions(ion_number)
     integer(kind=4),dimension(:),allocatable,intent(in) :: cpu_list
     integer(kind=4),intent(inout)             :: nleaftot, nvar
-    real(kind=8),allocatable, intent(inout)   :: ramses_var_all(:,:), nIon_all(:)
+    real(kind=8),allocatable, intent(inout)   :: ramses_var_all(:,:), nIon_all(:,:)
     real(kind=8),allocatable,intent(inout)    :: xleaf_all(:,:)
     integer(kind=4),allocatable,intent(inout) :: leaf_level_all(:)
     real(kind=8),allocatable                  :: ramses_var(:,:)
-    real(kind=8),allocatable                  :: xleaf(:,:), nIon(:)
+    real(kind=8),allocatable                  :: xleaf(:,:), nIon(:,:)
     integer(kind=4),allocatable               :: leaf_level(:)
-    integer(kind=4)                           :: k, icpu, ileaf, icell, ivar, ilast, iloop, nleaf, rank, iunit, ilast2
+    integer(kind=4)                           :: i,j,k, icpu, ileaf, icell, ivar, ilast, iloop, nleaf, nleaf_test, rank, iunit, ilast2
     logical                                   :: do_allocs
     character(1000)                           :: nomfich
     
@@ -313,7 +313,7 @@ contains
 
     nleaftot = get_nleaf(repository,snapnum)  ! sets ncpu too 
     nvar     = get_nvar(repository,snapnum)
-    allocate(ramses_var_all(nvar,nleaftot), xleaf_all(nleaftot,3), leaf_level_all(nleaftot), nIon_all(nleaftot))
+    allocate(ramses_var_all(nvar,nleaftot), xleaf_all(nleaftot,3), leaf_level_all(nleaftot), nIon_all(ion_number,nleaftot))
 
     if(verbose) print *,'-- read_leaf_cells_omp_ions --> nleaftot, nvar, ncpu =',nleaftot,nvar,ncpu_read
 
@@ -323,7 +323,7 @@ contains
     
 !$OMP PARALLEL &
 !$OMP DEFAULT(private) &
-!$OMP SHARED(iloop, ilast, ilast2, xleaf_all, leaf_level_all, ramses_var_all, nIon_all, repository, ion_data_path, ion, snapnum, nvar, nleaftot, ncpu_read, cpu_list)
+!$OMP SHARED(iloop, ilast, ilast2, xleaf_all, leaf_level_all, ramses_var_all, nIon_all, repository, ion_data_path, ion_number, ions, snapnum, nvar, nleaftot, ncpu_read, cpu_list)
     rank = 1
     !$ rank = OMP_GET_THREAD_NUM()
     iunit=100+rank*2
@@ -353,14 +353,26 @@ contains
           end if
        end do
 
-       write(nomfich,'(a,a,a,a,i5.5,a,i5.5)') trim(ion_data_path),'/',trim(ion),'_',snapnum,'.out',icpu
+       write(nomfich,'(a,a,a,a,i5.5,a,i5.5)') trim(ion_data_path(1)),'/',trim(ions(1)),'_',snapnum,'.out',icpu
        open(unit=iunit,file=trim(nomfich),form='unformatted',action='read')
        read(iunit) nleaf
-       allocate(nIon(nleaf))
-       read(iunit) nIon
+       allocate(nIon(ion_number,nleaf))
+       read(iunit) nIon(1,:)
        close(iunit)
 
-!$OMP CRITICAL
+       do i=2,ion_number
+          write(nomfich,'(a,a,a,a,i5.5,a,i5.5)') trim(ion_data_path(i)),'/',trim(ions(i)),'_',snapnum,'.out',icpu
+          open(unit=iunit,file=trim(nomfich),form='unformatted',action='read')
+          read(iunit) nleaf_test
+          if(nleaf_test /= nleaf) then
+             print*,'Error,  the number of leaf cells for the different ions is not the same'
+             stop
+          end if
+          read(iunit) nIon(i,:)
+          close(iunit)
+       end do
+
+       !$OMP CRITICAL
        ! only one CRITICAL zone
        !write (*, "(A, f5.2, A, A)", advance='no') &           ! Progress bar
        !     ' Reading leaves ',dble(iloop) / ncpu_read * 100,' % ',char(13)
@@ -373,7 +385,9 @@ contains
           leaf_level_all(ilast:ilast-1+ileaf) = leaf_level(1:ileaf)
           ramses_var_all(1:nvar,ilast:ilast-1+ileaf) = ramses_var(1:nvar,1:ileaf)
        endif
-       nIon_all(ilast2:ilast2-1+nleaf) = nIon(1:nleaf)
+       do i=1,ion_number
+          nIon_all(i,ilast2:ilast2-1+nleaf) = nIon(i,1:nleaf)
+       end do
        ilast=ilast+ileaf
        ilast2=ilast2+nleaf
 !$OMP END CRITICAL
@@ -3064,8 +3078,9 @@ contains
   !==================================================================================
   ! STARS utilities 
 
-
   subroutine ramses_read_stars_in_domain(repository,snapnum,selection_domain,star_pos,star_age,star_mass,star_vel,star_met)
+
+    !$ use OMP_LIB
 
     implicit none
 
@@ -3073,6 +3088,7 @@ contains
     integer(kind=4),intent(in)             :: snapnum
     type(domain),intent(in)                :: selection_domain
     real(kind=8),allocatable,intent(inout) :: star_pos(:,:),star_age(:),star_mass(:),star_vel(:,:),star_met(:)
+    real(kind=8),allocatable               :: star_pos_all(:,:),star_age_all(:),star_mass_all(:),star_vel_all(:,:),star_met_all(:)
     integer(kind=4)                        :: nstars
     real(kind=8)                           :: omega_0,lambda_0,little_h,omega_k,H0
     real(kind=8)                           :: aexp,stime,time_cu,boxsize
@@ -3081,16 +3097,16 @@ contains
     integer(kind=4),allocatable            :: id(:)
     real(kind=8),allocatable               :: age(:),m(:),x(:,:),v(:,:),mets(:),skipy(:),imass(:)
     real(kind=8)                           :: temp(3)
-        
+    integer(kind=4)                        :: rank, iunit, ilast_all
 
     !Val--
     if(star_reading_method == 'fromlist') then
-       
+
        open(unit=20, file=star_info_file, status='old', form='unformatted')
 
        read(20) nstars
        allocate(star_pos(3,nstars), star_age(nstars), star_mass(nstars), star_vel(3,nstars), star_met(nstars))
-   
+
        read(20) star_pos(1,:) !code units
        read(20) star_pos(2,:)
        read(20) star_pos(3,:)
@@ -3128,7 +3144,7 @@ contains
        deallocate(star_pos, star_age, star_mass, star_vel, star_met)
        nstars = ilast - 1
        allocate(star_pos(3,nstars), star_age(nstars), star_mass(nstars), star_vel(3,nstars), star_met(nstars))
-      
+
        do i=1,3
           star_pos(i,:) = x(i,1:nstars)
           star_vel(i,:) = v(i,1:nstars)
@@ -3136,9 +3152,9 @@ contains
        star_age(:) = age(1:nstars)
        star_mass(:) = m(1:nstars)
        star_met(:) = mets(1:nstars)
-       
+
        deallocate(x, age, m, v, mets)
-      
+
     !--laV
 
     else
@@ -3151,8 +3167,9 @@ contains
        ! compute cosmic time of simulation output (Myr)
        aexp  = get_param_real(repository,snapnum,'aexp') ! exp. factor of output
        stime = ct_aexp2time(aexp) ! cosmic time
+
        ! read units
-       if (.not. conversion_scales_are_known) then 
+       if (.not. conversion_scales_are_known) then
           call read_conversion_scales(repository,snapnum)
           conversion_scales_are_known = .True.
        end if
@@ -3165,33 +3182,43 @@ contains
           write(*,*)'boxlen =',boxsize
        endif
 
-       ! read stars 
+       ! read stars
        nstars = get_tot_nstars(repository,snapnum)
        if (nstars == 0) then
           write(*,*) 'ERROR : no star particles in output '
           stop
        end if
        allocate(star_pos(3,nstars),star_age(nstars),star_mass(nstars),star_vel(3,nstars),star_met(nstars))
-       ! get list of particle fields in outputs 
+       allocate(star_pos_all(3,nstars),star_age_all(nstars),star_mass_all(nstars),star_vel_all(3,nstars),star_met_all(nstars))
+       ! get list of particle fields in outputs
        call get_fields_from_header(repository,snapnum,nfields)
        ncpu  = get_ncpu(repository,snapnum)
-       ilast = 1
+       ilast_all = 1
+
+       !$OMP PARALLEL &
+       !$OMP DEFAULT(private) &
+       !$OMP SHARED(ncpu, repository, snapnum, ParticleFields, nfields, selection_domain) &
+       !$OMP SHARED(h0, stime, dp_scale_t, dp_scale_m, dp_scale_v, boxsize, time_cu, aexp, cosmo, use_initial_mass, use_proper_time) &
+       !$OMP SHARED(ilast_all, star_pos_all, star_age_all, star_vel_all, star_mass_all, star_met_all)
+       !$OMP DO
        do icpu = 1, ncpu
+          rank = 1
+          !$ rank = OMP_GET_THREAD_NUM()
+          iunit=10+rank*2
           write(filename,'(a,a,i5.5,a,i5.5,a,i5.5)') trim(repository), '/output_', snapnum, '/part_', snapnum, '.out', icpu
-          open(unit=11,file=filename,status='old',form='unformatted')
-
-
+          open(unit=iunit,file=filename,status='old',form='unformatted')
+          
           !Val--
           if(star_reading_method == 'Teyssier') then
 
-             read(11) !ncpu2
-             read(11) !ndim2
-             read(11) npart
-             read(11) !localseed
-             read(11) !nstar_tot
-             read(11) !mstar_tot
-             read(11) !mstar_lost
-             read(11) !nsink
+             read(iunit) !ncpu2
+             read(iunit) !ndim2
+             read(iunit) npart
+             read(iunit) !localseed
+             read(iunit) !nstar_tot
+             read(iunit) !mstar_tot
+             read(iunit) !mstar_lost
+             read(iunit) !nsink
 
              allocate(age(1:npart))
              allocate(x(1:npart,1:ndim),m(npart),imass(npart))
@@ -3200,42 +3227,40 @@ contains
              allocate(v(1:npart,1:ndim))
              allocate(skipy(1:npart))
 
-
              ! Read position
              do i=1,ndim
-                read(11) x(1:npart,i)
+                read(iunit) x(1:npart,i)
              end do
              ! Read velocity
              do i=1,ndim
-                read(11) v(1:ndim,i)
+                read(iunit) v(1:ndim,i)
              end do
              ! Read mass
-             read(11) m(1:npart)
+             read(iunit) m(1:npart)
              ! Read identity
-             read(11) id(1:npart)
+             read(iunit) id(1:npart)
              ! Read level
-             read(11)
+             read(iunit)
              ! Read family
-             read(11)
+             read(iunit)
              ! Read tag
-             read(11)
+             read(iunit)
              ! Read birth epoch
-             read(11) age(1:npart)
+             read(iunit) age(1:npart)
              ! Read metallicity
-             read(11) mets(1:npart)
+             read(iunit) mets(1:npart)
 
-          !--laV
+          else  !default,  like sphinx
+             !--laV
 
-          !By default,  like originally in Rascas
-          else
-             read(11)
-             read(11)
-             read(11)npart
-             read(11)
-             read(11)
-             read(11)
-             read(11)
-             read(11)
+             read(iunit)
+             read(iunit)
+             read(iunit)npart
+             read(iunit)
+             read(iunit)
+             read(iunit)
+             read(iunit)
+             read(iunit)
              allocate(age(1:npart))
              allocate(x(1:npart,1:ndim),m(npart),imass(npart))
              allocate(id(1:npart))
@@ -3246,44 +3271,45 @@ contains
                 select case(trim(ParticleFields(ifield)))
                 case('pos')
                    do i = 1,ndim
-                      read(11) x(1:npart,i)
+                      read(iunit) x(1:npart,i)
                    end do
                 case('vel')
-                   do i = 1,ndim 
-                      read(11) v(1:npart,i)
+                   do i = 1,ndim
+                      read(iunit) v(1:npart,i)
                    end do
                 case('mass')
-                   read(11) m(1:npart)
-                case('iord') 
-                   read(11) id(1:npart)
+                   read(iunit) m(1:npart)
+                case('iord')
+                   read(iunit) id(1:npart)
                 case('level')
-                   read(11)
+                   read(iunit)
                 case('tform')
-                   read(11) age(1:npart)
+                   read(iunit) age(1:npart)
                 case('metal')
-                   read(11) mets(1:npart)
+                   read(iunit) mets(1:npart)
                 case('imass')
-                   read(11) imass(1:npart)
+                   read(iunit) imass(1:npart)
                 case default
                    ! Note: we presume here that the unknown field is an 1d array of size 1:npart
-                   read(11) skipy(1:npart)
+                   read(iunit) skipy(1:npart)
                    print*,'Error, Field unknown: ',trim(ParticleFields(ifield))
                 end select
              end do
 
           end if
-          close(11)
-
+          close(iunit)
 
           if(.not.cosmo)then
              x=x/boxsize
           endif
 
           ! save star particles within selection region
+          ilast = 0
           do i = 1,npart
              if (age(i).ne.0.0d0) then ! This is a star
                 temp(:) = x(i,:)
                 if (domain_contains_point(temp,selection_domain)) then ! it is inside the domain
+                   ilast = ilast + 1
                    if(cosmo)then
                       if (use_proper_time) then
                          star_age(ilast) = (stime - ct_proptime2time(age(i),h0))*1.d-6 ! Myr
@@ -3310,63 +3336,61 @@ contains
                    end if
                    star_pos(:,ilast) = x(i,:)              ! [code units]
                    star_vel(:,ilast) = v(i,:) * dp_scale_v ! [cm/s]
-                   star_met(ilast) = mets(i) 
-                   ilast = ilast + 1
+                   star_met(ilast) = mets(i)
                 end if
              end if
           end do
 
           deallocate(age,m,x,id,mets,v,skipy,imass)
 
+          !$OMP CRITICAL
+          if(ilast .gt. 0) then
+             star_age_all(ilast_all:ilast_all+ilast-1) = star_age(1:ilast)
+             star_mass_all(ilast_all:ilast_all+ilast-1) = star_mass(1:ilast)
+             star_pos_all(1:3,ilast_all:ilast_all+ilast-1) = star_pos(1:3,1:ilast)
+             star_vel_all(1:3,ilast_all:ilast_all+ilast-1) = star_vel(1:3,1:ilast)
+             star_met_all(ilast_all:ilast_all+ilast-1) = star_met(1:ilast)
+          endif
+          ilast_all = ilast_all + ilast
+          !$OMP END CRITICAL
        end do
+       !$OMP END PARALLEL
+
+       deallocate(star_age,star_pos,star_vel,star_met,star_mass)
 
        ! resize star arrays
-       nstars = ilast-1
+       nstars = ilast_all-1
+       print*,'Nstars in domain =',nstars
        ! ages
-       allocate(age(nstars))
-       age = star_age(1:nstars)
-       deallocate(star_age)
        allocate(star_age(nstars))
-       star_age = age
-       deallocate(age)
+       star_age = star_age_all(1:nstars)
+       deallocate(star_age_all)
        ! masses
-       allocate(m(nstars))
-       m = star_mass(1:nstars)
-       deallocate(star_mass)
        allocate(star_mass(nstars))
-       star_mass = m
-       deallocate(m)
+       star_mass = star_mass_all(1:nstars)
+       deallocate(star_mass_all)
        ! positions
-       allocate(x(3,nstars))
-       do i = 1,nstars 
-          x(:,i) = star_pos(:,i)
-       end do
-       deallocate(star_pos)
        allocate(star_pos(3,nstars))
-       star_pos = x
-       deallocate(x)
-       ! velocities
-       allocate(v(3,nstars))
-       do i = 1,nstars 
-          v(:,i) = star_vel(:,i)
+       do i = 1,nstars
+          star_pos(:,i) = star_pos_all(:,i)
        end do
-       deallocate(star_vel)
+       deallocate(star_pos_all)
+       ! velocities
        allocate(star_vel(3,nstars))
-       star_vel = v
-       deallocate(v)
+       do i = 1,nstars
+          star_vel(:,i) = star_vel_all(:,i)
+       end do
+       deallocate(star_vel_all)
        ! metals
-       allocate(mets(nstars))
-       mets = star_met(1:nstars)
-       deallocate(star_met)
        allocate(star_met(nstars))
-       star_met = mets
-       deallocate(mets)
+       star_met = star_met_all(1:nstars)
+       deallocate(star_met_all)
 
     end if
-    
+
     return
   end subroutine ramses_read_stars_in_domain
-
+  
 
   function get_tot_nstars(dir,ts)
 
@@ -3428,7 +3452,7 @@ contains
     prop = get_csn_indices(n_elements,elements,nIons)
     nProp = size(prop)
 
-    nSEDgroups = get_nSEDgroups(repository,snapnum)
+    nSEDgroups = get_nOptBins()
     allocate(csn(nSEDgroups,nProp)) ; csn = 0d0
 
     call ramses_read_stars_in_domain(repository,snapnum,dom,star_pos,star_age,star_mass,star_vel,star_met) ; deallocate(star_vel)
@@ -3485,7 +3509,7 @@ contains
     prop = get_csn_indices(n_elements,elements,nIons)
     nProp = size(prop)
 
-    nSEDgroups = get_nSEDgroups(repository,snapnum)
+    nSEDgroups = get_nOptBins()                              !The groups of which the routine computes csn are defined in the section [spectra] of the parameters,  not in the simulation
     allocate(csn(nSEDgroups,nProp)) ; csn = 0d0
 
     type = 'sphere'
@@ -3525,7 +3549,7 @@ contains
     call deallocate_table()
 
     print*, 'csn (nSEDgroups * nIons)'
-    print*, 'star_L_tot, ', star_L_tot
+    !print*, 'star_L_tot, ', star_L_tot
     do j=1,nSEDgroups
        csn(j,:) = csn(j,:)/star_L_tot(j)
        print*, csn(j,:)
