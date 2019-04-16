@@ -125,7 +125,14 @@ program main
      end do
      
      deallocate(star_pos, star_mass, star_met, star_age)
+  elseif(method == 'byHand') then
+     nphot = 1
+     allocate(x_em(3,nphot), k_em(3,nphot), weight(nphot))
+     !x_em(:,1) = (/ 0.48017406463623047d0, 0.49761295318603516d0, 0.5159425735473633d0 /) - 0.003597617*0.9*(/ 0d0, 0d0, -1d0 /)
+     x_em(:,1) = (/ 0.48007406463623047d0, 0.49721295318603516d0, 0.5158525735473633d0 /) - 0.003597617*0.9*(/ 0d0, 0d0, -1d0 /)
+     weight(1) = 1
   else
+     
      print*, 'method ', method, ' not known for the moment'
   end if
 

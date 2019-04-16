@@ -62,25 +62,25 @@ program main
   ! ------------------------------------------------------------
 
   ! -------------------- read directions -----------------------
-  n=3
-  allocate(kdir(n*2*n,3))
-  do i=1,n
-     do j=1,2*n
-        kdir(2*n*(i-1)+j,:) = (/ sin(pi*i/n)*cos(pi*j/n), sin(pi*i/n)*sin(pi*j/n), cos(pi*i/n) /)
-     end do
-  end do
-  ! allocate(kdir(nDirections,3))
-  ! open(unit=10,file=direction_file,status='old',action='read',form='formatted')
-  ! do i=1,nDirections
-  !    read(10,*) kdir(i,:)
-  !    kdir(i,:) = kdir(i,:)/norm2(kdir(i,:))
-  !    read(10,*) 
-  !    read(10,*) 
-  !    read(10,*) 
-  !    read(10,*) 
-  !    read(10,*)
+  ! n=3
+  ! allocate(kdir(n*2*n,3))
+  ! do i=1,n
+  !    do j=1,2*n
+  !       kdir(2*n*(i-1)+j,:) = (/ sin(pi*i/n)*cos(pi*j/n), sin(pi*i/n)*sin(pi*j/n), cos(pi*i/n) /)
+  !    end do
   ! end do
-  ! close(10)
+  allocate(kdir(nDirections,3))
+  open(unit=10,file=direction_file,status='old',action='read',form='formatted')
+  do i=1,nDirections
+     read(10,*) kdir(i,:)
+     kdir(i,:) = kdir(i,:)/norm2(kdir(i,:))
+     read(10,*) 
+     read(10,*) 
+     read(10,*) 
+     read(10,*) 
+     read(10,*)
+  end do
+  close(10)
   ! ------------------------------------------------------------
 
 

@@ -20,8 +20,9 @@ module module_CD
      real(kind=8)              :: vmin, vmax    ! velocities between which we want to plot NSiII vs velocity of gas cell,   in km/s  (be careful,  velocity of gas cell is in cm/s)
      integer(kind=4)           :: nBins         ! number of bins of velocities
      integer(kind=4)           :: nrays
+     integer(kind=4)           :: nGas
      integer(kind=4)           :: nDirections
-     real(kind=8), allocatable :: list(:,:,:)       ! list of size nBins+2, with the sum of the column densities for a given velocity of gas cell. The nBins+2 intervals are (-infinity,vmin), (vmin, vmin + (vmax-vmin)/nBins), (vmin + (vmax-vmin)/nBins,  vmin + 2*(vmax-vmin)/nBins), .... , (vmin + (nBins-1)*(vmax-vmin)/nBins, vmax), (vmax, infinity)
+     real(kind=8), allocatable :: list(:,:,:,:)       ! list of size nBins+2, with the sum of the column densities for a given velocity of gas cell. The nBins+2 intervals are (-infinity,vmin), (vmin, vmin + (vmax-vmin)/nBins), (vmin + (vmax-vmin)/nBins,  vmin + 2*(vmax-vmin)/nBins), .... , (vmin + (nBins-1)*(vmax-vmin)/nBins, vmax), (vmax, infinity)
   end type histo_v_N
 
   type(histo_v_N) :: histo
@@ -126,8 +127,9 @@ contains
        !Increment histo_v_N
        if(do_histo) then
           i = min( max( floor( ( dot_product( -1d-5*cell_gas%v(:),kray(:) ) - histo%vmin )*histo%nBins/(histo%vmax-histo%vmin) ) + 2, 1 ), histo%nBins+2 )  !computes which index of the list should be incremented
-          histo%list(idir,ID,i) = histo%list(idir,ID,i) + gas_get_CD(cell_gas, distance_to_border_cm)  !increment the corresponding entry
+          histo%list(:,idir,ID,i) = histo%list(:,idir,ID,i) + gas_get_CD(cell_gas, distance_to_border_cm)  !increment the corresponding entry
        end if
+       !print*, gas_get_CD(cell_gas, distance_to_border_cm), cell_gas%dopwidth**2 * 15.999 * amu / 2 / kb
 
        ! update head of ray position
        ppos = ppos + kray * distance_to_border *(1.0d0 + epsilon(1.0d0))
@@ -225,20 +227,24 @@ contains
 
     character(2000),intent(in)             :: file
     type(ray_type),dimension(:),intent(in) :: rays
-    integer(kind=4)                        :: i,j,k,np
+    integer(kind=4)                        :: i,j,k,l,np
 
     np = size(rays)
     open(unit=14, file=trim(file), status='unknown', form='unformatted', action='write')
     write(14) np
     write(14) histo%nDirections
+    write(14) histo%nGas
     if(do_histo) then
        write(14) histo%vmin, histo%vmax
        write(14) histo%nBins
-       do k=1,histo%nDirections
-          write(14) ((histo%list(k,i,j), i=1,histo%nrays), j=1,histo%nBins+2)
+       do l=1,histo%nGas
+          do k=1,histo%nDirections
+             write(14) ((histo%list(l,k,i,j), i=1,histo%nrays), j=1,histo%nBins+2)
+          end do
        end do
     end if
-    
+    !print*, (histo%list(1,1,1,j), j=1,histo%nBins+2)
+
     close(14)
 
   end subroutine dump
@@ -248,13 +254,16 @@ contains
 
     real(kind=8),intent(in)    :: vmin, vmax
     integer(kind=4),intent(in) :: nBins,nrays,nDirections
+    integer(kind=4)            :: nGas
 
     histo%vmin = vmin
     histo%vmax = vmax
     histo%nBins = nBins
     histo%nrays = nrays
     histo%nDirections = nDirections
-    allocate(histo%list(nDirections,nrays,nBins+2))
+    nGas = gas_get_n_CD()
+    allocate(histo%list(nGas,nDirections,nrays,nBins+2))
+    print*, 'test size ', nGas, nDirections, nrays, nBins+2
     histo%list = 0d0
 
     do_histo = .true.
