@@ -53,7 +53,7 @@ module module_gas_composition
   public :: gas_from_ramses_leaves, gas_from_ramses_leaves_ions, gas_from_list, get_gas_velocity,gas_get_scatter_flag,gas_scatter,dump_gas
   public :: read_gas,gas_destructor,read_gas_composition_params,print_gas_composition_params
   !Val
-  public :: gas_get_CD !, gas_get_n_CD
+  public :: gas_get_CD, gas_get_n_CD
   !laV
   !--PEEL--
   public :: gas_peeloff_weight,gas_get_tau!,gas_get_tau_gray
@@ -119,20 +119,25 @@ contains
 
   !Val--
   ! --------------------------------------------------------------------------
-  subroutine gas_from_ramses_leaves_ions(repository,snapnum,nleaf,nvar,ramses_var,OI_density,g)
+  subroutine gas_from_ramses_leaves_ions(repository,snapnum,nleaf,nvar,ramses_var,ion_number,OI_density,g)
 
     use module_ramses
 
     character(2000),intent(in)                     :: repository 
-    integer(kind=4),intent(in)                     :: snapnum
+    integer(kind=4),intent(in)                     :: snapnum, ion_number
     integer(kind=4),intent(in)                     :: nleaf,nvar
     real(kind=8),intent(in),dimension(nvar,nleaf)  :: ramses_var
-    real(kind=8),intent(in),dimension(nleaf)       :: OI_density
+    real(kind=8),intent(in),dimension(ion_number,nleaf)       :: OI_density
     type(gas),dimension(:),allocatable,intent(out) :: g
     integer(kind=4)                                :: ileaf
     real(kind=8),dimension(:),allocatable          :: T, nhi, metallicity, nhii
     real(kind=8),dimension(:,:),allocatable        :: v
 
+    if(ion_number /= 1) then
+       print*, 'Error in module_gas_composition_OI_1302_dust.f90,  the number of ions in ion_parameter_file should be 1.'
+       stop
+    end if
+    
     ! allocate gas-element array
     allocate(g(nleaf))
 
@@ -171,7 +176,7 @@ contains
        end do
        deallocate(metallicity,T,nhi,nhii)
 
-       g(:)%nOI = OI_density
+       g(:)%nOI = OI_density(1,:)
     end if
 
     return
@@ -365,25 +370,25 @@ contains
   ! ! --------------------------------------------------------------------------
 
 
-  ! !Val
-  ! function gas_get_n_CD()
+  !Val
+  function gas_get_n_CD()
 
-  !   integer(kind=4)           :: gas_get_n_CD
+    integer(kind=4)           :: gas_get_n_CD
 
-  !   gas_get_n_CD = 2
+    gas_get_n_CD = 2
 
-  ! end function gas_get_n_CD
-  ! !laV
+  end function gas_get_n_CD
+  !laV
 
   !Val
   function gas_get_CD(cell_gas, distance_cm)
 
     real(kind=8), intent(in) :: distance_cm
     type(gas),intent(in)     :: cell_gas
-    real(kind=8)             :: gas_get_CD
+    real(kind=8)             :: gas_get_CD(2)
 
-    !gas_get_CD = distance_cm*cell_gas%nOI
-    gas_get_CD = distance_cm*cell_gas%ndust
+    gas_get_CD = (/ distance_cm*cell_gas%nOI, distance_cm*cell_gas%ndust /)
+    !gas_get_CD = distance_cm*cell_gas%ndust
 
   end function gas_get_CD
   !laV
@@ -574,9 +579,13 @@ contains
        call overwrite_gas(g)
     else
        read(unit) (g(i)%v(:),i=1,n)
+       ! do i=1,n
+       !    g(i)%v = 0d0
+       ! end do
        read(unit) (g(i)%nOI,i=1,n)
        read(unit) (g(i)%dopwidth,i=1,n)
        read(unit) (g(i)%ndust,i=1,n)
+       !g(:)%ndust = 0d0
        read(unit) box_size_cm 
     end if
 
