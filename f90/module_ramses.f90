@@ -116,7 +116,7 @@ module module_ramses
   
   public :: read_leaf_cells, read_leaf_cells_omp, read_leaf_cells_omp_ions, read_leaf_cells_in_domain
   public :: get_ngridtot, ramses_get_box_size_cm, get_cpu_list, get_cpu_list_periodic, get_ncpu, get_nSEDgroups, get_xH
-  public :: ramses_get_velocity_cgs, ramses_get_T_nhi_cgs, ramses_get_metallicity, ramses_get_nh_cgs, ramses_get_T_nSiII_cgs, ramses_get_T_nMgII_cgs, ramses_get_fractions, ramses_get_flux
+  public :: ramses_get_velocity_cgs, ramses_get_T_nhi_cgs, ramses_get_metallicity, ramses_get_nh_cgs, ramses_get_T_nSiII_cgs, ramses_get_T_nMgII_cgs, ramses_get_fractions, ramses_get_flux, ramses_get_T_cgs
   public :: ramses_get_T_nFeII_cgs
   public :: ramses_read_stars_in_domain
   public :: compute_csn_in_domain, compute_csn_in_box
@@ -1117,6 +1117,125 @@ contains
     return
 
   end subroutine ramses_get_T_nhi_cgs
+
+
+  subroutine ramses_get_T_cgs(repository,snapnum,nleaf,nvar,ramses_var,temp)
+
+    implicit none 
+
+    character(1000),intent(in)  :: repository
+    integer(kind=4),intent(in)  :: snapnum
+    integer(kind=4),intent(in)  :: nleaf, nvar
+    real(kind=8),intent(in)     :: ramses_var(nvar,nleaf) ! one cell only
+    real(kind=8),intent(inout)  :: temp(nleaf)
+    real(kind=8)                :: nhi(nleaf)
+    real(kind=8),allocatable    :: boost(:)
+    real(kind=8)                :: xhi
+    integer(kind=4) :: ihx,ihy,i
+    real(kind=8)    :: xx,yy,dxx1,dxx2,dyy1,dyy2,f
+    integer(kind=4) :: if1,if2,jf1,jf2
+
+    real(kind=8),allocatable,dimension(:)    :: mu
+
+    ! get conversion factors if necessary
+    if (.not. conversion_scales_are_known) then 
+       call read_conversion_scales(repository,snapnum)
+       conversion_scales_are_known = .True.
+    end if
+
+    if(ramses_rt)then
+       ! ramses RT
+       allocate(mu(1:nleaf))
+       mu   = XH * (1.d0+ramses_var(ihii,:)) + 0.25d0*(1.d0-XH)*(1.d0 + ramses_var(iheii,:) + 2.d0*ramses_var(iheiii,:)) ! assumes no metals
+       mu   = 1.0d0 / mu   
+       temp = ramses_var(itemp,:) / ramses_var(1,:) * dp_scale_T2            ! T/mu [ K ]
+       temp = temp * mu                                                      ! This is now T (in K) with no bloody mu ... 
+       deallocate(mu)
+    else
+       ! ramses standard
+
+       if (.not. cooling_is_read) then
+          call read_cooling(repository,snapnum)
+          cooling_is_read = .True.
+       end if
+
+       nhi  = ramses_var(1,:) * dp_scale_nh  ! nb of H atoms per cm^3
+       temp = ramses_var(itemp,:) / ramses_var(1,:) * dp_scale_T2  ! T/mu [ K ]
+
+       allocate(boost(nleaf))
+       if (self_shielding) then
+          do i=1,nleaf
+             boost(i)=MAX(exp(-nhi(i)/0.01),1.0D-20) ! same as hard-coded in RAMSES. 
+          end do
+       else
+          boost = 1.0d0
+       end if
+
+    
+       ! compute the ionization state and temperature using the 'cooling' tables
+       do i = 1, nleaf
+          xx  = min(max(log10(nhi(i)/boost(i)),cooling%nh(1)),cooling%nh(cooling%n11))
+          ihx = int((xx - cool_int%nh_start)/cool_int%nh_step) + 1
+          if (ihx < 1) then 
+             ihx = 1 
+          else if (ihx > cool_int%n_nh) then
+             ihx = cool_int%n_nh
+          end if
+          yy  = log10(temp(i))
+          ihy = int((yy - cool_int%t2_start)/cool_int%t2_step) + 1
+          if (ihy < 1) then 
+             ihy = 1 
+          else if (ihy > cool_int%n_t2) then
+             ihy = cool_int%n_t2
+          end if
+          ! 2D linear interpolation:
+          if (ihx < cool_int%n_nh) then 
+             dxx1  = max(xx - cooling%nh(ihx),0.0d0) / cool_int%nh_step 
+             dxx2  = min(cooling%nh(ihx+1) - xx,cool_int%nh_step) / cool_int%nh_step
+             if1  = ihx
+             if2  = ihx+1
+          else
+             dxx1  = 0.0d0
+             dxx2  = 1.0d0
+             if1  = ihx
+             if2  = ihx
+          end if
+          if (ihy < cool_int%n_t2) then 
+             dyy1  = max(yy - cooling%t2(ihy),0.0d0) / cool_int%t2_step
+             dyy2  = min(cooling%t2(ihy+1) - yy,cool_int%t2_step) / cool_int%t2_step
+             jf1  = ihy
+             jf2  = ihy + 1
+          else
+             dyy1  = 0.0d0
+             dyy2  = 1.0d0
+             jf1  = ihy
+             jf2  = ihy
+          end if
+          if (abs(dxx1+dxx2-1.0d0) > 1.0d-6 .or. abs(dyy1+dyy2-1.0d0) > 1.0d-6) then 
+             write(*,*) 'Fucked up the interpolation ... '
+             print*,dxx1+dxx2,dyy1+dyy2
+             stop
+          end if
+          ! neutral H density 
+          f = dxx1 * dyy1 * cooling%spec(if2,jf2,2) + dxx2 * dyy1 * cooling%spec(if1,jf2,2) &
+               & + dxx1 * dyy2 * cooling%spec(if2,jf1,2) + dxx2 * dyy2 * cooling%spec(if1,jf1,2)
+          xhi = 10.0d0**(f-xx)  ! this is xHI = nHI/nH where the n's include the boost. 
+          nhi(i) = xhi * nhi(i) ! nHI (cm^-3) (boost-free)
+          ! GET MU to convert T/MU into T ... 
+          f = dxx1 * dyy1 * cooling%mu(if2,jf2) + dxx2 * dyy1 * cooling%mu(if1,jf2) &
+               & + dxx1 * dyy2 * cooling%mu(if2,jf1) + dxx2 * dyy2 * cooling%mu(if1,jf1)
+          temp(i) = temp(i) * f   ! This is now T (in K) with no bloody mu ... 
+       end do
+
+       deallocate(boost)
+
+    endif
+    
+    return
+
+  end subroutine ramses_get_T_cgs
+
+  
 
   subroutine ramses_get_velocity_cgs(repository,snapnum,nleaf,nvar,ramses_var,velocity_cgs)
 
