@@ -34,7 +34,7 @@ contains
     real(kind=8)                                    :: x_em(3),k_em(3), NHI, dist, vide
 
 
-    vide = 10.0d0 * 3.0857d18  ! in cm
+    vide = 400.0d0 * 3.0857d18  ! in cm
     vide = vide / box_size_cm ! in code units 
 
     
@@ -79,8 +79,8 @@ contains
     kray  = k_em   ! propagation direction
     dist  = 0.0d0  ! distance covered
     NHI   = 0.0d0  !initialise nhtot density along the ray
-    dist_limit = 1000.0d0 * 3.0857d18 	  ! in cm
-    ! dist_limit = dist_limit / box_size_cm ! pc -> in code units
+    dist_limit = 500.0d0 * 3.0857d18 	  ! in cm
+    !! CHANGE LINES 137 AND 160 !!!
         
     ! check that the ray starts in the domain
     if (.not. domain_contains_point(ppos,domaine_calcul)) then
