@@ -347,8 +347,8 @@ contains
              nu_ext = p%nu_ext
              k = p%k
              !--CORESKIP--
-             !call gas_scatter(scatter_flag, cell_gas, nu_cell, k, nu_ext, iran, xcrit)    ! NB: nu_cell, k, nu_ext, and iran en inout
-             call gas_scatter(scatter_flag, cell_gas, nu_cell, k, nu_ext, iran)    ! NB: nu_cell, k, nu_ext, and iran en inout             
+             call gas_scatter(scatter_flag, cell_gas, nu_cell, k, nu_ext, iran, xcrit)    ! NB: nu_cell, k, nu_ext, and iran en inout
+             !call gas_scatter(scatter_flag, cell_gas, nu_cell, k, nu_ext, iran)    ! NB: nu_cell, k, nu_ext, and iran en inout             
              !--PIKSEROC--
              p%nu_ext = nu_ext
 

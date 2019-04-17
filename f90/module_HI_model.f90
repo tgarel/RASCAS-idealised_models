@@ -80,8 +80,8 @@ contains
 
   
   !--CORESKIP--
-  !subroutine scatter_HI(vcell,vth,nu_cell,k,nu_ext,iran,xcrit)
-  subroutine scatter_HI(vcell,vth,nu_cell,k,nu_ext,iran)
+  subroutine scatter_HI(vcell,vth,nu_cell,k,nu_ext,iran,xcrit)
+  !subroutine scatter_HI(vcell,vth,nu_cell,k,nu_ext,iran)
   !--PIKSEROC--
     
     ! ---------------------------------------------------------------------------------
@@ -113,8 +113,8 @@ contains
     real(kind=8),dimension(3),intent(in)    :: vcell
     real(kind=8),intent(in)                 :: vth
     !--CORESKIP--
-    !real(kind=8),intent(in)                 :: xcrit
-    !real(kind=8)                            :: xc
+    real(kind=8),intent(in)                 :: xcrit
+    real(kind=8)                            :: xc
     !--PIKSEROC--
     integer(kind=4),intent(inout)           :: iran
     real(kind=8)                            :: delta_nu_doppler, a, x_cell, upar, ruper

@@ -406,16 +406,21 @@ contains
   !--LEEP--
 
 
-
-  subroutine gas_scatter(flag,cell_gas,nu_cell,k,nu_ext,iran)
+  !--CORESKIP-- 
+  !subroutine gas_scatter(flag,cell_gas,nu_cell,k,nu_ext,iran)
+  subroutine gas_scatter(flag,cell_gas,nu_cell,k,nu_ext,iran,xcrit)
+  !--PIKSEROC--
 
     integer, intent(inout)                    :: flag
     type(gas), intent(in)                     :: cell_gas
     real(kind=8), intent(inout)               :: nu_cell, nu_ext
     real(kind=8), dimension(3), intent(inout) :: k
     integer, intent(inout)                    :: iran
-    integer(kind=4)                           :: ilost 
-
+    integer(kind=4)                           :: ilost
+    !--CORESKIP--
+    real(kind=8),intent(in)                  :: xcrit
+    !--PIKSEROC--
+    
     select case(flag)
     case(1)
        call scatter_OI_1302(cell_gas%v, cell_gas%dopwidth/sqrt(15.999), nu_cell, k, nu_ext, iran)
