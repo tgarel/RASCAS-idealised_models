@@ -4,6 +4,9 @@ program main
   use module_master
   use module_worker
   use module_utils, only : print_rascas_header
+  !--PEEL--
+  use module_mock, only : read_mock_params
+  !--LEEP--
 
   implicit none
 
@@ -22,21 +25,23 @@ program main
   ! --- outputs
   character(2000)           :: fileout = 'LyaPhotIC.recLya.result.1 ' !photons_done.dat'   ! output file ... 
   ! --- miscelaneous
-<<<<<<< HEAD
-  integer(kind=4)           :: nbuffer = 2 !1000
-  logical                   :: verbose = T !.false.
-=======
+  !<<<<<<< HEAD
+  ! integer(kind=4)           :: nbuffer = 2 !1000
+  ! logical                   :: verbose = T !.false.
+  !=======
   integer(kind=4)           :: nbundle = 10
   logical                   :: verbose = .true.
->>>>>>> 4acd289d20b135a47fc9ec383a46986a300e512f
+  !>>>>>>> 4acd289d20b135a47fc9ec383a46986a300e512f
   ! --------------------------------------------------------------------------
 
   
   call cpu_time(start)
 
   call start_mpi
-  call define_mpi_type
-
+  ! GATHER -- 
+  !call define_mpi_type
+  ! -- GATHER 
+  
   nworker=nb_cpus-1
   if(nworker==0)then
      print*,'rascas is a parallel code, you should run it with MPI'

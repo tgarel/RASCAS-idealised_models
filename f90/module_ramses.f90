@@ -85,7 +85,7 @@ module module_ramses
   logical                  :: use_initial_mass  = .false.  ! if true, use initial masses of star particles instead of mass at output time
   logical                  :: cosmo             = .true.   ! if false, assume idealised simulation
   logical                  :: use_proper_time   = .false.  ! if true, use proper time instead of conformal time for cosmo runs. 
-  logical                  :: QuadHilbert       = .false.  ! if true, do not use hilbert indexes for now ... 
+  logical                  :: QuadHilbert       = .false.  ! if true, do not use hilbert indexes for now ...
   ! miscelaneous
   logical                  :: verbose        = .false. ! display some run-time info on this module
   ! RT variable indices
@@ -114,7 +114,11 @@ module module_ramses
   public :: ramses_read_stars_in_domain
   public :: read_ramses_params, print_ramses_params, dump_ramses_info
   public :: ramses_get_LyaEmiss_HIDopwidth,ramses_get_cooling_time
+  ! <<<<<<< HEAD
   public :: ramses_get_nhi_nhei_nheii_cgs
+  ! =======
+  public :: ramses_get_HaEmiss_HIDopwidth
+  ! >>>>>>> dev-harley
   
   !==================================================================================
 contains
@@ -1067,11 +1071,11 @@ contains
     ! Heating terms (RT)
     real(kind=8),parameter::eV_to_erg=1.6022d-12  ! eV to erg conv. constant
     !!JB- should read these from files ! 
-    !real(kind=8),parameter,dimension(3)::ion_egy = (/13.60d0, 24.59d0, 54.42d0/)*eV_to_erg
-    real(kind=8),parameter,dimension(4)::ion_egy = (/13.60d0, 15.20d0, 24.59d0, 54.42d0/)*eV_to_erg
+    real(kind=8),parameter,dimension(3)::ion_egy = (/13.60d0, 24.59d0, 54.42d0/)*eV_to_erg
+    !real(kind=8),parameter,dimension(4)::ion_egy = (/13.60d0, 15.20d0, 24.59d0, 54.42d0/)*eV_to_erg
     !! -JB
     character(1000)            :: filename
-    integer(kind=4)            :: levelmin,levelmax,ilun=33,nRTvar,nIons,nGroups,igroup,indexgroup,nvarH
+    integer(kind=4)            :: ilun=33,nRTvar,nIons,nGroups,igroup,indexgroup,nvarH
     real(kind=8),allocatable   :: group_egy(:),group_csn(:,:),group_cse(:,:)
     real(kind=8)               :: hrate,unit_fp
     
@@ -1098,11 +1102,6 @@ contains
        call read_int( ilun, 'nRTvar', nRTvar)
        nvarH = nvar - nRTvar
        call read_int( ilun, 'nIons', nIons)
-! JB: make sure this is OK for non-Harley cases ... 
-!!$       if (nIons .ne. 3) then
-!!$          print*,'nIons has to be 3 with current implementation ... '
-!!$          stop
-!!$       end if
        call read_int( ilun, 'nGroups', nGroups)
        allocate(group_egy(nGroups),group_csn(ngroups,nions),group_cse(ngroups,nions))
        call read_real(ilun, 'unit_pf', unit_fp)
@@ -1110,6 +1109,13 @@ contains
        close(ilun)
     end if
 
+    !JB: implementation is not quite satisfactory ... move back to 3 ions only
+    if (nions .ne. 3) then
+       print*,'> ERROR : nIons .ne. 3'
+       print*,'> To use different number of ions, change the code in module_ramses.f90:ramses_get_cooling_time'
+       stop
+    end if
+       
     
     ! compute cooling rate for all sample cells 
     if (present(sample)) then
@@ -1152,16 +1158,26 @@ contains
                      & + nheii * ramses_var(indexgroup,i) * unit_fp * (group_cse(igroup,3)*group_egy(igroup) &
                      -group_csn(iGroup,3)*ion_egy(3)) 
              end do
-          else !!HK addition for nIons=4 (molecular hydrogen case)
-             do igroup=1,ngroups
-                indexgroup = nvarH+1+(igroup-1)*(1+ndim)
-                hrate = hrate + nhi * ramses_var(indexgroup,i) * unit_fp * (group_cse(igroup,2)*group_egy(igroup) &
-                -group_csn(iGroup,2)*ion_egy(2)) &
-                     & + nhei * ramses_var(indexgroup,i) * unit_fp * (group_cse(igroup,3)*group_egy(igroup) &
-                     -group_csn(iGroup,3)*ion_egy(3)) &
-                     & + nheii * ramses_var(indexgroup,i) * unit_fp * (group_cse(igroup,4)*group_egy(igroup) &
-                     -group_csn(iGroup,4)*ion_egy(4))
-             end do
+    ! <<<<<<< HEAD
+    !      else !!HK addition for nIons=4 (molecular hydrogen case)
+    !         do igroup=1,ngroups
+    !            indexgroup = nvarH+1+(igroup-1)*(1+ndim)
+    !            hrate = hrate + nhi * ramses_var(indexgroup,i) * unit_fp * (group_cse(igroup,2)*group_egy(igroup) &
+    !            -group_csn(iGroup,2)*ion_egy(2)) &
+    !                 & + nhei * ramses_var(indexgroup,i) * unit_fp * (group_cse(igroup,3)*group_egy(igroup) &
+    !                 -group_csn(iGroup,3)*ion_egy(3)) &
+    !                 & + nheii * ramses_var(indexgroup,i) * unit_fp * (group_cse(igroup,4)*group_egy(igroup) &
+    !                 -group_csn(iGroup,4)*ion_egy(4))
+    !         end do
+    ! =======
+!!$          else !!HK addition for nIons=4 (molecular hydrogen case)
+!!$             do igroup=1,ngroups
+!!$                indexgroup = nvarH+1+(igroup-1)*(1+ndim)
+!!$                hrate = hrate + nhi * ramses_var(indexgroup,i) * unit_fp * (group_cse(igroup,2)*group_egy(igroup) -group_csn(iGroup,2)*ion_egy(2)) &
+!!$                     & + nhei * ramses_var(indexgroup,i) * unit_fp * (group_cse(igroup,3)*group_egy(igroup) -group_csn(iGroup,3)*ion_egy(3)) &
+!!$                     & + nheii * ramses_var(indexgroup,i) * unit_fp * (group_cse(igroup,4)*group_egy(igroup) -group_csn(iGroup,4)*ion_egy(4))
+!!$             end do
+     ! >>>>>>> dev-harley
           endif
           ! -JB 
           crate = max(1.0d-40,crate-hrate)  ! we're only interested in relatively fast cooling rates. 
@@ -1359,6 +1375,75 @@ contains
     end if
     
   end subroutine ramses_get_LyaEmiss_HIDopwidth
+
+
+  subroutine ramses_get_HaEmiss_HIDopwidth(repository,snapnum,nleaf,nvar,var,HaEm,HIDopwidth,sample)
+
+    implicit none
+
+    character(1000),intent(in)  :: repository
+    integer(kind=4),intent(in)  :: snapnum
+    integer(kind=4),intent(in) :: nleaf,nvar
+    real(kind=8),intent(in)    :: var(nvar,nleaf)
+    real(kind=8),intent(inout) :: HaEm(:),HIDopwidth(:)
+    integer(kind=4),intent(in),optional :: sample(:)
+
+    integer(kind=4)            :: n,j,i
+    real(kind=8),parameter     :: e_lya = planck * clight / (1215.67d0/cmtoA) ! [erg] energy of a Lya photon (consistent with HI_model)
+    real(kind=8)               :: xhii,xheii,xheiii,nh,nhi,nhii,n_e,mu,TK,Ta,prob_case_B,alpha_B,collExrate_HI,lambda,nhe,LyaEm
+    logical                    :: subsample
+    
+    ! get conversion factors if necessary
+    if (.not. conversion_scales_are_known) then 
+       call read_conversion_scales(repository,snapnum)
+       conversion_scales_are_known = .True.
+    end if
+
+    if (present(sample)) then
+       n = size(sample)
+       subsample = .true.
+    else
+       n = nleaf
+       subsample = .false. 
+    end if
+
+    if(ramses_rt)then
+       do j=1,n
+
+          if (subsample) then
+             i = sample(j)
+          else
+             i = j
+          end if
+
+          xhii   = var(ihii,i)
+          xheii  = var(iheii,i)
+          xheiii = var(iheiii,i)
+          nh     = var(1,i) * dp_scale_nh
+          nhe    = 0.25*nh*(1.0d0-XH)/XH
+          nhii   = nh * xhii
+          nhi    = nh * (1.0d0 - xhii)
+          n_e    = nHII + nHe * (xHeII + 2.0d0*xHeIII)
+          mu     = 1./( XH*(1.+xHII) + 0.25d0*(1.0d0-XH)*(1.+xHeII+2.*xHeIII) )
+          TK     = var(itemp,i)/var(1,i)*mu*dp_scale_T2
+          HIDopwidth(j) = sqrt((2.0d0*kb/mp)*TK)
+          ! Cantalupo+(08)
+          Ta = max(TK,100.0) ! no extrapolation..
+          prob_case_B = 0.686 - 0.106*log10(Ta/1e4) - 0.009*(Ta/1e4)**(-0.44)
+          ! Hui & Gnedin (1997)
+          lambda = 315614.d0/TK
+          alpha_B = 2.753d-14*(lambda**(1.5))/(1+(lambda/2.74)**0.407)**(2.242) ![cm3/s]
+          LyaEm = prob_case_B * alpha_B * n_e * nhii * e_lya ! [erg/cm3/s]
+          ! convert Lya to Ha using a simple ratio ... 
+          HaEm(j) = LyaEm / 8.7 
+          
+       end do
+    else
+       print*,'Not implemented ... '
+       stop
+    end if
+    
+  end subroutine ramses_get_HaEmiss_HIDopwidth
 
   
   subroutine ramses_get_T_nSiII_cgs(repository,snapnum,nleaf,nvar,ramses_var,temp,nSiII)
@@ -2491,7 +2576,6 @@ contains
                 ncache=numbb(ibound-ncpu,ilevel)
              end if
              if(ncache>0)then
-!!!if (ilevel < fg_levelmin) print*,'lev < levmin',ilevel
                 allocate(ind_grid(1:ncache))
                 allocate(iig(1:ncache))
                 read(iunit)ind_grid ! Read grid index
@@ -2800,12 +2884,15 @@ contains
 
   subroutine ramses_read_stars_in_domain(repository,snapnum,selection_domain,star_pos,star_age,star_mass,star_vel,star_met)
 
+    !$ use OMP_LIB
+
     implicit none
 
     character(1000),intent(in)             :: repository
     integer(kind=4),intent(in)             :: snapnum
     type(domain),intent(in)                :: selection_domain
     real(kind=8),allocatable,intent(inout) :: star_pos(:,:),star_age(:),star_mass(:),star_vel(:,:),star_met(:)
+    real(kind=8),allocatable               :: star_pos_all(:,:),star_age_all(:),star_mass_all(:),star_vel_all(:,:),star_met_all(:)
     integer(kind=4)                        :: nstars
     real(kind=8)                           :: omega_0,lambda_0,little_h,omega_k,H0
     real(kind=8)                           :: aexp,stime,time_cu,boxsize
@@ -2813,8 +2900,13 @@ contains
     character(1000)                        :: filename
     integer(kind=4),allocatable            :: id(:)
     real(kind=8),allocatable               :: age(:),m(:),x(:,:),v(:,:),mets(:),skipy(:),imass(:)
+    ! TRACER--
+    integer(kind=4),allocatable :: fam(:)
+    logical :: ok 
+    ! --TRACER 
     real(kind=8)                           :: temp(3)
-        
+    integer(kind=4)                        :: rank, iunit, ilast_all
+    
     ! get cosmological parameters to convert conformal time into ages
     call read_cosmo_params(repository,snapnum,omega_0,lambda_0,little_h)
     omega_k = 0.0d0
@@ -2823,13 +2915,12 @@ contains
     ! compute cosmic time of simulation output (Myr)
     aexp  = get_param_real(repository,snapnum,'aexp') ! exp. factor of output
     stime = ct_aexp2time(aexp) ! cosmic time
- 
     ! read units
     if (.not. conversion_scales_are_known) then 
        call read_conversion_scales(repository,snapnum)
        conversion_scales_are_known = .True.
     end if
-
+    
     if(.not.cosmo)then
        ! read time
        time_cu = get_param_real(repository,snapnum,'time') ! code unit
@@ -2837,7 +2928,7 @@ contains
        boxsize = get_param_real(repository,snapnum,'boxlen') !!!* dp_scale_l  ! [ cm ]
        write(*,*)'boxlen =',boxsize
     endif
-
+    
     ! read stars 
     nstars = get_tot_nstars(repository,snapnum)
     if (nstars == 0) then
@@ -2845,21 +2936,33 @@ contains
        stop
     end if
     allocate(star_pos(3,nstars),star_age(nstars),star_mass(nstars),star_vel(3,nstars),star_met(nstars))
+    allocate(star_pos_all(3,nstars),star_age_all(nstars),star_mass_all(nstars),star_vel_all(3,nstars),star_met_all(nstars))
+    
     ! get list of particle fields in outputs 
     call get_fields_from_header(repository,snapnum,nfields)
     ncpu  = get_ncpu(repository,snapnum)
-    ilast = 1
+    ilast_all = 1
+    
+!$OMP PARALLEL &
+!$OMP DEFAULT(private) &
+!$OMP SHARED(ncpu, repository, snapnum, ParticleFields, nfields, selection_domain) &
+!$OMP SHARED(h0, stime, dp_scale_t, dp_scale_m, dp_scale_v, boxsize, time_cu, aexp, cosmo, use_initial_mass, use_proper_time) &
+!$OMP SHARED(ilast_all, star_pos_all, star_age_all, star_vel_all, star_mass_all, star_met_all) 
+!$OMP DO
     do icpu = 1, ncpu
+       rank = 1
+       !$ rank = OMP_GET_THREAD_NUM()
+       iunit=10+rank*2
        write(filename,'(a,a,i5.5,a,i5.5,a,i5.5)') trim(repository), '/output_', snapnum, '/part_', snapnum, '.out', icpu
-       open(unit=11,file=filename,status='old',form='unformatted')
-       read(11)
-       read(11)
-       read(11)npart
-       read(11)
-       read(11)
-       read(11)
-       read(11)
-       read(11)
+       open(unit=iunit,file=filename,status='old',form='unformatted')
+       read(iunit)
+       read(iunit)
+       read(iunit)npart
+       read(iunit)
+       read(iunit)
+       read(iunit)
+       read(iunit)
+       read(iunit)
        allocate(age(1:npart))
        allocate(x(1:npart,1:ndim),m(npart),imass(npart))
        allocate(id(1:npart))
@@ -2870,41 +2973,53 @@ contains
           select case(trim(ParticleFields(ifield)))
           case('pos')
              do i = 1,ndim
-                read(11) x(1:npart,i)
+                read(iunit) x(1:npart,i)
              end do
           case('vel')
              do i = 1,ndim 
-                read(11) v(1:npart,i)
+                read(iunit) v(1:npart,i)
              end do
           case('mass')
-             read(11) m(1:npart)
+             read(iunit) m(1:npart)
           case('iord') 
-             read(11) id(1:npart)
+             read(iunit) id(1:npart)
           case('level')
-             read(11)
+             read(iunit)
           case('tform')
-             read(11) age(1:npart)
+             read(iunit) age(1:npart)
           case('metal')
-             read(11) mets(1:npart)
+             read(iunit) mets(1:npart)
           case('imass')
-             read(11) imass(1:npart)
+             read(iunit) imass(1:npart)
+          ! TRACER--
+          case('family')
+             allocate(fam(npart))
+             read(iunit) fam(1:npart)
+          ! --TRACER
           case default
-             ! Note: we presume here that the unknown field is an 1d array of size 1:npart
-             read(11) skipy(1:npart)
-             print*,'Error, Field unknown: ',trim(ParticleFields(ifield))
+             print*,'WARNING: Field unknown in particle files: ',trim(ParticleFields(ifield))
+             print*,'+-- skipping the record. '
+             read(iunit) 
           end select
        end do
-       close(11)
+       close(iunit)
 
        if(.not.cosmo)then
           x=x/boxsize
        endif
-
+       
        ! save star particles within selection region
+       ilast = 0
        do i = 1,npart
-          if (age(i).ne.0.0d0) then ! This is a star
+          ! TRACER--
+          !if (age(i).ne.0.0d0) then ! This is a star
+          ok = (age(i).ne.0.0d0)
+          if (allocated(fam)) ok = ok .and. (fam(i) < 50)
+          if (ok) then 
+          ! --TRACER
              temp(:) = x(i,:)
              if (domain_contains_point(temp,selection_domain)) then ! it is inside the domain
+                ilast = ilast + 1
                 if(cosmo)then
                    if (use_proper_time) then
                       star_age(ilast) = (stime - ct_proptime2time(age(i),h0))*1.d-6 ! Myr
@@ -2924,56 +3039,57 @@ contains
                 star_pos(:,ilast) = x(i,:)              ! [code units]
                 star_vel(:,ilast) = v(i,:) * dp_scale_v ! [cm/s]
                 star_met(ilast) = mets(i) 
-                ilast = ilast + 1
              end if
           end if
        end do
           
        deallocate(age,m,x,id,mets,v,skipy,imass)
+       ! TRACER--
+       if (allocated(fam)) deallocate(fam)
+       ! --TRACER
 
+!$OMP CRITICAL
+       if(ilast .gt. 0) then
+          star_age_all(ilast_all:ilast_all+ilast-1) = star_age(1:ilast)
+          star_mass_all(ilast_all:ilast_all+ilast-1) = star_mass(1:ilast)
+          star_pos_all(1:3,ilast_all:ilast_all+ilast-1) = star_pos(1:3,1:ilast)
+          star_vel_all(1:3,ilast_all:ilast_all+ilast-1) = star_vel(1:3,1:ilast)
+          star_met_all(ilast_all:ilast_all+ilast-1) = star_met(1:ilast)
+       endif
+       ilast_all = ilast_all + ilast
+!$OMP END CRITICAL
     end do
-
+!$OMP END PARALLEL
+    
+    deallocate(star_age,star_pos,star_vel,star_met,star_mass)
+    
     ! resize star arrays
-    nstars = ilast-1
+    nstars = ilast_all-1
+    print*,'Nstars in domain =',nstars
     ! ages
-    allocate(age(nstars))
-    age = star_age(1:nstars)
-    deallocate(star_age)
     allocate(star_age(nstars))
-    star_age = age
-    deallocate(age)
+    star_age = star_age_all(1:nstars)
+    deallocate(star_age_all)
     ! masses
-    allocate(m(nstars))
-    m = star_mass(1:nstars)
-    deallocate(star_mass)
     allocate(star_mass(nstars))
-    star_mass = m
-    deallocate(m)
+    star_mass = star_mass_all(1:nstars)
+    deallocate(star_mass_all)
     ! positions
-    allocate(x(3,nstars))
-    do i = 1,nstars 
-       x(:,i) = star_pos(:,i)
-    end do
-    deallocate(star_pos)
     allocate(star_pos(3,nstars))
-    star_pos = x
-    deallocate(x)
-    ! velocities
-    allocate(v(3,nstars))
     do i = 1,nstars 
-       v(:,i) = star_vel(:,i)
+       star_pos(:,i) = star_pos_all(:,i)
     end do
-    deallocate(star_vel)
+    deallocate(star_pos_all)
+    ! velocities
     allocate(star_vel(3,nstars))
-    star_vel = v
-    deallocate(v)
+    do i = 1,nstars 
+       star_vel(:,i) = star_vel_all(:,i)
+    end do
+    deallocate(star_vel_all)
     ! metals
-    allocate(mets(nstars))
-    mets = star_met(1:nstars)
-    deallocate(star_met)
     allocate(star_met(nstars))
-    star_met = mets
-    deallocate(mets)
+    star_met = star_met_all(1:nstars)
+    deallocate(star_met_all)
     
     return
   end subroutine ramses_read_stars_in_domain
@@ -3301,34 +3417,34 @@ contains
 
     if (present(unit)) then 
        write(unit,'(a,a,a)') '[ramses]'
-       write(unit,'(a,L1)') '  self_shielding    = ',self_shielding
-       write(unit,'(a,L1)') '  ramses_rt         = ',ramses_rt
-       write(unit,'(a,L1)') '  read_rt_variables = ',read_rt_variables
-       write(unit,'(a,L1)') '  use_initial_mass  = ',use_initial_mass
-       write(unit,'(a,L1)') '  cosmo             = ',cosmo
-       write(unit,'(a,L1)') '  use_proper_time   = ',use_proper_time
-       write(unit,'(a,L1)') '  QuadHilbert       = ',QuadHilbert
-       write(unit,'(a,L1)') '  verbose           = ',verbose
-       write(unit,'(a,i2)') '  itemp             = ', itemp
-       write(unit,'(a,i2)') '  imetal            = ', imetal
-       write(unit,'(a,i2)') '  ihii              = ', ihii
-       write(unit,'(a,i2)') '  iheii             = ', iheii
-       write(unit,'(a,i2)') '  iheiii            = ', iheiii
+       write(unit,'(a,L1)') '  self_shielding     = ',self_shielding
+       write(unit,'(a,L1)') '  ramses_rt          = ',ramses_rt
+       write(unit,'(a,L1)') '  read_rt_variables  = ',read_rt_variables
+       write(unit,'(a,L1)') '  use_initial_mass   = ',use_initial_mass
+       write(unit,'(a,L1)') '  cosmo              = ',cosmo
+       write(unit,'(a,L1)') '  use_proper_time    = ',use_proper_time
+       write(unit,'(a,L1)') '  QuadHilbert        = ',QuadHilbert
+       write(unit,'(a,L1)') '  verbose            = ',verbose
+       write(unit,'(a,i2)') '  itemp              = ', itemp
+       write(unit,'(a,i2)') '  imetal             = ', imetal
+       write(unit,'(a,i2)') '  ihii               = ', ihii
+       write(unit,'(a,i2)') '  iheii              = ', iheii
+       write(unit,'(a,i2)') '  iheiii             = ', iheiii
     else
        write(*,'(a,a,a)') '[ramses]'
-       write(*,'(a,L1)') '  self_shielding    = ',self_shielding
-       write(*,'(a,L1)') '  ramses_rt         = ',ramses_rt
-       write(*,'(a,L1)') '  read_rt_variables = ',read_rt_variables
-       write(*,'(a,L1)') '  use_initial_mass  = ',use_initial_mass
-       write(*,'(a,L1)') '  cosmo             = ',cosmo
-       write(*,'(a,L1)') '  use_proper_time   = ',use_proper_time
-       write(*,'(a,L1)') '  QuadHilbert       = ',QuadHilbert
-       write(*,'(a,L1)') '  verbose           = ',verbose
-       write(*,'(a,i2)') '  itemp             = ', itemp
-       write(*,'(a,i2)') '  imetal            = ', imetal
-       write(*,'(a,i2)') '  ihii              = ', ihii
-       write(*,'(a,i2)') '  iheii             = ', iheii
-       write(*,'(a,i2)') '  iheiii            = ', iheiii
+       write(*,'(a,L1)') '  self_shielding     = ',self_shielding
+       write(*,'(a,L1)') '  ramses_rt          = ',ramses_rt
+       write(*,'(a,L1)') '  read_rt_variables  = ',read_rt_variables
+       write(*,'(a,L1)') '  use_initial_mass   = ',use_initial_mass
+       write(*,'(a,L1)') '  cosmo              = ',cosmo
+       write(*,'(a,L1)') '  use_proper_time    = ',use_proper_time
+       write(*,'(a,L1)') '  QuadHilbert        = ',QuadHilbert
+       write(*,'(a,L1)') '  verbose            = ',verbose
+       write(*,'(a,i2)') '  itemp              = ', itemp
+       write(*,'(a,i2)') '  imetal             = ', imetal
+       write(*,'(a,i2)') '  ihii               = ', ihii
+       write(*,'(a,i2)') '  iheii              = ', iheii
+       write(*,'(a,i2)') '  iheiii             = ', iheiii
     end if
     
     return

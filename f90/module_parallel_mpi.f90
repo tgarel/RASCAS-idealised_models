@@ -1,8 +1,9 @@
 module module_parallel_mpi
 
   use mpi
-  use module_photon
-  
+  ! GATHER -- 
+  ! use module_photon
+  ! -- GATHER
   implicit none
 
   ! MPI constants
@@ -63,67 +64,67 @@ contains
 
   end subroutine stop_mpi
 
-
-
-  subroutine define_mpi_type
-    ! Create an MPI datatype for sending photons
-
-    integer(kind=4)      :: i
-    type(photon_current) :: p
-
-    ! type photon_current
-    !    integer(kind=4)           :: ID
-    !    integer(kind=4)           :: status       ! =0 if flying, =1 if escape, =2 if absorption (by dust)
-    !    real(kind=8),dimension(3) :: xlast        ! coordinates of last interaction in box units
-    !    real(kind=8),dimension(3) :: xcurr        ! current position of the photon in box units
-    !    real(kind=8)              :: nu_ext       ! external frame frequency (Hz)
-    !    real(kind=8),dimension(3) :: k            ! normalised propagation vector 
-    !    integer(kind=4)           :: nb_abs       ! number of interactions before escape
-    !    real(kind=8)              :: time         ! time in [s] from emission to escape/absorption        
-    !    real(kind=8)              :: tau_abs_curr ! current optical depth (useful when photon change mesh domain)
-    !    integer(kind=4)           :: iran         ! state of the random generator
-    ! end type photon_current
-
-
-    ! Create array of types
-    types = (/ MPI_INTEGER, &
-         MPI_INTEGER, &
-         MPI_DOUBLE_PRECISION, &
-         MPI_DOUBLE_PRECISION, &
-         MPI_DOUBLE_PRECISION, &
-         MPI_DOUBLE_PRECISION, &
-         MPI_INTEGER, &
-         MPI_DOUBLE_PRECISION, &
-         MPI_DOUBLE_PRECISION, &
-         MPI_INTEGER /)
-
-    ! block lengths
-    longueurs_blocs = (/1,1,3,3,1,3,1,1,1,1/)
-  
-    call MPI_GET_ADDRESS(p%id,           adresses(1),code)
-    call MPI_GET_ADDRESS(p%status,       adresses(2),code)
-    call MPI_GET_ADDRESS(p%xlast,        adresses(3),code)
-    call MPI_GET_ADDRESS(p%xcurr,        adresses(4),code)
-    call MPI_GET_ADDRESS(p%nu_ext,       adresses(5),code)
-    call MPI_GET_ADDRESS(p%k,            adresses(6),code)
-    call MPI_GET_ADDRESS(p%nb_abs,       adresses(7),code)
-    call MPI_GET_ADDRESS(p%time,         adresses(8),code)
-    call MPI_GET_ADDRESS(p%tau_abs_curr, adresses(9),code)
-    call MPI_GET_ADDRESS(p%iran,         adresses(10),code)
-
-    ! Compute array of displacements
-    do i=1,nbloc
-       deplacements(i)=adresses(i) - adresses(1)
-    end do
-    ! Create mpi_type_photon
-    call MPI_TYPE_CREATE_STRUCT (nbloc,longueurs_blocs,deplacements,types,mpi_type_photon,&
-         code)
-    ! Commits the new type
-    call MPI_TYPE_COMMIT(mpi_type_photon,code)
-
-  end subroutine define_mpi_type
-
-
+! GATHER --  
+!!$
+!!$  subroutine define_mpi_type
+!!$    ! Create an MPI datatype for sending photons
+!!$
+!!$    integer(kind=4)      :: i
+!!$    type(photon_current) :: p
+!!$
+!!$    ! type photon_current
+!!$    !    integer(kind=4)           :: ID
+!!$    !    integer(kind=4)           :: status       ! =0 if flying, =1 if escape, =2 if absorption (by dust)
+!!$    !    real(kind=8),dimension(3) :: xlast        ! coordinates of last interaction in box units
+!!$    !    real(kind=8),dimension(3) :: xcurr        ! current position of the photon in box units
+!!$    !    real(kind=8)              :: nu_ext       ! external frame frequency (Hz)
+!!$    !    real(kind=8),dimension(3) :: k            ! normalised propagation vector 
+!!$    !    integer(kind=4)           :: nb_abs       ! number of interactions before escape
+!!$    !    real(kind=8)              :: time         ! time in [s] from emission to escape/absorption        
+!!$    !    real(kind=8)              :: tau_abs_curr ! current optical depth (useful when photon change mesh domain)
+!!$    !    integer(kind=4)           :: iran         ! state of the random generator
+!!$    ! end type photon_current
+!!$
+!!$
+!!$    ! Create array of types
+!!$    types = (/ MPI_INTEGER, &
+!!$         MPI_INTEGER, &
+!!$         MPI_DOUBLE_PRECISION, &
+!!$         MPI_DOUBLE_PRECISION, &
+!!$         MPI_DOUBLE_PRECISION, &
+!!$         MPI_DOUBLE_PRECISION, &
+!!$         MPI_INTEGER, &
+!!$         MPI_DOUBLE_PRECISION, &
+!!$         MPI_DOUBLE_PRECISION, &
+!!$         MPI_INTEGER /)
+!!$
+!!$    ! block lengths
+!!$    longueurs_blocs = (/1,1,3,3,1,3,1,1,1,1/)
+!!$  
+!!$    call MPI_GET_ADDRESS(p%id,           adresses(1),code)
+!!$    call MPI_GET_ADDRESS(p%status,       adresses(2),code)
+!!$    call MPI_GET_ADDRESS(p%xlast,        adresses(3),code)
+!!$    call MPI_GET_ADDRESS(p%xcurr,        adresses(4),code)
+!!$    call MPI_GET_ADDRESS(p%nu_ext,       adresses(5),code)
+!!$    call MPI_GET_ADDRESS(p%k,            adresses(6),code)
+!!$    call MPI_GET_ADDRESS(p%nb_abs,       adresses(7),code)
+!!$    call MPI_GET_ADDRESS(p%time,         adresses(8),code)
+!!$    call MPI_GET_ADDRESS(p%tau_abs_curr, adresses(9),code)
+!!$    call MPI_GET_ADDRESS(p%iran,         adresses(10),code)
+!!$
+!!$    ! Compute array of displacements
+!!$    do i=1,nbloc
+!!$       deplacements(i)=adresses(i) - adresses(1)
+!!$    end do
+!!$    ! Create mpi_type_photon
+!!$    call MPI_TYPE_CREATE_STRUCT (nbloc,longueurs_blocs,deplacements,types,mpi_type_photon,&
+!!$         code)
+!!$    ! Commits the new type
+!!$    call MPI_TYPE_COMMIT(mpi_type_photon,code)
+!!$
+!!$  end subroutine define_mpi_type
+!!$
+! -- GATHER
 
 end module module_parallel_mpi
 
