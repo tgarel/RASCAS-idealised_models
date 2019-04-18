@@ -34,7 +34,7 @@ program CreateDomDump
   ! --- input / outputs
   character(2000)             :: DomDumpDir = 'test/'       ! directory to which outputs will be written
   character(2000)             :: repository = './'          ! ramses run directory (where all output_xxxxx dirs are).
-  character(2000)             :: ion_parameter_file = './a' ! directory where the files like OI_00023.out00038 are
+  character(2000)             :: ion_parameter_file = './ions.dat' 
   integer(kind=4)             :: ion_number = 1             ! number of ions we want to read
   integer(kind=4)             :: snapnum = 1                ! ramses output number to use
   character(20)               :: reading_method = 'fullbox' ! strategy to read ramses data

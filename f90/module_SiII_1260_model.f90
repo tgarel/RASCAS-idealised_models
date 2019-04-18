@@ -37,7 +37,10 @@ module module_SiII_1260_model
   real(kind=8),parameter :: Atot = A31+A32
 
 
-  public :: get_tau_SiII_1260, scatter_SiII_1260, SiII_1260_peeloff_weight, read_SiII_1260_params, print_SiII_1260_params
+  public :: get_tau_SiII_1260, scatter_SiII_1260, read_SiII_1260_params, print_SiII_1260_params
+  !--PEEL--
+  public :: SiII_1260_peeloff_weight
+  !--LEEP--
 
   
 contains

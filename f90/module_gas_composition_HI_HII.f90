@@ -26,7 +26,7 @@ module module_gas_composition
   ! user-defined parameters - read from section [gas_composition] of the parameter file
   ! --------------------------------------------------------------------------
   ! possibility to overwrite ramses values with an ad-hoc model
-  character(2000)          :: input_ramses_file   = './'            !Path to the file 'input_ramses', with all the info on the simulation (ncells, box_size, positions, velocities, nHI, nHII, Z, dopwidth
+  character(2000)          :: input_ramses_file   = './ramses'    !Path to the file 'input_ramses', with all the info on the simulation (ncells, box_size, positions, velocities, nHI, nHII, Z, dopwidth
   logical                  :: gas_overwrite       = .false. ! if true, define cell values from following parameters 
   real(kind=8)             :: fix_nhi             = 0.0d0   ! ad-hoc HI density (H/cm3)
   real(kind=8)             :: fix_vth             = 1.0d5   ! ad-hoc thermal velocity (cm/s)
@@ -43,9 +43,8 @@ module module_gas_composition
   !Val
   public :: gas_get_n_CD, gas_get_CD
   !laV
-
   !--PEEL--
-  public :: gas_peeloff_weight,gas_get_tau,gas_get_tau_gray
+  public :: gas_peeloff_weight,gas_get_tau
   !--LEEP--
 
   public :: HI_core_skip
@@ -112,7 +111,7 @@ contains
     else
        box_size_cm = ramses_get_box_size_cm(repository,snapnum)
        ! compute velocities in cm / s
-       if (verbose) write(*,*) '-- module_gas_composition_HI : extracting velocities from ramses '
+       if (verbose) write(*,*) '-- module_gas_composition_HI_HII : extracting velocities from ramses '
        allocate(v(3,nleaf))
        call ramses_get_velocity_cgs(repository,snapnum,nleaf,nvar,ramses_var,v)
        do ileaf = 1,nleaf
@@ -120,7 +119,7 @@ contains
        end do
        deallocate(v)
        ! get nHI and temperature from ramses
-       if (verbose) write(*,*) '-- module_gas_composition_HI : extracting nHI and T from ramses '
+       if (verbose) write(*,*) '-- module_gas_composition_HI_HII : extracting nHI and T from ramses '
        allocate(T(nleaf),nhi(nleaf))
        call ramses_get_T_nhi_cgs(repository,snapnum,nleaf,nvar,ramses_var,T,nhi)
        g(:)%nHI = nhi(:)
@@ -132,7 +131,7 @@ contains
        allocate(nh(nleaf))
        call ramses_get_nh_cgs(repository,snapnum,nleaf,nvar,ramses_var,nh)
        g(:)%nHII = nh(:) - nhi(:)
-       deallocate(nhi,nh)
+       deallocate(nhi,nh,T)
     end if
 
     return
@@ -171,24 +170,6 @@ contains
   end function gas_get_tau
   ! --------------------------------------------------------------------------
   !--LEEP--
-
-  !--PEEL--
-  function  gas_get_tau_gray(cell_gas, distance_cm, nu_cell)
-
-    real(kind=8), intent(in) :: distance_cm, nu_cell
-    type(gas),intent(in)     :: cell_gas
-    real(kind=8)             :: gas_get_tau_gray
-
-    print*, 'Warning : Using gas_get_tau_gray for gas with hydrogen only. Should use it for dust. Returning tau=0'
-
-    gas_get_tau_gray = 0d0
-
-    return
-    
-  end function gas_get_tau_gray
-  ! --------------------------------------------------------------------------
-  !--LEEP--
-
 
   !--PEEL--
   function gas_peeloff_weight(flag,cell_gas,nu_ext,kin,kout,iran)
@@ -325,7 +306,10 @@ contains
 
     select case(flag)
     case(1)
-       call scatter_HI(cell_gas%v, cell_gas%dopwidth, nu_cell, k, nu_ext, iran)
+       !--CORESKIP--
+       call scatter_HI(cell_gas%v, cell_gas%dopwidth, nu_cell, k, nu_ext, iran,xcrit)
+       !call scatter_HI(cell_gas%v, cell_gas%dopwidth, nu_cell, k, nu_ext, iran)
+       !--PIKSEROC--
     end select
     
   end subroutine gas_scatter

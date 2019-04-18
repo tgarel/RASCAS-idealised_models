@@ -1,6 +1,6 @@
 module module_gas_composition
 
-  ! Mix of SiII and dust 
+  ! Mix of OI, SiII and dust 
   ! This modules handles two transitions in absorption by SiII (1193. and 1190) and dust
 
   use module_OI_1302_model
@@ -33,8 +33,8 @@ module module_gas_composition
   ! user-defined parameters - read from section [gas_composition] of the parameter file
   ! --------------------------------------------------------------------------
   ! mixture parameters
-  character(2000)          :: input_ramses_file             !Path to the file 'input_ramses', with all the info on the simulation (ncells, box_size, positions, velocities, nHI, nHII, Z, dopwidth
-  character(2000)          :: Ion_file                      !Path to the file with the SiII densities
+  character(2000)          :: input_ramses_file = './ramses'  !Path to the file 'input_ramses', with all the info on the simulation (ncells, box_size, positions, velocities, nHI, nHII, Z, dopwidth
+  character(2000)          :: Ion_file          = './ions'    !Path to the file with the SiII densities
   real(kind=8)             :: f_ion           = 0.01   ! ndust = (n_HI + f_ion*n_HII) * Z/Zsun [Laursen+09]
   real(kind=8)             :: Zref            = 0.005  ! reference metallicity. Should be ~ 0.005 for SMC and ~ 0.01 for LMC. 
   ! possibility to overwrite ramses values with an ad-hoc model 
@@ -58,7 +58,9 @@ module module_gas_composition
   public :: gas_peeloff_weight,gas_get_tau
   !--LEEP--
 
+  !--CORESKIP-- 
   public :: HI_core_skip
+  !--PIKSEROC--
 
 contains
 
@@ -69,15 +71,15 @@ contains
 
     use module_ramses
 
-    character(2000),intent(in)                     :: repository 
-    integer(kind=4),intent(in)                     :: snapnum, ion_number
-    integer(kind=4),intent(in)                     :: nleaf,nvar
-    real(kind=8),intent(in),dimension(nvar,nleaf)  :: ramses_var
-    real(kind=8),intent(in),dimension(ion_number,nleaf)     :: ion_densities
-    type(gas),dimension(:),allocatable,intent(out) :: g
-    integer(kind=4)                                :: ileaf
-    real(kind=8),dimension(:),allocatable          :: T, nhi, metallicity, nhii
-    real(kind=8),dimension(:,:),allocatable        :: v
+    character(2000),intent(in)                          :: repository 
+    integer(kind=4),intent(in)                          :: snapnum, ion_number
+    integer(kind=4),intent(in)                          :: nleaf,nvar
+    real(kind=8),intent(in),dimension(nvar,nleaf)       :: ramses_var
+    real(kind=8),intent(in),dimension(ion_number,nleaf) :: ion_densities
+    type(gas),dimension(:),allocatable,intent(out)      :: g
+    integer(kind=4)                                     :: ileaf
+    real(kind=8),dimension(:),allocatable               :: T, nhi, metallicity, nhii
+    real(kind=8),dimension(:,:),allocatable             :: v
 
 
     if(ion_number /= 2) then
@@ -133,11 +135,8 @@ contains
   end subroutine gas_from_ramses_leaves_ions
   ! --------------------------------------------------------------------------
   
-  !Val--
-  ! --------------------------------------------------------------------------
+  !Val --
   subroutine gas_from_list(ncells, cell_pos, cell_l, gas_leaves)
-
-    !NOT READYYYYYYYYYYYYYYYYYYYYYYYY
 
     integer(kind=4), intent(out)		:: ncells
     integer(kind=4), allocatable, intent(out)	:: cell_l(:)
@@ -148,12 +147,8 @@ contains
     real(kind=8), allocatable			:: nhi(:), nhii(:), metallicity(:)
 
 
-    print*, 'Cannot use gas_from_list in module_gas_composition_OI_1302_SiII_1304_dust.f90 for the moment. Use gas_from_ramses_leaves_ions'
-    stop
-
-
     open(unit=20, file=input_ramses_file, status='old', form='unformatted')
-   ! open(unit=21, file=Ion_file, status='old', form='unformatted') ! to comment for test
+    open(unit=21, file=Ion_file, status='old', form='unformatted')  !remove for 2*2*2 test
 
     read(20) ncells
 
@@ -167,21 +162,26 @@ contains
     read(20) gas_leaves%v(1)
     read(20) gas_leaves%v(2)
     read(20) gas_leaves%v(3)
-    !read(20) nhi ! to comment for test
-    !read(20) nhii ! to comment for test
-    !read(20) metallicity ! to comment for test
+    read(20) nhi          !remove for 2*2*2 test
+    read(20) nhii         !remove for 2*2*2 test
+    read(20) metallicity  !remove for 2*2*2 test
     read(20) gas_leaves%dopwidth
-    read(20) gas_leaves%ndust !For test
-    read(20) gas_leaves%nSiII !For test
-    !read(21) gas_leaves%nSiII ! to comment for test
 
-    close(20) !; close(21)
+    !read(20) gas_leaves%nd =ust !add for 2*2*2 test
+    !read(20) gas_leaves%nOI    !add for 2*2*2 test
+    !read(20) gas_leaves%nSiII  !add for 2*2*2 test
+    read(21) gas_leaves%nOI   !remove for 2*2*2 test
+    read(21) gas_leaves%nSiII !remove for 2*2*2 test
 
-    !gas_leaves%ndust = metallicity / Zref * ( nhi + f_ion*nhii )   ! [ /cm3 ] ! to comment for test
+    close(20)
+    close(21)  !remove for 2*2*2 test
+    
+    gas_leaves%ndust = metallicity / Zref * ( nhi + f_ion*nhii )   ! [ /cm3 ]   !remove for 2*2*2 test
 
 
-    print*,'boxsize in cm : ', box_size_cm
+    print*,'boxsize in cm    : ', box_size_cm
     print*,'min/max of vth   : ',minval(gas_leaves(:)%dopwidth),maxval(gas_leaves(:)%dopwidth)
+    print*,'min/max of nOI   : ',minval(gas_leaves(:)%nOI),maxval(gas_leaves(:)%nOI)
     print*,'min/max of nSiII : ',minval(gas_leaves(:)%nSiII),maxval(gas_leaves(:)%nSiII)
     print*,'min/max of ndust : ',minval(gas_leaves(:)%ndust),maxval(gas_leaves(:)%ndust)
 
@@ -189,7 +189,6 @@ contains
 
 
   end subroutine gas_from_list
-  ! --------------------------------------------------------------------------
   !--laV
   
 
@@ -217,43 +216,6 @@ contains
     if (gas_overwrite) then
        call overwrite_gas(g)
     else
-       
-       box_size_cm = ramses_get_box_size_cm(repository,snapnum)
-
-       ! compute velocities in cm / s
-       write(*,*) '-- module_gas_composition_SiII_dust : extracting velocities from ramses '
-       allocate(v(3,nleaf))
-       call ramses_get_velocity_cgs(repository,snapnum,nleaf,nvar,ramses_var,v)
-       do ileaf = 1,nleaf
-          g(ileaf)%v = v(:,ileaf)
-       end do
-       deallocate(v)
-
-       ! get nSiII and temperature from ramses
-       write(*,*) '-- module_gas_composition_SiII_dust : extracting nSiII from ramses '
-       allocate(T(nleaf),nSiII(nleaf))
-       call ramses_get_T_nSiII_cgs(repository,snapnum,nleaf,nvar,ramses_var,T,nSiII)
-       g(:)%nSiII = nSiII(:)
-       ! compute thermal velocity 
-       ! ++++++ TURBULENT VELOCITY >>>>> parameter to add and use here
-       g(:)%dopwidth = sqrt(2.0d0*kb/mSi*T) ! [ cm/s ]
-       deallocate(T,nSiII)
-
-       print*,'min/max of nSiII : ',minval(g(:)%nSiII),maxval(g(:)%nSiII)
-       
-       ! get ndust (pseudo dust density from Laursen, Sommer-Larsen, Andersen 2009)
-       write(*,*) '-- module_gas_composition_SiII_dust : extracting ndust from ramses '
-       allocate(T(nleaf),nhi(nleaf),metallicity(nleaf),nhii(nleaf))
-       call ramses_get_T_nhi_cgs(repository,snapnum,nleaf,nvar,ramses_var,T,nhi)
-       call ramses_get_metallicity(nleaf,nvar,ramses_var,metallicity)
-       call ramses_get_nh_cgs(repository,snapnum,nleaf,nvar,ramses_var,nhii)
-       nhii = nhii - nhi
-       do ileaf = 1,nleaf
-          g(ileaf)%ndust = metallicity(ileaf) / Zref * ( nhi(ileaf) + f_ion*nhii(ileaf) )   ! [ /cm3 ]
-       end do
-       deallocate(metallicity,T,nhi,nhii)
-
-       print*,'min/max of ndust : ',minval(g(:)%ndust),maxval(g(:)%ndust)
        
     end if
 
@@ -315,8 +277,8 @@ contains
     real(kind=8)                          :: tau_OI_1302, tau_SiII_1304, tau_dust, tau_cell, proba02, x , proba04
     
     ! compute optical depths for different components of the gas.
-    tau_OI_1302   = get_tau_OI_1302(cell_gas%nOI, cell_gas%dopwidth/sqrt(15.999), distance_to_border_cm, nu_cell)
-    tau_SiII_1304 = get_tau_SiII_1304(cell_gas%nSiII, cell_gas%dopwidth/sqrt(28.085), distance_to_border_cm, nu_cell)
+    tau_OI_1302   = get_tau_OI_1302(cell_gas%nOI, cell_gas%dopwidth/sqrt(mO/amu), distance_to_border_cm, nu_cell)
+    tau_SiII_1304 = get_tau_SiII_1304(cell_gas%nSiII, cell_gas%dopwidth/sqrt(mSi/amu), distance_to_border_cm, nu_cell)
     tau_dust      = get_tau_dust(cell_gas%ndust, distance_to_border_cm, nu_cell)
     tau_cell      = tau_OI_1302 + tau_SiII_1304 + tau_dust
 
@@ -370,8 +332,8 @@ contains
     real(kind=8)            :: tau_OI_1302, tau_SiII_1304, tau_dust
 
     ! compute optical depths for different components of the gas.
-    tau_OI_1302     = get_tau_OI_1302(cell_gas%nOI, cell_gas%dopwidth/sqrt(15.999), distance_cm, nu_cell)
-    tau_SiII_1304   = get_tau_SiII_1304(cell_gas%nSiII, cell_gas%dopwidth/sqrt(28.085), distance_cm, nu_cell)
+    tau_OI_1302     = get_tau_OI_1302(cell_gas%nOI, cell_gas%dopwidth/sqrt(mO/amu), distance_cm, nu_cell)
+    tau_SiII_1304   = get_tau_SiII_1304(cell_gas%nSiII, cell_gas%dopwidth/sqrt(mSi/amu), distance_cm, nu_cell)
     tau_dust        = get_tau_dust(cell_gas%ndust, distance_cm, nu_cell)
     gas_get_tau = tau_OI_1302 + tau_SiII_1304 + tau_dust
 
@@ -392,13 +354,13 @@ contains
 
     select case(flag)
     case(1)
-       gas_peeloff_weight = OI_1302_peeloff_weight(cell_gas%v, cell_gas%dopwidth/sqrt(15.999), nu_ext, kin, kout, iran)
+       gas_peeloff_weight = OI_1302_peeloff_weight(cell_gas%v, cell_gas%dopwidth/sqrt(mO/amu), nu_ext, kin, kout, iran)
     case(2)
-       gas_peeloff_weight = SiII_1304_peeloff_weight(cell_gas%v, cell_gas%dopwidth/sqrt(28.085), nu_ext, kin, kout, iran)
+       gas_peeloff_weight = SiII_1304_peeloff_weight(cell_gas%v, cell_gas%dopwidth/sqrt(mSi/amu), nu_ext, kin, kout, iran)
     case(3)
        gas_peeloff_weight = dust_peeloff_weight(cell_gas%v, nu_ext, kin, kout)
     case default
-       print*,'ERROR in module_gas_composition_OI_1302SiII_1304_dust.f90:gas_peeloff_weight - unknown case : ',flag 
+       print*,'ERROR in module_gas_composition_OI_1302_SiII_1304_dust.f90:gas_peeloff_weight - unknown case : ',flag 
        stop
     end select
 
@@ -423,9 +385,9 @@ contains
     
     select case(flag)
     case(1)
-       call scatter_OI_1302(cell_gas%v, cell_gas%dopwidth/sqrt(15.999), nu_cell, k, nu_ext, iran)
+       call scatter_OI_1302(cell_gas%v, cell_gas%dopwidth/sqrt(mO/amu), nu_cell, k, nu_ext, iran)
     case(2)
-       call scatter_SiII_1304(cell_gas%v, cell_gas%dopwidth/sqrt(28.085), nu_cell, k, nu_ext, iran)
+       call scatter_SiII_1304(cell_gas%v, cell_gas%dopwidth/sqrt(mSi/amu), nu_cell, k, nu_ext, iran)
     case(3)
        call scatter_dust(cell_gas%v, nu_cell, k, nu_ext, iran, ilost)
        if(ilost==1)flag=-1

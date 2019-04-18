@@ -28,6 +28,9 @@ module module_MgII_2796_model
   real(kind=8),parameter :: A21            = 2.60d8                       ! spontaneous decay [/s]
 
   public :: get_tau_MgII_2796, scatter_MgII_2796, read_MgII_2796_params, print_MgII_2796_params
+  !--PEEL--
+  public :: MgII_2796_peeloff_weight
+  !--LEEP--
 
 contains
 
@@ -123,6 +126,72 @@ contains
     k = knew
 
   end subroutine scatter_MgII_2796
+
+
+    !--PEEL--
+  function MgII_2796_peeloff_weight(vcell,vth,nu_ext,kin,kout,iran)
+
+    ! ---------------------------------------------------------------------------------
+    ! Compute probability that a photon coming along kin scatters off in direction kout.
+    ! Also update nu_ext to external-frame frequency along kout
+    ! ---------------------------------------------------------------------------------
+    ! INPUTS :
+    ! - vcell    : bulk velocity of the gas (i.e. cell velocity)       [ cm / s ] 
+    ! - vth      : thermal (+turbulent) velocity dispersion of H atoms [ cm / s ] 
+    ! - nu_ext   : frequency of incoming photon, in external frame     [ Hz ]
+    ! - kin      : propagation vector (normalized)
+    ! - kout     : direction after interaction (fixed)
+    ! - iran     : random number generator seed
+    ! OUTPUTS :
+    ! - nu_ext   : updated frequency in external frame [ Hz ]
+    ! _ iran     : updated value of seed
+    ! ---------------------------------------------------------------------------------
+
+    real(kind=8),intent(inout)              :: nu_ext
+    real(kind=8),dimension(3),intent(in)    :: kin, kout
+    real(kind=8),dimension(3),intent(in)    :: vcell
+    real(kind=8),intent(in)                 :: vth
+    integer(kind=4),intent(inout)           :: iran
+    real(kind=8)                            :: MgII_2796_peeloff_weight
+    real(kind=8)                            :: delta_nu_doppler, a, x_cell, upar, ruper
+    real(kind=8)                            :: r2,uper, nu_atom, mu, bu, scalar
+    real(kind=8)                            :: x_atom,nu_cell
+
+
+    ! compute frequency in cell's frame 
+    scalar  = kin(1) * vcell(1) + kin(2) * vcell(2) + kin(3) * vcell(3)
+    nu_cell = (1.d0 - scalar/clight) * nu_ext
+
+    ! define x_cell & a
+    delta_nu_doppler = vth / lambda12_cm 
+    a = A21 / fourpi / delta_nu_doppler
+    x_cell = (nu_cell - nu12) / delta_nu_doppler
+
+    ! 1/ component parallel to photon's propagation
+    ! -> get velocity of interacting atom parallel to propagation
+    upar = get_uparallel(x_cell,a,iran)
+    upar = upar * vth    ! upar is an x -> convert to a velocity 
+
+    ! 2/ component perpendicular to photon's propagation
+    ruper  = ran3(iran)
+    r2     = ran3(iran)
+    uper   = sqrt(-log(ruper))*cos(twopi*r2)
+    uper   = uper * vth  ! from x to velocity
+
+    ! 3/ chose de-excitation channel to determine output freq. in atom's frame
+    nu_atom = nu_cell - nu_ext * upar/clight ! incoming frequency in atom's frame = outcoming freq in same frame
+    
+    ! 4/ determine direction of scattered photon
+    MgII_2796_peeloff_weight = 0.5d0  ! P(mu) for isotropic phase function
+    mu = kin(1)*kout(1) + kin(2)*kout(2) + kin(3)*kout(3)
+    bu = sqrt(1.0d0 - mu*mu)
+    
+    ! 5/ compute atom freq. in external frame, after scattering
+    scalar = kout(1) * vcell(1) + kout(2) * vcell(2) + kout(3)* vcell(3)
+    nu_ext = nu_atom * (1.0d0 + scalar/clight + (upar*mu + bu*uper)/clight)
+
+  end function MgII_2796_peeloff_weight
+!--LEEP--
 
 
 

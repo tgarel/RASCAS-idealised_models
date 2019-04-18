@@ -37,7 +37,8 @@ module module_gas_composition
   ! --------------------------------------------------------------------------
   ! user-defined parameters - read from section [gas_composition] of the parameter file
   ! --------------------------------------------------------------------------
-  ! mixture parameters 
+  ! mixture parameters
+  character(2000)          :: input_ramses_file = './ramses'  !Path to the file 'input_ramses', with all the info on the simulation (ncells, box_size, positions, velocities, nHI, nHII, Z, dopwidth
   real(kind=8)             :: deut2H_nb_ratio = 3.d-5  ! D to H number ratio. Default is primordial value 3e-5
   real(kind=8)             :: f_ion           = 0.01   ! ndust = (n_HI + f_ion*n_HII) * Z/Zsun [Laursen+09]
   real(kind=8)             :: Zref            = 0.005  ! reference metallicity. Should be ~ 0.005 for SMC and ~ 0.01 for LMC. 
@@ -51,17 +52,67 @@ module module_gas_composition
   ! --------------------------------------------------------------------------
 
   ! public functions:
-  public :: gas_from_ramses_leaves,get_gas_velocity,gas_get_scatter_flag,gas_scatter,dump_gas
+  public :: gas_from_ramses_leaves,gas_from_list,get_gas_velocity,gas_get_scatter_flag,gas_scatter,dump_gas
   public :: read_gas,gas_destructor,read_gas_composition_params,print_gas_composition_params
   !--PEEL--
   public :: gas_peeloff_weight,gas_get_tau
   !--LEEP--
+  !Val
+  public :: gas_get_n_CD, gas_get_CD
+  !laV
 
   !--CORESKIP-- push variable from module_HI_model up so that module_photon knows about it... 
   public :: HI_core_skip 
   !--PIKSEROC-- 
 
 contains
+
+
+  !Val --
+  subroutine gas_from_list(ncells, cell_pos, cell_l, gas_leaves)
+
+    integer(kind=4), intent(out)		:: ncells
+    integer(kind=4), allocatable, intent(out)	:: cell_l(:)
+    real(kind=8), allocatable, intent(out)	:: cell_pos(:,:)
+    type(gas), allocatable, intent(out)		:: gas_leaves(:)
+
+    integer(kind=4)				:: i
+    real(kind=8), allocatable			:: nhii(:), metallicity(:)
+
+
+    open(unit=20, file=input_ramses_file, status='old', form='unformatted')
+    read(20) ncells
+
+    allocate(cell_l(ncells), cell_pos(ncells,3), gas_leaves(ncells), nhii(ncells), metallicity(ncells))
+
+    read(20) box_size_cm
+    read(20) cell_l
+    read(20) cell_pos(:,1)
+    read(20) cell_pos(:,2)
+    read(20) cell_pos(:,3)
+    read(20) gas_leaves%v(1)
+    read(20) gas_leaves%v(2)
+    read(20) gas_leaves%v(3)
+    read(20) gas_leaves%nHI
+    read(20) nhii
+    read(20) metallicity
+    read(20) gas_leaves%dopwidth
+    
+    close(20)
+    
+    gas_leaves%ndust = metallicity / Zref * ( gas_leaves%nHI + f_ion*nhii )   ! [ /cm3 ]
+
+    print*,'boxsize in cm : ', box_size_cm
+    print*,'min/max of vth   : ',minval(gas_leaves(:)%dopwidth),maxval(gas_leaves(:)%dopwidth)
+    print*,'min/max of nHI : ',minval(gas_leaves(:)%nHI),maxval(gas_leaves(:)%nHI)
+    print*,'min/max of ndust : ',minval(gas_leaves(:)%ndust),maxval(gas_leaves(:)%ndust)
+
+    deallocate(nhii, metallicity)
+
+
+  end subroutine gas_from_list
+  ! --------------------------------------------------------------------------
+  !--laV
 
   
   subroutine gas_from_ramses_leaves(repository,snapnum,nleaf,nvar,ramses_var, g)
@@ -209,6 +260,38 @@ contains
     return
   end function gas_get_scatter_flag
 
+
+   !--CORESKIP-- 
+  subroutine gas_scatter(flag,cell_gas,nu_cell,k,nu_ext,iran,xcrit)
+  !subroutine gas_scatter(flag,cell_gas,nu_cell,k,nu_ext,iran)
+  !--PIKSEROC--
+    
+    integer(kind=4),intent(inout)            :: flag
+    type(gas),intent(in)                     :: cell_gas
+    real(kind=8),intent(inout)               :: nu_cell, nu_ext
+    real(kind=8),dimension(3), intent(inout) :: k
+    integer(kind=4),intent(inout)            :: iran
+    !--CORESKIP--
+    real(kind=8),intent(in)                  :: xcrit
+    !--PIKSEROC--
+    integer(kind=4)                          :: ilost
+
+    select case(flag)
+    case(1)
+       !--CORESKIP--
+       call scatter_HI(cell_gas%v, cell_gas%dopwidth, nu_cell, k, nu_ext, iran,xcrit)
+       !call scatter_HI(cell_gas%v, cell_gas%dopwidth, nu_cell, k, nu_ext, iran)
+       !--PIKSEROC--
+    case(2)
+       call scatter_D(cell_gas%v,cell_gas%dopwidth*sqrt_H2Deut_mass_ratio, nu_cell, k, nu_ext, iran)
+    case(3)
+       call scatter_dust(cell_gas%v, nu_cell, k, nu_ext, iran, ilost)
+       if(ilost==1)flag=-1
+    end select
+
+  end subroutine gas_scatter
+
+
   !--PEEL--
   function  gas_get_tau(cell_gas, distance_cm, nu_cell)
 
@@ -240,39 +323,7 @@ contains
     
   end function gas_get_tau
   ! --------------------------------------------------------------------------
-
   !--LEEP--
-
-  
-  !--CORESKIP-- 
-  subroutine gas_scatter(flag,cell_gas,nu_cell,k,nu_ext,iran,xcrit)
-  !subroutine gas_scatter(flag,cell_gas,nu_cell,k,nu_ext,iran)
-  !--PIKSEROC--
-    
-    integer(kind=4),intent(inout)            :: flag
-    type(gas),intent(in)                     :: cell_gas
-    real(kind=8),intent(inout)               :: nu_cell, nu_ext
-    real(kind=8),dimension(3), intent(inout) :: k
-    integer(kind=4),intent(inout)            :: iran
-    !--CORESKIP--
-    real(kind=8),intent(in)                  :: xcrit
-    !--PIKSEROC--
-    integer(kind=4)                          :: ilost
-
-    select case(flag)
-    case(1)
-       !--CORESKIP--
-       call scatter_HI(cell_gas%v, cell_gas%dopwidth, nu_cell, k, nu_ext, iran,xcrit)
-       !call scatter_HI(cell_gas%v, cell_gas%dopwidth, nu_cell, k, nu_ext, iran)
-       !--PIKSEROC--
-    case(2)
-       call scatter_D(cell_gas%v,cell_gas%dopwidth*sqrt_H2Deut_mass_ratio, nu_cell, k, nu_ext, iran)
-    case(3)
-       call scatter_dust(cell_gas%v, nu_cell, k, nu_ext, iran, ilost)
-       if(ilost==1)flag=-1
-    end select
-
-  end subroutine gas_scatter
 
   !--PEEL--
   function gas_peeloff_weight(flag,cell_gas,nu_ext,kin,kout,iran)
@@ -298,6 +349,28 @@ contains
 
   end function gas_peeloff_weight
   !--LEEP--
+
+  !Val
+  function gas_get_n_CD()
+
+    integer(kind=4)           :: gas_get_n_CD
+
+    gas_get_n_CD = 2
+
+  end function gas_get_n_CD
+  !laV
+
+  !Val
+  function gas_get_CD(cell_gas, distance_cm)
+
+    real(kind=8), intent(in) :: distance_cm
+    type(gas),intent(in)     :: cell_gas
+    real(kind=8)             :: gas_get_CD(2)
+
+    gas_get_CD = (/ distance_cm*cell_gas%nHI, distance_cm*cell_gas%ndust /)
+
+  end function gas_get_CD
+  !laV
 
 
   subroutine dump_gas(unit,g)
@@ -383,6 +456,8 @@ contains
              read(value,*) f_ion
           case ('Zref')
              read(value,*) Zref
+          case ('input_ramses_file')
+             write(input_ramses_file,'(a)') trim(value)
           case ('gas_overwrite')
              read(value,*) gas_overwrite
           case ('fix_nhi')

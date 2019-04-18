@@ -17,8 +17,6 @@ module module_gas_composition
      ! fluid
      real(kind=8) :: v(3)      ! gas velocity [cm/s]
      ! SiII
-     ! -> density is computed as 2.8d-5 * nHI * metallicity / solar_metallicity
-     !Val--  I use 3.2d-5 * nH instead of 2.8d-5 * nHI  --Val
      real(kind=8) :: nSiII     ! numerical density of SiII  [#/cm3]
      real(kind=8) :: dopwidth  ! Doppler width [cm/s]
      ! DUST -> model of Laursen, Sommer-Larsen and Andersen 2009.
@@ -57,8 +55,9 @@ module module_gas_composition
     !--PEEL--
   public :: gas_peeloff_weight,gas_get_tau!,gas_get_tau_gray
   !--LEEP--
-
+  !--CORESKIP--
   public :: HI_core_skip
+  !--PIKSEROC
 
 
 contains
@@ -94,7 +93,7 @@ contains
     read(20) nhii         !remove for 2*2*2 test
     read(20) metallicity  !remove for 2*2*2 test
     read(20) gas_leaves%dopwidth
-     gas_leaves%dopwidth = gas_leaves%dopwidth / sqrt(28.0855)   !28.0855 is the atomic mass unit of Silicone.  In the data file I printed sqrt(2*kb*T/m_u), so it's correct for Hydrogen, but other elements have to be divided by sqrt(mass of the element in atomic units). !remove for 2*2*2 test
+     gas_leaves%dopwidth = gas_leaves%dopwidth / sqrt(mSi/amu)  ! remove for 2*2*2 test
     !read(20) gas_leaves%ndust !add for 2*2*2 test
     !read(20) gas_leaves%nSiII !add for 2*2*2 test
     read(21) gas_leaves%nSiII !remove for 2*2*2 test
@@ -123,15 +122,15 @@ contains
 
     use module_ramses
 
-    character(2000),intent(in)                     :: repository 
-    integer(kind=4),intent(in)                     :: snapnum, ion_number
-    integer(kind=4),intent(in)                     :: nleaf,nvar
-    real(kind=8),intent(in),dimension(nvar,nleaf)  :: ramses_var
-    real(kind=8),intent(in),dimension(ion_number,nleaf)       :: SiII_density
-    type(gas),dimension(:),allocatable,intent(out) :: g
-    integer(kind=4)                                :: ileaf
-    real(kind=8),dimension(:),allocatable          :: T, nhi, metallicity, nhii
-    real(kind=8),dimension(:,:),allocatable        :: v
+    character(2000),intent(in)                          :: repository 
+    integer(kind=4),intent(in)                          :: snapnum, ion_number
+    integer(kind=4),intent(in)                          :: nleaf,nvar
+    real(kind=8),intent(in),dimension(nvar,nleaf)       :: ramses_var
+    real(kind=8),intent(in),dimension(ion_number,nleaf) :: SiII_density
+    type(gas),dimension(:),allocatable,intent(out)      :: g
+    integer(kind=4)                                     :: ileaf
+    real(kind=8),dimension(:),allocatable               :: T, nhi, metallicity, nhii
+    real(kind=8),dimension(:,:),allocatable             :: v
 
     if(ion_number /= 1) then
        print*, 'Error in module_gas_composition_SiII_1260_dust.f90,  the number of ions in ion_parameter_file should be 1.'
@@ -163,7 +162,7 @@ contains
        
        ! compute thermal velocity 
        ! ++++++ TURBULENT VELOCITY >>>>> parameter to add and use here
-       g(:)%dopwidth = sqrt((2.0d0*kb/mp/28.085)*T) ! [ cm/s ]  
+       g(:)%dopwidth = sqrt((2.0d0*kb/mSi)*T) ! [ cm/s ]  
 
        ! get ndust (pseudo dust density from Laursen, Sommer-Larsen, Andersen 2009)
        write(*,*) '-- module_gas_composition_SiII_1260_dust : extracting ndust from ramses '

@@ -25,7 +25,8 @@ module module_gas_composition
   ! --------------------------------------------------------------------------
   ! user-defined parameters - read from section [gas_composition] of the parameter file
   ! --------------------------------------------------------------------------
-  ! possibility to overwrite ramses values with an ad-hoc model 
+  ! possibility to overwrite ramses values with an ad-hoc model
+  character(2000)          :: input_ramses_file   = './ramses'  !Path to the file 'input_ramses', with all the info on the simulation (ncells, box_size, positions, velocities, nHI, nHII, Z, dopwidth
   logical                  :: gas_overwrite       = .false. ! if true, define cell values from following parameters 
   real(kind=8)             :: fix_nhi             = 0.0d0   ! ad-hoc HI density (H/cm3)
   real(kind=8)             :: fix_vth             = 1.0d5   ! ad-hoc thermal velocity (cm/s)
@@ -34,13 +35,13 @@ module module_gas_composition
   ! --------------------------------------------------------------------------
 
   ! public functions:
-  public :: gas_from_ramses_leaves,get_gas_velocity,gas_get_scatter_flag,gas_scatter,dump_gas
+  public :: gas_from_ramses_leaves,gas_from_list,get_gas_velocity,gas_get_scatter_flag,gas_scatter,dump_gas
   public :: read_gas,gas_destructor,read_gas_composition_params,print_gas_composition_params
   !Val
   public :: gas_get_CD, gas_get_n_CD
   !laV
   !--PEEL--
-  public :: gas_peeloff_weight,gas_get_tau,gas_get_tau_gray
+  public :: gas_peeloff_weight,gas_get_tau
   !--LEEP--
 
   !--CORESKIP-- push variable from module_HI_model up so that module_photon knows about it...
@@ -48,6 +49,47 @@ module module_gas_composition
   !--PIKSEROC--    
 
 contains
+
+
+  !Val --
+  subroutine gas_from_list(ncells, cell_pos, cell_l, gas_leaves)
+
+    integer(kind=4), intent(out)		:: ncells
+    integer(kind=4), allocatable, intent(out)	:: cell_l(:)
+    real(kind=8), allocatable, intent(out)	:: cell_pos(:,:)
+    type(gas), allocatable, intent(out)		:: gas_leaves(:)
+
+    integer(kind=4)				:: i
+
+
+    open(unit=20, file=input_ramses_file, status='old', form='unformatted')
+    read(20) ncells
+
+    allocate(cell_l(ncells), cell_pos(ncells,3), gas_leaves(ncells))
+
+    read(20) box_size_cm
+    read(20) cell_l
+    read(20) cell_pos(:,1)
+    read(20) cell_pos(:,2)
+    read(20) cell_pos(:,3)
+    read(20) gas_leaves%v(1)
+    read(20) gas_leaves%v(2)
+    read(20) gas_leaves%v(3)
+    read(20) gas_leaves%nHI
+    read(20)
+    read(20)
+    read(20) gas_leaves%dopwidth
+    
+    close(20)
+
+    print*,'boxsize in cm : ', box_size_cm
+    print*,'min/max of vth   : ',minval(gas_leaves(:)%dopwidth),maxval(gas_leaves(:)%dopwidth)
+    print*,'min/max of nHI : ',minval(gas_leaves(:)%nHI),maxval(gas_leaves(:)%nHI)
+
+
+  end subroutine gas_from_list
+  ! --------------------------------------------------------------------------
+  !--laV
   
 
   subroutine gas_from_ramses_leaves(repository,snapnum,nleaf,nvar,ramses_var, g)
@@ -120,8 +162,6 @@ contains
 
     ! compute optical depths for different components of the gas.
     tau_HI   = get_tau_HI(cell_gas%nHI, cell_gas%dopwidth, distance_cm, nu_cell)
-    !tau_dust = get_tau_dust(cell_gas%ndust, distance_cm, nu_cell)
-    !tau_D    = get_tau_D(cell_gas%nHI * deut2H_nb_ratio, cell_gas%dopwidth * sqrt_H2Deut_mass_ratio,distance_cm, nu_cell)
     gas_get_tau = tau_HI
 
     return
@@ -129,25 +169,6 @@ contains
   end function gas_get_tau
   ! --------------------------------------------------------------------------
   !--LEEP--
-
-  !--PEEL--
-  function  gas_get_tau_gray(cell_gas, distance_cm)
-
-    real(kind=8), intent(in) :: distance_cm
-    type(gas),intent(in)     :: cell_gas
-    real(kind=8)             :: gas_get_tau_gray
-
-    print*, 'Warning : Using gas_get_tau_gray for gas with hydrogen only. Should use it for dust. Returning tau=0'
-
-    gas_get_tau_gray = 0d0
-
-    return
-    
-  end function gas_get_tau_gray
-  ! --------------------------------------------------------------------------
-  !--LEEP--
-
-
 
 
   !--PEEL--
@@ -372,6 +393,8 @@ contains
           i = scan(value,'!')
           if (i /= 0) value = trim(adjustl(value(:i-1)))
           select case (trim(name))
+          case ('input_ramses_file')
+             write(input_ramses_file,'(a)') trim(value)
           case ('gas_overwrite')
              read(value,*) gas_overwrite
           case ('fix_nhi')

@@ -16,12 +16,10 @@ module module_gas_composition
   type, public :: gas
      ! fluid
      real(kind=8) :: v(3)      ! gas velocity [cm/s]
-     ! Hydrogen 
-     !real(kind=8) :: nHI       ! HI numerical density [HI/cm3]
-     real(kind=8) :: dopwidth  ! Doppler width [cm/s]
      ! DUST -> model of Laursen, Sommer-Larsen and Andersen 2009.
      ! ->  ndust = (nHI + f_ion nHII)*Z/Zref
-     ! f_ion and Zref are two free parameters . 
+     ! f_ion and Zref are two free parameters .
+     real(kind=8) :: dopwidth  !Useless,  but otherwise bug around line 172 of module_photon
      real(kind=8) :: ndust     ! pseudo-numerical density of dust particles [#/cm3]
   end type gas
   real(kind=8),public :: box_size_cm   ! size of simulation box in cm. 
@@ -29,29 +27,82 @@ module module_gas_composition
   ! --------------------------------------------------------------------------
   ! user-defined parameters - read from section [gas_composition] of the parameter file
   ! --------------------------------------------------------------------------
-  ! mixture parameters 
+  ! mixture parameters
+  character(2000)          :: input_ramses_file = './ramses'  !Path to the file 'input_ramses', with all the info on the simulation (ncells, box_size, positions, velocities, nHI, nHII, Z, dopwidth
   real(kind=8)             :: f_ion           = 0.01   ! ndust = (n_HI + f_ion*n_HII) * Z/Zsun [Laursen+09]
   real(kind=8)             :: Zref            = 0.005  ! reference metallicity. Should be ~ 0.005 for SMC and ~ 0.01 for LMC. 
   ! possibility to overwrite ramses values with an ad-hoc model 
   logical                  :: gas_overwrite       = .false. ! if true, define cell values from following parameters 
-  real(kind=8)             :: fix_nhi             = 0.0d0   ! ad-hoc HI density (H/cm3)
-  real(kind=8)             :: fix_vth             = 1.0d5   ! ad-hoc thermal velocity (cm/s)
   real(kind=8)             :: fix_ndust           = 0.0d0   ! ad-hoc dust number density (/cm3)
+  real(kind=8)             :: fix_vth             = 1d5
   real(kind=8)             :: fix_vel             = 0.0d0   ! ad-hoc cell velocity (cm/s) -> NEED BETTER PARAMETERIZATION for more than static... 
   real(kind=8)             :: fix_box_size_cm     = 1.0d8   ! ad-hoc box size in cm. 
   ! miscelaneous
-  logical                  :: verbose             = .false. ! display some run-time info on this module
+  logical                  :: verbose             = .true. ! display some run-time info on this module
+  logical                  :: HI_core_skip        = .false.
   ! --------------------------------------------------------------------------
 
   ! public functions:
-  public :: gas_from_ramses_leaves,get_gas_velocity,gas_get_scatter_flag,gas_scatter,dump_gas
+  public :: gas_from_ramses_leaves, gas_from_list, get_gas_velocity,gas_get_scatter_flag,gas_scatter,dump_gas
   public :: read_gas,gas_destructor,read_gas_composition_params,print_gas_composition_params
-
+  !Val
+  public :: gas_get_n_CD, gas_get_CD
+  !laV
   !--PEEL--
-  public :: gas_peeloff_weight,gas_get_tau,gas_get_tau_gray
+  public :: gas_peeloff_weight,gas_get_tau
   !--LEEP--
+    !--CORESKIP-- 
+  public :: HI_core_skip
+  !--PIKSEROC--
 
 contains
+
+
+   !Val --
+  subroutine gas_from_list(ncells, cell_pos, cell_l, gas_leaves)
+
+    integer(kind=4), intent(out)		:: ncells
+    integer(kind=4), allocatable, intent(out)	:: cell_l(:)
+    real(kind=8), allocatable, intent(out)	:: cell_pos(:,:)
+    type(gas), allocatable, intent(out)		:: gas_leaves(:)
+
+    integer(kind=4)				:: i
+    real(kind=8), allocatable			:: nhi(:), nhii(:), metallicity(:)
+
+
+    open(unit=20, file=input_ramses_file, status='old', form='unformatted')
+
+    read(20) ncells
+
+    allocate(cell_l(ncells), cell_pos(ncells,3), gas_leaves(ncells), nhi(ncells), nhii(ncells), metallicity(ncells))
+
+    read(20) box_size_cm
+    read(20) cell_l
+    read(20) cell_pos(:,1)
+    read(20) cell_pos(:,2)
+    read(20) cell_pos(:,3)
+    read(20) gas_leaves%v(1)
+    read(20) gas_leaves%v(2)
+    read(20) gas_leaves%v(3)
+    read(20) nhi          !remove for 2*2*2 test
+    read(20) nhii         !remove for 2*2*2 test
+    read(20) metallicity  !remove for 2*2*2 test
+    read(20)
+    !read(20) gas_leaves%ndust !add for 2*2*2 test
+
+    close(20)
+    
+    gas_leaves%ndust = metallicity / Zref * ( nhi + f_ion*nhii )   ! [ /cm3 ]   !remove for 2*2*2 test
+
+
+    if (verbose) print*,'boxsize in cm : ', box_size_cm
+    if (verbose) print*,'min/max of ndust : ',minval(gas_leaves(:)%ndust),maxval(gas_leaves(:)%ndust)
+
+    deallocate(nhi, nhii, metallicity)
+
+
+  end subroutine gas_from_list
+  !--laV
 
 
   subroutine gas_from_ramses_leaves(repository,snapnum,nleaf,nvar,ramses_var, g)
@@ -89,10 +140,6 @@ contains
        if (verbose) write(*,*) '-- module_gas_composition_dust : extracting nHI and T from ramses '
        allocate(T(nleaf),nhi(nleaf))
        call ramses_get_T_nhi_cgs(repository,snapnum,nleaf,nvar,ramses_var,T,nhi)
-       !g(:)%nHI = nhi(:)
-       ! compute thermal velocity 
-       ! ++++++ TURBULENT VELOCITY >>>>> parameter to add and use here
-       !g(:)%dopwidth = sqrt((2.0d0*kb/mp)*T) ! [ cm/s ]
 
        ! get ndust (pseudo dust density from Laursen, Sommer-Larsen, Andersen 2009)
        if (verbose) write(*,*) '-- module_gas_composition_dust : extracting ndust from ramses '
@@ -124,8 +171,6 @@ contains
     g(:)%v(1)     = fix_vel
     g(:)%v(2)     = fix_vel
     g(:)%v(3)     = fix_vel
-    !g(:)%nHI      = fix_nhi
-    !g(:)%dopwidth = fix_vth
     g(:)%ndust    = fix_ndust
 
   end subroutine overwrite_gas
@@ -140,13 +185,36 @@ contains
   end function get_gas_velocity
 
 
+    !Val
+  function gas_get_n_CD()
+
+    integer(kind=4)           :: gas_get_n_CD
+
+    gas_get_n_CD = 1
+
+  end function gas_get_n_CD
+  !laV
+
+  !Val
+  function gas_get_CD(cell_gas, distance_cm)
+
+    real(kind=8), intent(in) :: distance_cm
+    type(gas),intent(in)     :: cell_gas
+    real(kind=8)             :: gas_get_CD(1)
+
+    gas_get_CD = (/ distance_cm*cell_gas%ndust /)
+
+  end function gas_get_CD
+  !laV
+
+
   function  gas_get_tau(cell_gas, distance_cm, nu_cell)
 
     ! --------------------------------------------------------------------------
     ! compute total opacity of gas accross distance_cm at freq. nu_cell
     ! --------------------------------------------------------------------------
     ! INPUTS:
-    ! - cell_gas : a mix of H, D, and dust
+    ! - cell_gas : a mix of dust
     ! - distance_cm : the distance along which to compute tau [cm]
     ! - nu_cell : photon frequency in cell's frame [ Hz ]
     ! OUTPUTS:
@@ -165,32 +233,6 @@ contains
     return
 
   end function gas_get_tau
-  ! --------------------------------------------------------------------------
-
-
-  function  gas_get_tau_gray(cell_gas, distance_cm)
-
-    ! --------------------------------------------------------------------------
-    ! compute opacity due to dust accross distance_cm
-    ! --------------------------------------------------------------------------
-    ! INPUTS:
-    ! - cell_gas : only dust
-    ! - distance_cm : the distance along which to compute tau [cm]
-    ! OUTPUTS:
-    ! - gas_get_tau_gray : the total optical depth
-    ! --------------------------------------------------------------------------
-
-    ! check whether scattering occurs within cell (scatter_flag > 0) or not (scatter_flag==0)
-    type(gas),intent(in)    :: cell_gas
-    real(kind=8),intent(in) :: distance_cm
-    real(kind=8)            :: gas_get_tau_gray
-
-    ! compute optical depths for different components of the gas.
-    gas_get_tau_gray = get_tau_dust_gray(cell_gas%ndust, distance_cm)
-
-    return
-
-  end function gas_get_tau_gray
   ! --------------------------------------------------------------------------
 
 
@@ -223,7 +265,7 @@ contains
     ! Decide whether a scattering event occurs, and if so, on which element
     ! --------------------------------------------------------------------------
     ! INPUTS:
-    ! - cell_gas : a mix of H and dust
+    ! - cell_gas : a mix of dust
     ! - distance_to_border_cm : the maximum distance the photon may travel (before leaving the cell)
     ! - nu_cell : photon frequency in cell's frame [ Hz ]
     ! - tau_abs : optical depth at which the next scattering event will occur
@@ -231,7 +273,7 @@ contains
     ! OUTPUTS:
     ! - distance_to_border_cm : comes out as the distance to scattering event (if there is an event)
     ! - tau_abs : 0 if a scatter occurs, decremented by tau_cell if photon escapes cell. 
-    ! - gas_get_scatter_flag : 0 [no scatter], 1 [H scatter], 2 [dust]
+    ! - gas_get_scatter_flag : 0 [no scatter], 1 [dust]
     ! --------------------------------------------------------------------------
 
     ! check whether scattering occurs within cell (scatter_flag > 0) or not (scatter_flag==0)
@@ -241,11 +283,9 @@ contains
     real(kind=8),intent(inout)            :: tau_abs                ! tau at which scattering is set to occur.
     integer(kind=4),intent(inout)         :: iran
     integer(kind=4)                       :: gas_get_scatter_flag 
-    real(kind=8)                          :: tau_cell !, tirage, proba1 !tau_HI, tau_dust, 
+    real(kind=8)                          :: tau_cell
 
     ! compute optical depths for different components of the gas.
-    !tau_HI   = get_tau_HI(cell_gas%nHI, cell_gas%dopwidth, distance_to_border_cm, nu_cell)
-    !tau_dust = get_tau_dust(cell_gas%ndust, distance_to_border_cm, nu_cell)
     tau_cell = get_tau_dust(cell_gas%ndust, distance_to_border_cm, nu_cell)
 
     if (tau_abs > tau_cell) then  ! photon is due for absorption outside the cell 
@@ -256,14 +296,9 @@ contains
           stop
        endif
     else  ! the scattering happens inside the cell. 
-       !  decide whether scattering is due to HI or dust
-       !proba1 = tau_HI / tau_cell         
-       !tirage = ran3(iran)
-       !if(tirage <= proba1)then
-       !gas_get_scatter_flag = 1 ! HI scatter
-       ! else 
+
        gas_get_scatter_flag = 1 ! interaction with dust
-       ! endif
+       
        ! and transform "distance_to_border_cm" in "distance_to_absorption_cm"
        distance_to_border_cm = distance_to_border_cm * (tau_abs / tau_cell)
     end if
@@ -290,8 +325,6 @@ contains
 
     select case(flag)
     case(1)
-       ! call scatter_HI(cell_gas%v, cell_gas%dopwidth, nu_cell, k, nu_ext, iran)
-       ! case(2)
        call scatter_dust(cell_gas%v, nu_cell, k, nu_ext, iran, ilost)
        if(ilost==1)flag=-1
     end select
@@ -307,8 +340,6 @@ contains
     integer(kind=4)                   :: i,nleaf
     nleaf = size(g)
     write(unit) (g(i)%v(:), i=1,nleaf)
-    !write(unit) (g(i)%nHI, i=1,nleaf)
-    !write(unit) (g(i)%dopwidth, i=1,nleaf)
     write(unit) (g(i)%ndust, i=1,nleaf)
     write(unit) box_size_cm 
   end subroutine dump_gas
@@ -324,8 +355,6 @@ contains
        call overwrite_gas(g)
     else
        read(unit) (g(i)%v(:),i=1,n)
-       ! read(unit) (g(i)%nHI,i=1,n)
-       !read(unit) (g(i)%dopwidth,i=1,n)
        read(unit) (g(i)%ndust,i=1,n)
        read(unit) box_size_cm 
     end if
@@ -378,16 +407,14 @@ contains
           i = scan(value,'!')
           if (i /= 0) value = trim(adjustl(value(:i-1)))
           select case (trim(name))
+           case ('input_ramses_file')
+             write(input_ramses_file,'(a)') trim(value)
           case ('f_ion')
              read(value,*) f_ion
           case ('Zref')
              read(value,*) Zref
           case ('gas_overwrite')
              read(value,*) gas_overwrite
-          case ('fix_nhi')
-             read(value,*) fix_nhi
-          case ('fix_vth')
-             read(value,*) fix_vth
           case ('fix_ndust')
              read(value,*) fix_ndust
           case ('fix_vel')
@@ -402,7 +429,6 @@ contains
     close(10)
 
     call read_ramses_params(pfile)
-    !call read_HI_params(pfile)
     call read_dust_params(pfile)
 
     return
@@ -427,8 +453,6 @@ contains
        write(unit,'(a,ES10.3)') '  Zref                = ',Zref
        write(unit,'(a)')        '# overwrite parameters'
        write(unit,'(a,L1)')     '  gas_overwrite       = ',gas_overwrite
-       write(unit,'(a,ES10.3)') '  fix_nhi             = ',fix_nhi
-       write(unit,'(a,ES10.3)') '  fix_vth             = ',fix_vth
        write(unit,'(a,ES10.3)') '  fix_ndust           = ',fix_ndust
        write(unit,'(a,ES10.3)') '  fix_vel             = ',fix_vel
        write(unit,'(a,ES10.3)') '  fix_box_size_cm     = ',fix_box_size_cm
@@ -447,8 +471,6 @@ contains
        write(*,'(a,ES10.3)') '  Zref                = ',Zref
        write(*,'(a)')        '# overwrite parameters'
        write(*,'(a,L1)')     '  gas_overwrite       = ',gas_overwrite
-       write(*,'(a,ES10.3)') '  fix_nhi             = ',fix_nhi
-       write(*,'(a,ES10.3)') '  fix_vth             = ',fix_vth
        write(*,'(a,ES10.3)') '  fix_ndust           = ',fix_ndust
        write(*,'(a,ES10.3)') '  fix_vel             = ',fix_vel
        write(*,'(a,ES10.3)') '  fix_box_size_cm     = ',fix_box_size_cm

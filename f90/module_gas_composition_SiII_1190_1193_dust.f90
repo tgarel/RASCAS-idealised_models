@@ -32,8 +32,8 @@ module module_gas_composition
   ! user-defined parameters - read from section [gas_composition] of the parameter file
   ! --------------------------------------------------------------------------
   ! mixture parameters
-  character(2000)          :: input_ramses_file             !Path to the file 'input_ramses', with all the info on the simulation (ncells, box_size, positions, velocities, nHI, nHII, Z, dopwidth
-  character(2000)          :: Ion_file                      !Path to the file with the SiII densities
+  character(2000)          :: input_ramses_file = './ramses'    !Path to the file 'input_ramses', with all the info on the simulation (ncells, box_size, positions, velocities, nHI, nHII, Z, dopwidth
+  character(2000)          :: Ion_file          = './'          !Path to the file with the SiII densities
   real(kind=8)             :: f_ion           = 0.01   ! ndust = (n_HI + f_ion*n_HII) * Z/Zsun [Laursen+09]
   real(kind=8)             :: Zref            = 0.005  ! reference metallicity. Should be ~ 0.005 for SMC and ~ 0.01 for LMC. 
   ! possibility to overwrite ramses values with an ad-hoc model 
@@ -49,31 +49,42 @@ module module_gas_composition
   ! public functions:
   public :: gas_from_ramses_leaves,gas_from_ramses_leaves_ions,gas_from_list,get_gas_velocity,gas_get_scatter_flag,gas_scatter,dump_gas
   public :: read_gas,gas_destructor,read_gas_composition_params,print_gas_composition_params
+  !Val
+  public :: gas_get_n_CD, gas_get_CD
+  !laV
   !--PEEL--
   public :: gas_peeloff_weight,gas_get_tau
   !--LEEP--
 
+  !--CORESKIP--
   public :: HI_core_skip
+  !--PIKSEROC--
 
 contains
 
 
   !Val--
   ! --------------------------------------------------------------------------
-  subroutine gas_from_ramses_leaves_ions(repository,snapnum,nleaf,nvar,ramses_var,SiII_density,g)
+  subroutine gas_from_ramses_leaves_ions(repository,snapnum,nleaf,nvar,ramses_var,ion_number,SiII_density,g)
 
     use module_ramses
 
-    character(2000),intent(in)                     :: repository 
-    integer(kind=4),intent(in)                     :: snapnum
-    integer(kind=4),intent(in)                     :: nleaf,nvar
-    real(kind=8),intent(in),dimension(nvar,nleaf)  :: ramses_var
-    real(kind=8),intent(in),dimension(nleaf)       :: SiII_density
-    type(gas),dimension(:),allocatable,intent(out) :: g
-    integer(kind=4)                                :: ileaf
-    real(kind=8),dimension(:),allocatable          :: T, nhi, metallicity, nhii
-    real(kind=8),dimension(:,:),allocatable        :: v
+    character(2000),intent(in)                          :: repository 
+    integer(kind=4),intent(in)                          :: snapnum, ion_number
+    integer(kind=4),intent(in)                          :: nleaf,nvar
+    real(kind=8),intent(in),dimension(nvar,nleaf)       :: ramses_var
+    real(kind=8),intent(in),dimension(ion_number,nleaf) :: SiII_density
+    type(gas),dimension(:),allocatable,intent(out)      :: g
+    integer(kind=4)                                     :: ileaf
+    real(kind=8),dimension(:),allocatable               :: T, nhi, metallicity, nhii
+    real(kind=8),dimension(:,:),allocatable             :: v
 
+
+    if(ion_number /= 1) then
+       print*, 'Error in module_gas_composition_SiII_1190_1193_dust.f90,  the number of ions in ion_parameter_file should be 1.'
+       stop
+    end if
+    
     ! allocate gas-element array
     allocate(g(nleaf))
 
@@ -84,7 +95,7 @@ contains
        box_size_cm = ramses_get_box_size_cm(repository,snapnum)
 
        ! compute velocities in cm / s
-       write(*,*) '-- module_gas_composition_OI_1302_dust : extracting velocities from ramses '
+       write(*,*) '-- module_gas_composition_SiII_1190_1193_dust : extracting velocities from ramses '
        allocate(v(3,nleaf))
        call ramses_get_velocity_cgs(repository,snapnum,nleaf,nvar,ramses_var,v)
        do ileaf = 1,nleaf
@@ -99,7 +110,7 @@ contains
        
        ! compute thermal velocity 
        ! ++++++ TURBULENT VELOCITY >>>>> parameter to add and use here
-       g(:)%dopwidth = sqrt((2.0d0*kb/mp/28.085)*T) ! [ cm/s ]   !15.999 is the atomic mass of oxygen
+       g(:)%dopwidth = sqrt((2.0d0*kb/mSi)*T) ! [ cm/s ]   !15.999 is the atomic mass of oxygen
 
        ! get ndust (pseudo dust density from Laursen, Sommer-Larsen, Andersen 2009)
        write(*,*) '-- module_gas_composition_SiII_1190_1193_dust : extracting ndust from ramses '
@@ -112,7 +123,7 @@ contains
        end do
        deallocate(metallicity,T,nhi,nhii)
 
-       g(:)%nSiII = SiII_density
+       g(:)%nSiII = SiII_density(1,:)
     end if
 
     return
@@ -135,7 +146,7 @@ contains
 
 
     open(unit=20, file=input_ramses_file, status='old', form='unformatted')
-   ! open(unit=21, file=Ion_file, status='old', form='unformatted') ! to comment for test
+    open(unit=21, file=Ion_file, status='old', form='unformatted') ! remove for 2*2*2 test
 
     read(20) ncells
 
@@ -149,18 +160,19 @@ contains
     read(20) gas_leaves%v(1)
     read(20) gas_leaves%v(2)
     read(20) gas_leaves%v(3)
-    !read(20) nhi ! to comment for test
-    !read(20) nhii ! to comment for test
-    !read(20) metallicity ! to comment for test
+    !read(20) nhi ! remove for 2*2*2 test
+    !read(20) nhii ! remove for 2*2*2 test
+    !read(20) metallicity ! remove for 2*2*2 test
     read(20) gas_leaves%dopwidth
-    gas_leaves%dopwidth = gas_leaves%dopwidth / sqrt(28.085)  !15.999 is the atomic mass unit of Oxygen.  In the data file I printed sqrt(2*kb*T/m_u), so it's correct for Hydrogen, but other elements have to be divided by sqrt(mass of the element in atomic units). ! to comment for test
-    read(20) gas_leaves%ndust !For test
-    read(20) gas_leaves%nSiII !For test
-    !read(21) gas_leaves%nSiII ! to comment for test
+    gas_leaves%dopwidth = gas_leaves%dopwidth / sqrt(28.085)  !15.999 is the atomic mass unit of Oxygen.  In the data file I printed sqrt(2*kb*T/m_u), so it's correct for Hydrogen, but other elements have to be divided by sqrt(mass of the element in atomic units). ! remove for 2*2*2 test
+    read(20) gas_leaves%ndust !For 2*2*2 test
+    read(20) gas_leaves%nSiII !For 2*2*2 test
+    !read(21) gas_leaves%nSiII ! remove for 2*2*2 test
 
-    close(20) !; close(21)
+    close(20)
+    close(21) ! remove for 2*2*2 test
 
-    !gas_leaves%ndust = metallicity / Zref * ( nhi + f_ion*nhii )   ! [ /cm3 ] ! to comment for test
+    !gas_leaves%ndust = metallicity / Zref * ( nhi + f_ion*nhii )   ! [ /cm3 ] ! remove for 2*2*2 test
 
 
     print*,'boxsize in cm : ', box_size_cm
@@ -324,6 +336,29 @@ contains
     return
 
   end function gas_get_scatter_flag
+
+
+  !Val
+  function gas_get_n_CD()
+
+    integer(kind=4)           :: gas_get_n_CD
+
+    gas_get_n_CD = 2
+
+  end function gas_get_n_CD
+  !laV
+
+  !Val
+  function gas_get_CD(cell_gas, distance_cm)
+
+    real(kind=8), intent(in) :: distance_cm
+    type(gas),intent(in)     :: cell_gas
+    real(kind=8)             :: gas_get_CD(2)
+
+    gas_get_CD = (/ distance_cm*cell_gas%nSiII, distance_cm*cell_gas%ndust /)
+
+  end function gas_get_CD
+  !laV
 
 
    !--PEEL--
