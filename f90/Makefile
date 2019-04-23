@@ -55,7 +55,11 @@ endif
 
 ifeq ($(SYSTYPE),"mac")
 #F90         = gfortran-mp-4.7 -ffree-line-length-none -ffree-form  ###-fopenmp
-F90         = gfortran -ffree-line-length-none -ffree-form -fopenmp
+#<<<<<<< HEAD
+#F90         = gfortran -ffree-line-length-none -ffree-form -fopenmp
+#=======
+F90         = gfortran-mp-6 -ffree-line-length-none -ffree-form -fopenmp
+#>>>>>>> dev-harley
 FFLAGS      = -g -fcheck=all -ftrapv -fbacktrace -Wall -fbounds-check
 #FFLAGS      = -O2
 FFLAGS += $(OPTIONS)
@@ -64,11 +68,11 @@ endif
 
 
 ifeq ($(SYSTYPE),"macP")
-F90         = mpif90-openmpi-mp
+F90         = mpif90-openmpi-gcc6
 FFLAGS      = -g -fcheck=all -ffree-line-length-none -ffree-form -ftrapv -fbounds-check -fbacktrace -Wall
 #FFLAGS      = -O3
 FFLAGS += $(OPTIONS)
-LDFLAGS     = #-lmpi
+LDFLAGS     = -lmpi
 endif
 
 
@@ -108,13 +112,22 @@ GASOBJS = module_constants.o module_random.o module_utils.o module_voigt.o modul
 
 OBJSDOM = $(GASOBJS) module_select.o module_mesh.o
 
-OBJSPHO = $(GASOBJS) module_mesh.o module_mock.o module_photon.o 
+OBJSPHO = $(GASOBJS) module_mesh.o module_parallel_mpi.o module_mock.o module_photon.o 
 
-OBJSMPI = $(OBJSPHO) module_parallel_mpi.o module_worker.o module_master.o
+# GATHER -- 
+#OBJSMPI = $(OBJSPHO) module_parallel_mpi.o module_worker.o module_master.o
+OBJSMPI = module_parallel_mpi.o $(OBJSPHO) module_worker.o module_master.o
+# -- GATHER
 
+#<<<<<<< HEAD
 FESC    = $(GASOBJS) module_mesh.o module_jbv.o
 
-LYAFG = module_constants.o module_random.o module_utils.o module_domain.o coolrates_module.o module_ramses.o
+#LYAFG = module_constants.o module_random.o module_utils.o module_domain.o coolrates_module.o module_ramses.o
+#=======
+##LYAFG = module_constants.o module_random.o module_utils.o module_domain.o coolrates_module.o module_ramses.o
+
+OBJLYAFG = module_constants.o module_random.o module_utils.o module_voigt.o module_domain.o coolrates_module.o module_ramses.o module_uparallel.o module_HI_model.o
+#>>>>>>> dev-harley
 
 #############################################################################
 #.SUFFIXES: .o .f90
@@ -130,11 +143,14 @@ all: clean CreateDomDump PhotonsFromSourceModel PhotonsFromStars rascas-serial
 PhotonsFromSourceModel: $(OBJSPHO) PhotonsFromSourceModel.o
 	$(F90) $(FFLAGS) $(LDFLAGS) -o $@ $(OBJSPHO) PhotonsFromSourceModel.o
 
-PhotonsFromStars: $(OBJSPHO) PhotonsFromStars.o
-	$(F90) $(FFLAGS) $(LDFLAGS) -o $@ $(OBJSPHO) PhotonsFromStars.o
+PhotonsFromStars: $(OBJSPHO) module_ssp_lib.o PhotonsFromStars.o
+	$(F90) $(FFLAGS) $(LDFLAGS) -o $@ $(OBJSPHO) module_ssp_lib.o PhotonsFromStars.o
 
-LyaPhotonsFromGas: $(LYAFG)  LyaPhotonsFromGas.o
-	$(F90) $(FFLAGS) $(LDFLAGS) -o $@ $(LYAFG)  LyaPhotonsFromGas.o
+LyaPhotonsFromGas: $(OBJLYAFG)  LyaPhotonsFromGas.o
+	$(F90) $(FFLAGS) $(LDFLAGS) -o $@ $(OBJLYAFG)  LyaPhotonsFromGas.o
+
+HaPhotonsFromGas: $(OBJLYAFG)  HaPhotonsFromGas.o
+	$(F90) $(FFLAGS) $(LDFLAGS) -o $@ $(OBJLYAFG)  HaPhotonsFromGas.o
 
 CreateDomDump: $(OBJSDOM) CreateDomDump.o
 	$(F90) $(FFLAGS) $(LDFLAGS) -o $@ $(OBJSDOM) CreateDomDump.o

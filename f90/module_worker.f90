@@ -113,20 +113,25 @@ contains
           call MPI_SEND(photpacket(i)%tau_abs_curr, 1, MPI_DOUBLE_PRECISION, 0, tag , MPI_COMM_WORLD, code)
           call MPI_SEND(photpacket(i)%iran, 1, MPI_INTEGER, 0, tag , MPI_COMM_WORLD, code)
        end do
-       !gubed                                                                                                                                                                                                                                                                                                                                                             
+       !gubed
 
     enddo
-
-    !--PEEL--
-    if (peeling_off) then 
-       call dump_mocks(rank)
-    end if
-    !--LEEP--
     
     if(verbose) write(*,'(a,i4.4,a)') ' [w',rank,'] : exit of loop...'
 
     ! final synchronization, for profiling purposes
     call MPI_BARRIER(MPI_COMM_WORLD,code)
+
+    !--PEEL--
+    if (peeling_off) then
+       ! GATHER -- 
+       !call dump_mocks(rank)
+       call send_mock_to_master(rank)
+       ! post-final synchronization, for profiling purposes
+       call MPI_BARRIER(MPI_COMM_WORLD,code)    
+       ! -- GATHER
+    end if
+    !--LEEP--
 
 
   end subroutine worker
