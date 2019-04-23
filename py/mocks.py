@@ -3,11 +3,12 @@ import jphot as jp
 import numpy as np
 
 class mockobs(object):
-    def __init__(self,Dir,FileName,load_flux=False,load_spectrum=False,load_image=False,load_cube=False,unit_l_arcsec=1.0,lumdist_cm=1.0,redshift=0.0,cube_h5_file=None,idirection=1):
+    def __init__(self,Dir,FileName,load_flux=False,load_spectrum=False,load_image=False,load_cube=False,unit_l_arcsec=1.0,lumdist_cm=1.0,redshift=0.0,cube_h5_file=None,idirection=1,ICFile=None):
         self.Dir      = Dir
         self.FileName = FileName 
-        ICFile = FileName.replace('result.','')
-        
+        if ICFile is None:
+            ICFile = FileName.replace('result.','')
+            
         p = jp.photonlist("%s/%s"%(self.Dir,ICFile),'',load=False)
         nRealPhotons = p.get_nRealPhotons()
         nPhotons     = p.get_nphoton()
@@ -20,6 +21,8 @@ class mockobs(object):
             self.flux = self.flux * self.LumPerPacket # [erg/s]
         if load_image:
             self.imsize_cu, self.image_npix, self.imtot = self.__read_image(index=idirection)
+            p.load_ic()
+            self.LumPerPacket = self.nPhotPerPacket * ly.h_cgs * np.mean(p.nu_ic)
             self.imtot = self.imtot * self.LumPerPacket # [erg/s]
         if load_cube:  # obs-frame cube
             self.cube_nlbda,self.cube_nxy,self.cube_lmin,self.cube_lmax,self.cube_imsize,self.cube = self.__read_cube(index=idirection)
@@ -65,15 +68,24 @@ class mockobs(object):
         f.close()
         return imsize,n,im
     
-    def show_image(self,plotFile,vmin=1e-15,vmax=10,showCB=True):
+    def show_image(self,plotFile,vmin=1e-15,vmax=10,showCB=True,smooth=False,smooth_scale_pix=2,noiseLevel=0):
         import matplotlib
         matplotlib.use('Agg')
         from matplotlib import pyplot as plt
         from matplotlib.colors import LogNorm
+
+        image = self.imtot
+        if smooth:
+            import scipy.ndimage as ndimage
+            image = ndimage.gaussian_filter(image,sigma=(smooth_scale_pix,smooth_scale_pix))
+
+        if noiseLevel > 0: 
+            image = image + np.random.normal(0.0,noiseLevel,image.shape)
         plt.figure(figsize=(10,10))
-        plt.imshow(self.imtot,norm=LogNorm(),vmin=vmin,vmax=vmax)
+        plt.imshow(image,norm=LogNorm(),vmin=vmin,vmax=vmax)
         if showCB :
-            plt.colorbar()    
+            plt.colorbar()
+        plt.tight_layout()
         plt.savefig(plotFile)
 
     def __read_cube(self,index=1):
