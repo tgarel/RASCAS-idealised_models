@@ -1,0 +1,5 @@
+ compile date = 04/11/17-21:41:42
+ patch dir    = 
+ remote repo  = git@git-cral.univ-lyon1.fr:Sphinx/ramses_eor.git
+ local branch = master
+ last commit  = 6985908d5e837eaa5a604b2d943086486ddeda45

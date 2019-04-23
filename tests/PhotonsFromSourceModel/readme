@@ -1,0 +1,14 @@
+Test of PhotonsFromSourceModel.f90
+
+1/ in rascas/f90 type
+```
+make PhotonsFromSourceModel
+```
+
+2/ go to rascas/tests/PhotonsFromSourceModel/ and link the rascas/py scripts here as follows (or add rascas/py to your PYTHONPATH)
+```
+ln -s ../../py/*.py .
+```
+
+Start the python notebook TestPhotonsFromSourceModel.ipynb and execute cells. 
+
