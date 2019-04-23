@@ -1,3 +1,0 @@
-
-     seconds         %    STEP (rank=      1)
-       0.000     100.0    TOTAL
