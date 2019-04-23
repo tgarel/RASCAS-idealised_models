@@ -18,8 +18,8 @@ module module_ssp_lib
 
 
   type, public :: SSPgrid
-     real(kind=8),allocatable :: grid(:,:,:)             ! x,y,values
-     real(kind=8),allocatable :: age(:),met(:),lambda(:) ! x- and y-values
+     real(kind=8),allocatable :: grid(:,:,:)
+     real(kind=8),allocatable :: age(:),met(:),lambda(:)
      integer(kind=4)          :: nage,nmet,nlambda
   end type SSPgrid
   
@@ -52,10 +52,6 @@ contains
     print*,minval(lambda), maxval(lambda)
     print*, nagebins,num_mets,nlambda
 
-!!$    print*,'check reshaping...'
-!!$    print*,minval(sed_list(:,200,5)), maxval(sed_list(:,200,5))
-!!$    print*,minval(sed_list(:,15,1)), maxval(sed_list(:,15,1))
-
     fullLib%nage = nagebins
     fullLib%nmet = num_mets
     fullLib%nlambda = nlambda    
@@ -66,10 +62,6 @@ contains
     fullLib%grid(:,:,:) =  reshape(source=sed_list,shape=(/nagebins,num_mets,nlambda/),order=(/3,1,2/)) ! convention z = SEDs
 
     isLoaded=.true.
-
-!!$    print*,'check reshaping...'
-!!$    print*,minval(fullLib%grid(200,5,:)),maxval(fullLib%grid(200,5,:))
-!!$    print*,minval(fullLib%grid(15,1,:)),maxval(fullLib%grid(15,1,:))
     
     ! deallocate
     deallocate(metallicities, agebins, lambda, sed_list)

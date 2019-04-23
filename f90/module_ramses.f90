@@ -2900,7 +2900,7 @@ contains
   ! STARS utilities 
 
 
-  subroutine ramses_read_stars_in_domain(repository,snapnum,selection_domain,star_pos,star_age,star_mass,star_vel,star_met)
+  subroutine ramses_read_stars_in_domain(repository,snapnum,selection_domain,star_pos_all,star_age_all,star_mass_all,star_vel_all,star_met_all)
 
     !$ use OMP_LIB
 
@@ -2909,15 +2909,15 @@ contains
     character(1000),intent(in)             :: repository
     integer(kind=4),intent(in)             :: snapnum
     type(domain),intent(in)                :: selection_domain
-    real(kind=8),allocatable,intent(inout) :: star_pos(:,:),star_age(:),star_mass(:),star_vel(:,:),star_met(:)
-    real(kind=8),allocatable               :: star_pos_all(:,:),star_age_all(:),star_mass_all(:),star_vel_all(:,:),star_met_all(:)
+    real(kind=8),allocatable               :: star_pos(:,:),star_age(:),star_mass(:),star_vel(:,:),star_met(:)
+    real(kind=8),allocatable,intent(inout) :: star_pos_all(:,:),star_age_all(:),star_mass_all(:),star_vel_all(:,:),star_met_all(:)
     integer(kind=4)                        :: nstars
     real(kind=8)                           :: omega_0,lambda_0,little_h,omega_k,H0
     real(kind=8)                           :: aexp,stime,time_cu,boxsize
     integer(kind=4)                        :: ncpu,ilast,icpu,npart,i,ifield,nfields
     character(1000)                        :: filename
     integer(kind=4),allocatable            :: id(:)
-    real(kind=8),allocatable               :: age(:),m(:),x(:,:),v(:,:),mets(:),skipy(:),imass(:)
+    real(kind=8),allocatable               :: age(:),m(:),x(:,:),v(:,:),mets(:),imass(:)
     ! TRACER--
     integer(kind=4),allocatable :: fam(:)
     logical :: ok 
@@ -2953,19 +2953,19 @@ contains
        write(*,*) 'ERROR : no star particles in output '
        stop
     end if
-    allocate(star_pos(3,nstars),star_age(nstars),star_mass(nstars),star_vel(3,nstars),star_met(nstars))
     allocate(star_pos_all(3,nstars),star_age_all(nstars),star_mass_all(nstars),star_vel_all(3,nstars),star_met_all(nstars))
     
     ! get list of particle fields in outputs 
     call get_fields_from_header(repository,snapnum,nfields)
     ncpu  = get_ncpu(repository,snapnum)
     ilast_all = 1
-    
+
 !$OMP PARALLEL &
 !$OMP DEFAULT(private) &
 !$OMP SHARED(ncpu, repository, snapnum, ParticleFields, nfields, selection_domain) &
-!$OMP SHARED(h0, stime, dp_scale_t, dp_scale_m, dp_scale_v, boxsize, time_cu, aexp, cosmo, use_initial_mass, use_proper_time) &
-!$OMP SHARED(ilast_all, star_pos_all, star_age_all, star_vel_all, star_mass_all, star_met_all) 
+!$OMP SHARED(h0, stime, dp_scale_t, dp_scale_m, dp_scale_v, boxsize, time_cu, aexp) &
+!$OMP SHARED(cosmo, use_initial_mass, use_proper_time) &
+!$OMP SHARED(ilast_all, star_pos_all, star_age_all, star_vel_all, star_mass_all, star_met_all)
 !$OMP DO
     do icpu = 1, ncpu
        rank = 1
@@ -2986,7 +2986,6 @@ contains
        allocate(id(1:npart))
        allocate(mets(1:npart))
        allocate(v(1:npart,1:ndim))
-       allocate(skipy(1:npart))
        do ifield = 1,nfields
           select case(trim(ParticleFields(ifield)))
           case('pos')
@@ -3025,7 +3024,8 @@ contains
        if(.not.cosmo)then
           x=x/boxsize
        endif
-       
+
+       allocate(star_pos(3,npart),star_age(npart),star_mass(npart),star_vel(3,npart),star_met(npart))
        ! save star particles within selection region
        ilast = 0
        do i = 1,npart
@@ -3060,8 +3060,7 @@ contains
              end if
           end if
        end do
-          
-       deallocate(age,m,x,id,mets,v,skipy,imass)
+       deallocate(age,m,x,id,mets,v,imass)
        ! TRACER--
        if (allocated(fam)) deallocate(fam)
        ! --TRACER
@@ -3076,38 +3075,56 @@ contains
        endif
        ilast_all = ilast_all + ilast
 !$OMP END CRITICAL
-    end do
-!$OMP END PARALLEL
-    
+
     deallocate(star_age,star_pos,star_vel,star_met,star_mass)
-    
+
+    enddo
+!$OMP END DO
+!$OMP END PARALLEL
+
+
     ! resize star arrays
     nstars = ilast_all-1
     print*,'Nstars in domain =',nstars
     ! ages
     allocate(star_age(nstars))
-    star_age = star_age_all(1:nstars)
+    star_age(:) = star_age_all(1:nstars)
     deallocate(star_age_all)
+    allocate(star_age_all(nstars))
+    star_age_all(:) = star_age(:)
+    deallocate(star_age)
     ! masses
     allocate(star_mass(nstars))
-    star_mass = star_mass_all(1:nstars)
+    star_mass(:) = star_mass_all(1:nstars)
     deallocate(star_mass_all)
+    allocate(star_mass_all(nstars))
+    star_mass_all(:) = star_mass(:)
+    deallocate(star_mass)
     ! positions
     allocate(star_pos(3,nstars))
     do i = 1,nstars 
        star_pos(:,i) = star_pos_all(:,i)
     end do
     deallocate(star_pos_all)
+    allocate(star_pos_all(3,nstars))
+    star_pos_all(:,:) = star_pos(:,:)
+    deallocate(star_pos)
     ! velocities
     allocate(star_vel(3,nstars))
     do i = 1,nstars 
        star_vel(:,i) = star_vel_all(:,i)
     end do
     deallocate(star_vel_all)
+    allocate(star_vel_all(3,nstars))
+    star_vel_all(:,:) = star_vel(:,:)
+    deallocate(star_vel)
     ! metals
     allocate(star_met(nstars))
-    star_met = star_met_all(1:nstars)
+    star_met(:) = star_met_all(1:nstars)
     deallocate(star_met_all)
+    allocate(star_met_all(nstars))
+    star_met_all(:) = star_met(:)
+    deallocate(star_met)
     
     return
   end subroutine ramses_read_stars_in_domain
