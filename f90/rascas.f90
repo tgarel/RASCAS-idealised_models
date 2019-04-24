@@ -22,13 +22,8 @@ program main
   ! --- outputs
   character(2000)           :: fileout = 'LyaPhotIC.recLya.result.1 ' !photons_done.dat'   ! output file ... 
   ! --- miscelaneous
-<<<<<<< HEAD
-  integer(kind=4)           :: nbuffer = 2 !1000
-  logical                   :: verbose = T !.false.
-=======
   integer(kind=4)           :: nbundle = 10
   logical                   :: verbose = .true.
->>>>>>> 4acd289d20b135a47fc9ec383a46986a300e512f
   ! --------------------------------------------------------------------------
 
   
