@@ -228,24 +228,43 @@ contains
     character(2000),intent(in)             :: file
     type(ray_type),dimension(:),intent(in) :: rays
     integer(kind=4)                        :: i,j,k,l,np
+    character(2000)                        :: nomfich
 
     np = size(rays)
-    open(unit=14, file=trim(file), status='unknown', form='unformatted', action='write')
-    write(14) np
-    write(14) histo%nDirections
-    write(14) histo%nGas
-    if(do_histo) then
-       write(14) histo%vmin, histo%vmax
-       write(14) histo%nBins
-       do l=1,histo%nGas
-          do k=1,histo%nDirections
-             write(14) ((histo%list(l,k,i,j), i=1,histo%nrays), j=1,histo%nBins+2)
-          end do
-       end do
-    end if
-    !print*, (histo%list(1,1,1,j), j=1,histo%nBins+2)
 
-    close(14)
+    do i=1,histo%nGas
+       write(nomfich,'(a,a,i1)') trim(file),'_',i
+       open(unit=14, file=nomfich, status='unknown', form='unformatted', action='write')
+       write(14) np
+       write(14) histo%nDirections
+       write(14) histo%nGas
+       if(do_histo) then
+          write(14) histo%vmin, histo%vmax
+          write(14) histo%nBins
+          do j=1,histo%nDirections
+             write(14) ((histo%list(i,j,k,l), k=1,histo%nrays), l=1,histo%nBins+2)
+          end do
+       end if
+       close(14)
+    end do
+
+    
+    ! open(unit=14, file=trim(file), status='unknown', form='unformatted', action='write')
+    ! write(14) np
+    ! write(14) histo%nDirections
+    ! write(14) histo%nGas
+    ! if(do_histo) then
+    !    write(14) histo%vmin, histo%vmax
+    !    write(14) histo%nBins
+    !    do l=1,histo%nGas
+    !       do k=1,histo%nDirections
+    !          write(14) ((histo%list(l,k,i,j), i=1,histo%nrays), j=1,histo%nBins+2)
+    !       end do
+    !    end do
+    ! end if
+    ! !print*, (histo%list(1,1,1,j), j=1,histo%nBins+2)
+
+    ! close(14)
 
   end subroutine dump
 
@@ -262,6 +281,7 @@ contains
     histo%nrays = nrays
     histo%nDirections = nDirections
     nGas = gas_get_n_CD()
+    histo%nGas = nGas
     allocate(histo%list(nGas,nDirections,nrays,nBins+2))
     print*, 'test size ', nGas, nDirections, nrays, nBins+2
     histo%list = 0d0
