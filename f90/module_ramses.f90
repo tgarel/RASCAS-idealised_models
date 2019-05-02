@@ -114,7 +114,7 @@ module module_ramses
   ! --------------------------------------------------------------------------
   
   
-  public :: read_leaf_cells, read_leaf_cells_omp, read_leaf_cells_omp_ions, read_leaf_cells_in_domain
+  public :: read_leaf_cells, read_leaf_cells_omp, read_leaf_cells_omp_ions, read_leaf_cells_in_domain, write_ion_leaf
   public :: get_ngridtot, ramses_get_box_size_cm, get_cpu_list, get_cpu_list_periodic, get_ncpu, get_nSEDgroups, get_xH
   public :: ramses_get_velocity_cgs, ramses_get_T_nhi_cgs, ramses_get_metallicity, ramses_get_nh_cgs, ramses_get_T_nSiII_cgs, ramses_get_T_nMgII_cgs, ramses_get_fractions, ramses_get_flux, ramses_get_T_cgs
   public :: ramses_get_T_nFeII_cgs
@@ -405,6 +405,128 @@ contains
     return
 
   end subroutine read_leaf_cells_omp_ions
+
+
+  subroutine write_ion_leaf(repository, snapnum, ion_number, ion_data_path, ions, max_cells, write_path, ncpu_read, cpu_list)
+    !$ use OMP_LIB
+    ! read all leaf cell from a selection of cpu files in a simulation snapshot.
+    ! write cell positions, levels and ion densities, to be able to make maps easily
+
+    implicit none 
+
+    integer(kind=4),intent(in)                :: snapnum, ncpu_read, ion_number, max_cells                
+    character(2000),intent(in)                :: repository, ion_data_path(ion_number),ions(ion_number), write_path
+    integer(kind=4),dimension(:),allocatable,intent(in) :: cpu_list
+    real(kind=8),allocatable                  :: nIon_all(:,:), nIon(:,:), xleaf_all(:,:), xleaf(:,:)
+    integer(kind=4),allocatable               :: leaf_level_all(:), leaf_level(:)
+    integer(kind=4)                           :: i,j,k, icpu, ileaf, icell, ilast, iloop, nleaf, nleaf_test, rank, iunit, ilast2
+    logical                                   :: do_allocs
+    character(1000)                           :: nomfich
+    
+
+    ncpu = get_ncpu(repository,snapnum)  ! sets ncpu too 
+    allocate(xleaf_all(max_cells,3), leaf_level_all(max_cells), nIon_all(ion_number,max_cells))
+
+    if(verbose) print *,'-- write_ion_leaf --> ncpu =',ncpu_read
+
+    ileaf = 0
+    iloop = 0
+    ilast = 1 ; ilast2 = 1
+    
+!$OMP PARALLEL &
+!$OMP DEFAULT(private) &
+!$OMP SHARED(iloop, ilast, ilast2, xleaf_all, leaf_level_all, nIon_all, repository, ion_data_path, ion_number, ions, snapnum, max_cells, ncpu_read, cpu_list)
+    rank = 1
+    !$ rank = OMP_GET_THREAD_NUM()
+    iunit=100+rank*2
+    do_allocs = .true.
+    
+!$OMP DO
+    
+    do k=1,ncpu_read
+       icpu=cpu_list(k)
+       call read_amr_hydro(repository,snapnum,icpu,&
+            & son,cpu_map,var,cell_x,cell_y,cell_z,cell_level,ncell)
+       
+       if (do_allocs) allocate(xleaf(ncell,3), leaf_level(ncell))
+       do_allocs = .false.
+       ! collect leaf cells
+       ileaf = 0
+       do icell = 1,ncell
+          if (son(icell)==0 .and. cpu_map(icell) == icpu) then
+             ileaf = ileaf + 1
+             xleaf(ileaf,1)    = cell_x(icell)
+             xleaf(ileaf,2)    = cell_y(icell)
+             xleaf(ileaf,3)    = cell_z(icell)
+             leaf_level(ileaf) = cell_level(icell)
+          end if
+       end do
+
+       write(nomfich,'(a,a,a,a,i5.5,a,i5.5)') trim(ion_data_path(1)),'/',trim(ions(1)),'_',snapnum,'.out',icpu
+       open(unit=iunit,file=trim(nomfich),form='unformatted',action='read')
+       read(iunit) nleaf
+       allocate(nIon(ion_number,nleaf))
+       read(iunit) nIon(1,:)
+       close(iunit)
+
+       do i=2,ion_number
+          write(nomfich,'(a,a,a,a,i5.5,a,i5.5)') trim(ion_data_path(i)),'/',trim(ions(i)),'_',snapnum,'.out',icpu
+          open(unit=iunit,file=trim(nomfich),form='unformatted',action='read')
+          read(iunit) nleaf_test
+          if(nleaf_test /= nleaf) then
+             print*,'Error,  the number of leaf cells for the different ions is not the same'
+             stop
+          end if
+          read(iunit) nIon(i,:)
+          close(iunit)
+       end do
+
+       !$OMP CRITICAL
+       ! only one CRITICAL zone
+       !write (*, "(A, f5.2, A, A)", advance='no') &           ! Progress bar
+       !     ' Reading leaves ',dble(iloop) / ncpu_read * 100,' % ',char(13)
+       !iloop=iloop+1
+
+       ! ileaf is now the number of leaves on local cpu
+       if(ileaf .gt. 0) then
+          ! save leaf cells to return arrays
+          xleaf_all(ilast:ilast-1+ileaf,1:3)  = xleaf(1:ileaf,1:3)
+          leaf_level_all(ilast:ilast-1+ileaf) = leaf_level(1:ileaf)
+       endif
+       do i=1,ion_number
+          nIon_all(i,ilast2:ilast2-1+nleaf) = nIon(i,1:nleaf)
+       end do
+       ilast=ilast+ileaf
+       ilast2=ilast2+nleaf
+!$OMP END CRITICAL
+       deallocate(nIon)
+    end do
+!$OMP END DO
+    if(.not. do_allocs) deallocate(xleaf,leaf_level)
+!$OMP END PARALLEL
+    if(verbose)then
+       print*,' '
+       print*,'--> Nleaves read =',ilast-1
+       print*,' '
+    end if
+
+
+    print*,'Begin print of cells : '
+    open(unit=22,file=write_path,form='unformatted',action='write')
+    write(22) ilast-1
+    do i=1,3
+       write(22) (xleaf_all(j,i), j=1,ilast-1)
+    end do
+    write(22) (leaf_level_all(j), j=1,ilast-1)
+    do i=1,ion_number
+       write(22) (nIon_all(i,j), j=1,ilast-1)
+    end do
+    close(22)
+
+
+    return
+
+  end subroutine write_ion_leaf
 
 
   subroutine read_leaf_cells_in_domain(repository, snapnum, selection_domain, &
