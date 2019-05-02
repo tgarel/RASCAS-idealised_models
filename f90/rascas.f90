@@ -28,16 +28,18 @@ program main
 
   
   call cpu_time(start)
-
+  
   call start_mpi
   call define_mpi_type
-
+  
   nworker=nb_cpus-1
   if(nworker==0)then
      print*,'rascas is a parallel code, you should run it with MPI'
      stop
   end if
-
+  
+  call test_mpi_type
+  
   ! -------------------- read parameters -----------------------------------------------------
   narg = command_argument_count()
   if(narg .lt. 1)then
