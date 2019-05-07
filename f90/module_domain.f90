@@ -171,6 +171,41 @@ contains
 
 
 
+  subroutine select_cells_in_domain(dom,n,xp,level,indsel)
+    
+    implicit none
+    integer(kind=4),intent(in)                           :: n
+    type(domain),intent(in)                              :: dom 
+    real(kind=8),dimension(1:n,1:3),intent(in)           :: xp
+    integer(kind=4),dimension(1:n),intent(in)            :: level
+    integer(kind=4),dimension(:),allocatable,intent(out) :: indsel
+    integer(kind=4)                                      :: i,ii,nsel
+    integer(kind=4),dimension(:),allocatable             :: tmpi 
+    real(kind=8),dimension(1:3)                          :: xc
+    real(kind=8)                                         :: dx
+    
+    allocate(indsel(1:n))
+    indsel=0
+    ii=0
+    do i=1,n
+       xc(1:3) = xp(i,1:3)
+       dx = 0.5d0**(level(i))
+       if(domain_intersects_cell(xc,dx,dom))then
+          ii=ii+1
+          indsel(ii)=i
+       endif
+    enddo
+    nsel=ii
+    allocate(tmpi(1:nsel))
+    tmpi(1:nsel) = indsel(1:nsel)
+    deallocate(indsel)
+    allocate(indsel(1:nsel))
+    indsel=tmpi
+    deallocate(tmpi)
+    
+  end subroutine select_cells_in_domain
+
+
   subroutine read_domain(unit,dom)
 
     integer(kind=4),intent(in)  :: unit
@@ -524,7 +559,7 @@ contains
     real(kind=8),dimension(3),intent(in) :: x
     real(kind=8),intent(in)              :: dx
     logical                              :: domain_intersects_cell
-    real(kind=8)                         :: rr,xc,dd,ddx,ddy,ddz,rcell
+    real(kind=8)                         :: rr,dd,ddx,ddy,ddz,rcell
     real(kind=8),parameter :: sqrt3over2 = sqrt(3.0d0)*0.5d0
     
     domain_intersects_cell=.false.
@@ -616,7 +651,7 @@ contains
        else if (dd < -0.5d0) then 
           dd = dd + 1.0d0
        end if
-       if(abs(dd) <= (dx*0.5d0+dom%sl%thickness*0.5d0)) then
+       if(abs(dd) <= (dx*0.5d0 + dom%sl%thickness*0.5d0)) then
           domain_intersects_cell=.true.
        endif
        
