@@ -515,6 +515,117 @@ contains
 
 
 
+  function domain_intersects_cell(x,dx,dom)
+    ! -> returns T/F if cell at x, of size dx, is (partially or fully) in domain dom.
+    ! warning: it is not a strict condition, some cell may be completely outside the domain. 
+    ! purpose of this function: selecting all cells belonging to a domain, if some cells are
+    !    counted in and should not, we don't care.
+    type(domain),intent(in)              :: dom
+    real(kind=8),dimension(3),intent(in) :: x
+    real(kind=8),intent(in)              :: dx
+    logical                              :: domain_intersects_cell
+    real(kind=8)                         :: rr,xc,dd,ddx,ddy,ddz,rcell
+    real(kind=8),parameter :: sqrt3over2 = sqrt(3.0d0)*0.5d0
+    
+    domain_intersects_cell=.false.
+    
+    select case(trim(dom%type))
+       
+    case('sphere')
+       ! correct cell's position for periodic boundaries
+       ddx = x(1)-dom%sp%center(1)
+       if (ddx > 0.5d0) then 
+          ddx = ddx -1.0d0 
+       else if (ddx < -0.5d0) then 
+          ddx = ddx + 1.0d0
+       end if
+       ddy = x(2)-dom%sp%center(2)
+       if (ddy > 0.5d0) then 
+          ddy = ddy -1.0d0 
+       else if (ddy < -0.5d0) then 
+          ddy = ddy + 1.0d0
+       end if
+       ddz = x(3)-dom%sp%center(3)
+       if (ddz > 0.5d0) then 
+          ddz = ddz -1.0d0 
+       else if (ddz < -0.5d0) then 
+          ddz = ddz + 1.0d0
+       end if
+       rr = sqrt(ddx**2 + ddy**2 + ddz**2)
+       rcell = dx*sqrt3over2
+       if (rr <= (dom%sp%radius + rcell)) domain_intersects_cell=.true.
+       
+    case('shell')
+       ! correct cell's position for periodic boundaries
+       ddx = x(1)-dom%sh%center(1)
+       if (ddx > 0.5d0) then 
+          ddx = ddx -1.0d0 
+       else if (ddx < -0.5d0) then 
+          ddx = ddx + 1.0d0
+       end if
+       ddy = x(2)-dom%sh%center(2)
+       if (ddy > 0.5d0) then 
+          ddy = ddy -1.0d0 
+       else if (ddy < -0.5d0) then 
+          ddy = ddy + 1.0d0
+       end if
+       ddz = x(3)-dom%sh%center(3)
+       if (ddz > 0.5d0) then 
+          ddz = ddz -1.0d0 
+       else if (ddz < -0.5d0) then 
+          ddz = ddz + 1.0d0
+       end if
+       rr = sqrt(ddx*ddx + ddy*ddy + ddz*ddz)
+       rcell = dx*sqrt3over2
+       if((rr>=(dom%sh%r_inbound-rcell)) .and. (rr<=(dom%sh%r_outbound+rcell))) then
+          domain_intersects_cell=.true.
+       end if
+       
+    case('cube')
+       ! correct cell's position for periodic boundaries 
+       dd = x(1) - dom%cu%center(1)
+       if (dd > 0.5d0) then 
+          dd = dd - 1.0d0 
+       else if (dd < -0.5d0) then 
+          dd = dd + 1.0d0
+       end if
+       if (abs(dd)<=(dx*0.5d0 + dom%cu%size*0.5d0)) then
+          dd = x(2) - dom%cu%center(2)
+          if (dd > 0.5d0) then 
+             dd = dd - 1.0d0 
+          else if (dd < -0.5d0) then 
+             dd = dd + 1.0d0
+          end if
+          if (abs(dd)<=(dx*0.5d0 + dom%cu%size*0.5d0)) then
+             dd = x(3) - dom%cu%center(3)
+             if (dd > 0.5d0) then 
+                dd = dd - 1.0d0 
+             else if (dd < -0.5d0) then 
+                dd = dd + 1.0d0
+             end if
+             if (abs(dd)<=(dx*0.5d0 + dom%cu%size*0.5d0)) then
+                domain_intersects_cell=.true.
+             end if
+          end if
+       end if
+       
+    case('slab')
+       dd = x(3) - dom%sl%zc
+       if (dd > 0.5d0) then 
+          dd = dd - 1.0d0 
+       else if (dd < -0.5d0) then 
+          dd = dd + 1.0d0
+       end if
+       if(abs(dd) <= (dx*0.5d0+dom%sl%thickness*0.5d0)) then
+          domain_intersects_cell=.true.
+       endif
+       
+    end select
+    return
+  end function domain_intersects_cell
+
+
+
   function get_my_new_domain(x,liste_domaines)
     ! Return the domain from list of domains “liste_domaines” in which point x is most deeply embedded. 
     ! (i.e. such that the distance of x to domain border is the largest). 
