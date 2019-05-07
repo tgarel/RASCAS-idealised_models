@@ -150,7 +150,7 @@ program CreateDomDump
   end do
 
   ! The computational domain should be fully enclosed in the domain mesh.
-  if (computdom_max >= decompdom_max) then
+  if (computdom_max > decompdom_max) then
      print*,'ERROR: computational domain should be fully enclosed in the data domains.'
      !stop
   endif
@@ -234,7 +234,7 @@ program CreateDomDump
         call mesh_from_leaves(nOctSnap,domain_list(i),nleaftot, &
              gas_leaves,x_leaf,leaf_level,domain_mesh)
      else
-        call select_in_domain(domain_list(i), nleaftot, x_leaf, ind_sel)
+        call select_cells_in_domain(domain_list(i), nleaftot, x_leaf, leaf_level, ind_sel)
         print*,'in CreateDomDump: ind_sel = ',size(ind_sel)
         call select_from_domain(arr_in=x_leaf,     ind_sel=ind_sel, arr_out=xleaf_sel)
         call select_from_domain(arr_in=leaf_level, ind_sel=ind_sel, arr_out=leaflevel_sel)
