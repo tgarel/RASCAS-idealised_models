@@ -3,11 +3,16 @@
 import matplotlib
 matplotlib.use('Agg')
 
-from minirats.HaloFinder.py import haloCatalog as hC
-import rascasRun as RS
 import numpy as np
 from collections import OrderedDict
+import os
+import sys
+
+#from minirats.HaloFinder.py import haloCatalog as hC
 import nircam
+import rascasRun as RS
+from minirats.HaloFinder.py.haloCatalog import haloCatalog as hC
+from minirats.HaloFinder.py.galaxyCatalog import galaxyCatalog as gC
 
 
 HI_model_params   = OrderedDict([('isotropic','F'),('recoil','T')])
@@ -36,12 +41,11 @@ ramses_params = OrderedDict([('self_shielding','F'),('ramses_rt','T'),('verbose'
 
 for its in range(len(list_timesteps)):
     
-    ramsesTimestep = ramsesTimestep[its]
-    ts_string = "%4.4i"%(ramsesTimestep)
+    ramsesTimestep = list_timesteps[its]
 
     ################################################################################
     # RAScas dir. 
-    rascas_directory = '/scratch/garel/rascas_sphinx/output/05_F1000/02_IC20_BP_test_HaloFinder/GF_rho_1000_alphap1_npart100/'#ts_'+ts_string+'/'
+    rascas_directory = '/scratch/garel/rascas_sphinx/output/05_F1000/02_IC20_BP_test_HaloFinder/GF_rho_1000_alphap1_npart100/'
     rascas_f90       = '/scratch/garel/rascas_sphinx/f90/'
     runcmd = 'mkdir '+rascas_directory
     os.system(runcmd)
@@ -53,6 +57,10 @@ for its in range(len(list_timesteps)):
     mstar     = mstar[:gcat.nhalos]   
 
     redshift = gcat.info['redshift']
+
+    haloid_list = [] #np.array([8,8,8,8,8,8,8,8,8,8])
+    print('Halo list')
+    print(haloid_list)
 
     # Compute cell size in code units for domain decompositon
     ###############################################################################
@@ -69,6 +77,8 @@ for its in range(len(list_timesteps)):
         print('=============')
         print('igal = ',i, ' / ',len(mstar))
 
+        haloid_list.append(gcat.hnum[:gcat.nhalos][i])
+        
         xh = gcat.x_cu[:gcat.nhalos][i]
         yh = gcat.y_cu[:gcat.nhalos][i]
         zh = gcat.z_cu[:gcat.nhalos][i]
@@ -92,8 +102,9 @@ for its in range(len(list_timesteps)):
         decomp_dom_yc      = yh
         decomp_dom_zc      = zh
 
-        # Use rh*1.10 + coarser cell max length (in comoving code units) to ensure small haloes can access neighbor cells info
-        decomp_dom_rsp     = rh*1.10 + coarse_cell_MaxLength_comoving_cu
+        # Use rh*factor_rvir + coarser cell max length (in comoving code units) to ensure small haloes can access neighbor cells info
+        factor_rvir        = 1.0 
+        decomp_dom_rsp     = rh*factor_rvir + coarse_cell_MaxLength_comoving_cu
         DomainDecomposition = OrderedDict([('decomp_dom_type',decomp_dom_type),
                             ('decomp_dom_ndomain',decomp_dom_ndomain),('decomp_dom_xc',decomp_dom_xc),
                             ('decomp_dom_yc',decomp_dom_yc),('decomp_dom_zc',decomp_dom_zc),
@@ -121,7 +132,7 @@ for its in range(len(list_timesteps)):
         photTableDir = '%s/photTables'%(rascas_directory)
         sedModel     = 'bpass100'
         spec_type    = 'Monochromatic'
-        nphot        = 1000000
+        nphot        = 200000
         dust_model   = 'SMC'
     
         # define surveys
@@ -153,6 +164,15 @@ for its in range(len(list_timesteps)):
             a.setup_broad_band_survey(PhotometricTableParams,ComputationalDomain,DomainDecomposition,StellarEmissionDomain,
                                         nphotons=nphot,ramses_params=ramses_params,gas_composition_params=gas_composition_params,
                                         HI_model_params=HI_model_params,dust_model_params=dust_model_params)
+
+    # TIBO - write haloid list file
+    fff = "%s/%5.5i/haloid_list.dat"%(rascas_directory,ramsesTimestep)
+    f = open(fff,'w')
+    f.write("Halo IDs \n")
+    for j in range(len(haloid_list)):
+        f.write("%i \n"%(haloid_list[j]))
+    f.close()
+    #OBIT
 
     print(' ')
     print('===============================')
