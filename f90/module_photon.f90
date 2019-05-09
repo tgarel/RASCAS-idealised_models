@@ -158,7 +158,7 @@ contains
        endif
        
        ! get gas velocity (in cgs units)
-       vgas         = get_gas_velocity(cell_gas)
+       vgas         = get_gas_velocity(cell_gas)  ! use xlast-xcell/xcurr for H(z) but conditions periodic...
        ! compute photon's frequency in cell's moving frame
        scalar       = p%k(1) * vgas(1) + p%k(2) * vgas(2) + p%k(3) * vgas(3)
        nu_cell      = (1.0d0 - scalar/clight) * p%nu_ext  
@@ -458,7 +458,7 @@ contains
        endif
        
        ! get gas velocity (in cgs units)
-       vgas         = get_gas_velocity(cell_gas)
+       vgas         = get_gas_velocity(cell_gas) ! use xlast-xcell/xcurr for H(z)
        ! compute photon's frequency in cell's moving frame
        scalar       = kobs(1) * vgas(1) + kobs(2) * vgas(2) + kobs(3) * vgas(3)
        nu_cell      = (1.0d0 - scalar/clight) * p%nu 
