@@ -592,7 +592,8 @@ contains
                 ileaf    = - domesh%son(PeelBuffer(ipeel)%icell)
                 cell_gas = domesh%gas(ileaf)
                 ! NB: the following line updates peel%nu to the frequency in the direction of observation. 
-                PeelBuffer(ipeel)%weight = gas_peeloff_weight(PeelBuffer(ipeel)%scatter_flag, cell_gas, PeelBuffer(ipeel)%nu, PeelBuffer(ipeel)%kin, kobs, iran)
+                PeelBuffer(ipeel)%weight = gas_peeloff_weight(PeelBuffer(ipeel)%scatter_flag, cell_gas, &
+                      & PeelBuffer(ipeel)%nu, PeelBuffer(ipeel)%kin, kobs, iran)
              end if
              tau = tau_to_border(PeelBuffer(ipeel),domesh,domaine_calcul,tau_max,kobs)
           end if

@@ -49,7 +49,8 @@ module module_mock
   ! public variables 
   public :: peeling_off, nDirections, mock
   ! public functions 
-  public :: read_mock_params, mock_line_of_sight, mock_point_in_spectral_aperture, mock_point_in_flux_aperture, mock_point_in_image, mock_point_in_cube
+  public :: read_mock_params, mock_line_of_sight, mock_point_in_spectral_aperture, mock_point_in_flux_aperture, &
+                    & mock_point_in_image, mock_point_in_cube
   public :: mock_projected_pos, peel_to_flux, peel_to_map, peel_to_spec, peel_to_cube, dump_mocks
   ! GATHER --
   public :: master_receives_mock, send_mock_to_master
@@ -113,7 +114,8 @@ contains
              mock(idir)%kobs_perp_1 = mock(idir)%kobs_perp_1 / sqrt(mock(idir)%kobs_perp_1(1)*mock(idir)%kobs_perp_1(1)+&
                   & mock(idir)%kobs_perp_1(2)*mock(idir)%kobs_perp_1(2)+mock(idir)%kobs_perp_1(3)*mock(idir)%kobs_perp_1(3))
              ! kobs_perp_2 = kobs x kobs_perp_1
-             mock(idir)%kobs_perp_2(1) = mock(idir)%kobs(2)*mock(idir)%kobs_perp_1(3) - mock(idir)%kobs(3)*mock(idir)%kobs_perp_1(2)
+             mock(idir)%kobs_perp_2(1) = mock(idir)%kobs(2)*mock(idir)%kobs_perp_1(3) - &
+                          & mock(idir)%kobs(3)*mock(idir)%kobs_perp_1(2)
              mock(idir)%kobs_perp_2(2) = -mock(idir)%kobs(1)*mock(idir)%kobs_perp_1(3)
              mock(idir)%kobs_perp_2(3) = mock(idir)%kobs(1)*mock(idir)%kobs_perp_1(2)
              mock(idir)%kobs_perp_2 = mock(idir)%kobs_perp_2 / sqrt(mock(idir)%kobs_perp_2(1)*mock(idir)%kobs_perp_2(1)+ &
@@ -141,7 +143,8 @@ contains
       read(unit,*) mock(idir)%flux_aperture
       read(unit,*) mock(idir)%spec_npix, mock(idir)%spec_aperture, mock(idir)%spec_lmin, mock(idir)%spec_lmax
       read(unit,*) mock(idir)%image_npix, mock(idir)%image_side
-      read(unit,*) mock(idir)%cube_lbda_npix,mock(idir)%cube_image_npix,mock(idir)%cube_lmin,mock(idir)%cube_lmax,mock(idir)%cube_side
+      read(unit,*) mock(idir)%cube_lbda_npix,mock(idir)%cube_image_npix,mock(idir)%cube_lmin,mock(idir) &
+                   & %cube_lmax,mock(idir)%cube_side
       return 
     end subroutine read_a_mock_param_set
 
@@ -204,8 +207,10 @@ contains
     real(kind=8),intent(in)    :: pos(3)
     real(kind=8),intent(inout) :: pp(2)
     integer(kind=4),intent(in) :: idir
-    pp(1) = (pos(1)-mock(idir)%center(1))*mock(idir)%kobs_perp_1(1) + (pos(2)-mock(idir)%center(2))*mock(idir)%kobs_perp_1(2) + (pos(3)-mock(idir)%center(3))*mock(idir)%kobs_perp_1(3)
-    pp(2) = (pos(1)-mock(idir)%center(1))*mock(idir)%kobs_perp_2(1) + (pos(2)-mock(idir)%center(2))*mock(idir)%kobs_perp_2(2) + (pos(3)-mock(idir)%center(3))*mock(idir)%kobs_perp_2(3)
+    pp(1) = (pos(1)-mock(idir)%center(1))*mock(idir)%kobs_perp_1(1) + (pos(2)-mock(idir)%center(2))* &
+             & mock(idir)%kobs_perp_1(2) + (pos(3)-mock(idir)%center(3))*mock(idir)%kobs_perp_1(3)
+    pp(2) = (pos(1)-mock(idir)%center(1))*mock(idir)%kobs_perp_2(1) + (pos(2)-mock(idir)%center(2))* &
+             & mock(idir)%kobs_perp_2(2) + (pos(3)-mock(idir)%center(3))*mock(idir)%kobs_perp_2(3)
     return 
   end subroutine mock_projected_pos
     
@@ -231,6 +236,7 @@ contains
     ix = int((pp(1) + 0.5d0 * dx) /dx * n) + 1
     iy = int((pp(2) + 0.5d0 * dx) /dx * n) + 1
     if (ix>0 .and. ix<=n .and. iy>0 .and. iy<=n) mock(idir)%image(ix,iy) = mock(idir)%image(ix,iy) + peel_contribution
+    !    % + peel_contribution
     
     return
 
@@ -246,7 +252,8 @@ contains
     integer(kind=4) :: i
 
     lambda = clight / peel_nu * 1d8 ! [Angstrom]
-    i = int( (lambda - mock(idir)%spec_lmin) / (mock(idir)%spec_lmax - mock(idir)%spec_lmin) * mock(idir)%spec_npix) + 1
+    i = int( (lambda - mock(idir)%spec_lmin) / (mock(idir)%spec_lmax - mock(idir)%spec_lmin) * &
+           &  mock(idir)%spec_npix) + 1
     if ((i > 0) .and. (i<=mock(idir)%spec_npix)) then
        mock(idir)%spectrum(i) = mock(idir)%spectrum(i) + peel_contribution
     end if
@@ -267,7 +274,8 @@ contains
     iy = int((pp(2) + 0.5d0 * dx) /dx * n) + 1
     if (ix>0 .and. ix<=n .and. iy>0 .and. iy<=n) then 
        lambda = clight / peel_nu * 1d8 ! [Angstrom]
-       i = int( (lambda - mock(idir)%cube_lmin) / (mock(idir)%cube_lmax - mock(idir)%cube_lmin) * mock(idir)%cube_lbda_npix) + 1
+       i = int( (lambda - mock(idir)%cube_lmin) / (mock(idir)%cube_lmax - mock(idir)%cube_lmin) & 
+              & * mock(idir)%cube_lbda_npix) + 1
        if ((i > 0) .and. (i<=mock(idir)%cube_lbda_npix)) then
           mock(idir)%cube(i,ix,iy) = mock(idir)%cube(i,ix,iy) + peel_contribution
        end if
@@ -448,7 +456,8 @@ contains
           write(cunit) mock(idir)%cube_lbda_npix, mock(idir)%cube_image_npix
           write(cunit) mock(idir)%cube_lmin,mock(idir)%cube_lmax,mock(idir)%cube_side
           write(cunit) (mock(idir)%center(i),i=1,3)
-          write(cunit) (((mock(idir)%cube(k,i,j),k=1,mock(idir)%cube_lbda_npix),i=1,mock(idir)%cube_image_npix),j=1,mock(idir)%cube_image_npix)
+          write(cunit) (((mock(idir)%cube(k,i,j),k=1,mock(idir)%cube_lbda_npix),i=1,mock(idir)%cube_image_npix), &
+                        & j=1,mock(idir)%cube_image_npix)
        end if
     end do
     

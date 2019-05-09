@@ -115,8 +115,8 @@ OBJSDOM = $(GASOBJS) module_select.o module_mesh.o
 OBJSPHO = $(GASOBJS) module_mesh.o module_parallel_mpi.o module_mock.o module_photon.o 
 
 # GATHER -- 
-#OBJSMPI = $(OBJSPHO) module_parallel_mpi.o module_worker.o module_master.o
-OBJSMPI = module_parallel_mpi.o $(OBJSPHO) module_worker.o module_master.o
+OBJSMPI = $(OBJSPHO) module_worker.o module_master.o
+#OBJSMPI = module_parallel_mpi.o $(OBJSPHO) module_worker.o module_master.o
 # -- GATHER
 
 #<<<<<<< HEAD

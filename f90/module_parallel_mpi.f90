@@ -2,7 +2,7 @@ module module_parallel_mpi
 
   use mpi
   ! GATHER -- 
-  ! use module_photon
+  !use module_photon
   ! -- GATHER
   implicit none
 
@@ -77,7 +77,7 @@ contains
 !!$    !    integer(kind=4)           :: status       ! =0 if flying, =1 if escape, =2 if absorption (by dust)
 !!$    !    real(kind=8),dimension(3) :: xlast        ! coordinates of last interaction in box units
 !!$    !    real(kind=8),dimension(3) :: xcurr        ! current position of the photon in box units
-!!$    !    real(kind=8)              :: nu_ext       ! external frame frequency (Hz)
+!!$   !    real(kind=8)              :: nu_ext       ! external frame frequency (Hz)
 !!$    !    real(kind=8),dimension(3) :: k            ! normalised propagation vector 
 !!$    !    integer(kind=4)           :: nb_abs       ! number of interactions before escape
 !!$    !    real(kind=8)              :: time         ! time in [s] from emission to escape/absorption        
@@ -116,7 +116,7 @@ contains
 !!$    do i=1,nbloc
 !!$       deplacements(i)=adresses(i) - adresses(1)
 !!$    end do
-!!$    ! Create mpi_type_photon
+!!$   ! Create mpi_type_photon
 !!$    call MPI_TYPE_CREATE_STRUCT (nbloc,longueurs_blocs,deplacements,types,mpi_type_photon,&
 !!$         code)
 !!$    ! Commits the new type

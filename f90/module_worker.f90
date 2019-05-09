@@ -91,7 +91,8 @@ contains
        call cpu_time(end_photpacket)
 
        if(verbose)then
-          write(*,'(a,i5.5,a,f12.6,a)') ' [w',rank,'] time to propagate a bundle of photon packets = ',end_photpacket-start_photpacket,' seconds.'
+          write(*,'(a,i5.5,a,f12.6,a)') ' [w',rank,'] time to propagate a bundle of photon packets = ', &
+              & end_photpacket-start_photpacket,' seconds.'
           !write(*,'(a,i5.5,a)') ' [w',rank,'] finish bundle of photon packets, sending back to master ' 
        endif
 

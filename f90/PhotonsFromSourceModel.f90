@@ -131,7 +131,8 @@ program PhotonsFromSourceModel
            nu = clight / (nu*1e-8) ! this is freq. [Hz]
         else
            betaplus2 = spec_powlaw_beta + 2.0d0
-           nu   = (spec_powlaw_lmin_Ang**betaplus2 + r1 * (spec_powlaw_lmax_Ang**betaplus2 - spec_powlaw_lmin_Ang**betaplus2))**(1./betaplus2) ! this is lbda [A]
+           nu   = (spec_powlaw_lmin_Ang**betaplus2 + r1 * (spec_powlaw_lmax_Ang**betaplus2 - &
+                   & spec_powlaw_lmin_Ang**betaplus2))**(1./betaplus2) ! this is lbda [A]
            nu   = clight / (nu*1e-8) ! this is freq. [Hz]
         end if
      case('Table')
