@@ -1,4 +1,4 @@
-module module_HI_model
+module module_HI_1216_model
 
   use module_constants
   use module_utils, only : isotropic_direction, anisotropic_direction_HIcore, anisotropic_direction_Rayleigh
@@ -27,11 +27,11 @@ module module_HI_model
   logical                       :: isotropic    = .false.     ! if set to true, scattering events will be isotropic [default is false]
   ! --------------------------------------------------------------------------
 
-  public :: get_tau_HI, scatter_HI, read_HI_params, print_HI_params
+  public :: get_tau_HI_1216, scatter_HI_1216, read_HI_1216_params, print_HI_1216_params
 
 contains
 
-  function get_tau_HI(nhi, vth, distance_to_border_cm, nu_cell)
+  function get_tau_HI_1216(nhi, vth, distance_to_border_cm, nu_cell)
 
     ! --------------------------------------------------------------------------
     ! compute optical depth of Hydrogen over a given distance
@@ -42,11 +42,11 @@ contains
     ! - distance_to_border_cm : distance over which we compute tau        [ cm ]
     ! - nu_cell  : photon's frequency in the frame of the cell            [ Hz ]
     ! OUTPUT :
-    ! - get_tau_HI : optical depth of Hydrogen's Lya line over distance_to_border_cm
+    ! - get_tau_HI_1216 : optical depth of Hydrogen's Lya line over distance_to_border_cm
     ! --------------------------------------------------------------------------
     
     real(kind=8),intent(in) :: nhi,vth,distance_to_border_cm,nu_cell
-    real(kind=8)            :: delta_nu_doppler,x_cell,sigmaH,a,h_cell, get_tau_HI
+    real(kind=8)            :: delta_nu_doppler,x_cell,sigmaH,a,h_cell, get_tau_HI_1216
 
     ! compute Doppler width and a-parameter, for H 
     delta_nu_doppler = vth / lambda_0_cm 
@@ -57,15 +57,15 @@ contains
     h_cell = voigt_function(x_cell,a)
     sigmaH = sigmaH_factor / delta_nu_doppler * h_cell
 
-    get_tau_HI = sigmaH * nhi * distance_to_border_cm
+    get_tau_HI_1216 = sigmaH * nhi * distance_to_border_cm
 
     return
 
-  end function get_tau_HI
+  end function get_tau_HI_1216
 
 
   
-  subroutine scatter_HI(vcell,vth,nu_cell,k,nu_ext,iran)
+  subroutine scatter_HI_1216(vcell,vth,nu_cell,k,nu_ext,iran)
 
     ! ---------------------------------------------------------------------------------
     ! perform scattering event on a Hydrogen atom with an anisotropic phase function
@@ -145,11 +145,11 @@ contains
     nu_cell = (1.0d0 - scalar/clight) * nu_ext 
     k = knew
 
-  end subroutine scatter_HI
+  end subroutine scatter_HI_1216
 
   
 
-  subroutine read_HI_params(pfile)
+  subroutine read_HI_1216_params(pfile)
     
     ! ---------------------------------------------------------------------------------
     ! subroutine which reads parameters of current module in the parameter file pfile
@@ -200,11 +200,11 @@ contains
 
     return
 
-  end subroutine read_HI_params
+  end subroutine read_HI_1216_params
 
 
   
-  subroutine print_HI_params(unit)
+  subroutine print_HI_1216_params(unit)
     
     ! ---------------------------------------------------------------------------------
     ! write parameter values to std output or to an open file if argument unit is
@@ -231,7 +231,7 @@ contains
     
     return
     
-  end subroutine print_HI_params
+  end subroutine print_HI_1216_params
 
 
-end module module_HI_model
+end module module_HI_1216_model

@@ -5,7 +5,7 @@ program LyaPhotonsFromGas
   use module_random
   use module_constants
   use module_utils
-  use module_HI_model, only: lambda_0, lambda_0_cm, nu_0
+  use module_HI_1216_model, only: lambda_0, lambda_0_cm, nu_0
   
   implicit none
 
