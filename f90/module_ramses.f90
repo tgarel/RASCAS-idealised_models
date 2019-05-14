@@ -305,6 +305,7 @@ contains
     integer(kind=4)                           :: icpu, ileaf, icell, ivar, nleaf_in_domain, k
     integer(kind=4)                           :: ilast
     real(kind=8),dimension(3)                 :: temp
+    real(kind=8)                              :: dx
     
     if(verbose)then
        print *,' '
@@ -332,8 +333,9 @@ contains
        do icell = 1,ncell
           if (son(icell)==0 .and. cpu_map(icell) == icpu) then
              temp(:) = (/cell_x(icell), cell_y(icell), cell_z(icell)/)
+             dx = 0.5d0**(cell_level(icell))
              nleaftot = nleaftot+1
-             if (domain_contains_point(temp,selection_domain)) then
+             if (domain_contains_cell(temp,dx,selection_domain)) then
                 nleaf_in_domain = nleaf_in_domain + 1
              end if
           end if
@@ -362,7 +364,8 @@ contains
        do icell = 1,ncell
           if (son(icell)==0 .and. cpu_map(icell) == icpu) then
              temp(:) = (/cell_x(icell), cell_y(icell), cell_z(icell)/)
-             if (domain_contains_point(temp,selection_domain)) then
+             dx = 0.5d0**(cell_level(icell))
+             if (domain_contains_cell(temp,dx,selection_domain)) then
                 ileaf = ileaf + 1
                 do ivar = 1,nvar
                    ramses_var(ivar,ileaf) = var(icell,ivar)
