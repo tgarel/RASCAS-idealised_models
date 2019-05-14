@@ -86,7 +86,7 @@ program LyaPhotonsFromGas
           xc=emission_dom_pos(1),yc=emission_dom_pos(2),zc=emission_dom_pos(3),thickness=emission_dom_thickness)
   end select
   ! ----------------------------------------------------------------------------
-
+  
   
   ! ---- Read/select leaf cells and compute their luminositites ----------------
   if (verbose) print*,'start reading cells ... '
@@ -96,9 +96,9 @@ program LyaPhotonsFromGas
   call read_leaf_cells_omp(repository, snapnum, ncpu_read, cpu_list, nleaftot, nvar, x_leaf, ramses_var, leaf_level)
   !call read_leaf_cells(repository, snapnum, nleaftot, nvar, x_leaf, ramses_var, leaf_level)
   if (verbose) print*,'done reading'
-  call select_in_domain(emission_domain,nleaftot,x_leaf,emitting_cells)
+  call select_cells_in_domain(emission_domain,nleaftot,x_leaf,leaf_level,emitting_cells)
   nsel = size(emitting_cells)
-
+  
   if (verbose) print*,'done selecting cells in domain'
   allocate(recomb_em(nsel),coll_em(nsel),HIDopWidth(nsel))
   call ramses_get_LyaEmiss_HIDopwidth(repository,snapnum,nleaftot,nvar,ramses_var,recomb_em,coll_em,HIDopWidth,sample=emitting_cells)
