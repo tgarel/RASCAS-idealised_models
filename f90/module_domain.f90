@@ -190,7 +190,7 @@ contains
     do i=1,n
        xc(1:3) = xp(i,1:3)
        dx = 0.5d0**(level(i))
-       if(domain_intersects_cell(xc,dx,dom))then
+       if(domain_contains_cell(xc,dx,dom))then
           ii=ii+1
           indsel(ii)=i
        endif
@@ -550,7 +550,7 @@ contains
 
 
 
-  function domain_intersects_cell(x,dx,dom)
+  function domain_contains_cell(x,dx,dom)
     ! -> returns T/F if cell at x, of size dx, is (partially or fully) in domain dom.
     ! warning: it is not a strict condition, some cell may be completely outside the domain. 
     ! purpose of this function: selecting all cells belonging to a domain, if some cells are
@@ -558,11 +558,11 @@ contains
     type(domain),intent(in)              :: dom
     real(kind=8),dimension(3),intent(in) :: x
     real(kind=8),intent(in)              :: dx
-    logical                              :: domain_intersects_cell
+    logical                              :: domain_contains_cell
     real(kind=8)                         :: rr,dd,ddx,ddy,ddz,rcell
     real(kind=8),parameter :: sqrt3over2 = sqrt(3.0d0)*0.5d0
     
-    domain_intersects_cell=.false.
+    domain_contains_cell=.false.
     
     select case(trim(dom%type))
        
@@ -588,7 +588,7 @@ contains
        end if
        rr = sqrt(ddx**2 + ddy**2 + ddz**2)
        rcell = dx*sqrt3over2
-       if (rr <= (dom%sp%radius + rcell)) domain_intersects_cell=.true.
+       if (rr <= (dom%sp%radius + rcell)) domain_contains_cell=.true.
        
     case('shell')
        ! correct cell's position for periodic boundaries
@@ -613,7 +613,7 @@ contains
        rr = sqrt(ddx*ddx + ddy*ddy + ddz*ddz)
        rcell = dx*sqrt3over2
        if((rr>=(dom%sh%r_inbound-rcell)) .and. (rr<=(dom%sh%r_outbound+rcell))) then
-          domain_intersects_cell=.true.
+          domain_contains_cell=.true.
        end if
        
     case('cube')
@@ -639,7 +639,7 @@ contains
                 dd = dd + 1.0d0
              end if
              if (abs(dd)<=(dx*0.5d0 + dom%cu%size*0.5d0)) then
-                domain_intersects_cell=.true.
+                domain_contains_cell=.true.
              end if
           end if
        end if
@@ -652,12 +652,12 @@ contains
           dd = dd + 1.0d0
        end if
        if(abs(dd) <= (dx*0.5d0 + dom%sl%thickness*0.5d0)) then
-          domain_intersects_cell=.true.
+          domain_contains_cell=.true.
        endif
        
     end select
     return
-  end function domain_intersects_cell
+  end function domain_contains_cell
 
 
 
