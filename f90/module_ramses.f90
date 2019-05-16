@@ -141,18 +141,14 @@ contains
     logical                                   :: do_allocs
     integer(kind=4)                           :: icpu, ileaf, icell, ivar
 
-    if(verbose)then
-       print *,' '
-       print *,'...reading RAMSES cells...'
-       print *,' '
-    endif
+    if(verbose)print *,'Reading RAMSES cells...'
 
     nleaftot = get_nleaf(repository,snapnum)  ! sets ncpu too 
     nvar     = get_nvar(repository,snapnum)
     allocate(ramses_var(nvar,nleaftot), xleaf(nleaftot,3), leaf_level(nleaftot))
     ncpu = get_ncpu(repository,snapnum)
 
-    if(verbose)print *,'-- read_leaf_cells --> nleaftot, nvar, ncpu =',nleaftot,nvar,ncpu
+    if(verbose)print *,'-- read_leaf_cells: nleaftot, nvar, ncpu =',nleaftot,nvar,ncpu
 
     do_allocs = .true.
     ileaf = 0
@@ -201,17 +197,13 @@ contains
     integer(kind=4)                           :: k, icpu, ileaf, icell, ivar, ilast, iloop
     logical                                   :: do_allocs
     
-    if(verbose)then
-       print *,' '
-       print *,'...reading RAMSES cells...'
-       print *,' '
-    endif
+    if(verbose) print *,'Reading RAMSES cells...'
 
     nleaftot = get_nleaf(repository,snapnum)  ! sets ncpu too 
     nvar     = get_nvar(repository,snapnum)
     allocate(ramses_var_all(nvar,nleaftot), xleaf_all(nleaftot,3), leaf_level_all(nleaftot))
 
-    if(verbose) print *,'-- read_leaf_cells_omp --> nleaftot, nvar, ncpu =',nleaftot,nvar,ncpu_read
+    if(verbose) print *,'-- read_leaf_cells_omp: nleaftot, nvar, ncpu =',nleaftot,nvar,ncpu_read
 
     ileaf = 0
     iloop = 0
@@ -262,11 +254,7 @@ contains
 !$OMP END DO
     if(.not. do_allocs) deallocate(ramses_var,xleaf,leaf_level)
 !$OMP END PARALLEL
-    if(verbose)then
-       print*,' '
-       print*,'--> Nleaves read =',ilast-1
-       print*,' '
-    end if
+    if(verbose)print*,'--> Nleaves read =',ilast-1
 
     return
 
@@ -307,11 +295,7 @@ contains
     real(kind=8),dimension(3)                 :: temp
     real(kind=8)                              :: dx
     
-    if(verbose)then
-       print *,' '
-       print *,'...reading RAMSES cells...'
-       print *,' '
-    endif
+    if(verbose) print *,'Reading RAMSES cells...'
 
     nvar = get_nvar(repository,snapnum)
     ncpu = get_ncpu(repository,snapnum)
@@ -344,7 +328,7 @@ contains
 !$OMP END DO
 !$OMP END PARALLEL
 
-    if(verbose)print *,'-- read_leaf_cells_in_domain --> nleaftot, nleaf_in_domain, nvar, ncpu =',nleaftot, nleaf_in_domain, nvar, ncpu_read
+    if(verbose)print *,'-- read_leaf_cells_in_domain: nleaftot, nleaf_in_domain, nvar, ncpu =',nleaftot, nleaf_in_domain, nvar, ncpu_read
     
     allocate(ramses_var_all(nvar,nleaf_in_domain), xleaf_all(nleaf_in_domain,3), leaf_level_all(nleaf_in_domain))
     ilast = 1
@@ -519,7 +503,7 @@ contains
     
     deallocate(bound_key,cpu_read)
     
-    print*,'--> Ncpu to read = ',ncpu_read
+    print*,'--> nCPU to read = ',ncpu_read
     
     return
     
@@ -572,7 +556,7 @@ contains
     cpu_read=.false.
     cpu_list=0
     
-    print*,'...getting CPU list...'
+    print*,'Getting CPU list...'
     
     call read_hilbert_keys(repository,snapnum,ncpu,bound_key)
     
@@ -692,7 +676,7 @@ contains
     
     deallocate(bound_key,cpu_read)
     
-    print*,'--> Ncpu to read = ',ncpu_read
+    print*,'--> nCPU to read = ',ncpu_read
     
     return
     
@@ -2999,7 +2983,7 @@ contains
 
     ! resize star arrays
     nstars = ilast_all-1
-    print*,'Nstars in domain =',nstars
+    print*,'-- ramses_read_stars_in_domain: Nstars in domain =',nstars
     ! ages
     allocate(star_age(nstars))
     star_age(:) = star_age_all(1:nstars)
