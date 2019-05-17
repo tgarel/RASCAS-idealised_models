@@ -18,6 +18,7 @@ program main
   character(2000)                               :: parameter_file, line, file_compute_dom
   character(2000),dimension(:),allocatable      :: mesh_file_list 
   integer(kind=4)                               :: narg, i, j, ndomain
+  character(2000)                               :: DomDumpFile = 'domain_decomposition_params.dat' ! the file describing the outputs of CreateDomDump (in DomDumpDir)
   
   ! --------------------------------------------------------------------------
   ! user-defined parameters - read from section [RASCAS-serial] of the parameter file
@@ -25,7 +26,6 @@ program main
   ! --- inputs 
   character(2000)           :: DomDumpDir   = 'test/'                   ! where outputs of CreateDomDump are
   character(2000)           :: PhotonICFile = 'Photon_IC_file.dat'      ! the file containing photons to cast (incl. full path)
-  character(2000)           :: DomDumpFile  = 'domain_decomposition_params.dat' ! the file describing the outputs of CreateDomDump (in DomDumpDir)
   ! --- outputs
   character(2000)           :: fileout = 'photons_done.dat'   ! output file ... 
   ! --- miscelaneous
@@ -187,8 +187,6 @@ contains
              write(DomDumpDir,'(a)') trim(value)
           case ('PhotonICFile')
              write(PhotonICFile,'(a)') trim(value)
-          case ('DomDumpFile')
-             write(DomDumpFile,'(a)') trim(value)
           case ('fileout')
              write(fileout,'(a)') trim(value)
           end select
@@ -219,7 +217,6 @@ contains
        write(unit,'(a)')             '[RASCAS-serial]'
        write(unit,'(a,a)')           '  DomDumpDir     = ',trim(DomDumpDir)
        write(unit,'(a,a)')           '  PhotonICFile   = ',trim(PhotonICFile)
-       write(unit,'(a,a)')           '  DomDumpFile    = ',trim(DomDumpFile)
        write(unit,'(a,a)')           '  fileout        = ',trim(fileout)
        write(unit,'(a,L1)')          '  verbose        = ',verbose
        write(unit,'(a)')             ' '
@@ -230,7 +227,6 @@ contains
        write(*,'(a)')             '[RASCAS-serial]'
        write(*,'(a,a)')           '  DomDumpDir     = ',trim(DomDumpDir)
        write(*,'(a,a)')           '  PhotonICFile   = ',trim(PhotonICFile)
-       write(*,'(a,a)')           '  DomDumpFile    = ',trim(DomDumpFile)
        write(*,'(a,a)')           '  fileout        = ',trim(fileout)
        write(*,'(a,L1)')          '  verbose        = ',verbose
        write(*,'(a)')             ' '       
