@@ -26,7 +26,7 @@ program LyaPhotonsFromGas
   real(kind=8)                 :: mid
 
   ! ---------------------------------------------------------------------------
-  ! user-defined parameters - read from section [CreateDomDump] of the parameter file
+  ! user-defined parameters - read from section [LyaPhotonsFromGas] of the parameter file
   ! ---------------------------------------------------------------------------
   ! --- input / outputs
   character(2000)           :: outputfileRec = 'LyaPhotIC.recLya' ! file to which recombination photons will be written
