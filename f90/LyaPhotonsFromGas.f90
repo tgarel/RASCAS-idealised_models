@@ -88,7 +88,7 @@ program LyaPhotonsFromGas
   
   
   ! ---- Read/select leaf cells and compute their luminositites ----------------
-  if (verbose) print*,'start reading cells ... '
+  if (verbose) print*,'Reading cells ... '
   ! define max extent of emission domain 
   call domain_get_bounding_box(emission_domain,xmin,xmax,ymin,ymax,zmin,zmax)
   call get_cpu_list_periodic(repository, snapnum, xmin,xmax,ymin,ymax,zmin,zmax, ncpu_read, cpu_list)
@@ -167,7 +167,7 @@ program LyaPhotonsFromGas
   ! --------------------------------------------------------------------------------------
   if (doRecombs) then 
      if (verbose) then
-        write(*,*) "> Starting to sample recombination emissivity" 
+        write(*,*) "Starting to sample recombination emissivity" 
         call cpu_time(start_photpacket)
      end if
      ! --------------------------------------------------------------------------------------
@@ -248,7 +248,7 @@ program LyaPhotonsFromGas
   ! --------------------------------------------------------------------------------------
   if (doColls) then 
      if (verbose) then
-        write(*,*) "> Starting to sample collisional emissivity" 
+        write(*,*) "Starting to sample collisional emissivity" 
         call cpu_time(start_photpacket)
      end if
      ! NewScheme -
@@ -318,6 +318,7 @@ program LyaPhotonsFromGas
      if (verbose) then 
         call cpu_time(end_photpacket)
         print*, 'time to draw collisions = ',end_photpacket-start_photpacket,' seconds.'
+        print*,' '
      end if
   end if
   ! --------------------------------------------------------------------------------------
@@ -490,6 +491,7 @@ contains
        call print_ramses_params()
        write(*,'(a)')             ' '
        write(*,'(a)')             '--------------------------------------------------------------------------------'
+       write(*,'(a)')             ' '
     end if
 
     return
