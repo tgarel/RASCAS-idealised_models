@@ -6,8 +6,8 @@ module module_gas_composition
   ! - The HI content is from RAMSES
   ! - The dust content is a function of metallicity, HI and HII, following Laursen+09.
 
-  use module_HI_model
-  use module_D_model
+  use module_HI_1216_model
+  use module_D_1215_model
   use module_dust_model
   use module_random
   use module_constants
@@ -229,9 +229,9 @@ contains
     real(kind=8)                          :: tau_HI, tau_dust, tau_cell, tau_D, tirage, proba1, proba2
 
     ! compute optical depths for different components of the gas.
-    tau_HI   = get_tau_HI(cell_gas%nHI, cell_gas%dopwidth, distance_to_border_cm, nu_cell)
+    tau_HI   = get_tau_HI_1216(cell_gas%nHI, cell_gas%dopwidth, distance_to_border_cm, nu_cell)
     tau_dust = get_tau_dust(cell_gas%ndust, distance_to_border_cm, nu_cell)
-    tau_D    = get_tau_D(cell_gas%nHI * deut2H_nb_ratio, cell_gas%dopwidth * sqrt_H2Deut_mass_ratio,distance_to_border_cm, nu_cell)
+    tau_D    = get_tau_D_1215(cell_gas%nHI * deut2H_nb_ratio, cell_gas%dopwidth * sqrt_H2Deut_mass_ratio,distance_to_border_cm, nu_cell)
     tau_cell = tau_HI + tau_D + tau_dust
 
     if (tau_abs > tau_cell) then  ! photon is due for absorption outside the cell 
@@ -279,11 +279,11 @@ contains
     select case(flag)
     case(1)
        !--CORESKIP--
-       call scatter_HI(cell_gas%v, cell_gas%dopwidth, nu_cell, k, nu_ext, iran,xcrit)
+       call scatter_H_1216I(cell_gas%v, cell_gas%dopwidth, nu_cell, k, nu_ext, iran,xcrit)
        !call scatter_HI(cell_gas%v, cell_gas%dopwidth, nu_cell, k, nu_ext, iran)
        !--PIKSEROC--
     case(2)
-       call scatter_D(cell_gas%v,cell_gas%dopwidth*sqrt_H2Deut_mass_ratio, nu_cell, k, nu_ext, iran)
+       call scatter_D_1215(cell_gas%v,cell_gas%dopwidth*sqrt_H2Deut_mass_ratio, nu_cell, k, nu_ext, iran)
     case(3)
        call scatter_dust(cell_gas%v, nu_cell, k, nu_ext, iran, ilost)
        if(ilost==1)flag=-1
@@ -475,8 +475,8 @@ contains
     end if
     close(10)
 
-    call read_HI_params(pfile)
-    call read_D_params(pfile)
+    call read_HI_1216_params(pfile)
+    call read_D_1215_params(pfile)
     call read_dust_params(pfile)
     
     return
@@ -511,9 +511,9 @@ contains
           write(unit,'(a,ES10.3)') '  fix_box_size_cm = ',fix_box_size_cm
        endif
        write(unit,'(a)')             ' '
-       call print_HI_params(unit)
+       call print_HI_1216_params(unit)
        write(unit,'(a)')             ' '
-       call print_D_params(unit)
+       call print_D_1215_params(unit)
        write(unit,'(a)')             ' '
        call print_dust_params(unit)
     else
@@ -533,9 +533,9 @@ contains
           write(*,'(a,ES10.3)') '  fix_box_size_cm = ',fix_box_size_cm
        endif
        write(*,'(a)')             ' '
-       call print_HI_params
+       call print_HI_1216_params
        write(*,'(a)')             ' '
-       call print_D_params
+       call print_D_1215_params
        write(*,'(a)')             ' '
        call print_dust_params
     end if

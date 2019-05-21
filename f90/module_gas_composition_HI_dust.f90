@@ -4,7 +4,7 @@ module module_gas_composition
   ! - The HI content is from RAMSES
   ! - The dust content is a function of metallicity, HI and HII, following Laursen+09.
 
-  use module_HI_model
+  use module_HI_1216_model
   use module_dust_model
   use module_random
   use module_constants
@@ -242,7 +242,7 @@ contains
     real(kind=8)                          :: tau_HI, tau_dust, tau_cell, tirage, proba1
 
     ! compute optical depths for different components of the gas.
-    tau_HI   = get_tau_HI(cell_gas%nHI, cell_gas%dopwidth, distance_to_border_cm, nu_cell)
+    tau_HI   = get_tau_HI_1216(cell_gas%nHI, cell_gas%dopwidth, distance_to_border_cm, nu_cell)
     tau_dust = get_tau_dust(cell_gas%ndust, distance_to_border_cm, nu_cell)
     tau_cell = tau_HI + tau_dust
 
@@ -289,7 +289,7 @@ contains
     select case(flag)
     case(1)
        !--CORESKIP--
-       call scatter_HI(cell_gas%v, cell_gas%dopwidth, nu_cell, k, nu_ext, iran,xcrit)
+       call scatter_HI_1216(cell_gas%v, cell_gas%dopwidth, nu_cell, k, nu_ext, iran,xcrit)
        !call scatter_HI(cell_gas%v, cell_gas%dopwidth, nu_cell, k, nu_ext, iran)
        !--PIKSEROC--
     case(2)
@@ -458,7 +458,7 @@ contains
     end if
     close(10)
 
-    call read_HI_params(pfile)
+    call read_HI_1216_params(pfile)
     call read_dust_params(pfile)
     
     return
@@ -492,7 +492,7 @@ contains
           write(unit,'(a,ES10.3)') '  fix_box_size_cm     = ',fix_box_size_cm
        endif
        write(unit,'(a)')             ' '
-       call print_HI_params(unit)
+       call print_HI_1216_params(unit)
        write(unit,'(a)')             ' '
        call print_dust_params(unit)
     else
@@ -511,7 +511,7 @@ contains
           write(*,'(a,ES10.3)') '  fix_box_size_cm     = ',fix_box_size_cm
        endif
        write(*,'(a)')             ' '
-       call print_HI_params
+       call print_HI_1216_params
        write(*,'(a)')             ' '
        call print_dust_params
     end if

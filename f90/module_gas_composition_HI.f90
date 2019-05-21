@@ -3,7 +3,7 @@ module module_gas_composition
   ! Pure HI gas. 
   ! - The HI content is derived from RAMSES directly
 
-  use module_HI_model
+  use module_HI_1216_model
   use module_random
   use module_constants
 
@@ -246,7 +246,7 @@ contains
     real(kind=8)                          :: tau_HI, tau_cell
 
     ! compute optical depths for different components of the gas.
-    tau_HI   = get_tau_HI(cell_gas%nHI, cell_gas%dopwidth, distance_to_border_cm, nu_cell)
+    tau_HI   = get_tau_HI_1216(cell_gas%nHI, cell_gas%dopwidth, distance_to_border_cm, nu_cell)
     tau_cell = tau_HI
 
     if (tau_abs > tau_cell) then  ! photon is due for absorption outside the cell 
@@ -287,7 +287,7 @@ contains
     select case(flag)
     case(1)
        !--CORESKIP--
-       call scatter_HI(cell_gas%v, cell_gas%dopwidth, nu_cell, k, nu_ext, iran,xcrit)
+       call scatter_HI_1216(cell_gas%v, cell_gas%dopwidth, nu_cell, k, nu_ext, iran,xcrit)
        !call scatter_HI(cell_gas%v, cell_gas%dopwidth, nu_cell, k, nu_ext, iran)
        !--PIKSEROC--
 
@@ -410,7 +410,7 @@ contains
     end if
     close(10)
 
-    call read_HI_params(pfile)
+    call read_HI_1216_params(pfile)
 
     return
 
@@ -439,7 +439,7 @@ contains
           write(unit,'(a,ES10.3)') '  fix_box_size_cm    = ',fix_box_size_cm
        endif
        write(unit,'(a)')             ' '
-       call print_HI_params(unit)
+       call print_HI_1216_params(unit)
     else
        write(*,'(a,a,a)') '[gas_composition]'
        write(*,'(a,a)')     '# code compiled with: ',trim(moduleName)
@@ -452,7 +452,7 @@ contains
           write(*,'(a,ES10.3)') '  fix_box_size_cm    = ',fix_box_size_cm
        endif
        write(*,'(a)')             ' '
-       call print_HI_params
+       call print_HI_1216_params
     end if
 
     return

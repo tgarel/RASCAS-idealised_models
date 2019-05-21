@@ -150,18 +150,14 @@ contains
     logical                                   :: do_allocs
     integer(kind=4)                           :: icpu, ileaf, icell, ivar
 
-    if(verbose)then
-       print *,' '
-       print *,'...reading RAMSES cells...'
-       print *,' '
-    endif
+    if(verbose)print *,'Reading RAMSES cells...'
 
     nleaftot = get_nleaf(repository,snapnum)  ! sets ncpu too 
     nvar     = get_nvar(repository,snapnum)
     allocate(ramses_var(nvar,nleaftot), xleaf(nleaftot,3), leaf_level(nleaftot))
     ncpu = get_ncpu(repository,snapnum)
 
-    if(verbose)print *,'-- read_leaf_cells --> nleaftot, nvar, ncpu =',nleaftot,nvar,ncpu
+    if(verbose)print *,'-- read_leaf_cells: nleaftot, nvar, ncpu =',nleaftot,nvar,ncpu
 
     do_allocs = .true.
     ileaf = 0
@@ -210,17 +206,13 @@ contains
     integer(kind=4)                           :: k, icpu, ileaf, icell, ivar, ilast, iloop
     logical                                   :: do_allocs
     
-    if(verbose)then
-       print *,' '
-       print *,'...reading RAMSES cells...'
-       print *,' '
-    endif
+    if(verbose) print *,'Reading RAMSES cells...'
 
     nleaftot = get_nleaf(repository,snapnum)  ! sets ncpu too 
     nvar     = get_nvar(repository,snapnum)
     allocate(ramses_var_all(nvar,nleaftot), xleaf_all(nleaftot,3), leaf_level_all(nleaftot))
 
-    if(verbose) print *,'-- read_leaf_cells_omp --> nleaftot, nvar, ncpu =',nleaftot,nvar,ncpu_read
+    if(verbose) print *,'-- read_leaf_cells_omp: nleaftot, nvar, ncpu =',nleaftot,nvar,ncpu_read
 
     ileaf = 0
     iloop = 0
@@ -273,11 +265,7 @@ contains
 !$OMP END DO
     if(.not. do_allocs) deallocate(ramses_var,xleaf,leaf_level)
 !$OMP END PARALLEL
-    if(verbose)then
-       print*,' '
-       print*,'--> Nleaves read =',ilast-1
-       print*,' '
-    end if
+    if(verbose)print*,'--> Nleaves read =',ilast-1
 
     return
 
@@ -568,12 +556,9 @@ contains
     integer(kind=4)                           :: icpu, ileaf, icell, ivar, nleaf_in_domain, k
     integer(kind=4)                           :: ilast
     real(kind=8),dimension(3)                 :: temp
+    real(kind=8)                              :: dx
     
-    if(verbose)then
-       print *,' '
-       print *,'...reading RAMSES cells...'
-       print *,' '
-    endif
+    if(verbose) print *,'Reading RAMSES cells...'
 
     nvar = get_nvar(repository,snapnum)
     ncpu = get_ncpu(repository,snapnum)
@@ -595,8 +580,9 @@ contains
        do icell = 1,ncell
           if (son(icell)==0 .and. cpu_map(icell) == icpu) then
              temp(:) = (/cell_x(icell), cell_y(icell), cell_z(icell)/)
+             dx = 0.5d0**(cell_level(icell))
              nleaftot = nleaftot+1
-             if (domain_contains_point(temp,selection_domain)) then
+             if (domain_contains_cell(temp,dx,selection_domain)) then
                 nleaf_in_domain = nleaf_in_domain + 1
              end if
           end if
@@ -605,7 +591,7 @@ contains
 !$OMP END DO
 !$OMP END PARALLEL
 
-    if(verbose)print *,'-- read_leaf_cells_in_domain --> nleaftot, nleaf_in_domain, nvar, ncpu =',nleaftot, nleaf_in_domain, nvar, ncpu_read
+    if(verbose)print *,'-- read_leaf_cells_in_domain: nleaftot, nleaf_in_domain, nvar, ncpu =',nleaftot, nleaf_in_domain, nvar, ncpu_read
     
     allocate(ramses_var_all(nvar,nleaf_in_domain), xleaf_all(nleaf_in_domain,3), leaf_level_all(nleaf_in_domain))
     ilast = 1
@@ -625,7 +611,8 @@ contains
        do icell = 1,ncell
           if (son(icell)==0 .and. cpu_map(icell) == icpu) then
              temp(:) = (/cell_x(icell), cell_y(icell), cell_z(icell)/)
-             if (domain_contains_point(temp,selection_domain)) then
+             dx = 0.5d0**(cell_level(icell))
+             if (domain_contains_cell(temp,dx,selection_domain)) then
                 ileaf = ileaf + 1
                 do ivar = 1,nvar
                    ramses_var(ivar,ileaf) = var(icell,ivar)
@@ -779,7 +766,7 @@ contains
     
     deallocate(bound_key,cpu_read)
     
-    print*,'--> Ncpu to read = ',ncpu_read
+    print*,'--> nCPU to read = ',ncpu_read
     
     return
     
@@ -832,7 +819,7 @@ contains
     cpu_read=.false.
     cpu_list=0
     
-    print*,'...getting CPU list...'
+    print*,'Getting CPU list...'
     
     call read_hilbert_keys(repository,snapnum,ncpu,bound_key)
     
@@ -952,7 +939,7 @@ contains
     
     deallocate(bound_key,cpu_read)
     
-    print*,'--> Ncpu to read = ',ncpu_read
+    print*,'--> nCPU to read = ',ncpu_read
     
     return
     
@@ -1747,6 +1734,281 @@ contains
              i = j
           end if
 
+  
+  subroutine ramses_get_cooling_time(repository,snapnum,nleaf,nvar,ramses_var,coolingTime,sample)
+
+    implicit none 
+    character(1000),intent(in)  :: repository
+    integer(kind=4),intent(in)  :: snapnum
+    integer(kind=4),intent(in) :: nleaf,nvar
+    real(kind=8),intent(in)    :: ramses_var(nvar,nleaf)
+    real(kind=8),intent(inout) :: coolingTime(:)
+    integer(kind=4),intent(in),optional :: sample(:)
+    
+    real(kind=8)               :: aexp,xhii,xheii,xheiii,nh,nhi,nhii,nhe,nhei,nheii,nheiii,ne,mu,T,crate,enerth,dcooldT
+    integer(kind=4)            :: n,j,i
+    logical                    :: subsample
+    ! Heating terms (RT)
+    real(kind=8),parameter::eV_to_erg=1.6022d-12  ! eV to erg conv. constant
+    !!JB- should read these from files ! 
+    !real(kind=8),parameter,dimension(3)::ion_egy = (/13.60d0, 24.59d0, 54.42d0/)*eV_to_erg
+    real(kind=8),parameter,dimension(4)::ion_egy = (/13.60d0, 15.20d0, 24.59d0, 54.42d0/)*eV_to_erg
+    !! -JB
+    character(1000)            :: filename
+    integer(kind=4)            :: ilun=33,nRTvar,nIons,nGroups,igroup,indexgroup,nvarH
+    real(kind=8),allocatable   :: group_egy(:),group_csn(:,:),group_cse(:,:)
+    real(kind=8)               :: hrate,unit_fp
+    
+
+    if (.not. ramses_rt) then
+       print*,'Cooling time not implemented without RT... '
+       stop
+    end if
+    
+    ! get conversion factors if necessary
+    if (.not. conversion_scales_are_known) then 
+       call read_conversion_scales(repository,snapnum)
+       conversion_scales_are_known = .True.
+    end if
+
+    ! init cooling tables 
+    aexp    = get_param_real(repository,snapnum,'aexp')
+    call init_coolrates_tables(aexp)
+
+    ! check Photo-heating
+    if (read_rt_variables) then
+       write(filename,'(a,a,i5.5,a,i5.5,a)') TRIM(repository),'output_',snapnum,'/info_rt_',snapnum,'.txt'
+       open(unit=ilun,file=filename,status='old',form='formatted')
+       call read_int( ilun, 'nRTvar', nRTvar)
+       nvarH = nvar - nRTvar
+       call read_int( ilun, 'nIons', nIons)
+! JB: make sure this is OK for non-Harley cases ... 
+!!$       if (nIons .ne. 3) then
+!!$          print*,'nIons has to be 3 with current implementation ... '
+!!$          stop
+!!$       end if
+       call read_int( ilun, 'nGroups', nGroups)
+       allocate(group_egy(nGroups),group_csn(ngroups,nions),group_cse(ngroups,nions))
+       call read_real(ilun, 'unit_pf', unit_fp)
+       call read_groups(ilun)
+       close(ilun)
+    end if
+
+    
+    ! compute cooling rate for all sample cells 
+    if (present(sample)) then
+       n = size(sample)
+       subsample = .true.
+    else
+       n = nleaf
+       subsample = .false. 
+    end if
+    do j=1,n
+       if (subsample) then
+          i = sample(j)
+       else
+          i = j
+       end if
+       xhii   = ramses_var(ihii,i)
+       xheii  = ramses_var(iheii,i)
+       xheiii = ramses_var(iheiii,i)
+       nh     = ramses_var(1,i) * dp_scale_nh
+       nhi    = nh * (1.0d0 - xhii)
+       nhii   = nh * xhii
+       nhe    = 0.25*nh*(1.0d0-XH)/XH
+       nhei   = nhe * (1.0d0 - xheii - xheiii)
+       nheii  = nhe * xheii
+       nheiii = nhe * xheiii
+       ne     = nHII + nHe * (xHeII + 2.0d0*xHeIII)
+       mu     = 1./( XH*(1.+xHII) + 0.25d0*(1.0d0-XH)*(1.+xHeII+2.*xHeIII) )
+       T      = ramses_var(itemp,i)/ramses_var(1,i)*mu*dp_scale_T2
+       crate  = compCoolrate(T, ne, nHI, nHII, nHeI, nHeII, nHeIII, aexp, dcooldT)  ! [erg s-1 cm-3]  
+       if (read_rt_variables) then
+          hrate = 0.0d0
+          ! JB- There has to be a way to use non-hard-coded indexes ... 
+          if (nions.eq.3) then
+             do igroup=1,ngroups
+                indexgroup = nvarH+1+(igroup-1)*(1+ndim)
+                hrate = hrate + nhi * ramses_var(indexgroup,i) * unit_fp * (group_cse(igroup,1)*group_egy(igroup) -group_csn(iGroup,1)*ion_egy(1)) &
+                     & + nhei * ramses_var(indexgroup,i) * unit_fp * (group_cse(igroup,2)*group_egy(igroup) -group_csn(iGroup,2)*ion_egy(2)) &
+                     & + nheii * ramses_var(indexgroup,i) * unit_fp * (group_cse(igroup,3)*group_egy(igroup) -group_csn(iGroup,3)*ion_egy(3)) 
+             end do
+          else !!HK addition for nIons=4 (molecular hydrogen case)
+             do igroup=1,ngroups
+                indexgroup = nvarH+1+(igroup-1)*(1+ndim)
+                hrate = hrate + nhi * ramses_var(indexgroup,i) * unit_fp * (group_cse(igroup,2)*group_egy(igroup) -group_csn(iGroup,2)*ion_egy(2)) &
+                     & + nhei * ramses_var(indexgroup,i) * unit_fp * (group_cse(igroup,3)*group_egy(igroup) -group_csn(iGroup,3)*ion_egy(3)) &
+                     & + nheii * ramses_var(indexgroup,i) * unit_fp * (group_cse(igroup,4)*group_egy(igroup) -group_csn(iGroup,4)*ion_egy(4))
+             end do
+          endif
+          ! -JB 
+          crate = max(1.0d-40,crate-hrate)  ! we're only interested in relatively fast cooling rates. 
+       end if
+       enerth = (1.5d0 * kb / mp ) * T / mu * ramses_var(1,i) * dp_scale_d  ! [erg cm-3]
+       coolingTime(j) = enerth / crate ! [s]
+    end do
+
+
+    if (read_rt_variables) then 
+       deallocate(group_egy,group_csn,group_cse)
+    end if
+       
+    return
+
+
+  contains
+    
+    !XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+    SUBROUTINE read_int(lun, param_name, value)
+      ! Try to read a parameter from lun
+      !-------------------------------------------------------------------------
+      integer::lun
+      character(*)::param_name
+      character(128)::line,tmp
+      integer::value
+      !-------------------------------------------------------------------------
+      rewind(unit=lun)
+      do
+         read(lun, '(A128)', end=223) line
+         if(index(line,trim(param_name)) .eq. 1) then
+            read(line,'(A13,I30)') tmp, value
+            return
+         endif
+      end do
+223   return                        ! eof reached, didn't find the parameter
+
+    END SUBROUTINE read_int
+    !XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+    SUBROUTINE read_real_array(lun, param_name, value)
+
+      ! Try to read a parameter array from lun
+      !-------------------------------------------------------------------------
+      integer::lun
+      character(*)::param_name
+      character(1000)::line,tmp
+      real(kind=8),dimension(:)::value
+      !-------------------------------------------------------------------------
+      rewind(unit=lun)
+      do
+         read(lun, '(A1000)', end=222) line
+         if(index(line,trim(param_name)) .eq. 1) then
+            read(line,'(A13,100(E23.15))') tmp, value
+            return
+         endif
+      end do
+222   return                        ! eof reached, didn't find the parameter
+
+    END SUBROUTINE read_real_array
+    !XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+    SUBROUTINE read_real(lun, param_name, value)
+
+      ! Try to read a parameter from lun
+      !-------------------------------------------------------------------------
+      integer::lun
+      character(*)::param_name
+      character(1000)::line,tmp
+      real(kind=8)::value
+      !-------------------------------------------------------------------------
+      rewind(unit=lun)
+      do
+         read(lun, '(A128)', end=222) line
+         if(index(line,trim(param_name)) .eq. 1) then
+            read(line,'(A13,E23.15)') tmp, value
+            return
+         endif
+      end do
+222   return                        ! eof reached, didn't find the parameter
+
+    END SUBROUTINE read_real
+    !XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+    SUBROUTINE read_groups(lun)
+
+      ! Try to read photon group properties from lun
+      !-------------------------------------------------------------------------
+      integer::lun,i
+      character(128)::line,tmp
+      real ::group_tmp(3)
+      !-------------------------------------------------------------------------
+      rewind(unit=lun)
+      i=0 ! Read group_egy
+      do
+         read(lun, '(A128)', end=220) line
+         if(index(line,trim('egy')) .eq. 3) then
+            i=i+1
+            read(line,'(A19,100F12.3)') tmp, group_egy(i)
+         endif
+      end do
+220   continue
+      group_egy=group_egy*eV_to_erg
+      i=0 ! Read group_csn
+      rewind(unit=lun)
+      do
+         read(lun, '(A128)', end=221) line
+         if(index(line,trim('csn')) .eq. 3) then
+            i=i+1
+            read(line,'(A19,3(1pe12.3))') tmp, group_tmp
+            group_csn(i,1:nIons)=group_tmp
+         endif
+      end do
+221   continue
+      i=0 ! Read group_cse
+      rewind(unit=lun)
+      do
+         read(lun, '(A128)', end=222) line
+         if(index(line,trim('cse')) .eq. 3) then
+            i=i+1
+            read(line,'(A19,100(1pe12.3))') tmp, group_tmp
+            group_cse(i,1:nIons) = group_tmp
+         endif
+      end do
+222   continue
+      return                        ! eof reached, didn't find the parameter
+
+    END SUBROUTINE read_groups
+    !XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+
+  end subroutine ramses_get_cooling_time
+
+
+  subroutine ramses_get_LyaEmiss_HIDopwidth(repository,snapnum,nleaf,nvar,var,recomb_em,coll_em,HIDopwidth,sample)
+
+    implicit none
+
+    character(1000),intent(in)  :: repository
+    integer(kind=4),intent(in)  :: snapnum
+    integer(kind=4),intent(in) :: nleaf,nvar
+    real(kind=8),intent(in)    :: var(nvar,nleaf)
+    real(kind=8),intent(inout) :: recomb_em(:),coll_em(:),HIDopwidth(:)
+    integer(kind=4),intent(in),optional :: sample(:)
+
+    integer(kind=4)            :: n,j,i
+    real(kind=8),parameter     :: e_lya = planck * clight / (1215.67d0/cmtoA) ! [erg] energy of a Lya photon (consistent with HI_model)
+    real(kind=8)               :: xhii,xheii,xheiii,nh,nhi,nhii,n_e,mu,TK,Ta,prob_case_B,alpha_B,collExrate_HI,lambda,nhe
+    logical                    :: subsample
+    
+    ! get conversion factors if necessary
+    if (.not. conversion_scales_are_known) then 
+       call read_conversion_scales(repository,snapnum)
+       conversion_scales_are_known = .True.
+    end if
+
+    if (present(sample)) then
+       n = size(sample)
+       subsample = .true.
+    else
+       n = nleaf
+       subsample = .false. 
+    end if
+
+    if(ramses_rt)then
+       do j=1,n
+
+          if (subsample) then
+             i = sample(j)
+          else
+             i = j
+          end if
+
           xhii   = var(ihii,i)
           xheii  = var(iheii,i)
           xheiii = var(iheiii,i)
@@ -1775,6 +2037,7 @@ contains
     end if
     
   end subroutine ramses_get_LyaEmiss_HIDopwidth
+
   
   subroutine ramses_get_T_nSiII_cgs(repository,snapnum,nleaf,nvar,ramses_var,temp,nSiII)
 
@@ -2946,7 +3209,6 @@ contains
                 ncache=numbb(ibound-ncpu,ilevel)
              end if
              if(ncache>0)then
-!!!if (ilevel < fg_levelmin) print*,'lev < levmin',ilevel
                 allocate(ind_grid(1:ncache))
                 allocate(iig(1:ncache))
                 read(iunit)ind_grid ! Read grid index
@@ -3118,6 +3380,7 @@ contains
     return
 
   end function get_param_real
+
 
   !Val--
   function get_param_rt_real(repository,snapnum,param)
@@ -3343,7 +3606,7 @@ contains
     integer(kind=4)                        :: ncpu,ilast,icpu,npart,i,ifield,nfields
     character(1000)                        :: filename
     integer(kind=4),allocatable            :: id(:)
-    real(kind=8),allocatable               :: age(:),m(:),x(:,:),v(:,:),mets(:),skipy(:),imass(:)
+    real(kind=8),allocatable               :: age(:),m(:),x(:,:),v(:,:),mets(:),imass(:)
     real(kind=8)                           :: temp(3)
     integer(kind=4)                        :: rank, iunit, ilast_all
 
@@ -3579,6 +3842,7 @@ contains
                       else
                          star_mass(ilast) = imass(i) * dp_scale_m ! [g]
                       end if
+
                    else
                       star_mass(ilast) = m(i)     * dp_scale_m ! [g]
                    end if
@@ -4156,6 +4420,7 @@ contains
        write(*,'(a,L1)')     '  use_initial_mass     = ', use_initial_mass
        write(*,'(a,L1)')     '  cosmo                = ', cosmo
        write(*,'(a,L1)')     '  use_proper_time      = ', use_proper_time
+       write(*,'(a,L1)')     '  QuadHilbert          = ',QuadHilbert
        write(*,'(a,L1)')     '  verbose              = ', verbose
        write(*,'(a,i2)')     '  itemp                = ', itemp
        write(*,'(a,i2)')     '  imetal               = ', imetal
@@ -4163,7 +4428,6 @@ contains
        write(*,'(a,i2)')     '  iheii                = ', iheii
        write(*,'(a,i2)')     '  iheiii               = ', iheiii
        write(*,'(a,i2)')     '  iGamma1              = ', iGamma1
-       write(*,'(a,L1)')     '  QuadHilbert       = ',QuadHilbert
 
     end if
     
