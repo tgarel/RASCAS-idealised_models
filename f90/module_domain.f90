@@ -146,97 +146,64 @@ contains
     real(kind=8),dimension(1:n,1:3),intent(in)           :: xp
     integer(kind=4),dimension(:),allocatable,intent(out) :: indsel
     integer(kind=4)                                      :: i,ii,nsel
-    integer(kind=4),dimension(:),allocatable             :: tmpi
-    real(kind=8)                                         :: dd
+    integer(kind=4),dimension(:),allocatable             :: tmpi 
+    real(kind=8),dimension(1:3)                          :: xc
+   
+    allocate(indsel(1:n))
+    indsel=0
+    ii=0
+    do i=1,n
+       xc(1:3) = xp(i,1:3)
+       if(domain_contains_point(xc,dom))then
+          ii=ii+1
+          indsel(ii)=i
+       endif
+    enddo
+    nsel=ii
+    allocate(tmpi(1:nsel))
+    tmpi(1:nsel) = indsel(1:nsel)
+    deallocate(indsel)
+    allocate(indsel(1:nsel))
+    indsel=tmpi
+    deallocate(tmpi)
     
-    select case(trim(dom%type))
-    
-    case('sphere')
-       allocate(indsel(1:n))
-       indsel=0
-       ii=0
-       do i=1,n
-          dd = (xp(i,1)-dom%sp%center(1))**2 + (xp(i,2)-dom%sp%center(2))**2 + (xp(i,3)-dom%sp%center(3))**2
-          if(sqrt(dd)<=dom%sp%radius)then
-             ii=ii+1
-             indsel(ii)=i
-          endif
-       enddo
-       nsel=ii
-       allocate(tmpi(1:nsel))
-       tmpi(1:nsel) = indsel(1:nsel)
-       deallocate(indsel)
-       allocate(indsel(1:nsel))
-       indsel=tmpi
-       deallocate(tmpi)
-
-    case('shell')
-       allocate(indsel(1:n))
-       indsel=0
-       ii=0
-       do i=1,n
-          dd = (xp(i,1)-dom%sh%center(1))**2 + (xp(i,2)-dom%sh%center(2))**2 + (xp(i,3)-dom%sh%center(3))**2
-          if((sqrt(dd)>=dom%sh%r_inbound).and.(sqrt(dd)<dom%sh%r_outbound))then
-             ii=ii+1
-             indsel(ii)=i
-          endif
-       enddo
-       nsel=ii
-       allocate(tmpi(1:nsel))
-       tmpi(1:nsel) = indsel(1:nsel)
-       deallocate(indsel)
-       allocate(indsel(1:nsel))
-       indsel=tmpi
-       deallocate(tmpi)
-
-
-    case('cube')
-       allocate(indsel(1:n))
-       indsel=0
-       ii=0
-       do i=1,n
-          if((abs(xp(i,1)-dom%cu%center(1)) <= dom%cu%size*0.5d0).and. & 
-             (abs(xp(i,2)-dom%cu%center(2)) <= dom%cu%size*0.5d0).and. &
-             (abs(xp(i,3)-dom%cu%center(3)) <= dom%cu%size*0.5d0))then
-             ii=ii+1
-             indsel(ii)=i
-          endif
-       enddo
-       nsel=ii
-       allocate(tmpi(1:nsel))
-       tmpi(1:nsel) = indsel(1:nsel)
-       deallocate(indsel)
-       allocate(indsel(1:nsel))
-       indsel=tmpi
-       deallocate(tmpi)
-
-
-    case('slab')
-       allocate(indsel(1:n))
-       indsel=0
-       ii=0
-       do i=1,n
-          if(abs(xp(i,3)-dom%sl%zc) <= dom%sl%thickness*0.5d0)then
-             ii=ii+1
-             indsel(ii)=i
-          endif
-       enddo
-       nsel=ii
-       allocate(tmpi(1:nsel))
-       tmpi(1:nsel) = indsel(1:nsel)
-       deallocate(indsel)
-       allocate(indsel(1:nsel))
-       indsel=tmpi
-       deallocate(tmpi)
-
-
-    case default
-       print *,'ERROR: type not defined ',trim(dom%type)
-       stop
-    end select
-
   end subroutine select_in_domain
 
+
+
+  subroutine select_cells_in_domain(dom,n,xp,level,indsel)
+    
+    implicit none
+    integer(kind=4),intent(in)                           :: n
+    type(domain),intent(in)                              :: dom 
+    real(kind=8),dimension(1:n,1:3),intent(in)           :: xp
+    integer(kind=4),dimension(1:n),intent(in)            :: level
+    integer(kind=4),dimension(:),allocatable,intent(out) :: indsel
+    integer(kind=4)                                      :: i,ii,nsel
+    integer(kind=4),dimension(:),allocatable             :: tmpi 
+    real(kind=8),dimension(1:3)                          :: xc
+    real(kind=8)                                         :: dx
+    
+    allocate(indsel(1:n))
+    indsel=0
+    ii=0
+    do i=1,n
+       xc(1:3) = xp(i,1:3)
+       dx = 0.5d0**(level(i))
+       if(domain_contains_cell(xc,dx,dom))then
+          ii=ii+1
+          indsel(ii)=i
+       endif
+    enddo
+    nsel=ii
+    allocate(tmpi(1:nsel))
+    tmpi(1:nsel) = indsel(1:nsel)
+    deallocate(indsel)
+    allocate(indsel(1:nsel))
+    indsel=tmpi
+    deallocate(tmpi)
+    
+  end subroutine select_cells_in_domain
 
 
   subroutine read_domain(unit,dom)
@@ -374,69 +341,321 @@ contains
     type(domain),intent(in)              :: dom
     real(kind=8),dimension(3),intent(in) :: x
     logical                              :: domain_contains_point
-    real(kind=8)                         :: rr
+    real(kind=8)                         :: rr,dx,dy,dz
     domain_contains_point=.false.
     select case(trim(dom%type))
+
     case('sphere')
-       rr = (x(1)-dom%sp%center(1))**2 + (x(2)-dom%sp%center(2))**2 + (x(3)-dom%sp%center(3))**2
+       ! correct cell's position for periodic boundaries 
+       dx = x(1)-dom%sp%center(1)
+       if (dx > 0.5d0) then 
+          dx = dx -1.0d0 
+       else if (dx < -0.5d0) then 
+          dx = dx + 1.0d0
+       end if
+       dy = x(2)-dom%sp%center(2)
+       if (dy > 0.5d0) then 
+          dy = dy -1.0d0 
+       else if (dy < -0.5d0) then 
+          dy = dy + 1.0d0
+       end if
+       dz = x(3)-dom%sp%center(3)
+       if (dz > 0.5d0) then 
+          dz = dz -1.0d0 
+       else if (dz < -0.5d0) then 
+          dz = dz + 1.0d0
+       end if
+       !rr = (x(1)-dom%sp%center(1))**2 + (x(2)-dom%sp%center(2))**2 + (x(3)-dom%sp%center(3))**2
+       rr = dx**2 + dy**2 + dz**2
        if(rr<dom%sp%radius*dom%sp%radius)domain_contains_point=.true.
+
     case('shell')
-       rr = (x(1)-dom%sh%center(1))**2 + (x(2)-dom%sh%center(2))**2 + (x(3)-dom%sh%center(3))**2
+       ! correct positions for periodic boundaries 
+       dx = x(1)-dom%sh%center(1)
+       if (dx > 0.5d0) then 
+          dx = dx -1.0d0 
+       else if (dx < -0.5d0) then 
+          dx = dx + 1.0d0
+       end if
+       dy = x(2)-dom%sh%center(2)
+       if (dy > 0.5d0) then 
+          dy = dy -1.0d0 
+       else if (dy < -0.5d0) then 
+          dy = dy + 1.0d0
+       end if
+       dz = x(3)-dom%sh%center(3)
+       if (dz > 0.5d0) then 
+          dz = dz -1.0d0 
+       else if (dz < -0.5d0) then 
+          dz = dz + 1.0d0
+       end if
+       rr = dx*dx + dy*dy + dz*dz
+       !!rr = (x(1)-dom%sh%center(1))**2 + (x(2)-dom%sh%center(2))**2 + (x(3)-dom%sh%center(3))**2
        if((rr>dom%sh%r_inbound*dom%sh%r_inbound).and.(rr<dom%sh%r_outbound*dom%sh%r_outbound))domain_contains_point=.true.
+
     case('cube')
-       if((abs(x(1)-dom%cu%center(1)) < dom%cu%size*0.5d0).and. & 
-            (abs(x(2)-dom%cu%center(2)) < dom%cu%size*0.5d0).and. &
-            (abs(x(3)-dom%cu%center(3)) < dom%cu%size*0.5d0))domain_contains_point=.true.
+       ! correct positions for periodic boundaries 
+       dx = x(1)-dom%cu%center(1)
+       if (dx > 0.5d0) then 
+          dx = dx -1.0d0 
+       else if (dx < -0.5d0) then 
+          dx = dx + 1.0d0
+       end if
+       if (abs(dx) < dom%cu%size*0.5d0) then 
+          dx = x(2)-dom%cu%center(2)
+          if (dx > 0.5d0) then 
+             dx = dx -1.0d0 
+          else if (dx < -0.5d0) then 
+             dx = dx + 1.0d0
+          end if
+          if (abs(dx) < dom%cu%size*0.5d0) then 
+             dx = x(3)-dom%cu%center(3)
+             if (dx > 0.5d0) then 
+                dx = dx -1.0d0 
+             else if (dx < -0.5d0) then 
+                dx = dx + 1.0d0
+             end if
+             if (abs(dx) < dom%cu%size*0.5d0) then
+                domain_contains_point=.true.
+             end if
+          end if
+       end if
+       
     case('slab')
-       if(abs(x(3)-dom%sl%zc) < dom%sl%thickness*0.5d0)domain_contains_point=.true.
+       dz = x(3) - dom%sl%zc
+       if (dz > 0.5d0) then 
+          dz = dz - 1.0d0
+       else if (dz < -0.5d0) then 
+          dz = dz + 1.0d0
+       end if
+       if(abs(dz) < dom%sl%thickness*0.5d0)domain_contains_point=.true.
     end select
     return
   end function domain_contains_point
 
   
 
-  function domain_contains_cell(x,dx,dom)
+  function domain_fully_contains_cell(x,dx,dom)
     ! -> returns T/F if the full cell at x, of size dx, is in domain dom.
     type(domain),intent(in)              :: dom
     real(kind=8),dimension(3),intent(in) :: x
     real(kind=8),intent(in)              :: dx
-    logical                              :: domain_contains_cell
-    real(kind=8)                         :: rr
+    logical                              :: domain_fully_contains_cell
+    real(kind=8)                         :: rr,xc,dd,ddx,ddy,ddz
     real(kind=8),parameter :: sqrt3over2 = sqrt(3.0d0)*0.5d0
     
-    domain_contains_cell=.false.
+    domain_fully_contains_cell=.false.
 
     select case(trim(dom%type))
 
     case('sphere')
-       
-       rr = sqrt((x(1)-dom%sp%center(1))**2 + (x(2)-dom%sp%center(2))**2 + (x(3)-dom%sp%center(3))**2)
+       ! correct cell's position for periodic boundaries
+       ddx = x(1)-dom%sp%center(1)
+       if (ddx > 0.5d0) then 
+          ddx = ddx -1.0d0 
+       else if (ddx < -0.5d0) then 
+          ddx = ddx + 1.0d0
+       end if
+       ddy = x(2)-dom%sp%center(2)
+       if (ddy > 0.5d0) then 
+          ddy = ddy -1.0d0 
+       else if (ddy < -0.5d0) then 
+          ddy = ddy + 1.0d0
+       end if
+       ddz = x(3)-dom%sp%center(3)
+       if (ddz > 0.5d0) then 
+          ddz = ddz -1.0d0 
+       else if (ddz < -0.5d0) then 
+          ddz = ddz + 1.0d0
+       end if
+       rr = sqrt(ddx**2 + ddy**2 + ddz**2)
        rr = rr + dx*sqrt3over2
-       if (rr < dom%sp%radius) domain_contains_cell=.true.
-      
+       if (rr < dom%sp%radius) domain_fully_contains_cell=.true.
+
     case('shell')
-       
-       rr = sqrt((x(1)-dom%sh%center(1))**2 + (x(2)-dom%sh%center(2))**2 + (x(3)-dom%sh%center(3))**2)
+       ! correct cell's position for periodic boundaries
+       ddx = x(1)-dom%sh%center(1)
+       if (ddx > 0.5d0) then 
+          ddx = ddx -1.0d0 
+       else if (ddx < -0.5d0) then 
+          ddx = ddx + 1.0d0
+       end if
+       ddy = x(2)-dom%sh%center(2)
+       if (ddy > 0.5d0) then 
+          ddy = ddy -1.0d0 
+       else if (ddy < -0.5d0) then 
+          ddy = ddy + 1.0d0
+       end if
+       ddz = x(3)-dom%sh%center(3)
+       if (ddz > 0.5d0) then 
+          ddz = ddz -1.0d0 
+       else if (ddz < -0.5d0) then 
+          ddz = ddz + 1.0d0
+       end if
+       rr = sqrt(ddx*ddx + ddy*ddy + ddz*ddz)
+       !!!rr = sqrt((x(1)-dom%sh%center(1))**2 + (x(2)-dom%sh%center(2))**2 + (x(3)-dom%sh%center(3))**2)
        if(( (rr-dx*sqrt3over2)>dom%sh%r_inbound) .and. ((rr+dx*sqrt3over2)<dom%sh%r_outbound) ) then
-          domain_contains_cell=.true.
+          domain_fully_contains_cell=.true.
        end if
 
     case('cube')
+       ! correct cell's position for periodic boundaries 
+       dd = x(1) - dom%cu%center(1)
+       xc = x(1)
+       if (dd > 0.5d0) then 
+          xc = xc -1.0d0 
+       else if (dd < -0.5d0) then 
+          xc = xc + 1.0d0
+       end if
+       if ((xc+dx*0.5d0 < dom%cu%center(1)+dom%cu%size*0.5d0).and. &
+            (xc-dx*0.5d0 > dom%cu%center(1)-dom%cu%size*0.5d0)) then
+          dd = x(2) - dom%cu%center(2)
+          xc = x(2)
+          if (dd > 0.5d0) then 
+             xc = xc -1.0d0 
+          else if (dd < -0.5d0) then 
+             xc = xc + 1.0d0
+          end if
+          if ((xc+dx*0.5d0 < dom%cu%center(2)+dom%cu%size*0.5d0).and. &
+               (xc-dx*0.5d0 > dom%cu%center(2)-dom%cu%size*0.5d0)) then
+             dd = x(3) - dom%cu%center(3)
+             xc = x(3)
+             if (dd > 0.5d0) then 
+                xc = xc -1.0d0 
+             else if (dd < -0.5d0) then 
+                xc = xc + 1.0d0
+             end if
+             if ((xc+dx*0.5d0 < dom%cu%center(3)+dom%cu%size*0.5d0).and. &
+                  (xc-dx*0.5d0 > dom%cu%center(3)-dom%cu%size*0.5d0)) then
+                domain_fully_contains_cell=.true.
+             end if
+          end if
+       end if
        
-       if((x(1)+dx*0.5d0 < dom%cu%center(1)+dom%cu%size*0.5d0).and. &
-          (x(1)-dx*0.5d0 > dom%cu%center(1)-dom%cu%size*0.5d0).and. &
-          (x(2)+dx*0.5d0 < dom%cu%center(2)+dom%cu%size*0.5d0).and. &
-          (x(2)-dx*0.5d0 > dom%cu%center(2)-dom%cu%size*0.5d0).and. &
-          (x(3)+dx*0.5d0 < dom%cu%center(3)+dom%cu%size*0.5d0).and. &
-          (x(3)-dx*0.5d0 > dom%cu%center(3)-dom%cu%size*0.5d0)) domain_contains_cell=.true.
-
     case('slab')
+       dd = x(3) - dom%sl%zc
+       xc = x(3)
+       if (dd > 0.5d0) then 
+          xc = xc -1.0d0 
+       else if (dd < -0.5d0) then 
+          xc = xc + 1.0d0
+       end if
+       if((xc+dx*0.5d0 < dom%sl%zc+dom%sl%thickness*0.5d0).and. &
+            (xc-dx*0.5d0 > dom%sl%zc-dom%sl%thickness*0.5d0)) domain_fully_contains_cell=.true.
        
-       if((x(3)+dx*0.5d0 < dom%sl%zc+dom%sl%thickness*0.5d0).and. &
-          (x(3)-dx*0.5d0 > dom%sl%zc-dom%sl%thickness*0.5d0)) domain_contains_cell=.true.
-
     end select
 
+    return
+  end function domain_fully_contains_cell
+
+
+
+  function domain_contains_cell(x,dx,dom)
+    ! -> returns T/F if cell at x, of size dx, is (partially or fully) in domain dom.
+    ! warning: it is not a strict condition, some cell may be completely outside the domain. 
+    ! purpose of this function: selecting all cells belonging to a domain, if some cells are
+    !    counted in and should not, we don't care.
+    type(domain),intent(in)              :: dom
+    real(kind=8),dimension(3),intent(in) :: x
+    real(kind=8),intent(in)              :: dx
+    logical                              :: domain_contains_cell
+    real(kind=8)                         :: rr,dd,ddx,ddy,ddz,rcell
+    real(kind=8),parameter :: sqrt3over2 = sqrt(3.0d0)*0.5d0
+    
+    domain_contains_cell=.false.
+    
+    select case(trim(dom%type))
+       
+    case('sphere')
+       ! correct cell's position for periodic boundaries
+       ddx = x(1)-dom%sp%center(1)
+       if (ddx > 0.5d0) then 
+          ddx = ddx -1.0d0 
+       else if (ddx < -0.5d0) then 
+          ddx = ddx + 1.0d0
+       end if
+       ddy = x(2)-dom%sp%center(2)
+       if (ddy > 0.5d0) then 
+          ddy = ddy -1.0d0 
+       else if (ddy < -0.5d0) then 
+          ddy = ddy + 1.0d0
+       end if
+       ddz = x(3)-dom%sp%center(3)
+       if (ddz > 0.5d0) then 
+          ddz = ddz -1.0d0 
+       else if (ddz < -0.5d0) then 
+          ddz = ddz + 1.0d0
+       end if
+       rr = sqrt(ddx**2 + ddy**2 + ddz**2)
+       rcell = dx*sqrt3over2
+       if (rr <= (dom%sp%radius + rcell)) domain_contains_cell=.true.
+       
+    case('shell')
+       ! correct cell's position for periodic boundaries
+       ddx = x(1)-dom%sh%center(1)
+       if (ddx > 0.5d0) then 
+          ddx = ddx -1.0d0 
+       else if (ddx < -0.5d0) then 
+          ddx = ddx + 1.0d0
+       end if
+       ddy = x(2)-dom%sh%center(2)
+       if (ddy > 0.5d0) then 
+          ddy = ddy -1.0d0 
+       else if (ddy < -0.5d0) then 
+          ddy = ddy + 1.0d0
+       end if
+       ddz = x(3)-dom%sh%center(3)
+       if (ddz > 0.5d0) then 
+          ddz = ddz -1.0d0 
+       else if (ddz < -0.5d0) then 
+          ddz = ddz + 1.0d0
+       end if
+       rr = sqrt(ddx*ddx + ddy*ddy + ddz*ddz)
+       rcell = dx*sqrt3over2
+       if((rr>=(dom%sh%r_inbound-rcell)) .and. (rr<=(dom%sh%r_outbound+rcell))) then
+          domain_contains_cell=.true.
+       end if
+       
+    case('cube')
+       ! correct cell's position for periodic boundaries 
+       dd = x(1) - dom%cu%center(1)
+       if (dd > 0.5d0) then 
+          dd = dd - 1.0d0 
+       else if (dd < -0.5d0) then 
+          dd = dd + 1.0d0
+       end if
+       if (abs(dd)<=(dx*0.5d0 + dom%cu%size*0.5d0)) then
+          dd = x(2) - dom%cu%center(2)
+          if (dd > 0.5d0) then 
+             dd = dd - 1.0d0 
+          else if (dd < -0.5d0) then 
+             dd = dd + 1.0d0
+          end if
+          if (abs(dd)<=(dx*0.5d0 + dom%cu%size*0.5d0)) then
+             dd = x(3) - dom%cu%center(3)
+             if (dd > 0.5d0) then 
+                dd = dd - 1.0d0 
+             else if (dd < -0.5d0) then 
+                dd = dd + 1.0d0
+             end if
+             if (abs(dd)<=(dx*0.5d0 + dom%cu%size*0.5d0)) then
+                domain_contains_cell=.true.
+             end if
+          end if
+       end if
+       
+    case('slab')
+       dd = x(3) - dom%sl%zc
+       if (dd > 0.5d0) then 
+          dd = dd - 1.0d0 
+       else if (dd < -0.5d0) then 
+          dd = dd + 1.0d0
+       end if
+       if(abs(dd) <= (dx*0.5d0 + dom%sl%thickness*0.5d0)) then
+          domain_contains_cell=.true.
+       endif
+       
+    end select
     return
   end function domain_contains_cell
 
@@ -477,22 +696,84 @@ contains
     ! convention: negative distance means outside domain
     real(kind=8),dimension(3),intent(in) :: x
     type(domain),intent(in)              :: dom
-    real(kind=8)                         :: domain_distance_to_border, rr, ddx, ddy, ddz
+    real(kind=8)                         :: domain_distance_to_border, rr, ddx, ddy, ddz,xc,yc,zc
 
     select case(trim(dom%type))
 
     case('sphere')
-       rr = sqrt((x(1)-dom%sp%center(1))**2 + (x(2)-dom%sp%center(2))**2 + (x(3)-dom%sp%center(3))**2)
+       ! correct position for periodic boundaries
+       ddx = x(1)-dom%sp%center(1)
+       if (ddx > 0.5d0) then 
+          ddx = ddx -1.0d0 
+       else if (ddx < -0.5d0) then 
+          ddx = ddx + 1.0d0
+       end if
+       ddy = x(2)-dom%sp%center(2)
+       if (ddy > 0.5d0) then 
+          ddy = ddy -1.0d0 
+       else if (ddy < -0.5d0) then 
+          ddy = ddy + 1.0d0
+       end if
+       ddz = x(3)-dom%sp%center(3)
+       if (ddz > 0.5d0) then 
+          ddz = ddz -1.0d0 
+       else if (ddz < -0.5d0) then 
+          ddz = ddz + 1.0d0
+       end if
+       !rr = sqrt((x(1)-dom%sp%center(1))**2 + (x(2)-dom%sp%center(2))**2 + (x(3)-dom%sp%center(3))**2)
+       rr = sqrt(ddx**2 + ddy**2 + ddz**2)
        domain_distance_to_border = dom%sp%radius - rr
-
+       
     case('shell')
-       rr = sqrt((x(1)-dom%sh%center(1))**2 + (x(2)-dom%sh%center(2))**2 + (x(3)-dom%sh%center(3))**2)
+       ! correct position for periodic boundaries
+       ddx = x(1)-dom%sh%center(1)
+       if (ddx > 0.5d0) then 
+          ddx = ddx -1.0d0 
+       else if (ddx < -0.5d0) then 
+          ddx = ddx + 1.0d0
+       end if
+       ddy = x(2)-dom%sh%center(2)
+       if (ddy > 0.5d0) then 
+          ddy = ddy -1.0d0 
+       else if (ddy < -0.5d0) then 
+          ddy = ddy + 1.0d0
+       end if
+       ddz = x(3)-dom%sh%center(3)
+       if (ddz > 0.5d0) then 
+          ddz = ddz -1.0d0 
+       else if (ddz < -0.5d0) then 
+          ddz = ddz + 1.0d0
+       end if
+       rr = sqrt(ddx*ddx + ddy*ddy + ddz*ddz)
+       !!!rr = sqrt((x(1)-dom%sh%center(1))**2 + (x(2)-dom%sh%center(2))**2 + (x(3)-dom%sh%center(3))**2)
        domain_distance_to_border = min((rr-dom%sh%r_inbound),(dom%sh%r_outbound-rr))
-
+       
     case('cube')
-       ddx = min((dom%cu%center(1)+dom%cu%size*0.5d0-x(1)), (x(1)-dom%cu%center(1)+dom%cu%size*0.5d0))
-       ddy = min((dom%cu%center(2)+dom%cu%size*0.5d0-x(2)), (x(2)-dom%cu%center(2)+dom%cu%size*0.5d0))
-       ddz = min((dom%cu%center(3)+dom%cu%size*0.5d0-x(3)), (x(3)-dom%cu%center(3)+dom%cu%size*0.5d0))
+       ! correct cell's position for periodic boundaries 
+       xc = x(1)
+       ddx = xc - dom%cu%center(1)
+       if (ddx > 0.5d0) then 
+          xc = xc -1.0d0 
+       else if (ddx < -0.5d0) then 
+          xc = xc + 1.0d0
+       end if
+       yc = x(2)
+       ddy = yc - dom%cu%center(2)
+       if (ddy > 0.5d0) then 
+          yc = yc -1.0d0 
+       else if (ddy < -0.5d0) then 
+          yc = yc + 1.0d0
+       end if
+       zc = x(3)
+       ddz = zc - dom%cu%center(3)
+       if (ddz > 0.5d0) then 
+          zc = zc -1.0d0 
+       else if (ddz < -0.5d0) then 
+          zc = zc + 1.0d0
+       end if
+       ddx = min((dom%cu%center(1)+dom%cu%size*0.5d0-xc), (xc-dom%cu%center(1)+dom%cu%size*0.5d0))
+       ddy = min((dom%cu%center(2)+dom%cu%size*0.5d0-yc), (yc-dom%cu%center(2)+dom%cu%size*0.5d0))
+       ddz = min((dom%cu%center(3)+dom%cu%size*0.5d0-zc), (zc-dom%cu%center(3)+dom%cu%size*0.5d0))
        if((ddx>=0.0d0).and.(ddy>=0.0d0).and.(ddz>=0.0d0))then
           ! inside domain
           domain_distance_to_border = min(ddx,ddy,ddz)
@@ -502,7 +783,14 @@ contains
        endif
 
     case('slab')
-       domain_distance_to_border = min((dom%sl%zc+dom%sl%thickness*0.5d0-x(3)), (x(3)-dom%sl%zc+dom%sl%thickness*0.5d0)) 
+       zc = x(3)
+       ddz = zc - dom%sl%zc
+       if (ddz > 0.5d0) then 
+          zc = zc -1.0d0 
+       else if (ddz < -0.5d0) then 
+          zc = zc + 1.0d0
+       end if
+       domain_distance_to_border = min((dom%sl%zc+dom%sl%thickness*0.5d0-zc), (zc-dom%sl%zc+dom%sl%thickness*0.5d0)) 
 
     end select
 
@@ -522,12 +810,15 @@ contains
     type(domain),intent(in)              :: dom
     real(kind=8)                         :: domain_distance_to_border_along_k
     ! variables for the spherical case
-    real(kind=8) :: b, c, delta, dx, dy, dz 
+    real(kind=8) :: b, c, delta, dx, dy, dz, ddx
     ! variables for the shell case
     real(kind=8) :: t1,t2,tin,tout
     ! variables for the cube case
-    real(kind=8),dimension(3) :: x_dom
-
+    real(kind=8),dimension(3) :: x_dom,xc
+    integer(kind=4) :: i
+    ! variables for the slab case
+    real(kind=8) :: zc
+    
     ! point x should be inside domain dom
     if(.not.(domain_contains_point(x,dom)))then
        print*,'ERROR: point x outside domain dom in domain_distance_to_border_along_k...'
@@ -537,10 +828,28 @@ contains
     select case(trim(dom%type))
        
     case('sphere')
-       
-       dx = x(1) - dom%sp%center(1)
-       dy = x(2) - dom%sp%center(2)
-       dz = x(3) - dom%sp%center(3)
+       ! correct position for periodic boundaries
+       dx = x(1)-dom%sp%center(1)
+       if (dx > 0.5d0) then 
+          dx = dx -1.0d0 
+       else if (dx < -0.5d0) then 
+          dx = dx + 1.0d0
+       end if
+       dy = x(2)-dom%sp%center(2)
+       if (dy > 0.5d0) then 
+          dy = dy -1.0d0 
+       else if (dy < -0.5d0) then 
+          dy = dy + 1.0d0
+       end if
+       dz = x(3)-dom%sp%center(3)
+       if (dz > 0.5d0) then 
+          dz = dz -1.0d0 
+       else if (dz < -0.5d0) then 
+          dz = dz + 1.0d0
+       end if
+       !dx = x(1) - dom%sp%center(1)
+       !dy = x(2) - dom%sp%center(2)
+       !dz = x(3) - dom%sp%center(3)
        b = 2.d0 * ( k(1)*dx + k(2)*dy +  k(3)*dz )
        c = dx*dx + dy*dy + dz*dz - dom%sp%radius*dom%sp%radius
        delta = b*b - 4.0d0*c
@@ -551,10 +860,28 @@ contains
        domain_distance_to_border_along_k = (-b + sqrt(delta))*0.5d0 ! select the only positive solution
 
     case('shell')
-
+       ! correct position for periodic boundaries
        dx = x(1) - dom%sh%center(1)
+       if (dx > 0.5d0) then 
+          dx = dx -1.0d0 
+       else if (dx < -0.5d0) then 
+          dx = dx + 1.0d0
+       end if
        dy = x(2) - dom%sh%center(2)
+       if (dy > 0.5d0) then 
+          dy = dy -1.0d0 
+       else if (dy < -0.5d0) then 
+          dy = dy + 1.0d0
+       end if
        dz = x(3) - dom%sh%center(3)
+       if (dz > 0.5d0) then 
+          dz = dz -1.0d0 
+       else if (dz < -0.5d0) then 
+          dz = dz + 1.0d0
+       end if
+       !dx = x(1) - dom%sh%center(1)
+       !dy = x(2) - dom%sh%center(2)
+       !dz = x(3) - dom%sh%center(3)
        ! inner shell intersection
        b = 2.0d0 * ( k(1)*dx + k(2)*dy +  k(3)*dz )
        c = dx*dx + dy*dy + dz*dz - dom%sh%r_inbound*dom%sh%r_inbound
@@ -583,11 +910,17 @@ contains
        domain_distance_to_border_along_k = min(tin,tout)
        
     case('slab')
-
+       zc = x(3)
+       dz = zc - dom%sl%zc
+       if (dz > 0.5d0) then 
+          zc = zc - 1.0d0 
+       else if (dz < -0.5d0) then 
+          zc = zc + 1.0d0
+       end if
        if(k(3)<0.0d0)then
-          domain_distance_to_border_along_k = (dom%sl%zc-dom%sl%thickness*0.5d0-x(3))/k(3)
+          domain_distance_to_border_along_k = (dom%sl%zc-dom%sl%thickness*0.5d0-zc)/k(3)
        else
-          domain_distance_to_border_along_k = (dom%sl%zc+dom%sl%thickness*0.5d0-x(3))/k(3)
+          domain_distance_to_border_along_k = (dom%sl%zc+dom%sl%thickness*0.5d0-zc)/k(3)
        endif
        if (domain_distance_to_border_along_k < 0.0d0)then
           print *,'ERROR: pb with distance to border along k, slab case, point outside domain...'
@@ -595,9 +928,18 @@ contains
        endif
 
     case('cube')  
-
+       ! correct position for periodic boundaries
+       do i = 1,3
+          xc(i) = x(i)
+          ddx = xc(i) - dom%cu%center(i)
+          if (ddx > 0.5d0) then 
+             xc(i) = xc(i) -1.0d0 
+          else if (ddx < -0.5d0) then 
+             xc(i) = xc(i) + 1.0d0
+          end if
+       end do
        ! get position relative to the domain
-       x_dom = (x - dom%cu%center)/dom%cu%size + 0.5d0
+       x_dom = (xc - dom%cu%center)/dom%cu%size + 0.5d0
        if((x_dom(1) < 0.0d0).or.(x_dom(1)>1.0d0).or.&
             (x_dom(2) < 0.0d0).or.(x_dom(2)>1.0d0).or.&
             (x_dom(3) < 0.0d0).or.(x_dom(3)>1.0d0))then
@@ -617,6 +959,48 @@ contains
     
   end function domain_distance_to_border_along_k
 
-  
+
+
+  subroutine domain_get_bounding_box(dom,xmin,xmax,ymin,ymax,zmin,zmax)
+    implicit none
+    type(domain),intent(in)     :: dom
+    real(kind=8),intent(inout)  :: xmin,xmax,ymin,ymax,zmin,zmax
+
+    select case(dom%type)
+    case('sphere')
+       xmax = dom%sp%center(1) + dom%sp%radius
+       xmin = dom%sp%center(1) - dom%sp%radius
+       ymax = dom%sp%center(2) + dom%sp%radius
+       ymin = dom%sp%center(2) - dom%sp%radius
+       zmax = dom%sp%center(3) + dom%sp%radius
+       zmin = dom%sp%center(3) - dom%sp%radius
+    case('shell')
+       xmax = dom%sh%center(1) + dom%sh%r_outbound
+       xmin = dom%sh%center(1) - dom%sh%r_outbound
+       ymax = dom%sh%center(2) + dom%sh%r_outbound
+       ymin = dom%sh%center(2) - dom%sh%r_outbound
+       zmax = dom%sh%center(3) + dom%sh%r_outbound
+       zmin = dom%sh%center(3) - dom%sh%r_outbound
+    case('cube')
+       xmax = dom%cu%center(1) + dom%cu%size*0.5d0
+       xmin = dom%cu%center(1) - dom%cu%size*0.5d0
+       ymax = dom%cu%center(2) + dom%cu%size*0.5d0
+       ymin = dom%cu%center(2) - dom%cu%size*0.5d0
+       zmax = dom%cu%center(3) + dom%cu%size*0.5d0
+       zmin = dom%cu%center(3) - dom%cu%size*0.5d0
+    case('slab')
+       xmax = 1.0d0
+       xmin = 0.0d0
+       ymax = 1.0d0
+       ymin = 0.0d0
+       zmax = dom%sl%zc + dom%sl%thickness*0.5d0
+       zmin = dom%sl%zc - dom%sl%thickness*0.5d0
+    end select
+    
+    return
+  end subroutine domain_get_bounding_box
+
+
+
 end module module_domain
 

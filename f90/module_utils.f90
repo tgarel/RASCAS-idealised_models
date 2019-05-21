@@ -2,46 +2,22 @@ module module_utils
   
   ! general-purpose functions : 
   ! 
-  ! - voigt_fit
   ! - isotropic_direction
   ! - anisotropic_direction_HIcore
   ! - anisotropic_direction_Rayleigh
+  ! - anisotropic_direction_Dust
+  ! - locatedb
+  ! - path
+  ! - print_rascas_header
   
-  use module_constants, only : pi, sqrtpi, twopi
+  use module_constants, only : twopi
   use module_random
   
   public
 
 contains
 
-  function voigt_fit(x,a)
-
-    ! returns ... what exactly?
-    ! REF to where the fit is taken from ?
-    ! comment on accuracy ?
-    
-    implicit none
-    
-    real(kind=8),intent(in) :: x,a
-    real(kind=8)            :: voigt_fit 
-    real(kind=8)            :: q,z,x2
-    
-    x2 = x**2
-    z  = (x2 - 0.855d0) / (x2 + 3.42d0)
-    if (z > 0.0d0) then 
-       q = z * (1.0d0 + 21.0d0/x2) * a / pi / (x2 + 1.0d0)
-       q = q * (((5.674d0*z - 9.207d0)*z + 4.421d0)*z + 0.1117)
-    else
-       q = 0.0d0 
-    end if
-    voigt_fit = q + exp(-x2) / sqrtpi
-    
-    return
-    
-  end function voigt_fit
-
- 
-
+  
   subroutine isotropic_direction(k,iran)
 
     ! ---------------------------------------------------------------------------------
@@ -94,10 +70,10 @@ contains
     ! ---------------------
     ! To draw theta values, we compute the cumulative probability from above :
     ! P(< mu) = 1/2 + 11/24 * mu + 1/24 * mu**3
-    ! We fit the reciprocal function with the following polynomial function giving a better
-    ! than 0.52% accuracy everywhere:
-    ! mu = -0.703204 x^3 + 1.054807 x^2 + 1.643182 x^1 -0.997392  
-    ! -> to get a value of mu (hence theta), we draw x in [0,1] and compute mu from the above fit
+    ! It is analytically integrable and invertible. The solution of this cubic polynomial
+    ! is a function of the form: mu = (A+B)**(1.d0/3.d0) - (A-B)**(1.d0/3.d0)
+    ! with B = (2*x-1)*6 and A = sqrt(B**2+11**3/27)
+    ! -> to get a value of mu (hence theta), we draw x in [0,1] and compute mu from the above function
     ! ---------------------------------------------------------------------------------
 
     implicit none
@@ -106,11 +82,13 @@ contains
     real(kind=8),intent(out)      :: kout(3)
     real(kind=8),intent(out)      :: mu,bu
     integer(kind=4),intent(inout) :: iran
-    real(kind=8)                  :: phi,x,cti,sti,cpi,spi,ct1,st1,cp1,sp1,knorm
+    real(kind=8)                  :: phi,x,cti,sti,cpi,spi,ct1,st1,cp1,sp1,knorm,A,B
     
     phi = twopi * ran3(iran)
     x   = ran3(iran)
-    mu = ((-0.703204d0*x + 1.054807d0)* x + 1.643182d0) * x - 0.997392d0  
+    B   = (2.d0*x - 1.d0)*6.d0
+    A   = sqrt(B*B+11.d0**3/27.d0)
+    mu  = (A+B)**(1.d0/3.d0) - (A-B)**(1.d0/3.d0)
     ! angular description of kin in external frame (box coordinates)
     cti = kin(3)
     sti = sqrt(1.0d0 - cti**2)  ! sin(theta) is positive for theta in [0,pi]. 
@@ -159,9 +137,9 @@ contains
     ! ---------------------
     ! To draw theta values, we compute the cumulative probability from above :
     ! P(< mu) = 1/2 + 3/8 * mu + 1/8 * mu**3
-    ! We fit the reciprocal function with the following polynomial function giving a better
-    ! than 0.53% accuracy everywhere:
-    ! mu = -24.901267 x^7 + 87.154434 x^6 -114.220525 x^5 + 67.665227 x^4 -18.389694 x^3 + 3.496531 x^2 + 1.191722 x^1 -0.998214
+    ! It is analytically integrable and invertible. The solution of this cubic polynomial
+    ! is a function of the form: mu = (A+B)**(1.d0/3.d0) - (A-B)**(1.d0/3.d0)
+    ! with B = 4*x-2 and A = sqrt(B**2+1)
     ! -> to get a value of mu (hence theta), we draw x in [0,1] and compute mu from the above fit
     ! ---------------------------------------------------------------------------------
 
@@ -171,11 +149,13 @@ contains
     real(kind=8),intent(out)      :: kout(3)
     real(kind=8),intent(out)      :: mu,bu
     integer(kind=4),intent(inout) :: iran
-    real(kind=8)                  :: phi,x,cti,sti,cpi,spi,ct1,st1,cp1,sp1,knorm
+    real(kind=8)                  :: phi,x,cti,sti,cpi,spi,ct1,st1,cp1,sp1,knorm,A,B
 
     phi = twopi * ran3(iran)
     x   = ran3(iran)
-    mu = ((((((-24.901267d0*x + 87.154434d0)*x -114.220525d0)*x + 67.665227d0)*x -18.389694d0)*x + 3.496531d0)*x + 1.191722d0)*x -0.998214d0
+    B   = 4.d0*x - 2.d0
+    A   = sqrt(B*B+1.d0)
+    mu  = (A+B)**(1.d0/3.d0) - (A-B)**(1.d0/3.d0)
     ! angular description of kin in external frame (box coordinates)
     cti = kin(3)
     sti = sqrt(1.0d0 - cti**2)  ! sin(theta) is positive for theta in [0,pi]. 
@@ -224,14 +204,14 @@ contains
     real(kind=8),intent(out)      :: kout(3)
     real(kind=8),intent(out)      :: mu
     integer(kind=4),intent(inout) :: iran
-    real(kind=8)                  :: phi,cti,sti,cpi,spi,ct1,st1,cp1,sp1,ra,knorm
+    real(kind=8)                  :: phi,cti,sti,cpi,spi,ct1,st1,cp1,sp1,x,knorm
     real(kind=8),intent(in)       :: g_dust
 
 
     ! determine scattering angle (in atom's frame)
     ! use White 79 approximation for the "reciprocal" of cumulative Henyey-Greenstein phase fct:
-    ra=ran3(iran) 
-    mu = (1.0d0+g_dust*g_dust-((1.0d0-g_dust*g_dust)/(1.0d0-g_dust+2.0d0*g_dust*ra))**2)/(2.0d0*g_dust)
+    x  = ran3(iran) 
+    mu = (1.0d0+g_dust*g_dust-((1.0d0-g_dust*g_dust)/(1.0d0-g_dust+2.0d0*g_dust*x))**2)/(2.0d0*g_dust)
 
     ! angular description of kin in external frame (box coordinates)
     ! ---------------------------------------------------------------------------------
@@ -328,7 +308,17 @@ contains
   end function path
 
 
-  
+  subroutine print_rascas_header
+    write(*,'(a)') '                                             '
+    write(*,'(a)') '    _____  _____  _____  _____  _____  _____ '
+    write(*,'(a)') '   / ___ \/ ___ \/ ____\/   __\/ ___ \/ ____\'
+    write(*,'(a)') '   | \_/ || \_/ |\ \___ |  /   | \_/ |\ \___ '
+    write(*,'(a)') '   |    _/|  _  | \___ \|  |   |  _  | \___ \'
+    write(*,'(a)') '   | |\ \ | | | |_____/ |  \___| | | |____/ |'
+    write(*,'(a)') '   |_| \_\|_| |_|\_____/\_____/|_| |_|\_____/'
+    write(*,'(a)') '                                             '
+    write(*,'(a)') '                                             '
+  end subroutine print_rascas_header
 
 
 end module module_utils

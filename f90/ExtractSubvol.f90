@@ -219,7 +219,7 @@ program ExtractSubvol
         call mesh_from_leaves(nOctSnap,domain_list(i),nleaftot, &
              gas_leaves,x_leaf,leaf_level,domain_mesh)
      else
-        call select_in_domain(domain_list(i), nleaftot, x_leaf, ind_sel)
+        call select_cells_in_domain(domain_list(i), nleaftot, x_leaf, leaf_level, ind_sel)
         call select_from_domain(arr_in=x_leaf,     ind_sel=ind_sel, arr_out=xleaf_sel)
         call select_from_domain(arr_in=leaf_level, ind_sel=ind_sel, arr_out=leaflevel_sel)
         call select_from_domain(arr_in=gas_leaves, ind_sel=ind_sel, arr_out=selected_leaves)
@@ -381,6 +381,7 @@ contains
     DomDumpDir = trim(DomDumpDir)//"/"
     
     call read_mesh_params(pfile)
+    call read_ramses_params(pfile)
     
     return
 
@@ -427,6 +428,7 @@ contains
        write(unit,'(a,L1)')          '  add_dm          = ',add_dm
        write(unit,'(a)')             ' '
        call print_mesh_params(unit)
+       call print_ramses_params(unit)
     else
        write(*,'(a)')             '--------------------------------------------------------------------------------'
        write(*,'(a)')             ' '
@@ -459,6 +461,8 @@ contains
        write(*,'(a,L1)')          '  add_dm          = ',add_dm
        write(*,'(a)')             ' '
        call print_mesh_params
+       write(*,'(a)')             ' '
+       call print_ramses_params
        write(*,'(a)')             ' '
        write(*,'(a)')             '--------------------------------------------------------------------------------'
     end if
