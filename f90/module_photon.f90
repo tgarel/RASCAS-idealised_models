@@ -51,6 +51,11 @@ module module_photon
   integer(kind=4)                      :: nPeeled
   !--LEEP--
 
+  ! parameters in the [photon] section :
+  !--Val--
+  logical         :: no_scatter   = .false.
+  !--laV-- 
+
   public  :: MCRT, propagate, init_photons_from_file, dump_photons
   
 contains
@@ -136,8 +141,7 @@ contains
           nPeeled=0
        endif
     end if
-    !--LEEP-- 
-
+    !--LEEP--
     
     ! propagate photon until escape or death ... 
     photon_propagation : do 
@@ -320,55 +324,72 @@ contains
              enddo
              ! update ppos according to ppos_cell
              ppos = ppos_cell * cell_size + cell_corner
-             
-             !------------
-             ! scattering
-             !------------
-             !--PEEL--
-             if (peeling_off) then 
-                ! save ray for batch processing later.
-                nPeeled = nPeeled + 1
-                PeelBuffer(nPeeled)%x     = ppos  ! position (at scattering)
-                PeelBuffer(nPeeled)%icell = icell    
-                PeelBuffer(nPeeled)%kin   = p%k      ! incoming photon direction 
-                PeelBuffer(nPeeled)%nu    = p%nu_ext ! incoming photon frequency
-                PeelBuffer(nPeeled)%scatter_flag = scatter_flag
-                if (nPeeled == PeelBufferSize) then ! buffer is full -> process.
-                   call process_peels(domesh,domaine_calcul,iran)
-                   nPeeled=0
-                end if
-             end if
-             !--LEEP-- 
-
-             p%nb_abs = p%nb_abs + 1     ! increment nb of scatterings
-             p%xlast = ppos              ! memorize the location of "potential" last interaction
-             ! a scattering event modifies nu_cell, k, and nu_ext
-             ! so it needs to transport nu_cell, k, nu_ext, but not type p (because type p not known in gas)
-             nu_ext = p%nu_ext
-             k = p%k
-             !--CORESKIP--
-             call gas_scatter(scatter_flag, cell_gas, nu_cell, k, nu_ext, iran, xcrit)    ! NB: nu_cell, k, nu_ext, and iran en inout
-             !call gas_scatter(scatter_flag, cell_gas, nu_cell, k, nu_ext, iran)    ! NB: nu_cell, k, nu_ext, and iran en inout             
-             !--PIKSEROC--
-             p%nu_ext = nu_ext
 
 
-             
-             ! NB: for TEST case, to have photons propagating straight on, comment the following line
-             p%k = k
-             ! there has been an interaction -> reset tau_abs
-             tau_abs = -1.0d0
-             ! scatter_flag allows to know the status (aborbed or not) of the photon in case of dust
-             ! new convention: negative if absorbed
-             if(scatter_flag<0)then
-                ! photon has been absorbed by dust, photon done, nothing else to do
+             if(no_scatter) then
+                p%nb_abs = p%nb_abs + 1     ! set nb of scattering to 1
+                p%xlast = ppos              ! memorize the location of last interaction
+                ! there has been an interaction -> reset tau_abs
+                tau_abs = -1.0d0
+
+                ! photon has been absorbed, photon done, nothing else to do
                 p%status       = 2
                 p%xcurr        = ppos
                 p%time         = time
                 p%tau_abs_curr = tau_abs
                 p%iran         = iran
                 exit photon_propagation
-             endif
+             else
+
+                !------------
+                ! scattering
+                !------------
+                !--PEEL--
+                if (peeling_off) then 
+                   ! save ray for batch processing later.
+                   nPeeled = nPeeled + 1
+                   PeelBuffer(nPeeled)%x     = ppos  ! position (at scattering)
+                   PeelBuffer(nPeeled)%icell = icell    
+                   PeelBuffer(nPeeled)%kin   = p%k      ! incoming photon direction 
+                   PeelBuffer(nPeeled)%nu    = p%nu_ext ! incoming photon frequency
+                   PeelBuffer(nPeeled)%scatter_flag = scatter_flag
+                   if (nPeeled == PeelBufferSize) then ! buffer is full -> process.
+                      call process_peels(domesh,domaine_calcul,iran)
+                      nPeeled=0
+                   end if
+                end if
+                !--LEEP-- 
+
+                p%nb_abs = p%nb_abs + 1     ! increment nb of scatterings
+                p%xlast = ppos              ! memorize the location of "potential" last interaction
+                ! a scattering event modifies nu_cell, k, and nu_ext
+                ! so it needs to transport nu_cell, k, nu_ext, but not type p (because type p not known in gas)
+                nu_ext = p%nu_ext
+                k = p%k
+                !--CORESKIP--
+                call gas_scatter(scatter_flag, cell_gas, nu_cell, k, nu_ext, iran, xcrit)    ! NB: nu_cell, k, nu_ext, and iran en inout
+                !call gas_scatter(scatter_flag, cell_gas, nu_cell, k, nu_ext, iran)    ! NB: nu_cell, k, nu_ext, and iran en inout             
+                !--PIKSEROC--
+                p%nu_ext = nu_ext
+
+
+
+                ! NB: for TEST case, to have photons propagating straight on, comment the following line
+                p%k = k
+                ! there has been an interaction -> reset tau_abs
+                tau_abs = -1.0d0
+                ! scatter_flag allows to know the status (aborbed or not) of the photon in case of dust
+                ! new convention: negative if absorbed
+                if(scatter_flag<0)then
+                   ! photon has been absorbed by dust, photon done, nothing else to do
+                   p%status       = 2
+                   p%xcurr        = ppos
+                   p%time         = time
+                   p%tau_abs_curr = tau_abs
+                   p%iran         = iran
+                   exit photon_propagation
+                endif
+             end if
 
           end if
 

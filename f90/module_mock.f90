@@ -40,6 +40,11 @@ module module_mock
   integer(kind=4) :: nDirections = 0
   character(2000) :: mock_parameter_file
   character(2000) :: mock_outputfilename  ! Prefix for output files (including absolute path) -> will be followed by "_image.xxxxx" or "_spectrum.xxxxx", with xxxxx the cpu number.
+  !--Val--
+  logical         :: no_scatter   = .false.
+
+  public :: no_scatter
+  !--laV-- 
 
 
   ! global parameter setting peeling-off on or off.
@@ -49,7 +54,7 @@ module module_mock
   ! public variables 
   public :: peeling_off, nDirections, mock
   ! public functions 
-  public :: read_mock_params, mock_line_of_sight, mock_point_in_spectral_aperture, mock_point_in_flux_aperture, mock_point_in_image, mock_point_in_cube
+  public :: read_mock_params, print_mock_params, mock_line_of_sight, mock_point_in_spectral_aperture, mock_point_in_flux_aperture, mock_point_in_image, mock_point_in_cube
   public :: mock_projected_pos, peel_to_flux, peel_to_map, peel_to_spec, peel_to_cube, dump_mocks
   ! GATHER --
   public :: master_receives_mock, send_mock_to_master
@@ -505,6 +510,8 @@ contains
              write(mock_parameter_file,'(a)') trim(value)
           case ('mock_outputfilename')
              write(mock_outputfilename,'(a)') trim(value)
+          case ('no_scatter')
+             read(value,*) no_scatter
           end select
        end do
     end if
@@ -515,6 +522,38 @@ contains
     return
 
   end subroutine read_mock_params
+
+
+  !#################################################################################################
+  subroutine print_mock_params(unit)
+
+    ! ---------------------------------------------------------------------------------
+    ! write parameter values to std output or to an open file if argument unit is
+    ! present.
+    ! ---------------------------------------------------------------------------------
+
+    integer(kind=4),optional,intent(in) :: unit
+
+    if (present(unit)) then 
+       write(unit,'(a,a,a)') '[mock]'
+       write(unit,'(a,i5)')     '  nDirections         = ', nDirections
+       write(unit,'(a,a)')      '  mock_parameter_file = ', trim(mock_parameter_file)
+       write(unit,'(a,a)')      '  mock_outputfilename = ', trim(mock_outputfilename)
+       write(unit,'(a,L1)')     '  no_scatter          = ', no_scatter
+    else
+       write(*,'(a,a,a)') '[mock]'
+       write(*,'(a,i5)')     '  nDirections         = ', nDirections
+       write(*,'(a,a)')      '  mock_parameter_file = ', trim(mock_parameter_file)
+       write(*,'(a,a)')      '  mock_outputfilename = ', trim(mock_outputfilename)
+       write(*,'(a,L1)')     '  no_scatter          = ', no_scatter
+
+    end if
+
+    2000 format (a,1000(ES10.3,1x))
+
+    return
+  end subroutine print_mock_params
+  !#################################################################################################
 
 
 end module module_mock

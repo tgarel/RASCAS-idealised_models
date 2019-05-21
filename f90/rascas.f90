@@ -5,7 +5,7 @@ program main
   use module_worker
   use module_utils, only : print_rascas_header
   !--PEEL--
-  use module_mock, only : read_mock_params
+  use module_mock
   !--LEEP--
 
   implicit none
@@ -191,6 +191,7 @@ contains
        call print_master_params(unit)
        write(unit,'(a)')             ' '
        call print_worker_params(unit)
+       if(peeling_off) call print_mock_params(unit)
     else
        write(*,'(a)')             '--------------------------------------------------------------------------------'
        write(*,'(a)')             ''
@@ -205,6 +206,7 @@ contains
        call print_master_params
        write(*,'(a)')             ' '
        call print_worker_params
+       if(peeling_off) call print_mock_params
        write(*,'(a)')             '--------------------------------------------------------------------------------'
        write(*,'(a)')             ' '
     end if
