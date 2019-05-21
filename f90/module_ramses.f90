@@ -100,7 +100,8 @@ module module_ramses
   integer(kind=4) :: imetal = 6 ! index of metallicity 
   integer(kind=4) :: ihii   = 7 ! index of HII fraction 
   integer(kind=4) :: iheii  = 8 ! index of HeII fraction 
-  integer(kind=4) :: iheiii = 9 ! index of HeIII fraction 
+  integer(kind=4) :: iheiii = 9 ! index of HeIII fraction
+  integer(kind=4) :: iGamma1=10 ! index of first photon bin
   ! Solar abundance ratio
   ! Si
   ! abundance_Si_mass == abundance_Si_number * 28.085
@@ -283,7 +284,7 @@ contains
   end subroutine read_leaf_cells_omp
 
 
-  subroutine read_leaf_cells_omp_ions(repository, snapnum, ion_number, ion_data_path, ions, ncpu_read, cpu_list, &
+  subroutine read_leaf_cells_omp_ions(repository, snapnum, ion_number, ion_data_path, ions, max_cells, ncpu_read, cpu_list, &
        & nleaftot, nvar, xleaf_all, ramses_var_all, leaf_level_all, nIon_all)
     !$ use OMP_LIB
     ! read all leaf cell from a selection of cpu files in a simulation snapshot.
@@ -291,7 +292,7 @@ contains
     ! positions (xleaf(3,nleaftot)) and levels (leaf_level).
     implicit none 
 
-    integer(kind=4),intent(in)                :: snapnum, ncpu_read, ion_number                
+    integer(kind=4),intent(in)                :: snapnum, ncpu_read, ion_number, max_cells                
     character(2000),intent(in)                :: repository, ion_data_path(ion_number),ions(ion_number)
     integer(kind=4),dimension(:),allocatable,intent(in) :: cpu_list
     integer(kind=4),intent(inout)             :: nleaftot, nvar
@@ -311,7 +312,13 @@ contains
        print *,' '
     endif
 
-    nleaftot = get_nleaf(repository,snapnum)  ! sets ncpu too 
+    if(max_cells > 0) then
+       nleaftot = max_cells
+       ncpu = get_ncpu(repository,snapnum)
+    else
+       nleaftot = get_nleaf(repository,snapnum)  ! sets ncpu too
+    end if
+    
     nvar     = get_nvar(repository,snapnum)
     allocate(ramses_var_all(nvar,nleaftot), xleaf_all(nleaftot,3), leaf_level_all(nleaftot), nIon_all(ion_number,nleaftot))
 
@@ -1692,7 +1699,7 @@ contains
        conversion_scales_are_known = .True.
     end if
     do i=1,nGroups
-       flux(i,:) = ramses_var(iheiii+1+4*(i-1),:)*dp_scale_pf
+       flux(i,:) = ramses_var(iGamma1+4*(i-1),:)*dp_scale_pf
     end do
 
     return
@@ -4090,6 +4097,8 @@ contains
              read(value,*) iheii
           case('iheiii') ! index of HeIII fraction 
              read(value,*) iheiii
+          case('iGamma1') ! index of first bin of photons  
+             read(value,*) iGamma1
           case('QuadHilbert') ! True if simulation was run with -DQUADHILBERT option  
              read(value,*) QuadHilbert
           end select
@@ -4132,6 +4141,7 @@ contains
        write(unit,'(a,i2)')     '  ihii                 = ', ihii
        write(unit,'(a,i2)')     '  iheii                = ', iheii
        write(unit,'(a,i2)')     '  iheiii               = ', iheiii
+       write(unit,'(a,i2)')     '  iGamma1              = ', iGamma1
     else
        write(*,'(a,a,a)') '[ramses]'
        !Val--
@@ -4152,6 +4162,7 @@ contains
        write(*,'(a,i2)')     '  ihii                 = ', ihii
        write(*,'(a,i2)')     '  iheii                = ', iheii
        write(*,'(a,i2)')     '  iheiii               = ', iheiii
+       write(*,'(a,i2)')     '  iGamma1              = ', iGamma1
        write(*,'(a,L1)')     '  QuadHilbert       = ',QuadHilbert
 
     end if

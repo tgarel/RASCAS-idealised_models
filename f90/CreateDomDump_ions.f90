@@ -59,6 +59,7 @@ program CreateDomDump
   real(kind=8),allocatable    :: decomp_dom_thickness(:)                 ! thickness of slab [code units]
   ! --- miscelaneous
   logical                     :: verbose = .false.
+  integer                     :: max_cells = -1
   ! --------------------------------------------------------------------------
 
   call cpu_time(start)
@@ -287,7 +288,7 @@ program CreateDomDump
               zmin = decomp_dom_zc(i) - decomp_dom_thickness(i)*0.5d0
            end select
            call get_cpu_list_periodic(repository, snapnum, xmin,xmax,ymin,ymax,zmin,zmax, ncpu_read, cpu_list)
-           call read_leaf_cells_omp_ions(repository, snapnum, ion_number, ion_data_path, ions, ncpu_read, cpu_list, nleaftot, nvar, x_leaf, ramses_var, leaf_level, ion_density)
+           call read_leaf_cells_omp_ions(repository, snapnum, ion_number, ion_data_path, ions, max_cells, ncpu_read, cpu_list, nleaftot, nvar, x_leaf, ramses_var, leaf_level, ion_density)
            ! Extract and convert properties of cells into gas mix properties
            call gas_from_ramses_leaves_ions(repository,snapnum,nleaftot,nvar,ramses_var,ion_number,ion_density,gas_leaves)
            call cpu_time(finish)
@@ -404,6 +405,8 @@ contains
              read(value,*) ion_number
           case ('snapnum')
              read(value,*) snapnum
+          case ('max_cells')
+             read(value,*) max_cells
           case('decomp_dom_type')
              write(decomp_dom_type,'(a)') trim(value)
           case ('decomp_dom_ndomain')
@@ -525,6 +528,7 @@ contains
        end select
        write(unit,'(a)')             '# miscelaneous parameters'
        write(unit,'(a,L1)')          '  verbose         = ',verbose
+       write(unit,'(a,i5)')          '  max_cells       = ',max_cells
        write(unit,'(a)')             ' '
        call print_mesh_params(unit)
        call print_ramses_params(unit)
@@ -571,6 +575,7 @@ contains
        end select
        write(*,'(a)')             '# miscelaneous parameters'
        write(*,'(a,L1)')          '  verbose         = ',verbose
+       write(*,'(a,i5)')          '  max_cells       = ',max_cells
        write(*,'(a)')             ' '
        call print_mesh_params
        write(*,'(a)')             ' '
