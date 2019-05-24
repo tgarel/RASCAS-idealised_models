@@ -1,50 +1,55 @@
-module module_HI_model
+module module_HI_1216_model
 
   use module_constants
-  use module_utils, only : voigt_fit, isotropic_direction, anisotropic_direction_HIcore, anisotropic_direction_Rayleigh
+
+  use module_utils, only : isotropic_direction, anisotropic_direction_HIcore, anisotropic_direction_Rayleigh
   !--PEEL--
   use module_utils, only : anisotropic_probability_HIcore,anisotropic_probability_Rayleigh
   !--LEEP--
+  
   use module_uparallel
   use module_random
+  use module_voigt
 
   implicit none
 
   private
 
   ! definition of atomic values
-  real(kind=8),parameter   :: lambda_0=1215.67d0                          ![A] Lya wavelength
-  real(kind=8),parameter   :: gamma=6.265d8                               ! Einstein coeff = damping constant for Voigt Function(gamma_alpha)  
-  real(kind=8),parameter   :: f12=0.416d0                                 ! oscillator strength for Ly-alpha
+  real(kind=8),parameter,public :: lambda_0=1215.67d0                           ![A] Lya wavelength
+  real(kind=8),parameter        :: gamma=6.265d8                                ! Einstein coeff = damping constant for Voigt Function(gamma_alpha)  
+  real(kind=8),parameter        :: f12=0.416d0                                  ! oscillator strength for Ly-alpha
   ! useful pre-computed quantities
-  real(kind=8),parameter   :: lambda_0_cm = lambda_0 / cmtoA              ! cm
-  real(kind=8),parameter   :: nu_0 = clight / lambda_0_cm                 ! Hz
-  real(kind=8),parameter   :: sigmaH_factor = pi*e_ch**2*f12/ me / clight ! H cross-section factor-> multiply by Voigt(x,a)/delta_nu_doppler to get sigma.
-  real(kind=8),parameter   :: gamma_over_fourpi = gamma / fourpi
+  real(kind=8),parameter,public :: lambda_0_cm = lambda_0 / cmtoA               ! cm
+  real(kind=8),parameter,public :: nu_0 = clight / lambda_0_cm                  ! Hz
+  real(kind=8),parameter        :: sigmaH_factor = sqrtpi*e_ch**2*f12/me/clight ! H cross-section factor-> multiply by Voigt(x,a)/delta_nu_doppler to get sigma.
+  real(kind=8),parameter        :: gamma_over_fourpi = gamma / fourpi
 
   ! --------------------------------------------------------------------------
   ! user-defined parameters - read from section [HI] in the parameter file 
   ! --------------------------------------------------------------------------
-  logical                  :: recoil       = .true.      ! if set to true, recoil effect is computed [default is true]
-  logical                  :: isotropic    = .false.     ! if set to true, scattering events will be isotropic [default is false]
+
+  logical                       :: recoil       = .true.      ! if set to true, recoil effect is computed [default is true]
+  logical                       :: isotropic    = .false.     ! if set to true, scattering events will be isotropic [default is false]
   !--CORESKIP--
   logical                  :: HI_core_skip    = .false.     ! if true, skip scatterings in the core of the line (as in Smith+15).
   real(kind=8)             :: xcritmax        = 1d10        ! core-skipping will truncate at min(xcrit, xcritmax) -> set to a low value to activate. 
   !--PIKSEROC--
   ! --------------------------------------------------------------------------
 
-  public :: get_tau_HI, scatter_HI, read_HI_params, print_HI_params
+  public :: get_tau_HI_1216, scatter_HI_1216, read_HI_1216_params, print_HI_1216_params
+
   !--PEEL--
   public :: HI_peeloff_weight
   !--LEEP--
-
+  
   !--CORESKIP--
   public :: HI_core_skip 
   !--PIKSEROC-- 
   
 contains
 
-  function get_tau_HI(nhi, vth, distance_to_border_cm, nu_cell)
+  function get_tau_HI_1216(nhi, vth, distance_to_border_cm, nu_cell)
 
     ! --------------------------------------------------------------------------
     ! compute optical depth of Hydrogen over a given distance
@@ -55,31 +60,31 @@ contains
     ! - distance_to_border_cm : distance over which we compute tau        [ cm ]
     ! - nu_cell  : photon's frequency in the frame of the cell            [ Hz ]
     ! OUTPUT :
-    ! - get_tau_HI : optical depth of Hydrogen's Lya line over distance_to_border_cm
+    ! - get_tau_HI_1216 : optical depth of Hydrogen's Lya line over distance_to_border_cm
     ! --------------------------------------------------------------------------
     
     real(kind=8),intent(in) :: nhi,vth,distance_to_border_cm,nu_cell
-    real(kind=8)            :: delta_nu_doppler,x_cell,sigmaH,a,h, get_tau_HI
+    real(kind=8)            :: delta_nu_doppler,x_cell,sigmaH,a,h_cell, get_tau_HI_1216
 
     ! compute Doppler width and a-parameter, for H 
     delta_nu_doppler = vth / lambda_0_cm 
     a = gamma_over_fourpi / delta_nu_doppler
  
     ! Cross section of H 
-    x_cell  = (nu_cell - nu_0)/delta_nu_doppler
-    h       = voigt_fit(x_cell,a)
-    sigmaH  = sigmaH_factor / delta_nu_doppler * h
- 
-    get_tau_HI = sigmaH * nhi * distance_to_border_cm
+    x_cell = (nu_cell - nu_0)/delta_nu_doppler
+    h_cell = voigt_function(x_cell,a)
+    sigmaH = sigmaH_factor / delta_nu_doppler * h_cell
+
+    get_tau_HI_1216 = sigmaH * nhi * distance_to_border_cm
 
     return
 
-  end function get_tau_HI
+  end function get_tau_HI_1216
 
 
   
   !--CORESKIP--
-  subroutine scatter_HI(vcell,vth,nu_cell,k,nu_ext,iran,xcrit)
+  subroutine scatter_HI_1216(vcell,vth,nu_cell,k,nu_ext,iran,xcrit)
   !subroutine scatter_HI(vcell,vth,nu_cell,k,nu_ext,iran)
   !--PIKSEROC--
     
@@ -175,7 +180,7 @@ contains
     nu_cell = (1.0d0 - scalar/clight) * nu_ext 
     k = knew
 
-  end subroutine scatter_HI
+  end subroutine scatter_HI_1216
 
   
 !--PEEL--
@@ -263,7 +268,7 @@ contains
   end function HI_peeloff_weight
 !--LEEP--
 
-  subroutine read_HI_params(pfile)
+  subroutine read_HI_1216_params(pfile)
     
     ! ---------------------------------------------------------------------------------
     ! subroutine which reads parameters of current module in the parameter file pfile
@@ -316,14 +321,15 @@ contains
     close(10)
 
     call read_uparallel_params(pfile)
+    call read_voigt_params(pfile)
 
     return
 
-  end subroutine read_HI_params
+  end subroutine read_HI_1216_params
 
 
   
-  subroutine print_HI_params(unit)
+  subroutine print_HI_1216_params(unit)
     
     ! ---------------------------------------------------------------------------------
     ! write parameter values to std output or to an open file if argument unit is
@@ -342,6 +348,7 @@ contains
        !--PIKSEROC--
 
        call print_uparallel_params(unit)
+       call print_voigt_params(unit)
     else
        write(*,'(a,a,a)') '[HI]'
        write(*,'(a,L1)') '  recoil    = ',recoil
@@ -351,12 +358,12 @@ contains
        write(*,'(a,ES10.3)') '  xcritmax     = ',xcritmax
        !--PIKSEROC--
        call print_uparallel_params()
+       call print_voigt_params()
     end if
-
     
     return
     
-  end subroutine print_HI_params
+  end subroutine print_HI_1216_params
 
 
-end module module_HI_model
+end module module_HI_1216_model

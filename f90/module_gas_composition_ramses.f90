@@ -3,8 +3,6 @@ module module_gas_composition
   ! Pure RAMSES hydro variables
   ! - is NVAR dependant
 
-  use module_ramses
-
   implicit none
 
   type gas
@@ -25,6 +23,8 @@ contains
   subroutine gas_from_ramses_leaves(repository,snapnum,nleaf,nvar,ramsesvar,g)
 
     ! just repack ramses raw data into gas
+
+    use module_ramses
 
     character(2000),intent(in)                      :: repository 
     integer(kind=4),intent(in)                      :: snapnum
@@ -146,9 +146,6 @@ contains
        stop
     endif
     close(10)
-
-    call read_ramses_params(pfile)
-
     
   end subroutine read_gas_composition_params
 
@@ -167,12 +164,10 @@ contains
        write(unit,'(a,a,a)') '[gas_composition]'
        write(unit,'(a)')       '# no parameter for this composition'
        write(unit,'(a)')             ' '
-       call print_ramses_params(unit)
     else
        write(*,'(a,a,a)') '[gas_composition]'
        write(*,'(a)')       '# no parameter for this composition'
        write(*,'(a)')             ' '
-       call print_ramses_params
     end if
 
   end subroutine print_gas_composition_params

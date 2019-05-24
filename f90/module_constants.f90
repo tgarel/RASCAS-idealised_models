@@ -22,7 +22,8 @@ module module_constants
   real(kind=8),parameter :: amu = 1.66054d-24                 ![g] atomic mass unit
   real(kind=8),parameter :: msun = 1.989d33                   ![g] solar mass 
   real(kind=8),parameter :: mSi = 28.085d0 * amu              ![g] mass of Silicon
-  real(kind=8),parameter :: mMg = 24.305d0 * amu                ![g] mass of Magnesium
+  real(kind=8),parameter :: mMg = 24.305d0 * amu              ![g] mass of Magnesium
+  real(kind=8),parameter :: mFe = 55.845d0 * amu              ![g] mass of Fer
 
 end module module_constants
 
