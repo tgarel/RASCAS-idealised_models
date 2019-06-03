@@ -171,7 +171,7 @@ program PhotonsFromSourceModel
   ! --------------------------------------------------------------------------------------
   ! write ICs
   ! --------------------------------------------------------------------------------------
-  if (verbose) write(*,*) '--> writing file'
+  if (verbose) write(*,*) '--> writing file: ',trim(outputfile)
   open(unit=14, file=trim(outputfile), status='unknown', form='unformatted', action='write')
   write(14) nphot
   one = 1.0d0
@@ -185,6 +185,11 @@ program PhotonsFromSourceModel
   close(14)
   ! --------------------------------------------------------------------------------------
 
+  if (verbose) then
+     write(*,*) '--> work done'
+     write(*,*) ' '
+  endif
+  
   deallocate(photgrid)
 
 contains
@@ -320,6 +325,8 @@ contains
        write(unit,'(a,L1)')          '  verbose         = ',verbose
        write(unit,'(a)')             ' '
     else
+       write(*,'(a)')              '--------------------------------------------------------------------------------'
+       write(*,'(a)')              ' '
        write(*,'(a,a,a)')          '[PhotonsFromSourceModel]'
        write(*,'(a)')              '# input / output parameters'
        write(*,'(a,a)')            '  outputfile    = ',trim(outputfile)
@@ -351,9 +358,11 @@ contains
           print*,'ERROR: unknown spec_type :',trim(spec_type)
        end select
        write(*,'(a)')             '# miscelaneous parameters'
-       write(*,'(a,i8)')          '  ranseed     = ',ranseed
-       write(*,'(a,L1)')          '  verbose    = ',verbose
+       write(*,'(a,i8)')          '  ranseed       = ',ranseed
+       write(*,'(a,L1)')          '  verbose       = ',verbose
        write(*,'(a)')             ' '       
+       write(*,'(a)')             '--------------------------------------------------------------------------------'
+       write(*,'(a)')             ' '
     end if
 
     return

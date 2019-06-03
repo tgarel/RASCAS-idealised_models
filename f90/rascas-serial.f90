@@ -6,6 +6,7 @@ program main
   use module_mesh
   use module_domain
   use module_constants
+  use module_utils, only : print_rascas_header
 
   implicit none
 
@@ -17,6 +18,7 @@ program main
   character(2000)                               :: parameter_file, line, file_compute_dom
   character(2000),dimension(:),allocatable      :: mesh_file_list 
   integer(kind=4)                               :: narg, i, j, ndomain
+  character(2000)                               :: DomDumpFile = 'domain_decomposition_params.dat' ! the file describing the outputs of CreateDomDump (in DomDumpDir)
   
   ! --------------------------------------------------------------------------
   ! user-defined parameters - read from section [RASCAS-serial] of the parameter file
@@ -24,11 +26,10 @@ program main
   ! --- inputs 
   character(2000)           :: DomDumpDir   = 'test/'                   ! where outputs of CreateDomDump are
   character(2000)           :: PhotonICFile = 'Photon_IC_file.dat'      ! the file containing photons to cast (incl. full path)
-  character(2000)           :: DomDumpFile  = 'domain_decomposition_params.dat' ! the file describing the outputs of CreateDomDump (in DomDumpDir)
   ! --- outputs
   character(2000)           :: fileout = 'photons_done.dat'   ! output file ... 
   ! --- miscelaneous
-  logical                   :: verbose = .false.
+  logical                   :: verbose = .true.
   ! --------------------------------------------------------------------------
 
   call cpu_time(start)
@@ -43,23 +44,27 @@ program main
   end if
   call get_command_argument(1, parameter_file)
   call read_serial_params(parameter_file)
-  if(verbose) call print_serial_params
+  if(verbose)then
+     call print_rascas_header
+     call print_serial_params
+     print *,'--> Working with the serial version of RASCAS'
+  endif
   ! ------------------------------------------------------------
-
   
-
+  
+  
   ! -------------------- read ICs photons --------------------
   if (verbose) print *,'--> reading ICs photons in file: ',trim(PhotonICFile)
   call init_photons_from_file(PhotonICFile,photgrid)
   nphot = size(photgrid)
   if (verbose) print *,'--> Nphoton =',nphot
   ! ------------------------------------------------------------
-
-
+  
+  
   
   ! -------------------- Get domain properties --------------------
   ! here, we parse the file written out by CreateDomDump, which contains all file names and nb of domains.
-  if (verbose) print *,'--> reading domain and mesh...'
+  if (verbose) print *,'--> reading domains'
   open(unit=18,file=DomDumpFile,status='old',form='formatted')
   read(18,'(a)') line ; i = scan(line,'=') ; file_compute_dom = trim(DomDumpDir)//trim(adjustl(line(i+1:)))
   read(18,'(a)') line ; i = scan(line,'=') ; read(line(i+1:),*) ndomain
@@ -81,32 +86,33 @@ program main
      print *,'    |_ ',trim(mesh_file_list(1))
   endif
   ! ------------------------------------------------------------
-
   
   call cpu_time(tmptime)
-  if (verbose) print '(" --> Time = ",f12.3," seconds.")',tmptime-start
-
-
+  if (verbose) then
+     print '(" --> Time = ",f12.3," seconds.")',tmptime-start
+     print *,' '
+     print *,'--> start processing photon packets, RT in progress'
+  endif
+  
   ! do the Monte Carlo Radiative Transfer
-  if (verbose) print *,'--> starting RT...'
-  call MCRT(nphot,photgrid,meshdom,compute_dom)
+   call MCRT(nphot,photgrid,meshdom,compute_dom)
 
   if (verbose) print *,'--> RT done'
 
   ! some checks & logs
   if(verbose)then
+     print *,' '
+     print *,'--> some quick checks on the results...'
      ! test status of photons
      do i=1,nphot
-        if(photgrid(i)%status == 0)print*,'ERROR: ohoho problem with photon status...',i,photgrid(i)%status
+        if(photgrid(i)%status == 0)print*,'ERROR: oh oh problem with photon status...',i,photgrid(i)%status
      enddo
      ! Some stats on photon status
-     print *,' '
-     print *,'--> photon status...'
+     print *,'photon status:'
      print *,'# of photons             =',size(photgrid(:)%status)
      print *,'# of status=1 (escaped)  =',count(mask=(photgrid(:)%status==1))
      print *,'# of status=2 (absorbed) =',count(mask=(photgrid(:)%status==2))
-     print *,' '
-     print *,'--> Some diagnostics...'
+     print *,'some diagnostics:'
      print *,'min max status      =',minval(photgrid%status),maxval(photgrid%status)
      print *,'min max pos x       =',minval(photgrid%xcurr(1)),maxval(photgrid%xcurr(1))
      print *,'min max pos y       =',minval(photgrid%xcurr(2)),maxval(photgrid%xcurr(2))
@@ -115,7 +121,7 @@ program main
      print *,'min max nu          =',minval(photgrid%nu_ext),maxval(photgrid%nu_ext)
      print *,'min max lambda      =',clight/maxval(photgrid%nu_ext)*cmtoA,clight/minval(photgrid%nu_ext)*cmtoA
      print *,'min max travel time =',minval(photgrid%time),maxval(photgrid%time)
-     print *,'Last scattering'
+     print *,'last scattering:'
      print *,'min max pos x       =',minval(photgrid%xlast(1)),maxval(photgrid%xlast(1))
      print *,'min max pos y       =',minval(photgrid%xlast(2)),maxval(photgrid%xlast(2))
      print *,'min max pos z       =',minval(photgrid%xlast(3)),maxval(photgrid%xlast(3))
@@ -181,8 +187,6 @@ contains
              write(DomDumpDir,'(a)') trim(value)
           case ('PhotonICFile')
              write(PhotonICFile,'(a)') trim(value)
-          case ('DomDumpFile')
-             write(DomDumpFile,'(a)') trim(value)
           case ('fileout')
              write(fileout,'(a)') trim(value)
           end select
@@ -213,7 +217,6 @@ contains
        write(unit,'(a)')             '[RASCAS-serial]'
        write(unit,'(a,a)')           '  DomDumpDir     = ',trim(DomDumpDir)
        write(unit,'(a,a)')           '  PhotonICFile   = ',trim(PhotonICFile)
-       write(unit,'(a,a)')           '  DomDumpFile    = ',trim(DomDumpFile)
        write(unit,'(a,a)')           '  fileout        = ',trim(fileout)
        write(unit,'(a,L1)')          '  verbose        = ',verbose
        write(unit,'(a)')             ' '
@@ -224,13 +227,13 @@ contains
        write(*,'(a)')             '[RASCAS-serial]'
        write(*,'(a,a)')           '  DomDumpDir     = ',trim(DomDumpDir)
        write(*,'(a,a)')           '  PhotonICFile   = ',trim(PhotonICFile)
-       write(*,'(a,a)')           '  DomDumpFile    = ',trim(DomDumpFile)
        write(*,'(a,a)')           '  fileout        = ',trim(fileout)
        write(*,'(a,L1)')          '  verbose        = ',verbose
        write(*,'(a)')             ' '       
        call print_mesh_params
        write(*,'(a)')             ' '
        write(*,'(a)')             '--------------------------------------------------------------------------------'
+       write(*,'(a)')             ' '
     end if
 
     return

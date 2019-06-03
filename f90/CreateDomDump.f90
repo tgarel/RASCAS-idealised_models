@@ -54,10 +54,10 @@ program CreateDomDump
   real(kind=8),allocatable  :: decomp_dom_size(:)                      ! size of cube [code units]
   real(kind=8),allocatable  :: decomp_dom_thickness(:)                 ! thickness of slab [code units]
   ! --- miscelaneous
-  logical                   :: verbose = .false.
   ! TIBO
   logical                   :: idealised_models = .false.
   ! OBIT
+  logical                   :: verbose = .true.
   ! --------------------------------------------------------------------------
   
   call cpu_time(start)
@@ -75,7 +75,7 @@ program CreateDomDump
  
   if (verbose) call print_CreateDomDump_params
   ! ------------------------------------------------------------
-
+  
   
   ! Define the computational domain. This domain describes the volume in which photons fly.
   select case(comput_dom_type)
@@ -96,21 +96,10 @@ program CreateDomDump
           xc=comput_dom_pos(1),yc=comput_dom_pos(2),zc=comput_dom_pos(3),thickness=comput_dom_thickness)
      computdom_max = comput_dom_thickness
   end select
-
+  
   
   ! Read all the leaf cells
   nOctSnap = get_nGridTot(repository,snapnum)
-
-  ! Extract and convert properties of cells into gas mix properties
-  !! call gas_from_ramses_leaves(repository,snapnum,nleaftot,nvar,ramses_var, gas_leaves)
-  ! TIBO
-  !if (idealised_models) then
-  !   !! Add x_leaf and leaf_level to the arguments
-  !   call gas_from_idealised_models(DataDir, nleaftot, gas_leaves, x_leaf, leaf_level)
-  !else
-  !   call gas_from_ramses_leaves(repository,snapnum,nleaftot,nvar,ramses_var, gas_leaves)
-  !end if
-  ! OBIT
 
   ! TIBO
   if (idealised_models) then
@@ -118,8 +107,8 @@ program CreateDomDump
      !! Add x_leaf and leaf_level to the arguments
      call gas_from_idealised_models(DomDumpDir, nleaftot, gas_leaves, x_leaf, leaf_level)
   else
-     
      if (reading_method == 'fullbox') then
+        if (verbose) print*,'Reading leaf cells...'
         call read_leaf_cells(repository, snapnum, nleaftot, nvar, x_leaf, ramses_var, leaf_level)
         ! Extract and convert properties of cells into gas mix properties
         call gas_from_ramses_leaves(repository,snapnum,nleaftot,nvar,ramses_var, gas_leaves)
@@ -127,6 +116,7 @@ program CreateDomDump
         print '(" --> Time to read all leaves in fullbox = ",f12.3," seconds.")',finish-start
      end if
      if (reading_method == 'fullbox_omp') then
+        if (verbose) print*,'Reading leaf cells...'
         ncpu_read = get_ncpu(repository,snapnum)
         allocate(cpu_list(1:ncpu_read))
         do i=1,ncpu_read
@@ -138,15 +128,11 @@ program CreateDomDump
         call cpu_time(finish)
         print '(" --> Time to read all leaves in fullbox_omp = ",f12.3," seconds.")',finish-start
      end if
-     
   endif
   ! OBIT
-
+  
   ! domain decomposition 
-  if (verbose)then
-     print *
-     print *,'...building domains...'
-  endif
+  if (verbose) print *,'Building domains...'
   meshroot = 'domain_'
   allocate(domain_list(decomp_dom_ndomain))
   allocate(domain_file_list(decomp_dom_ndomain),mesh_file_list(decomp_dom_ndomain))
@@ -174,15 +160,15 @@ program CreateDomDump
      write(toto,'(a)') adjustl(toto)  ! remove leading spaces
      write(domain_file_list(i),'(a,a,a)') trim(meshroot),trim(toto),'.dom'
      write(mesh_file_list(i),'(a,a,a)') trim(meshroot),trim(toto),'.mesh'
-     if (verbose) write(*,'(a,i3,a,a,a,a)') '    |_',i,'  ',trim(domain_file_list(i)),' ',trim(mesh_file_list(i))
+     if (verbose) write(*,'(a,i3,a,a,a,a)') '     \_',i,'  ',trim(domain_file_list(i)),' ',trim(mesh_file_list(i))
   end do
-
+  
   ! The computational domain should be fully enclosed in the domain mesh.
-  if (computdom_max >= decompdom_max) then
+  if (computdom_max > decompdom_max) then
      print*,'ERROR: computational domain should be fully enclosed in the data domains.'
      !stop
   endif
-
+  
   ! write master info
   fichier = "compute_domain.dom"
   call domain_write_file(trim(DomDumpDir)//trim(fichier),domaine_de_calcul)
@@ -203,6 +189,7 @@ program CreateDomDump
 
      if (reading_method == 'hilbert') then
         call cpu_time(intermed)
+        if (verbose) print*,'Reading leaf cells...'
         ! read leaf cells in domain on the fly...
         ! define max extent of domain i
         select case(decomp_dom_type)
@@ -242,10 +229,11 @@ program CreateDomDump
         call cpu_time(finish)
         print '(" --> Time to read leaves in hilbert domain = ",f12.3," seconds.")',finish-intermed
      endif
-
+     
      ! another last option would be to read all cpu files but to select cells on the fly to maintain low memory
      ! this would be for zoom-in simulations with -Dquadhilbert
      if (reading_method == 'select_onthefly') then
+        if (verbose) print*,'Reading leaf cells...'
         ncpu_read = get_ncpu(repository,snapnum)
         allocate(cpu_list(1:ncpu_read))
         do j=1,ncpu_read
@@ -258,17 +246,19 @@ program CreateDomDump
         call gas_from_ramses_leaves(repository,snapnum,nleaftot,nvar,ramses_var, gas_leaves)
         call cpu_time(finish)
         print '(" --> Time to read leaves in domain = ",f12.3," seconds.")',finish-intermed
+        if (verbose) write(*,*)'Building the mesh from the collection of leaves...'
         ! and then no need for selection, but to adapt the call to mesh_from_leaves
         call mesh_from_leaves(nOctSnap,domain_list(i),nleaftot, &
              gas_leaves,x_leaf,leaf_level,domain_mesh)
      else
-        call select_in_domain(domain_list(i), nleaftot, x_leaf, ind_sel)
+        call select_cells_in_domain(domain_list(i), nleaftot, x_leaf, leaf_level, ind_sel)
         print*,'in CreateDomDump: ind_sel = ',size(ind_sel)
         call select_from_domain(arr_in=x_leaf,     ind_sel=ind_sel, arr_out=xleaf_sel)
         call select_from_domain(arr_in=leaf_level, ind_sel=ind_sel, arr_out=leaflevel_sel)
         call select_from_domain(arr_in=gas_leaves, ind_sel=ind_sel, arr_out=selected_leaves)
         nleaf_sel = size(ind_sel)
         print*,'in CreateDomDump: nleaf_sel = ',nleaf_sel
+        if (verbose) write(*,*)'Building the mesh from the collection of leaves...'
         call mesh_from_leaves(nOctSnap,domain_list(i),nleaf_sel, &
              selected_leaves,xleaf_sel,leaflevel_sel,domain_mesh)
      endif
@@ -279,7 +269,7 @@ program CreateDomDump
   enddo
 
   call cpu_time(finish)
-  print '(" --> Time = ",f12.3," seconds.")',finish-start
+  print '(" --> Total elapsed time = ",f12.3," seconds.")',finish-start
   print*,' '
   
 contains
@@ -395,13 +385,15 @@ contains
     DomDumpDir = trim(DomDumpDir)//"/"
     
     call read_mesh_params(pfile)
-
+    
     ! TIBO
     if (idealised_models) then
-       call read_IdealisedModels_params(parameter_file)
+       call read_IdealisedModels_params(pfile)
+    else
+       call read_ramses_params(pfile)
     end if
     ! OBIT
-  
+    
     return
 
   end subroutine read_CreateDomDump_params
@@ -463,6 +455,7 @@ contains
        !! OBIT
        write(unit,'(a)')             ' '
        call print_mesh_params(unit)
+       call print_ramses_params(unit)
     else
        write(*,'(a)')             '--------------------------------------------------------------------------------'
        write(*,'(a)')             ' '
@@ -512,7 +505,10 @@ contains
        write(*,'(a)')             ' '
        call print_mesh_params
        write(*,'(a)')             ' '
+       call print_ramses_params
+       write(*,'(a)')             ' '
        write(*,'(a)')             '--------------------------------------------------------------------------------'
+       write(*,'(a)')             ' '
     end if
 
     return

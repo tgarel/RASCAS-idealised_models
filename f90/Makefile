@@ -51,7 +51,7 @@ endif
 
 
 ifeq ($(SYSTYPE),"macP")
-F90         = mpif90-openmpi-mp
+F90         = mpif90-openmpi-gcc8
 FFLAGS      = -g -fcheck=all -ffree-line-length-none -ffree-form -ftrapv -fbounds-check -fbacktrace -Wall
 #FFLAGS      = -O3
 FFLAGS += $(OPTIONS)
@@ -73,11 +73,11 @@ endif
 
 # choose the gas mix you want to use
 # 1/ HI, D, and dust
-#COMPOBJS = module_dust_model.o module_D_model.o module_HI_model.o module_gas_composition_HI_D_dust.o
+#COMPOBJS = module_dust_model.o module_D_1215_model.o module_HI_1216_model.o module_gas_composition_HI_D_dust.o
 # 2/ HI and dust
-#COMPOBJS = module_dust_model.o module_HI_model.o module_gas_composition_HI_dust.o
+#COMPOBJS = module_dust_model.o module_HI_1216_model.o module_gas_composition_HI_dust.o
 # 3/ pure HI
-#COMPOBJS = module_HI_model.o module_gas_composition_HI.o
+#COMPOBJS = module_HI_1216_model.o module_gas_composition_HI.o
 # 4/ pure RAMSES hydro variables
 #COMPOBJS = module_gas_composition_ramses.o
 # 5/ SiII 1190/1193
@@ -93,9 +93,9 @@ endif
 # 9-bis/ FeII UV1+dust
 #COMPOBJS = module_dust_model.o module_FeII_2587_model.o module_FeII_2600_model.o module_gas_composition_FeII_UV1_dust.o
 # TIBO-1/ pure HI + idealised_models
-#COMPOBJS = module_HI_model.o module_idealised_models.o module_gas_composition_HI.o
+#COMPOBJS = module_HI_1216_model.o module_idealised_models.o module_gas_composition_HI.o
 # TIBO-1bis/ HI + dust + idealised_models
- COMPOBJS = module_dust_model.o module_HI_model.o module_idealised_models.o module_gas_composition_HI_dust.o
+ COMPOBJS = module_dust_model.o module_HI_1216_model.o module_idealised_models.o module_gas_composition_HI_dust.o
 # TIBO-2/ SiII_dust + idealised_models
 #COMPOBJS = module_dust_model.o module_SiII_1190_model.o module_SiII_1193_model.o module_idealised_models.o module_gas_composition_SiII_dust.o
 # TIBO-3/ MgII_dust + idealised_models
@@ -114,15 +114,23 @@ endif
 #COMPOBJS =  module_SiII_1260_model.o module_idealised_models.o module_gas_composition_SiII_1260.o
 # TIBO-10/ SiII-1260 + dust + idealised_models
 # COMPOBJS =  module_dust_model.o module_SiII_1260_model.o module_idealised_models.o module_gas_composition_SiII_1260_dust.o
+# 11/ SiII 1260
+#COMPOBJS = module_SiII_1260_model.o module_gas_composition_SiII_1260.o
+# 12/ SiII 1260 and dust
+#COMPOBJS = module_dust_model.o module_SiII_1260_model.o module_gas_composition_SiII_1260_dust.o
+# 13/ pure dust
+#COMPOBJS = module_dust_model.o module_gas_composition_dust.o
 
 
-GASOBJS = module_constants.o module_random.o module_utils.o module_voigt.o module_domain.o module_ramses.o module_uparallel.o $(COMPOBJS)
+GASOBJS = module_constants.o module_random.o module_utils.o module_voigt.o module_domain.o coolrates_module.o module_ramses.o module_uparallel.o $(COMPOBJS)
 
 OBJSDOM = $(GASOBJS) module_select.o module_mesh.o
 
 OBJSPHO = $(GASOBJS) module_mesh.o module_photon.o 
 
 OBJSMPI = $(OBJSPHO) module_parallel_mpi.o module_worker.o module_master.o
+
+OBJLYAFG = module_constants.o module_random.o module_utils.o module_voigt.o module_domain.o coolrates_module.o module_ramses.o module_uparallel.o module_HI_1216_model.o
 
 #############################################################################
 #.SUFFIXES: .o .f90
@@ -138,8 +146,11 @@ all: clean CreateDomDump PhotonsFromSourceModel PhotonsFromStars rascas-serial
 PhotonsFromSourceModel: $(OBJSPHO) PhotonsFromSourceModel.o
 	$(F90) $(FFLAGS) $(LDFLAGS) -o $@ $(OBJSPHO) PhotonsFromSourceModel.o
 
-PhotonsFromStars: $(OBJSPHO) PhotonsFromStars.o
-	$(F90) $(FFLAGS) $(LDFLAGS) -o $@ $(OBJSPHO) PhotonsFromStars.o
+PhotonsFromStars: $(OBJSPHO) module_ssp_lib.o PhotonsFromStars.o
+	$(F90) $(FFLAGS) $(LDFLAGS) -o $@ $(OBJSPHO) module_ssp_lib.o PhotonsFromStars.o
+
+LyaPhotonsFromGas: $(OBJLYAFG)  LyaPhotonsFromGas.o
+	$(F90) $(FFLAGS) $(LDFLAGS) -o $@ $(OBJLYAFG)  LyaPhotonsFromGas.o
 
 CreateDomDump: $(OBJSDOM) CreateDomDump.o
 	$(F90) $(FFLAGS) $(LDFLAGS) -o $@ $(OBJSDOM) CreateDomDump.o

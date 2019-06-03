@@ -6,7 +6,6 @@ module module_gas_composition
   use module_SiII_1260_model
   use module_dust_model
   use module_random
-  use module_ramses
   use module_constants
   use module_idealised_models
 
@@ -14,6 +13,7 @@ module module_gas_composition
 
   private
 
+  character(100),parameter :: moduleName = 'module_gas_composition_SiII_1260_dust.f90'
   type, public :: gas
      ! fluid
      real(kind=8) :: v(3)      ! gas velocity [cm/s]
@@ -41,8 +41,6 @@ module module_gas_composition
   real(kind=8)             :: fix_vel             = 0.0d0   ! ad-hoc cell velocity (cm/s) -> NEED BETTER PARAMETERIZATION for more than static... 
   real(kind=8)             :: fix_ndust           = 0.0d0
   real(kind=8)             :: fix_box_size_cm     = 1.0d8   ! ad-hoc box size in cm.
-  ! miscelaneous
-  logical                  :: verbose             = .true. ! display some run-time info on this module
   ! --------------------------------------------------------------------------
 
   ! public functions:
@@ -119,6 +117,8 @@ contains
 
     ! define gas contents from ramses raw data
 
+    use module_ramses
+
     character(2000),intent(in)        :: repository 
     integer(kind=4),intent(in)        :: snapnum
     integer(kind=4),intent(in)        :: nleaf,nvar
@@ -137,7 +137,7 @@ contains
        box_size_cm = ramses_get_box_size_cm(repository,snapnum)
 
        ! compute velocities in cm / s
-       if (verbose) write(*,*) '-- module_gas_composition_SiII_dust : extracting velocities from ramses '
+       write(*,*) '-- module_gas_composition_SiII_dust : extracting velocities from ramses '
        allocate(v(3,nleaf))
        call ramses_get_velocity_cgs(repository,snapnum,nleaf,nvar,ramses_var,v)
        do ileaf = 1,nleaf
@@ -146,7 +146,7 @@ contains
        deallocate(v)
 
        ! get nSiII and temperature from ramses
-       if (verbose) write(*,*) '-- module_gas_composition_SiII_dust : extracting nSiII from ramses '
+       write(*,*) '-- module_gas_composition_SiII_dust : extracting nSiII from ramses '
        allocate(T(nleaf),nSiII(nleaf))
        call ramses_get_T_nSiII_cgs(repository,snapnum,nleaf,nvar,ramses_var,T,nSiII)
        g(:)%nSiII = nSiII(:)
@@ -155,10 +155,10 @@ contains
        g(:)%dopwidth = sqrt(2.0d0*kb/mSi*T) ! [ cm/s ]
        deallocate(T,nSiII)
 
-       if (verbose) print*,'min/max of nSiII : ',minval(g(:)%nSiII),maxval(g(:)%nSiII)
+       print*,'min/max of nSiII : ',minval(g(:)%nSiII),maxval(g(:)%nSiII)
        
        ! get ndust (pseudo dust density from Laursen, Sommer-Larsen, Andersen 2009)
-       if (verbose) write(*,*) '-- module_gas_composition_SiII_dust : extracting ndust from ramses '
+       write(*,*) '-- module_gas_composition_SiII_dust : extracting ndust from ramses '
        allocate(T(nleaf),nhi(nleaf),metallicity(nleaf),nhii(nleaf))
        call ramses_get_T_nhi_cgs(repository,snapnum,nleaf,nvar,ramses_var,T,nhi)
        call ramses_get_metallicity(nleaf,nvar,ramses_var,metallicity)
@@ -169,7 +169,7 @@ contains
        end do
        deallocate(metallicity,T,nhi,nhii)
 
-       if (verbose) print*,'min/max of ndust : ',minval(g(:)%ndust),maxval(g(:)%ndust)
+       print*,'min/max of ndust : ',minval(g(:)%ndust),maxval(g(:)%ndust)
        
     end if
 
@@ -310,11 +310,9 @@ contains
        read(unit) box_size_cm 
     end if
 
-    if (verbose) print*,'min/max of nSiII : ',minval(g(:)%nSiII),maxval(g(:)%nSiII)
-
   end subroutine read_gas
 
-  
+
 
   subroutine gas_destructor(g)
     type(gas),dimension(:),allocatable,intent(inout) :: g
@@ -374,8 +372,6 @@ contains
              read(value,*) fix_vel
           case ('fix_ndust')
              read(value,*) fix_ndust
-          case ('verbose')
-             read(value,*) verbose
           case ('fix_box_size_cm')
              read(value,*) fix_box_size_cm
           end select
@@ -383,7 +379,6 @@ contains
     end if
     close(10)
 
-    call read_ramses_params(pfile)
     call read_dust_params(pfile)
     call read_SiII_1260_params(pfile)
 
@@ -404,37 +399,39 @@ contains
 
     if (present(unit)) then 
        write(unit,'(a,a,a)') '[gas_composition]'
+       write(unit,'(a,a)')      '# code compiled with: ',trim(moduleName)
+       write(unit,'(a)')        '# mixture parameters'
        write(unit,'(a,ES10.3)') '  f_ion                = ',f_ion
        write(unit,'(a,ES10.3)') '  Zref                 = ',Zref
        write(unit,'(a)')       '# overwrite parameters'
        write(unit,'(a,L1)')    '  gas_overwrite         = ',gas_overwrite
-       write(unit,'(a,ES10.3)') '  fix_nSiII            = ',fix_nSiII
-       write(unit,'(a,ES10.3)') '  fix_vth              = ',fix_vth
-       write(unit,'(a,ES10.3)') '  fix_vel              = ',fix_vel
-       write(unit,'(a,ES10.3)') '  fix_box_size_cm      = ',fix_box_size_cm
-       write(unit,'(a)')       '# miscelaneous parameters'
-       write(unit,'(a,L1)')    '  verbose               = ',verbose
+       if(gas_overwrite)then
+          write(unit,'(a,ES10.3)') '  fix_nSiII            = ',fix_nSiII
+          write(unit,'(a,ES10.3)') '  fix_vth              = ',fix_vth
+          write(unit,'(a,ES10.3)') '  fix_vel              = ',fix_vel
+          write(unit,'(a,ES10.3)') '  fix_box_size_cm      = ',fix_box_size_cm
+       endif
        write(unit,'(a)')             ' '
-       call print_ramses_params(unit)
+       call print_dust_params(unit)
        write(unit,'(a)')             ' '
-       call print_dust_params
        call print_SiII_1260_params(unit)
     else
        write(*,'(a,a,a)') '[gas_composition]'
+       write(*,'(a,a)')      '# code compiled with: ',trim(moduleName)
+       write(*,'(a)')        '# mixture parameters'
        write(*,'(a,ES10.3)') '  f_ion                = ',f_ion
        write(*,'(a,ES10.3)') '  Zref                 = ',Zref
        write(*,'(a)')       '# overwrite parameters'
        write(*,'(a,L1)')    '  gas_overwrite         = ',gas_overwrite
-       write(*,'(a,ES10.3)') '  fix_nSiII            = ',fix_nSiII
-       write(*,'(a,ES10.3)') '  fix_vth              = ',fix_vth
-       write(*,'(a,ES10.3)') '  fix_vel              = ',fix_vel
-       write(*,'(a,ES10.3)') '  fix_box_size_cm      = ',fix_box_size_cm
-       write(*,'(a)')       '# miscelaneous parameters'
-       write(*,'(a,L1)')    '  verbose               = ',verbose
-       write(*,'(a)')             ' '
-       call print_ramses_params
+       if(gas_overwrite)then
+          write(*,'(a,ES10.3)') '  fix_nSiII            = ',fix_nSiII
+          write(*,'(a,ES10.3)') '  fix_vth              = ',fix_vth
+          write(*,'(a,ES10.3)') '  fix_vel              = ',fix_vel
+          write(*,'(a,ES10.3)') '  fix_box_size_cm      = ',fix_box_size_cm
+       endif
        write(*,'(a)')             ' '
        call print_dust_params
+       write(*,'(a)')             ' '
        call print_SiII_1260_params
     end if
 
