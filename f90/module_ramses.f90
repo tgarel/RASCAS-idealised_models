@@ -29,6 +29,7 @@ module module_ramses
   integer(kind=4),allocatable      :: cell_level(:)
 
   integer(kind=4)                  :: ncpu,nvar
+  integer(kind=4)                  :: U_precision=8 ! hydro-precision in RAMSES output
 
   ! conversion factors (units)
   logical                        :: conversion_scales_are_known = .False. 
@@ -98,10 +99,11 @@ module module_ramses
 
   
   public  :: get_cpu_list,get_cpu_list_periodic,get_ncpu
-  public  :: ramses_get_nhi_nhei_nehii_cgs, read_leaf_cells_in_domain, read_leaf_cells_omp
-  public  :: ramses_get_nh_nhi_nhei_nehii_cgs
-  public  :: read_leaf_cells, get_ngridtot, ramses_get_velocity_cgs, ramses_get_T_nhi_cgs, ramses_get_metallicity, ramses_get_box_size_cm, ramses_get_nh_cgs
-  public  :: ramses_read_stars_in_domain, read_ramses_params, print_ramses_params, dump_ramses_info, ramses_get_T_nSiII_cgs, ramses_get_T_nMgII_cgs
+  public  :: ramses_get_nhi_nhei_nehii_cgs, read_leaf_cells_in_domain
+  public  :: ramses_get_nh_nhi_nhei_nehii_cgs, get_ngridtot, get_ngridtot_cpus
+  public  :: read_leaf_cells, ramses_get_velocity_cgs, ramses_get_T_nhi_cgs, ramses_get_metallicity
+  public  :: ramses_get_box_size_cm, ramses_get_nh_cgs, ramses_read_stars_in_domain, read_ramses_params
+  public  :: print_ramses_params, dump_ramses_info, ramses_get_T_nSiII_cgs, ramses_get_T_nMgII_cgs
   ! default is private now ... !! private :: read_hydro, read_amr, get_nleaf, get_nvar, clear_amr, get_param_real
 
   !==================================================================================
@@ -111,65 +113,7 @@ contains
   ! public functions 
   ! ----------------
 
-  subroutine read_leaf_cells(repository, snapnum, nleaftot, nvar, &
-       & xleaf, ramses_var, leaf_level)
-
-    ! read all leaf cell from a simulation snapshot. Return standard 
-    ! ramses ramses variables through ramses_var(nvar,nleaftot) and
-    ! positions (xleaf(3,nleaftot)) and levels (leaf_level).
-
-    implicit none 
-
-    character(2000),intent(in)                :: repository
-    integer(kind=4),intent(in)                :: snapnum
-    integer(kind=4),intent(inout)             :: nleaftot, nvar
-    real(kind=8),allocatable, intent(inout)   :: ramses_var(:,:)
-    real(kind=8),allocatable,intent(inout)    :: xleaf(:,:)
-    integer(kind=4),allocatable,intent(inout) :: leaf_level(:)
-
-    logical                                   :: do_allocs
-    integer(kind=4)                           :: icpu, ileaf, icell, ivar
-
-    if(verbose)then
-       print *,' '
-       print *,'...reading RAMSES cells...'
-    endif
-
-    nleaftot = get_nleaf(repository,snapnum)  ! sets ncpu too 
-    nvar     = get_nvar(repository,snapnum)
-    allocate(ramses_var(nvar,nleaftot), xleaf(nleaftot,3), leaf_level(nleaftot))
-    ncpu = get_ncpu(repository,snapnum)
-
-    if(verbose)print *,'--> nleaftot, nvar, ncpu =',nleaftot,nvar,ncpu
-
-    do_allocs = .true.
-    ileaf = 0
-    do icpu = 1,ncpu
-       call read_amr(repository,snapnum,icpu,do_allocs)
-       call read_hydro(repository,snapnum,icpu,do_allocs)
-       do_allocs = .false.
-       ! collect leaf cells
-       do icell = 1,ncell
-          if (son(icell)==0 .and. cpu_map(icell) == icpu) then
-             ileaf = ileaf + 1
-             do ivar = 1,nvar
-                ramses_var(ivar,ileaf) = var(icell,ivar)
-             end do
-             xleaf(ileaf,1)    = cell_x(icell)
-             xleaf(ileaf,2)    = cell_y(icell)
-             xleaf(ileaf,3)    = cell_z(icell)
-             leaf_level(ileaf) = cell_level(icell)
-          end if
-       end do
-    end do
-    call clear_amr
-
-    return
-
-  end subroutine read_leaf_cells
-
-  
-  subroutine read_leaf_cells_omp(repository, snapnum, ncpu_read, cpu_list &
+  subroutine read_leaf_cells(repository, snapnum, ncpu_read, cpu_list &
        , nleaftot, nvar, xleaf_all, ramses_var_all, leaf_level_all)
 
     ! read all leaf cell from a simulation snapshot. Return standard 
@@ -200,6 +144,9 @@ contains
     nvar     = get_nvar(repository,snapnum)
     allocate(ramses_var_all(nvar,nleaftot), xleaf_all(nleaftot,3), leaf_level_all(nleaftot))
     !ncpu = get_ncpu(repository,snapnum)
+    ! Check whether the ramses output is in single or double precision
+    if(check_param_real(repository,snapnum,'U_precision')) &
+         U_precision = nint(get_param_real(repository,snapnum,'U_precision'))
 
     if(verbose) then
        print*,' '
@@ -267,7 +214,7 @@ contains
 
     return
 
-  end subroutine read_leaf_cells_omp
+  end subroutine read_leaf_cells
 
 
   subroutine read_leaf_cells_in_domain(repository, snapnum, selection_domain, &
@@ -284,7 +231,7 @@ contains
     integer(kind=4),intent(in)                :: snapnum, ncpu_read
     type(domain),intent(in)                   :: selection_domain
     integer(kind=4),intent(inout)             :: nleaftot_all, nvar
-    integer(kind=4)                           :: nleaftot
+    integer(kind=8)                           :: nleaftot
     real(kind=8),allocatable                  :: ramses_var(:,:)
     real(kind=8),allocatable                  :: xleaf(:,:)
     integer(kind=4),allocatable               :: leaf_level(:)
@@ -295,7 +242,8 @@ contains
     integer(kind=4),dimension(:),allocatable,intent(in) :: cpu_list
     
     logical                                   :: do_allocs
-    integer(kind=4)                           :: icpu, ileaf, icell, ivar, nleaf_in_domain, k
+    integer(kind=4)                           :: icpu, ivar, nleaf_in_domain, k
+    integer(kind=8)                           :: ileaf, icell
     integer(kind=4)                           :: ilast
     real(kind=8),dimension(3)                 :: temp
     
@@ -304,8 +252,11 @@ contains
        print *,'read_leaf_cells_in_domain...reading RAMSES cells...'
     endif
 
-    nvar     = get_nvar(repository,snapnum)
+    nvar = get_nvar(repository,snapnum)
     ncpu = get_ncpu(repository,snapnum)
+    ! Check whether the ramses output is in single or double precision
+    if(check_param_real(repository,snapnum,'U_precision')) &
+         U_precision = nint(get_param_real(repository,snapnum,'U_precision'))
 
     ! first count leaf cells in domain...
     nleaftot = 0 ; nleaf_in_domain = 0
@@ -838,6 +789,46 @@ contains
     return
 
   end function get_nGridTot
+
+  function get_nGridTot_cpus(repository,snapnum,ncpu_read,cpu_list)
+
+    ! get total number of grids in the simulation 
+
+    implicit none 
+
+    integer(kind=4),intent(in)  :: snapnum, ncpu_read
+    character(1000),intent(in)  :: repository
+    integer(kind=4),dimension(:),allocatable,intent(in) :: cpu_list
+    integer(kind=4)             :: get_nGridTot_cpus
+    character(1000)             :: nomfich
+    logical                     :: ok
+    integer(kind=4)             :: k,icpu,ngrid_current
+
+    get_nGridTot_cpus = 0
+    do k = 1,ncpu_read
+       icpu=cpu_list(k)
+       write(nomfich,'(a,a,i5.5,a,i5.5,a,i5.5)') trim(repository),'/output_',snapnum,'/amr_',snapnum,'.out',icpu
+       inquire(file=nomfich, exist=ok)
+       if(.not. ok)then
+          write(*,*)'File '//TRIM(nomfich)//' not found'    
+          stop
+       end if
+       open(unit=10,file=nomfich,form='unformatted',status='old',action='read')
+       read(10)
+       read(10)
+       read(10)
+       read(10)
+       read(10)
+       read(10)
+       read(10)ngrid_current
+       close(10)
+       get_nGridTot_cpus = get_nGridTot_cpus + ngrid_current
+    end do
+
+    return
+
+  end function get_nGridTot_cpus
+
 
 
 
@@ -1411,6 +1402,7 @@ contains
     character(1000)             :: nomfich
     integer(kind=4)             :: i,nlevelmax,nboundary,ix,iy,iz,ind,ilevel,ibound,ncache,istart,ivar,iskip,igrid,iunit
     real(kind=8),allocatable    :: xc(:,:),xx(:)
+    real(kind=4),allocatable    :: xx_sp(:)
     integer(kind=4),allocatable :: ind_grid(:)
 
     write(nomfich,'(a,a,i5.5,a,i5.5,a,i5.5)') trim(repository),'/output_',snapnum,'/hydro_',snapnum,'.out',icpu
@@ -1455,7 +1447,11 @@ contains
           read(iunit)!numbl2
           if(ncache>0)then
              allocate(ind_grid(1:ncache))
-             allocate(xx(1:ncache))
+             if(U_precision.eq.4) then
+                allocate(xx_sp(1:ncache))
+             else
+                allocate(xx(1:ncache))
+             endif
              ! Loop over level grids
              igrid=istart
              do i=1,ncache
@@ -1467,11 +1463,19 @@ contains
                 iskip=ncoarse+(ind-1)*ngridmax
                 ! Loop over conservative variables
                 do ivar=1,nvar
-                   read(iunit) xx
-                   if (ibound > ncpu) cycle  ! dont bother with boundaries
-                   do i = 1, ncache
-                      var(ind_grid(i)+iskip,ivar) = xx(i)
-                   end do
+                   if(U_precision.eq.4) then
+                      read(iunit) xx_sp
+                      if (ibound > ncpu) cycle  ! dont bother with boundaries
+                      do i = 1, ncache
+                         var(ind_grid(i)+iskip,ivar) = xx_sp(i)
+                      end do
+                   else
+                      read(iunit) xx
+                      if (ibound > ncpu) cycle  ! dont bother with boundaries
+                      do i = 1, ncache
+                         var(ind_grid(i)+iskip,ivar) = xx(i)
+                      end do
+                   endif
                 end do
                 do i = 1,ncache
                    cell_x(ind_grid(i)+iskip) = xc(ind,1) + xg(ind_grid(i),1) -xbound(1)
@@ -1480,7 +1484,9 @@ contains
                    cell_level(ind_grid(i)+iskip)      = ilevel
                 end do
              end do
-             deallocate(ind_grid,xx)
+             deallocate(ind_grid)
+             if(allocated(xx_sp)) deallocate(xx_sp)
+             if(allocated(xx)) deallocate(xx)
           end if
        end do
     end do
@@ -1689,6 +1695,7 @@ contains
     real(kind=8)                :: dx
     integer(kind=4)             :: ix,iy,iz,istart,ivar,igrid
     real(kind=8),allocatable    :: xc(:,:),xx(:)
+    real(kind=4),allocatable    :: xx_sp(:)
 
     ! stuff read from the HYDRO files
     real(kind=8),allocatable,intent(out)         :: var_l(:,:)
@@ -1870,7 +1877,11 @@ contains
           read(iunit)!numbl2
           if(ncache>0)then
              allocate(ind_grid(1:ncache))
-             allocate(xx(1:ncache))
+             if(U_precision.eq.4) then
+                allocate(xx_sp(1:ncache))
+             else
+                allocate(xx(1:ncache))
+             endif
              ! Loop over level grids
              igrid=istart
              do i=1,ncache
@@ -1882,11 +1893,19 @@ contains
                 iskip=ncoarse_l+(ind-1)*ngridmax_l
                 ! Loop over conservative variables
                 do ivar=1,nvar
-                   read(iunit) xx
-                   if (ibound > ncpu) cycle  ! dont bother with boundaries
-                   do i = 1, ncache
-                      var_l(ind_grid(i)+iskip,ivar) = xx(i)
-                   end do
+                   if(U_precision.eq.4) then
+                      read(iunit) xx_sp
+                      if (ibound > ncpu) cycle  ! dont bother with boundaries
+                      do i = 1, ncache
+                         var_l(ind_grid(i)+iskip,ivar) = xx_sp(i)
+                      end do
+                   else
+                      read(iunit) xx
+                      if (ibound > ncpu) cycle  ! dont bother with boundaries
+                      do i = 1, ncache
+                         var_l(ind_grid(i)+iskip,ivar) = xx(i)
+                      end do
+                   endif
                 end do
                 do i = 1,ncache
                    cell_x_l(ind_grid(i)+iskip) = xc(ind,1) + xg_l(ind_grid(i),1) -xbound_l(1)
@@ -1895,7 +1914,9 @@ contains
                    cell_level_l(ind_grid(i)+iskip)      = ilevel
                 end do
              end do
-             deallocate(ind_grid,xx)
+             deallocate(ind_grid)
+             if(allocated(xx_sp)) deallocate(xx_sp)
+             if(allocated(xx)) deallocate(xx)
           end if
        end do
     end do
@@ -2137,6 +2158,7 @@ contains
        if (trim(name) .eq. trim(param)) then 
           read(value,*) get_param_real
           not_ok = .false.
+          exit
        end if
 
     end do
@@ -2150,6 +2172,44 @@ contains
     return
 
   end function get_param_real
+
+  function check_param_real(repository,snapnum,param)
+    ! Check if parameter with given name exists in RAMSES info-file.
+
+    implicit none 
+
+    logical                    :: check_param_real
+    character(512),intent(in)  :: repository
+    integer(kind=4),intent(in) :: snapnum
+    character(*),intent(in)    :: param
+    character(512)             :: nomfich
+    character(512)             :: line,name,value
+    integer(kind=4)            :: i
+    integer(kind=4),parameter  :: param_unit = 14
+
+    write(nomfich,'(a,a,i5.5,a,i5.5,a)') trim(repository),'/output_',snapnum,'/info_',snapnum,'.txt'
+    open(unit=param_unit,file=nomfich,status='old',form='formatted')
+    check_param_real = .false.
+    do 
+       read(param_unit,'(a)',end=3) line
+       i = scan(line,'=')
+       if (i==0 .or. line(1:1)=='#') cycle
+       name=trim(adjustl(line(:i-1)))
+       value=trim(adjustl(line(i+1:)))
+       ! check for a comment at end of line !
+       i = scan(value,'!')
+       if (i /= 0) value = trim(adjustl(value(:i-1)))
+       if (trim(name) .eq. trim(param)) then 
+          check_param_real = .true.
+          exit
+       end if
+
+    end do
+3   close (param_unit)  
+
+    return
+
+  end function check_param_real
 
   subroutine read_conversion_scales(repository,snapnum)
 

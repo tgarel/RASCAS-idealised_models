@@ -93,26 +93,18 @@ program CreateDomDump
 
   
   ! Read all the leaf cells
-  nOctSnap = get_nGridTot(repository,snapnum)
   if (reading_method == 'fullbox') then
-     call read_leaf_cells(repository, snapnum, nleaftot, nvar, x_leaf, ramses_var, leaf_level)
-     ! Extract and convert properties of cells into gas mix properties
-     call gas_from_ramses_leaves(repository,snapnum,nleaftot,nvar,ramses_var, gas_leaves)
-     call cpu_time(finish)
-     print '(" --> Time to read all leaves in fullbox = ",f12.3," seconds.")',finish-start
-  end if
-  if (reading_method == 'fullbox_omp') then
      ncpu_read = get_ncpu(repository,snapnum)
      allocate(cpu_list(1:ncpu_read))
      do i=1,ncpu_read
         cpu_list(i)=i
      end do
 
-     call read_leaf_cells_omp(repository, snapnum, ncpu_read, cpu_list, nleaftot, nvar, x_leaf, ramses_var, leaf_level)
+     call read_leaf_cells(repository, snapnum, ncpu_read, cpu_list, nleaftot, nvar, x_leaf, ramses_var, leaf_level)
      ! Extract and convert properties of cells into gas mix properties
      call gas_from_ramses_leaves(repository,snapnum,nleaftot,nvar,ramses_var, gas_leaves)
      call cpu_time(finish)
-     print '(" --> Time to read all leaves in fullbox_omp = ",f12.3," seconds.")',finish-start
+     print '(" --> Time to read all leaves in fullbox = ",f12.3," seconds.")',finish-start
   end if
 
   ! domain decomposition 
@@ -229,6 +221,7 @@ program CreateDomDump
      call select_from_domain(arr_in=gas_leaves, ind_sel=ind_sel, arr_out=selected_leaves)
      nleaf_sel = size(ind_sel)
      print*,'in CreateDomDump: nleaf_sel = ',size(leaf_level)
+     nOctSnap = get_nGridTot_cpus(repository, snapnum, ncpu_read, cpu_list)
      call mesh_from_leaves(nOctSnap,domain_list(i),nleaf_sel, &
           selected_leaves,xleaf_sel,leaflevel_sel,domain_mesh)
      print*,'in CreateDomDump: back from mesh_from_leaves '
