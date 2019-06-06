@@ -199,11 +199,11 @@ contains
     
     if(verbose) print *,'Reading RAMSES cells...'
 
-    nleaftot = get_nleaf(repository,snapnum)  ! sets ncpu too 
+    nleaftot = get_nleaf_omp(repository,snapnum,ncpu_read,cpu_list)
     nvar     = get_nvar(repository,snapnum)
     allocate(ramses_var_all(nvar,nleaftot), xleaf_all(nleaftot,3), leaf_level_all(nleaftot))
 
-    if(verbose) print *,'-- read_leaf_cells_omp: nleaftot, nvar, ncpu =',nleaftot,nvar,ncpu_read
+    if(verbose) print *,'-- read_leaf_cells_omp: nleaftot(_read), nvar, ncpu(_read) =',nleaftot,nvar,ncpu_read
 
     ileaf = 0
     iloop = 0
@@ -2566,6 +2566,163 @@ contains
   end function get_nleaf
 
 
+  function get_nleaf_omp(repository,snapnum,ncpu_read,cpu_list)
+    
+    implicit none
+    integer(kind=4),intent(in)                          :: snapnum
+    character(1000),intent(in)                          :: repository
+    integer(kind=4),intent(in)                          :: ncpu_read
+    integer(kind=4),dimension(:),allocatable,intent(in) :: cpu_list
+    integer(kind=4)             :: get_nleaf_omp
+    integer(kind=4)             :: icpu,icell,ncpu
+    logical                     :: do_allocs
+    character(1000)             :: nomfich 
+    integer,allocatable         :: ind_grid(:),iig(:)
+    integer,allocatable         :: son(:)
+    integer,allocatable         :: cpu_map(:)
+    integer,allocatable         :: numbl(:,:)
+    integer,allocatable         :: numbb(:,:)
+    logical                     :: ok
+    integer(kind=4)             :: i,nx,ny,nz,nlevelmax,nboundary,ncell,ncoarse,ngridmax
+    integer(kind=4)             :: ilevel,ncache,ibound,idim,ind,iskip
+    integer(kind=4)             :: ndim,twondim,twotondim,k
+    integer(kind=4)             :: nleaf, nleaftot, iloop, iunit
+
+    ncpu = get_ncpu(repository,snapnum)
+    get_nleaf_omp = 0
+    ndim = 3
+    twondim = 2*ndim
+    twotondim = 2**ndim
+    nleaftot = 0
+    iloop = 0
+    
+!$OMP PARALLEL &
+!$OMP DEFAULT(private) &
+!$OMP SHARED(iloop, nleaftot, ncpu_read, cpu_list, repository, snapnum, ndim, twondim, twotondim, ncpu)
+    do_allocs = .true. 
+!$OMP DO SCHEDULE(DYNAMIC, 10) 
+    do k=1,ncpu_read
+       icpu=cpu_list(k)
+       iunit = icpu+10
+       write(nomfich,'(a,a,i5.5,a,i5.5,a,i5.5)') trim(repository),'/output_',snapnum,'/amr_',snapnum,'.out',icpu
+       inquire(file=nomfich, exist=ok)
+       if(.not. ok)then
+          write(*,*)'File '//TRIM(nomfich)//' not found'    
+          stop
+       end if
+       open(unit=iunit,file=nomfich,form='unformatted',status='old',action='read')
+       read(iunit)
+       read(iunit)
+       read(iunit)nx,ny,nz
+       ncoarse=nx*ny*nz ! Critical parameter: define the root level of the tree
+       read(iunit)nlevelmax
+       read(iunit)ngridmax
+       read(iunit)nboundary
+       read(iunit)
+       read(iunit)
+       read(iunit)
+       read(iunit)
+       read(iunit)
+       read(iunit)
+       read(iunit)
+       read(iunit)
+       read(iunit)
+       read(iunit)
+       read(iunit)
+       read(iunit)
+       read(iunit)
+       if (do_allocs) allocate(numbl(1:ncpu,1:nlevelmax),numbb(1:nboundary,1:nlevelmax))
+       numbl=0;numbb=0
+       ! Read levels variables
+       read(iunit)!headl(1:ncpu,1:nlevelmax)
+       read(iunit)!taill(1:ncpu,1:nlevelmax)
+       read(iunit)numbl(1:ncpu,1:nlevelmax)
+       read(iunit)!numbtot(1:10,1:nlevelmax)
+       ! Read boundary linked list
+       if(nboundary>0)then
+          read(iunit)!headb(1:nboundary,1:nlevelmax)
+          read(iunit)!tailb(1:nboundary,1:nlevelmax)
+          read(iunit)numbb(1:nboundary,1:nlevelmax)
+       end if
+       read(iunit) ! Read free memory
+       read(iunit) ! Read cpu boundaries
+       read(iunit)
+       ncell=ncoarse+twotondim*ngridmax
+       if (do_allocs) then
+          allocate(son(1:ncell),cpu_map(1:ncell))
+          do_allocs = .false. 
+       end if
+       son=0; cpu_map=0
+       ! Read coarse level
+       read(iunit)son(1:ncoarse)       
+       read(iunit)
+       read(iunit)cpu_map(1:ncoarse)
+       do ilevel=1,nlevelmax
+          do ibound=1,nboundary+ncpu
+             if(ibound<=ncpu)then
+                ncache=numbl(ibound,ilevel)
+             else
+                ncache=numbb(ibound-ncpu,ilevel)
+             end if
+             if(ncache>0)then
+                allocate(ind_grid(1:ncache))
+                allocate(iig(1:ncache))
+                read(iunit)ind_grid ! Read grid index
+                read(iunit) ! Read next index
+                read(iunit) ! Read prev index
+                do idim=1,ndim
+                   read(iunit) ! Read grid center
+                end do
+                read(iunit) ! Read father index
+                do ind=1,twondim
+                   read(iunit) ! Read nbor index
+                end do
+                do ind=1,twotondim
+                   iskip=ncoarse+(ind-1)*ngridmax
+                   read(iunit)iig  ! Read son index 
+                   do i=1,ncache
+                      son(ind_grid(i)+iskip)=iig(i) 
+                   end do
+                end do
+                do ind=1,twotondim
+                   iskip=ncoarse+(ind-1)*ngridmax
+                   read(iunit)iig ! Read cpu map
+                   do i=1,ncache
+                      cpu_map(ind_grid(i)+iskip)=iig(i)
+                   end do
+                end do
+
+                do ind=1,twotondim
+                   read(iunit) ! Read refinement map (skip)
+                end do
+                deallocate(iig,ind_grid)
+             end if
+          end do
+       end do
+       close(iunit)
+       ! count leaf cells
+       nleaf = 0
+       do icell = 1,ncell
+          if (son(icell)==0 .and. cpu_map(icell) == icpu) then
+             nleaf = nleaf + 1
+          end if
+       end do
+
+       ! nleaf is now the number of leaves on local cpu
+!$OMP ATOMIC
+       nleaftot = nleaftot + nleaf
+    end do
+!$OMP END DO
+    if(.not. do_allocs) deallocate(son,cpu_map,numbl,numbb)
+!$OMP END PARALLEL
+
+    get_nleaf_omp = nleaftot
+    
+    return
+  end function get_nleaf_omp
+
+
+  
   function get_nvar(repository,snapnum)
     implicit none 
     integer(kind=4),intent(in)  :: snapnum
