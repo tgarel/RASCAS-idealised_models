@@ -171,7 +171,8 @@ contains
     ! Send p_test from 0 to 1
     if (rank == 0) then
        call MPI_SEND(p_test(1)%id, 10, MPI_TYPE_PHOTON, 1, tag , MPI_COMM_WORLD, code)
-    else
+    endif
+    if (rank == 1) then
        call MPI_RECV(temp_p(1)%id, 10, MPI_TYPE_PHOTON, 0, MPI_ANY_TAG, MPI_COMM_WORLD, status, IERROR)
        do i=1,10
           if(p_test(i)%id /= temp_p(i)%id) stop 'problem with MPI type'
