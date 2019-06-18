@@ -4,9 +4,6 @@ module module_worker
   use module_domain
   use module_photon
   use module_mesh
-  !--PEEL--
-  use module_mock
-  !--LEEP--
 
   private 
 
@@ -22,8 +19,6 @@ contains
 
   subroutine worker(file_compute_dom, ndomain, mesh_file_list, nbundle)
 
-    implicit none
-    
     character(2000),intent(in)                    :: file_compute_dom
     integer(kind=4),intent(in)                    :: ndomain
     character(2000),dimension(ndomain),intent(in) :: mesh_file_list
@@ -34,9 +29,6 @@ contains
     type(mesh)                                    :: meshdom
     type(domain)                                  :: compute_dom
     real(kind=8)                                  :: start_photpacket,end_photpacket
-    !debug
-    integer(kind=4) :: i
-    !gubed
 
     ! get the computational domain
     call domain_constructor_from_file(file_compute_dom,compute_dom)
@@ -64,28 +56,13 @@ contains
        endif
 
        ! receive my list of photon packets to propagate
-       !debug
-       !call MPI_RECV(photpacket(1)%id, nbundle, MPI_TYPE_PHOTON, 0, MPI_ANY_TAG, MPI_COMM_WORLD, status, IERROR) 
-       do i = 1,nbundle
-          call MPI_RECV(photpacket(i)%id, 1, MPI_INTEGER, 0, MPI_ANY_TAG , MPI_COMM_WORLD, status,IERROR)
-          call MPI_RECV(photpacket(i)%status, 1, MPI_INTEGER, 0, MPI_ANY_TAG , MPI_COMM_WORLD, status,IERROR)
-          call MPI_RECV(photpacket(i)%xlast, 3, MPI_DOUBLE_PRECISION, 0, MPI_ANY_TAG , MPI_COMM_WORLD, status,IERROR)
-          call MPI_RECV(photpacket(i)%xcurr, 3, MPI_DOUBLE_PRECISION, 0, MPI_ANY_TAG , MPI_COMM_WORLD, status,IERROR)
-          call MPI_RECV(photpacket(i)%nu_ext, 1, MPI_DOUBLE_PRECISION, 0, MPI_ANY_TAG , MPI_COMM_WORLD, status,IERROR)
-          call MPI_RECV(photpacket(i)%k, 3, MPI_DOUBLE_PRECISION, 0, MPI_ANY_TAG , MPI_COMM_WORLD, status,IERROR)
-          call MPI_RECV(photpacket(i)%nb_abs, 1, MPI_INTEGER, 0, MPI_ANY_TAG , MPI_COMM_WORLD, status,IERROR)
-          call MPI_RECV(photpacket(i)%time, 1, MPI_DOUBLE_PRECISION, 0, MPI_ANY_TAG , MPI_COMM_WORLD, status,IERROR)
-          call MPI_RECV(photpacket(i)%tau_abs_curr, 1, MPI_DOUBLE_PRECISION, 0, MPI_ANY_TAG , MPI_COMM_WORLD, status,IERROR)
-          call MPI_RECV(photpacket(i)%iran, 1, MPI_INTEGER, 0, MPI_ANY_TAG , MPI_COMM_WORLD, status,IERROR)
-       end do
-       !gubed                                                                                                                                                                                                                                                                                                               
-
+       call MPI_RECV(photpacket(1)%id, nbundle, MPI_TYPE_PHOTON, 0, MPI_ANY_TAG, MPI_COMM_WORLD, status, IERROR)
 
        !if(verbose) write(*,'(a,i5.5,a)') ' [w',rank,'] just receive a bundle of photon packets and start processing it...' 
 
        call cpu_time(start_photpacket)
 
-       ! do the RT stuff. This is a single loop over photons in photpacket.
+       ! do the RT stuff. This is a single loop over photon packets in the bundle photpacket.
        call MCRT(nbundle,photpacket,meshdom,compute_dom)
 
        call cpu_time(end_photpacket)
@@ -98,26 +75,11 @@ contains
        ! send my results
        call MPI_SEND(nbundle, 1, MPI_INTEGER, 0, tag , MPI_COMM_WORLD, code)
 
-       
-       !debug
-       !call MPI_SEND(photpacket(1)%id, nbundle, MPI_TYPE_PHOTON, 0, tag , MPI_COMM_WORLD, code)
-       do i = 1,nbundle
-          call MPI_SEND(photpacket(i)%id, 1, MPI_INTEGER, 0, tag , MPI_COMM_WORLD, code)
-          call MPI_SEND(photpacket(i)%status, 1, MPI_INTEGER, 0, tag , MPI_COMM_WORLD, code)
-          call MPI_SEND(photpacket(i)%xlast, 3, MPI_DOUBLE_PRECISION, 0, tag , MPI_COMM_WORLD, code)
-          call MPI_SEND(photpacket(i)%xcurr, 3, MPI_DOUBLE_PRECISION, 0, tag , MPI_COMM_WORLD, code)
-          call MPI_SEND(photpacket(i)%nu_ext, 1, MPI_DOUBLE_PRECISION, 0, tag , MPI_COMM_WORLD, code)
-          call MPI_SEND(photpacket(i)%k, 3, MPI_DOUBLE_PRECISION, 0, tag , MPI_COMM_WORLD, code)
-          call MPI_SEND(photpacket(i)%nb_abs, 1, MPI_INTEGER, 0, tag , MPI_COMM_WORLD, code)
-          call MPI_SEND(photpacket(i)%time, 1, MPI_DOUBLE_PRECISION, 0, tag , MPI_COMM_WORLD, code)
-          call MPI_SEND(photpacket(i)%tau_abs_curr, 1, MPI_DOUBLE_PRECISION, 0, tag , MPI_COMM_WORLD, code)
-          call MPI_SEND(photpacket(i)%iran, 1, MPI_INTEGER, 0, tag , MPI_COMM_WORLD, code)
-       end do
-       !gubed
+       call MPI_SEND(photpacket(1)%id, nbundle, MPI_TYPE_PHOTON, 0, tag , MPI_COMM_WORLD, code)
 
     enddo
-    
-    if(verbose) write(*,'(a,i4.4,a)') ' [w',rank,'] : exit of loop...'
+
+    if(verbose) write(*,'(a,i5.5,a)') ' [w',rank,'] received exit code, then exit the do while loop'
 
     ! final synchronization, for profiling purposes
     call MPI_BARRIER(MPI_COMM_WORLD,code)

@@ -1,4 +1,4 @@
-module module_D_model
+module module_D_1215_model
 
   use module_constants
   use module_utils, only : isotropic_direction, anisotropic_direction_HIcore, anisotropic_direction_Rayleigh
@@ -31,16 +31,16 @@ module module_D_model
   logical                  :: isotropic    = .false.     ! if set to true, scattering events will be isotropic [default is false]
   ! --------------------------------------------------------------------------
 
-  public :: get_tau_D, scatter_D, read_D_params, print_D_params
+  public :: get_tau_D_1215, scatter_D_1215, read_D_1215_params, print_D_1215_params
   !--PEEL--
-  public :: D_peeloff_weight
+  public :: D_1215_peeloff_weight
   !--LEEP--
 
 contains
 
 
 
-  function get_tau_D(ndi, vth, distance_to_border_cm, nu_cell)
+  function get_tau_D_1215(ndi, vth, distance_to_border_cm, nu_cell)
 
     ! --------------------------------------------------------------------------
     ! compute optical depth of Deuterium over a given distance
@@ -51,11 +51,11 @@ contains
     ! - distance_to_border_cm : distance over which we compute tau        [ cm ]
     ! - nu_cell  : photon's frequency in the frame of the cell            [ Hz ]
     ! OUTPUT :
-    ! - get_tau_D : optical depth of Deuterium's Lya line over distance_to_border_cm
+    ! - get_tau_D_1215 : optical depth of Deuterium's Lya line over distance_to_border_cm
     ! --------------------------------------------------------------------------
 
     real(kind=8),intent(in) :: ndi,vth,distance_to_border_cm,nu_cell
-    real(kind=8)            :: get_tau_D
+    real(kind=8)            :: get_tau_D_1215
     real(kind=8)            :: delta_nu_doppler, a, x_cell, h_cell, sigmaD
 
     ! compute Doppler width and a-parameter
@@ -68,15 +68,15 @@ contains
     sigmaD = sigmaD_factor / delta_nu_doppler * h_cell
 
     ! optical depth 
-    get_tau_D = sigmaD * ndi * distance_to_border_cm
+    get_tau_D_1215 = sigmaD * ndi * distance_to_border_cm
 
     return
 
-  end function get_tau_D
+  end function get_tau_D_1215
 
 
 
-  subroutine scatter_D(vcell,vth,nu_cell,k,nu_ext,iran)
+  subroutine scatter_D_1215(vcell,vth,nu_cell,k,nu_ext,iran)
 
     ! ---------------------------------------------------------------------------------
     ! perform scattering event on a Deuterium atom with an anisotropic phase function
@@ -156,10 +156,10 @@ contains
     nu_cell = (1.0d0 - scalar/clight) * nu_ext 
     k = knew
 
-  end subroutine scatter_D
+  end subroutine scatter_D_1215
 
 !--PEEL--
-  function D_peeloff_weight(vcell,vth,nu_ext,kin,kout,iran)
+  function D_1215_peeloff_weight(vcell,vth,nu_ext,kin,kout,iran)
 
     ! ---------------------------------------------------------------------------------
     ! Compute probability that a photon coming along kin scatters off in direction kout.
@@ -189,7 +189,7 @@ contains
     real(kind=8),dimension(3),intent(in)    :: vcell
     real(kind=8),intent(in)                 :: vth
     integer(kind=4),intent(inout)           :: iran
-    real(kind=8)                            :: D_peeloff_weight
+    real(kind=8)                            :: D_1215_peeloff_weight
     real(kind=8)                            :: delta_nu_doppler, a, x_cell, upar, ruper
     real(kind=8)                            :: r2, uper, nu_atom, mu, bu, scalar
     real(kind=8)                            :: x_atom,nu_cell
@@ -219,15 +219,15 @@ contains
 
     ! 4/ determine direction of scattered photon
     if (isotropic) then
-       D_peeloff_weight = 0.5d0  ! P(mu) for isotropic phase function
+       D_1215_peeloff_weight = 0.5d0  ! P(mu) for isotropic phase function
        mu = kin(1)*kout(1) + kin(2)*kout(2) + kin(3)*kout(3)
        bu = sqrt(1.0d0 - mu*mu)
     else
        x_atom  = (nu_atom -nu_0) / delta_nu_doppler
        if (abs(x_atom) < 0.2) then ! core scattering 
-          D_peeloff_weight = anisotropic_probability_HIcore(kin,kout,mu,bu)
+          D_1215_peeloff_weight = anisotropic_probability_HIcore(kin,kout,mu,bu)
        else ! wing scattering 
-          D_peeloff_weight = anisotropic_probability_Rayleigh(kin,kout,mu,bu)
+          D_1215_peeloff_weight = anisotropic_probability_Rayleigh(kin,kout,mu,bu)
        end if
     end if
 
@@ -240,11 +240,11 @@ contains
     scalar = kout(1) * vcell(1) + kout(2) * vcell(2) + kout(3)* vcell(3)
     nu_ext = nu_atom * (1.0d0 + scalar/clight + (upar*mu + bu*uper)/clight)
 
-  end function D_peeloff_weight
+  end function D_1215_peeloff_weight
 !--LEEP--
 
 
-  subroutine read_D_params(pfile)
+  subroutine read_D_1215_params(pfile)
 
     ! ---------------------------------------------------------------------------------
     ! subroutine which reads parameters of current module in the parameter file pfile
@@ -293,11 +293,11 @@ contains
     call read_voigt_params(pfile)
     return
 
-  end subroutine read_D_params
+  end subroutine read_D_1215_params
 
 
 
-  subroutine print_D_params(unit)
+  subroutine print_D_1215_params(unit)
 
     ! ---------------------------------------------------------------------------------
     ! write parameter values to std output or to an open file if argument unit is
@@ -322,7 +322,7 @@ contains
 
     return
 
-  end subroutine print_D_params
+  end subroutine print_D_1215_params
 
 
-end module module_D_model
+end module module_D_1215_model

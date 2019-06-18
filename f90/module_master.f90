@@ -117,7 +117,7 @@ contains
           call add_photon_to_domain(i,j)
        endif
     enddo
-    
+
     ! according to the distribution of photons in domains, ditribute cpus to each domain
     call init_loadb(nbundle,ndomain)
 
@@ -138,23 +138,10 @@ contains
 
        ! Send the mesh domain number to the worker
        call MPI_SEND(j, 1, MPI_INTEGER, icpu, tag , MPI_COMM_WORLD, code)
- 
+
        ! Send the bundle of photon packets to the worker
-       !debug
-       !call MPI_SEND(photpacket(1)%id, nbundle, MPI_TYPE_PHOTON, icpu, tag , MPI_COMM_WORLD, code)
-       do i = 1,nbundle 
-          call MPI_SEND(photpacket(i)%id, 1, MPI_INTEGER, icpu, tag , MPI_COMM_WORLD, code)
-          call MPI_SEND(photpacket(i)%status, 1, MPI_INTEGER, icpu, tag , MPI_COMM_WORLD, code)
-          call MPI_SEND(photpacket(i)%xlast, 3, MPI_DOUBLE_PRECISION, icpu, tag , MPI_COMM_WORLD, code)
-          call MPI_SEND(photpacket(i)%xcurr, 3, MPI_DOUBLE_PRECISION, icpu, tag , MPI_COMM_WORLD, code) 
-          call MPI_SEND(photpacket(i)%nu_ext, 1, MPI_DOUBLE_PRECISION, icpu, tag , MPI_COMM_WORLD, code) 
-          call MPI_SEND(photpacket(i)%k, 3, MPI_DOUBLE_PRECISION, icpu, tag , MPI_COMM_WORLD, code)
-          call MPI_SEND(photpacket(i)%nb_abs, 1, MPI_INTEGER, icpu, tag , MPI_COMM_WORLD, code)
-          call MPI_SEND(photpacket(i)%time, 1, MPI_DOUBLE_PRECISION, icpu, tag , MPI_COMM_WORLD, code)
-          call MPI_SEND(photpacket(i)%tau_abs_curr, 1, MPI_DOUBLE_PRECISION, icpu, tag , MPI_COMM_WORLD, code)
-          call MPI_SEND(photpacket(i)%iran, 1, MPI_INTEGER, icpu, tag , MPI_COMM_WORLD, code)
-       end do
-       !gubed
+       call MPI_SEND(photpacket(1)%id, nbundle, MPI_TYPE_PHOTON, icpu, tag , MPI_COMM_WORLD, code)
+       
     end do
 
     everything_not_done=.true.
@@ -177,23 +164,9 @@ contains
        call MPI_RECV(ntest, 1, MPI_INTEGER, MPI_ANY_SOURCE, MPI_ANY_TAG, MPI_COMM_WORLD, status, IERROR)
 
        idcpu = status(MPI_SOURCE)
-       
-       !debug
-       !call MPI_RECV(photpacket(1)%id, nbundle, MPI_TYPE_PHOTON, idcpu, DONE_TAG, MPI_COMM_WORLD, status, IERROR)
-       do i = 1,nbundle
-          call MPI_RECV(photpacket(i)%id, 1, MPI_INTEGER, idcpu, DONE_TAG , MPI_COMM_WORLD, status,IERROR)
-          call MPI_RECV(photpacket(i)%status, 1, MPI_INTEGER, idcpu, DONE_TAG , MPI_COMM_WORLD, status,IERROR)
-          call MPI_RECV(photpacket(i)%xlast, 3, MPI_DOUBLE_PRECISION, idcpu, DONE_TAG , MPI_COMM_WORLD, status,IERROR)
-          call MPI_RECV(photpacket(i)%xcurr, 3, MPI_DOUBLE_PRECISION, idcpu, DONE_TAG , MPI_COMM_WORLD, status,IERROR)
-          call MPI_RECV(photpacket(i)%nu_ext, 1, MPI_DOUBLE_PRECISION, idcpu, DONE_TAG , MPI_COMM_WORLD, status,IERROR)
-          call MPI_RECV(photpacket(i)%k, 3, MPI_DOUBLE_PRECISION, idcpu, DONE_TAG , MPI_COMM_WORLD, status,IERROR)
-          call MPI_RECV(photpacket(i)%nb_abs, 1, MPI_INTEGER, idcpu, DONE_TAG , MPI_COMM_WORLD, status,IERROR)
-          call MPI_RECV(photpacket(i)%time, 1, MPI_DOUBLE_PRECISION, idcpu, DONE_TAG , MPI_COMM_WORLD, status,IERROR)
-          call MPI_RECV(photpacket(i)%tau_abs_curr, 1, MPI_DOUBLE_PRECISION, idcpu, DONE_TAG , MPI_COMM_WORLD, status,IERROR)
-          call MPI_RECV(photpacket(i)%iran, 1, MPI_INTEGER, idcpu, DONE_TAG , MPI_COMM_WORLD, status,IERROR)
-       end do
-       !gubed
-       
+
+       call MPI_RECV(photpacket(1)%id, nbundle, MPI_TYPE_PHOTON, idcpu, DONE_TAG, MPI_COMM_WORLD, status, IERROR)
+
        !if (verbose) print*,'[master] receive a bundle of',nbundle,' photon packets from worker',idcpu
 
        ! By construction, photons that arrive here are not going to go back to the same domain, 
@@ -262,22 +235,7 @@ contains
           !if (verbose) print*,'[master] status RT ',nphottodo, nphot
           
           ! send it
-
-          !debug
-          !call MPI_SEND(photpacket(1)%id, nbundle, MPI_TYPE_PHOTON, idcpu, tag , MPI_COMM_WORLD, code)
-          do i = 1,nbundle
-             call MPI_SEND(photpacket(i)%id, 1, MPI_INTEGER, idcpu, tag , MPI_COMM_WORLD, code)
-             call MPI_SEND(photpacket(i)%status, 1, MPI_INTEGER, idcpu, tag , MPI_COMM_WORLD, code)
-             call MPI_SEND(photpacket(i)%xlast, 3, MPI_DOUBLE_PRECISION, idcpu, tag , MPI_COMM_WORLD, code)
-             call MPI_SEND(photpacket(i)%xcurr, 3, MPI_DOUBLE_PRECISION, idcpu, tag , MPI_COMM_WORLD, code)
-             call MPI_SEND(photpacket(i)%nu_ext, 1, MPI_DOUBLE_PRECISION, idcpu, tag , MPI_COMM_WORLD, code)
-             call MPI_SEND(photpacket(i)%k, 3, MPI_DOUBLE_PRECISION, idcpu, tag , MPI_COMM_WORLD, code)
-             call MPI_SEND(photpacket(i)%nb_abs, 1, MPI_INTEGER, idcpu, tag , MPI_COMM_WORLD, code)
-             call MPI_SEND(photpacket(i)%time, 1, MPI_DOUBLE_PRECISION, idcpu, tag , MPI_COMM_WORLD, code)
-             call MPI_SEND(photpacket(i)%tau_abs_curr, 1, MPI_DOUBLE_PRECISION, idcpu, tag , MPI_COMM_WORLD, code)
-             call MPI_SEND(photpacket(i)%iran, 1, MPI_INTEGER, idcpu, tag , MPI_COMM_WORLD, code)
-          end do
-          !gubed                                                                                                                                                                                                                                                                                                                                                             
+          call MPI_SEND(photpacket(1)%id, nbundle, MPI_TYPE_PHOTON, idcpu, tag , MPI_COMM_WORLD, code)
 
        endif
 
@@ -295,6 +253,7 @@ contains
        endif
 
     enddo
+
     
     ! final synchronization, for profiling purposes
     call MPI_BARRIER(MPI_COMM_WORLD,code)    

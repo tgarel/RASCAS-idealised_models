@@ -5,8 +5,7 @@ program LyaPhotonsFromGas
   use module_random
   use module_constants
   use module_utils
-  use OMP_LIB
-  use module_HI_model, only: lambda_0, lambda_0_cm, nu_0
+  use module_HI_1216_model, only: lambda_0, lambda_0_cm, nu_0
   
   implicit none
 
@@ -20,14 +19,14 @@ program LyaPhotonsFromGas
   real(kind=8)                 :: start_photpacket,end_photpacket,x(3),dt,xmin,xmax,ymin,ymax,zmin,zmax
   logical                      :: ok
   real(kind=8),allocatable     :: nu_em(:),x_em(:,:),k_em(:,:),nu_cell(:)
-  integer(kind=4),dimension(:),allocatable :: cpu_list
-  integer(kind=4)                          :: ncpu_read
-  real(kind=8),allocatable                 :: low_prob_rec(:),low_prob_col(:)
-  integer(kind=4)                          :: ilow,iup,imid
-  real(kind=8)                             :: mid
+  integer(kind=4),allocatable  :: cpu_list(:)
+  integer(kind=4)              :: ncpu_read
+  real(kind=8),allocatable     :: low_prob_rec(:),low_prob_col(:)
+  integer(kind=4)              :: ilow,iup,imid
+  real(kind=8)                 :: mid
 
   ! ---------------------------------------------------------------------------
-  ! user-defined parameters - read from section [CreateDomDump] of the parameter file
+  ! user-defined parameters - read from section [LyaPhotonsFromGas] of the parameter file
   ! ---------------------------------------------------------------------------
   ! --- input / outputs
   character(2000)           :: outputfileRec = 'LyaPhotIC.recLya' ! file to which recombination photons will be written
@@ -86,19 +85,19 @@ program LyaPhotonsFromGas
           xc=emission_dom_pos(1),yc=emission_dom_pos(2),zc=emission_dom_pos(3),thickness=emission_dom_thickness)
   end select
   ! ----------------------------------------------------------------------------
-
+  
   
   ! ---- Read/select leaf cells and compute their luminositites ----------------
-  if (verbose) print*,'start reading cells ... '
+  if (verbose) print*,'Reading cells ... '
   ! define max extent of emission domain 
   call domain_get_bounding_box(emission_domain,xmin,xmax,ymin,ymax,zmin,zmax)
   call get_cpu_list_periodic(repository, snapnum, xmin,xmax,ymin,ymax,zmin,zmax, ncpu_read, cpu_list)
   call read_leaf_cells_omp(repository, snapnum, ncpu_read, cpu_list, nleaftot, nvar, x_leaf, ramses_var, leaf_level)
   !call read_leaf_cells(repository, snapnum, nleaftot, nvar, x_leaf, ramses_var, leaf_level)
   if (verbose) print*,'done reading'
-  call select_in_domain(emission_domain,nleaftot,x_leaf,emitting_cells)
+  call select_cells_in_domain(emission_domain,nleaftot,x_leaf,leaf_level,emitting_cells)
   nsel = size(emitting_cells)
-
+  
   if (verbose) print*,'done selecting cells in domain'
   allocate(recomb_em(nsel),coll_em(nsel),HIDopWidth(nsel))
   call ramses_get_LyaEmiss_HIDopwidth(repository,snapnum,nleaftot,nvar,ramses_var,recomb_em,coll_em,HIDopWidth,sample=emitting_cells)
@@ -131,12 +130,11 @@ program LyaPhotonsFromGas
   
   recomb_total = sum(recomb_em) / (planck*nu_0)  ! nb of photons per second
   coll_total   = sum(coll_em) / (planck*nu_0)  ! nb of photons per second
-
+  
   print*,'coll_total,recomb_total [erg/s] = ',coll_total*(planck*nu_0),recomb_total*(planck*nu_0)
   
   recomb_em = recomb_em / maxrec
   coll_em   = coll_em / maxcol
-
   if (doRecombs) then 
      allocate(low_prob_rec(nsel+1))
      low_prob_rec(1) = 0.0d0
@@ -160,15 +158,13 @@ program LyaPhotonsFromGas
   call ramses_get_velocity_cgs(repository,snapnum,nleaftot,nvar,ramses_var,v_leaf)
   deallocate(ramses_var)
   ! ----------------------------------------------------------------------------
-
-  
   
   allocate(nu_em(nphotons),x_em(3,nphotons),k_em(3,nphotons),nu_cell(nphotons))
-
+  
   ! --------------------------------------------------------------------------------------
   if (doRecombs) then 
      if (verbose) then
-        write(*,*) "> Starting to sample recombination emissivity" 
+        write(*,*) "Starting to sample recombination emissivity" 
         call cpu_time(start_photpacket)
      end if
      ! --------------------------------------------------------------------------------------
@@ -240,13 +236,13 @@ program LyaPhotonsFromGas
      end if
   end if
   ! --------------------------------------------------------------------------------------
-
+  
   
   
   ! --------------------------------------------------------------------------------------
   if (doColls) then 
      if (verbose) then
-        write(*,*) "> Starting to sample collisional emissivity" 
+        write(*,*) "Starting to sample collisional emissivity" 
         call cpu_time(start_photpacket)
      end if
      iseed = ranseed
@@ -301,7 +297,7 @@ program LyaPhotonsFromGas
      ! --------------------------------------------------------------------------------------
      open(unit=14, file=outputfileCol, status='unknown', form='unformatted', action='write')
      write(14) nphotons      ! nb of MC photons 
-     write(14) coll_total  ! nb of real photons (per sec).
+     write(14) coll_total    ! nb of real photons (per sec).
      write(14) ranseed
      write(14) (i,i=1,nphotons) ! ID
      write(14) (nu_em(i),i=1,nphotons)
@@ -314,10 +310,11 @@ program LyaPhotonsFromGas
      if (verbose) then 
         call cpu_time(end_photpacket)
         print*, 'time to draw collisions = ',end_photpacket-start_photpacket,' seconds.'
+        print*,' '
      end if
   end if
   ! --------------------------------------------------------------------------------------
-
+  
   deallocate(nu_em,x_em,k_em,nu_cell)
   
 contains
@@ -371,7 +368,6 @@ contains
              write(repository,'(a)') trim(value)
           case ('snapnum')
              read(value,*) snapnum
-
           case('emission_dom_type')
              write(emission_dom_type,'(a)') trim(value)
           case ('emission_dom_pos')
@@ -487,6 +483,7 @@ contains
        call print_ramses_params()
        write(*,'(a)')             ' '
        write(*,'(a)')             '--------------------------------------------------------------------------------'
+       write(*,'(a)')             ' '
     end if
 
     return

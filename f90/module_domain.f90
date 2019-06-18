@@ -171,6 +171,43 @@ contains
 
 
 
+  subroutine select_cells_in_domain(dom,n,xp,level,indsel)
+    
+    implicit none
+    integer(kind=4),intent(in)                           :: n
+    type(domain),intent(in)                              :: dom 
+    real(kind=8),dimension(1:n,1:3),intent(in)           :: xp
+    integer(kind=4),dimension(1:n),intent(in)            :: level
+    integer(kind=4),dimension(:),allocatable,intent(out) :: indsel
+    integer(kind=4)                                      :: i,ii,nsel
+    integer(kind=4),dimension(:),allocatable             :: tmpi 
+    real(kind=8),dimension(1:3)                          :: xc
+    real(kind=8)                                         :: dx
+    
+    allocate(indsel(1:n))
+    indsel=0
+    ii=0
+    do i=1,n
+       xc(1:3) = xp(i,1:3)
+       dx = 0.5d0**(level(i))
+       if(level(i)>0)then
+          if(domain_contains_cell(xc,dx,dom))then
+             ii=ii+1
+             indsel(ii)=i
+          endif
+       endif
+    enddo
+    nsel=ii
+    allocate(tmpi(1:nsel))
+    tmpi(1:nsel) = indsel(1:nsel)
+    deallocate(indsel)
+    allocate(indsel(1:nsel))
+    indsel=tmpi
+    deallocate(tmpi)
+    
+  end subroutine select_cells_in_domain
+
+
   subroutine read_domain(unit,dom)
 
     integer(kind=4),intent(in)  :: unit
@@ -398,16 +435,16 @@ contains
 
   
 
-  function domain_contains_cell(x,dx,dom)
+  function domain_fully_contains_cell(x,dx,dom)
     ! -> returns T/F if the full cell at x, of size dx, is in domain dom.
     type(domain),intent(in)              :: dom
     real(kind=8),dimension(3),intent(in) :: x
     real(kind=8),intent(in)              :: dx
-    logical                              :: domain_contains_cell
+    logical                              :: domain_fully_contains_cell
     real(kind=8)                         :: rr,xc,dd,ddx,ddy,ddz
     real(kind=8),parameter :: sqrt3over2 = sqrt(3.0d0)*0.5d0
     
-    domain_contains_cell=.false.
+    domain_fully_contains_cell=.false.
 
     select case(trim(dom%type))
 
@@ -433,7 +470,7 @@ contains
        end if
        rr = sqrt(ddx**2 + ddy**2 + ddz**2)
        rr = rr + dx*sqrt3over2
-       if (rr < dom%sp%radius) domain_contains_cell=.true.
+       if (rr < dom%sp%radius) domain_fully_contains_cell=.true.
 
     case('shell')
        ! correct cell's position for periodic boundaries
@@ -457,7 +494,7 @@ contains
        end if
        rr = sqrt(ddx*ddx + ddy*ddy + ddz*ddz)
        if(( (rr-dx*sqrt3over2)>dom%sh%r_inbound) .and. ((rr+dx*sqrt3over2)<dom%sh%r_outbound) ) then
-          domain_contains_cell=.true.
+          domain_fully_contains_cell=.true.
        end if
 
     case('cube')
@@ -489,7 +526,7 @@ contains
              end if
              if ((xc+dx*0.5d0 < dom%cu%center(3)+dom%cu%size*0.5d0).and. &
                   (xc-dx*0.5d0 > dom%cu%center(3)-dom%cu%size*0.5d0)) then
-                domain_contains_cell=.true.
+                domain_fully_contains_cell=.true.
              end if
           end if
        end if
@@ -503,10 +540,121 @@ contains
           xc = xc + 1.0d0
        end if
        if((xc+dx*0.5d0 < dom%sl%zc+dom%sl%thickness*0.5d0).and. &
-            (xc-dx*0.5d0 > dom%sl%zc-dom%sl%thickness*0.5d0)) domain_contains_cell=.true.
+            (xc-dx*0.5d0 > dom%sl%zc-dom%sl%thickness*0.5d0)) domain_fully_contains_cell=.true.
        
     end select
 
+    return
+  end function domain_fully_contains_cell
+
+
+
+  function domain_contains_cell(x,dx,dom)
+    ! -> returns T/F if cell at x, of size dx, is (partially or fully) in domain dom.
+    ! warning: it is not a strict condition, some cell may be completely outside the domain. 
+    ! purpose of this function: selecting all cells belonging to a domain, if some cells are
+    !    counted in and should not, we don't care.
+    type(domain),intent(in)              :: dom
+    real(kind=8),dimension(3),intent(in) :: x
+    real(kind=8),intent(in)              :: dx
+    logical                              :: domain_contains_cell
+    real(kind=8)                         :: rr,dd,ddx,ddy,ddz,rcell
+    real(kind=8),parameter :: sqrt3over2 = sqrt(3.0d0)*0.5d0
+    
+    domain_contains_cell=.false.
+    
+    select case(trim(dom%type))
+       
+    case('sphere')
+       ! correct cell's position for periodic boundaries
+       ddx = x(1)-dom%sp%center(1)
+       if (ddx > 0.5d0) then 
+          ddx = ddx -1.0d0 
+       else if (ddx < -0.5d0) then 
+          ddx = ddx + 1.0d0
+       end if
+       ddy = x(2)-dom%sp%center(2)
+       if (ddy > 0.5d0) then 
+          ddy = ddy -1.0d0 
+       else if (ddy < -0.5d0) then 
+          ddy = ddy + 1.0d0
+       end if
+       ddz = x(3)-dom%sp%center(3)
+       if (ddz > 0.5d0) then 
+          ddz = ddz -1.0d0 
+       else if (ddz < -0.5d0) then 
+          ddz = ddz + 1.0d0
+       end if
+       rr = sqrt(ddx**2 + ddy**2 + ddz**2)
+       rcell = dx*sqrt3over2
+       if (rr <= (dom%sp%radius + rcell)) domain_contains_cell=.true.
+       
+    case('shell')
+       ! correct cell's position for periodic boundaries
+       ddx = x(1)-dom%sh%center(1)
+       if (ddx > 0.5d0) then 
+          ddx = ddx -1.0d0 
+       else if (ddx < -0.5d0) then 
+          ddx = ddx + 1.0d0
+       end if
+       ddy = x(2)-dom%sh%center(2)
+       if (ddy > 0.5d0) then 
+          ddy = ddy -1.0d0 
+       else if (ddy < -0.5d0) then 
+          ddy = ddy + 1.0d0
+       end if
+       ddz = x(3)-dom%sh%center(3)
+       if (ddz > 0.5d0) then 
+          ddz = ddz -1.0d0 
+       else if (ddz < -0.5d0) then 
+          ddz = ddz + 1.0d0
+       end if
+       rr = sqrt(ddx*ddx + ddy*ddy + ddz*ddz)
+       rcell = dx*sqrt3over2
+       if((rr>=(dom%sh%r_inbound-rcell)) .and. (rr<=(dom%sh%r_outbound+rcell))) then
+          domain_contains_cell=.true.
+       end if
+       
+    case('cube')
+       ! correct cell's position for periodic boundaries 
+       dd = x(1) - dom%cu%center(1)
+       if (dd > 0.5d0) then 
+          dd = dd - 1.0d0 
+       else if (dd < -0.5d0) then 
+          dd = dd + 1.0d0
+       end if
+       if (abs(dd)<=(dx*0.5d0 + dom%cu%size*0.5d0)) then
+          dd = x(2) - dom%cu%center(2)
+          if (dd > 0.5d0) then 
+             dd = dd - 1.0d0 
+          else if (dd < -0.5d0) then 
+             dd = dd + 1.0d0
+          end if
+          if (abs(dd)<=(dx*0.5d0 + dom%cu%size*0.5d0)) then
+             dd = x(3) - dom%cu%center(3)
+             if (dd > 0.5d0) then 
+                dd = dd - 1.0d0 
+             else if (dd < -0.5d0) then 
+                dd = dd + 1.0d0
+             end if
+             if (abs(dd)<=(dx*0.5d0 + dom%cu%size*0.5d0)) then
+                domain_contains_cell=.true.
+             end if
+          end if
+       end if
+       
+    case('slab')
+       dd = x(3) - dom%sl%zc
+       if (dd > 0.5d0) then 
+          dd = dd - 1.0d0 
+       else if (dd < -0.5d0) then 
+          dd = dd + 1.0d0
+       end if
+       if(abs(dd) <= (dx*0.5d0 + dom%sl%thickness*0.5d0)) then
+          domain_contains_cell=.true.
+       endif
+       
+    end select
     return
   end function domain_contains_cell
 
@@ -802,6 +950,7 @@ contains
     
   end function domain_distance_to_border_along_k
 
+
   subroutine domain_get_bounding_box(dom,xmin,xmax,ymin,ymax,zmin,zmax)
     implicit none
     type(domain),intent(in)     :: dom
@@ -840,6 +989,6 @@ contains
     
     return
   end subroutine domain_get_bounding_box
-  
+
 end module module_domain
 

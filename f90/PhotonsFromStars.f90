@@ -111,7 +111,7 @@ program PhotonsFromStars
   ! --------------------------------------------------------------------------------------
   ! read star particles within domain
   ! --------------------------------------------------------------------------------------
-  if (verbose) write(*,*) '> reading star particles'
+  if (verbose) write(*,*) 'Reading star particles'
   call ramses_read_stars_in_domain(repository,snapnum,emission_domain,star_pos,star_age,star_mass,star_vel,star_met)
   ! --------------------------------------------------------------------------------------
   
@@ -175,7 +175,7 @@ program PhotonsFromStars
      ! calcul pour chaque particule la luminosite inferieure de son bin dans la distribution cumulative.. 
      ! compute the total number of photons emitted per second by the sources
      call compute_cum_low_prob(nstars, sweight, low_prob, total_flux)
-     if (verbose) write(*,*) '> Total luminosity (nb of photons per second): ',total_flux
+     if (verbose) write(*,*) 'Total luminosity (nb of photons per second): ',total_flux
 
      ! for each photon packet, draw the emitting star
      allocate(x_em(1:3,1:nphot), k_em(1:3,1:nphot), nu_em(1:nphot), nu_star(1:nphot))
@@ -237,7 +237,7 @@ program PhotonsFromStars
      ! calcul pour chaque particule la luminosite inferieure de son bin dans la distribution cumulative.. 
      ! compute the total number of photons emitted per second by the sources
      call compute_cum_low_prob(nstars, sweight, low_prob, total_flux)
-     if (verbose) write(*,*) '> Total luminosity (nb of photons per second): ',total_flux
+     if (verbose) write(*,*) 'Total luminosity (nb of photons per second): ',total_flux
      
      ! for each photon packet, draw the emitting star
      allocate(x_em(1:3,1:nphot), k_em(1:3,1:nphot), nu_em(1:nphot), nu_star(1:nphot))
@@ -320,7 +320,7 @@ program PhotonsFromStars
      ! calcul pour chaque particule la luminosite inferieure de son bin dans la distribution cumulative.. 
      ! compute the total number of photons emitted per second by the sources
      call compute_cum_low_prob(nstars, sweight, low_prob, total_flux)
-     if (verbose) write(*,*) '> Total luminosity (nb of photons per second): ',total_flux
+     if (verbose) write(*,*) 'Total luminosity (nb of photons per second): ',total_flux
      
      ! for each photon packet, draw the emitting star
      allocate(x_em(1:3,1:nphot), k_em(1:3,1:nphot), nu_em(1:nphot), nu_star(1:nphot))
@@ -352,7 +352,10 @@ program PhotonsFromStars
   ! --------------------------------------------------------------------------------------
   ! write ICs
   ! --------------------------------------------------------------------------------------
-  if (verbose) write(*,*) '> writing file'
+  if (verbose) then
+     write(*,*) 'Writing file: ',trim(outputfile)
+     write(*,*) ' '
+  endif
   open(unit=14, file=trim(outputfile), status='unknown', form='unformatted', action='write')
   write(14) nphot      ! nb of MC photons 
   write(14) total_flux ! nb of real photons (per sec).
@@ -594,6 +597,8 @@ contains
        write(unit,'(a)')             ' '
        call print_ramses_params(unit)
     else
+       write(*,'(a)')             '--------------------------------------------------------------------------------'
+       write(*,'(a)')             ' '
        write(*,'(a,a,a)')         '[PhotonsFromStars]'
        write(*,'(a)')             '# input / output parameters'
        write(*,'(a,a)')           '  outputfile      = ',trim(outputfile)
@@ -640,6 +645,9 @@ contains
        endif
        write(*,'(a)')             ' '
        call print_ramses_params
+       write(*,'(a)')             ' '
+       write(*,'(a)')             '--------------------------------------------------------------------------------'
+       write(*,'(a)')             ' '
     end if
 
     return

@@ -72,11 +72,11 @@ endif
 
 # choose the gas mix you want to use
 # 1/ HI, D, and dust
-COMPOBJS = module_dust_model.o module_D_model.o module_HI_model.o module_gas_composition_HI_D_dust.o
+COMPOBJS = module_dust_model.o module_D_1215_model.o module_HI_1216_model.o module_gas_composition_HI_D_dust.o
 # 2/ HI and dust
-#COMPOBJS = module_dust_model.o module_HI_model.o module_gas_composition_HI_dust.o
+#COMPOBJS = module_dust_model.o module_HI_1216_model.o module_gas_composition_HI_dust.o
 # 3/ pure HI
-#COMPOBJS = module_HI_model.o module_gas_composition_HI.o
+#COMPOBJS = module_HI_1216_model.o module_gas_composition_HI.o
 # 4/ pure RAMSES hydro variables
 #COMPOBJS = module_gas_composition_ramses.o
 # 5/ SiII 1190/1193
@@ -95,21 +95,18 @@ COMPOBJS = module_dust_model.o module_D_model.o module_HI_model.o module_gas_com
 #COMPOBJS = module_SiII_1260_model.o module_gas_composition_SiII_1260.o
 # 12/ SiII 1260 and dust
 #COMPOBJS = module_dust_model.o module_SiII_1260_model.o module_gas_composition_SiII_1260_dust.o
+# 13/ pure dust
+#COMPOBJS = module_dust_model.o module_gas_composition_dust.o
 
 GASOBJS = module_constants.o module_random.o module_utils.o module_voigt.o module_domain.o coolrates_module.o module_ramses.o module_uparallel.o $(COMPOBJS)
 
 OBJSDOM = $(GASOBJS) module_select.o module_mesh.o
 
-OBJSPHO = $(GASOBJS) module_mesh.o module_parallel_mpi.o module_mock.o module_photon.o 
+OBJSPHO = $(GASOBJS) module_mesh.o module_mock.o module_photon.o 
 
-# GATHER -- 
-#OBJSMPI = $(OBJSPHO) module_parallel_mpi.o module_worker.o module_master.o
-OBJSMPI = module_parallel_mpi.o $(OBJSPHO) module_worker.o module_master.o
-# -- GATHER
+OBJSMPI = $(OBJSPHO) module_parallel_mpi.o module_worker.o module_master.o
 
-##LYAFG = module_constants.o module_random.o module_utils.o module_domain.o coolrates_module.o module_ramses.o
-
-OBJLYAFG = module_constants.o module_random.o module_utils.o module_voigt.o module_domain.o coolrates_module.o module_ramses.o module_uparallel.o module_HI_model.o
+OBJLYAFG = module_constants.o module_random.o module_utils.o module_voigt.o module_domain.o coolrates_module.o module_ramses.o module_uparallel.o module_HI_1216_model.o
 
 #############################################################################
 #.SUFFIXES: .o .f90
