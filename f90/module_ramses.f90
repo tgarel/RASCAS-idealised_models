@@ -29,7 +29,7 @@ module module_ramses
   real(kind=8),allocatable         :: cell_x(:),cell_y(:),cell_z(:)
   integer(kind=4),allocatable      :: cell_level(:)
 
-  integer(kind=4)                  :: ncpu
+  integer(kind=4)                  :: ncpu,nvar
 
   ! conversion factors (units)
   logical                        :: conversion_scales_are_known = .False. 
@@ -86,6 +86,9 @@ module module_ramses
   logical                  :: cosmo             = .true.   ! if false, assume idealised simulation
   logical                  :: use_proper_time   = .false.  ! if true, use proper time instead of conformal time for cosmo runs. 
   logical                  :: QuadHilbert       = .false.  ! if true, do not use hilbert indexes for now ...
+  integer(kind=4)          :: U_precision=8  ! hydro-precision in RAMSES output
+  integer(kind=4)          :: RT_precision=8 ! RT-precision in RAMSES output
+
   ! miscelaneous
   logical                  :: verbose        = .false. ! display some run-time info on this module
   ! RT variable indices
@@ -148,9 +151,12 @@ contains
     nvar     = get_nvar(repository,snapnum)
     allocate(ramses_var(nvar,nleaftot), xleaf(nleaftot,3), leaf_level(nleaftot))
     ncpu = get_ncpu(repository,snapnum)
+!!$    ! Check whether the ramses output is in single or double precision
+!!$    if(check_param_real(repository,snapnum,'U_precision')) &
+!!$         U_precision = nint(get_param_real(repository,snapnum,'U_precision'))
 
     if(verbose)print *,'-- read_leaf_cells: nleaftot, nvar, ncpu =',nleaftot,nvar,ncpu
-
+    
     do_allocs = .true.
     ileaf = 0
     do icpu = 1,ncpu
@@ -204,6 +210,9 @@ contains
     nvar     = get_nvar(repository,snapnum)
     ncpu     = get_ncpu(repository,snapnum)
     allocate(ramses_var_all(nvar,nleaftot), xleaf_all(nleaftot,3), leaf_level_all(nleaftot))
+!!$    ! Check whether the ramses output is in single or double precision
+!!$    if(check_param_real(repository,snapnum,'U_precision')) &
+!!$         U_precision = nint(get_param_real(repository,snapnum,'U_precision'))
 
     if(verbose) print *,'-- read_leaf_cells_omp: nleaftot(_read), nvar, ncpu(_read) =',nleaftot,nvar,ncpu_read
 
@@ -301,6 +310,9 @@ contains
 
     nvar = get_nvar(repository,snapnum)
     ncpu = get_ncpu(repository,snapnum)
+!!$    ! Check whether the ramses output is in single or double precision
+!!$    if(check_param_real(repository,snapnum,'U_precision')) &
+!!$         U_precision = nint(get_param_real(repository,snapnum,'U_precision'))
 
     ! first count leaf cells in domain...
     nleaftot = 0 ; nleaf_in_domain = 0
@@ -1912,6 +1924,7 @@ contains
     character(1000)             :: nomfich
     integer(kind=4)             :: i,nlevelmax,nboundary,ix,iy,iz,ind,ilevel,ibound,ncache,istart,ivar,iskip,igrid,nvarH,nvarRT
     real(kind=8),allocatable    :: xc(:,:),xx(:)
+    real(kind=4),allocatable    :: xx_sp(:)
     integer(kind=4),allocatable :: ind_grid(:)
 
     write(nomfich,'(a,a,i5.5,a,i5.5,a,i5.5)') trim(repository),'/output_',snapnum,'/hydro_',snapnum,'.out',icpu
@@ -1974,7 +1987,12 @@ contains
           end if
           if(ncache>0)then
              allocate(ind_grid(1:ncache))
-             allocate(xx(1:ncache))
+             if(U_precision.eq.4 .or. RT_precision==4) then
+                allocate(xx_sp(1:ncache))
+             end if
+             if(U_precision == 8 .or. RT_precision == 8) then 
+                allocate(xx(1:ncache))
+             endif
              ! Loop over level grids
              igrid=istart
              do i=1,ncache
@@ -1986,19 +2004,35 @@ contains
                 iskip=ncoarse+(ind-1)*ngridmax
                 ! Loop over conservative variables
                 do ivar=1,nvarH
-                   read(10) xx
-                   if (ibound > ncpu) cycle  ! dont bother with boundaries
-                   do i = 1, ncache
-                      var(ind_grid(i)+iskip,ivar) = xx(i)
-                   end do
+                   if(U_precision.eq.4) then
+                      read(10) xx_sp
+                      if (ibound > ncpu) cycle  ! dont bother with boundaries
+                      do i = 1, ncache
+                         var(ind_grid(i)+iskip,ivar) = xx_sp(i)
+                      end do
+                   else
+                      read(10) xx
+                      if (ibound > ncpu) cycle  ! dont bother with boundaries
+                      do i = 1, ncache
+                         var(ind_grid(i)+iskip,ivar) = xx(i)
+                      end do
+                   end if
                 end do
                 if (read_rt_variables) then 
                    do ivar=1,nvarRT
-                      read(12) xx
-                      if (ibound > ncpu) cycle  ! dont bother with boundaries
-                      do i = 1, ncache
-                         var(ind_grid(i)+iskip,ivar+nvarH) = xx(i)
-                      end do
+                      if(RT_precision.eq.4) then
+                         read(12) xx_sp
+                         if (ibound > ncpu) cycle  ! dont bother with boundaries
+                         do i = 1, ncache
+                            var(ind_grid(i)+iskip,ivar+nvarH) = xx_sp(i)
+                         end do
+                      else
+                         read(12) xx
+                         if (ibound > ncpu) cycle  ! dont bother with boundaries
+                         do i = 1, ncache
+                            var(ind_grid(i)+iskip,ivar+nvarH) = xx(i)
+                         end do
+                      end if
                    end do
                 end if
                 do i = 1,ncache
@@ -2014,7 +2048,9 @@ contains
                    cell_level(ind_grid(i)+iskip)      = ilevel
                 end do
              end do
-             deallocate(ind_grid,xx)
+             deallocate(ind_grid)
+             if(allocated(xx_sp)) deallocate(xx_sp)
+             if(allocated(xx)) deallocate(xx)
           end if
        end do
     end do
@@ -2223,6 +2259,7 @@ contains
     real(kind=8)                :: dx
     integer(kind=4)             :: ix,iy,iz,istart,ivar,igrid,nvarH,nvarRT
     real(kind=8),allocatable    :: xc(:,:),xx(:)
+    real(kind=4),allocatable    :: xx_sp(:)
 
     ! stuff read from the HYDRO files
     real(kind=8),allocatable,intent(out)     :: var_l(:,:)
@@ -2427,7 +2464,12 @@ contains
           end if
           if(ncache>0)then
              allocate(ind_grid(1:ncache))
-             allocate(xx(1:ncache))
+             if(U_precision.eq.4 .or. RT_precision == 4) then
+                allocate(xx_sp(1:ncache))
+             end if
+             if(U_precision == 8 .or. RT_precision == 8) then 
+                allocate(xx(1:ncache))
+             endif
              ! Loop over level grids
              igrid=istart
              do i=1,ncache
@@ -2439,19 +2481,35 @@ contains
                 iskip=ncoarse_l+(ind-1)*ngridmax_l
                 ! Loop over conservative variables
                 do ivar=1,nvarH
-                   read(iunit) xx
-                   if (ibound > ncpu) cycle  ! dont bother with boundaries
-                   do i = 1, ncache
-                      var_l(ind_grid(i)+iskip,ivar) = xx(i)
-                   end do
+                   if(U_precision.eq.4) then
+                      read(iunit) xx_sp
+                      if (ibound > ncpu) cycle  ! dont bother with boundaries
+                      do i = 1, ncache
+                         var_l(ind_grid(i)+iskip,ivar) = xx_sp(i)
+                      end do
+                   else
+                      read(iunit) xx
+                      if (ibound > ncpu) cycle  ! dont bother with boundaries
+                      do i = 1, ncache
+                         var_l(ind_grid(i)+iskip,ivar) = xx(i)
+                      end do
+                   end if
                 end do
                 if (read_rt_variables) then 
                    do ivar=1,nvarRT
-                      read(iu2) xx
-                      if (ibound > ncpu) cycle  ! dont bother with boundaries
-                      do i = 1, ncache
-                         var_l(ind_grid(i)+iskip,ivar+nvarH) = xx(i)
-                      end do
+                      if(RT_precision.eq.4) then
+                         read(iu2) xx_sp
+                         if (ibound > ncpu) cycle  ! dont bother with boundaries
+                         do i = 1, ncache
+                            var_l(ind_grid(i)+iskip,ivar+nvarH) = xx_sp(i)
+                         end do
+                      else
+                         read(iu2) xx
+                         if (ibound > ncpu) cycle  ! dont bother with boundaries
+                         do i = 1, ncache
+                            var_l(ind_grid(i)+iskip,ivar+nvarH) = xx(i)
+                         end do
+                      end if
                    end do
                 end if
                 do i = 1,ncache
@@ -2461,7 +2519,10 @@ contains
                    cell_level_l(ind_grid(i)+iskip)      = ilevel
                 end do
              end do
-             deallocate(ind_grid,xx)
+             deallocate(ind_grid)
+             if(allocated(xx_sp)) deallocate(xx_sp)
+             if(allocated(xx)) deallocate(xx)
+
           end if
        end do
     end do
@@ -2882,7 +2943,44 @@ contains
 
   end function get_param_real
 
-  
+  function check_param_real(repository,snapnum,param)
+    ! Check if parameter with given name exists in RAMSES info-file.
+
+    implicit none 
+
+    logical                    :: check_param_real
+    character(512),intent(in)  :: repository
+    integer(kind=4),intent(in) :: snapnum
+    character(*),intent(in)    :: param
+    character(512)             :: nomfich
+    character(512)             :: line,name,value
+    integer(kind=4)            :: i
+    integer(kind=4),parameter  :: param_unit = 14
+
+    write(nomfich,'(a,a,i5.5,a,i5.5,a)') trim(repository),'/output_',snapnum,'/info_',snapnum,'.txt'
+    open(unit=param_unit,file=nomfich,status='old',form='formatted')
+    check_param_real = .false.
+    do 
+       read(param_unit,'(a)',end=3) line
+       i = scan(line,'=')
+       if (i==0 .or. line(1:1)=='#') cycle
+       name=trim(adjustl(line(:i-1)))
+       value=trim(adjustl(line(i+1:)))
+       ! check for a comment at end of line !
+       i = scan(value,'!')
+       if (i /= 0) value = trim(adjustl(value(:i-1)))
+       if (trim(name) .eq. trim(param)) then 
+          check_param_real = .true.
+          exit
+       end if
+
+    end do
+3   close (param_unit)  
+
+    return
+
+  end function check_param_real
+
   
   subroutine read_conversion_scales(repository,snapnum)
 
@@ -3582,6 +3680,10 @@ contains
              read(value,*) iheiii
           case('QuadHilbert') ! True if simulation was run with -DQUADHILBERT option  
              read(value,*) QuadHilbert
+          case('U_precision') ! precision of hydro vars  
+             read(value,*) U_precision
+          case('RT_precision') ! precision of RT vars  
+             read(value,*) RT_precision
           end select
        end do
     end if
@@ -3616,6 +3718,8 @@ contains
        write(unit,'(a,i2)') '  ihii               = ', ihii
        write(unit,'(a,i2)') '  iheii              = ', iheii
        write(unit,'(a,i2)') '  iheiii             = ', iheiii
+       write(unit,'(a,i2)') '  U_precision        = ', U_precision
+       write(unit,'(a,i2)') '  RT_precision       = ', RT_precision
     else
        write(*,'(a,a,a)') '[ramses]'
        write(*,'(a,L1)') '  self_shielding     = ',self_shielding
@@ -3631,6 +3735,8 @@ contains
        write(*,'(a,i2)') '  ihii               = ', ihii
        write(*,'(a,i2)') '  iheii              = ', iheii
        write(*,'(a,i2)') '  iheiii             = ', iheiii
+       write(*,'(a,i2)') '  U_precision        = ', U_precision
+       write(*,'(a,i2)') '  RT_precision       = ', RT_precision
     end if
     
     return
