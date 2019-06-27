@@ -198,12 +198,12 @@ contains
     integer(kind=4)                           :: k, icpu, ileaf, icell, ivar, ilast, iloop
     logical                                   :: do_allocs
     
-    if(verbose) print *,'Reading RAMSES cells...'
+    if(verbose) print *,'Reading RAMSES cells...',ncpu_read
 
     nleaftot = get_nleaf_omp(repository,snapnum,ncpu_read,cpu_list)
     nvar     = get_nvar(repository,snapnum)
+    ncpu     = get_ncpu(repository,snapnum)
     allocate(ramses_var_all(nvar,nleaftot), xleaf_all(nleaftot,3), leaf_level_all(nleaftot))
-    ncpu = get_ncpu(repository,snapnum) !!! ncpu should be known before calling read_amr_hydro!!!
 
     if(verbose) print *,'-- read_leaf_cells_omp: nleaftot(_read), nvar, ncpu(_read) =',nleaftot,nvar,ncpu_read
 
@@ -1357,7 +1357,7 @@ contains
 
     integer(kind=4)            :: n,j,i
     real(kind=8),parameter     :: e_lya = planck * clight / (1215.67d0/cmtoA) ! [erg] energy of a Lya photon (consistent with HI_model)
-    real(kind=8)               :: xhii,xheii,xheiii,nh,nhi,nhii,n_e,mu,TK,Ta,prob_case_B,alpha_B,collExrate_HI,lambda,nhe,LyaEm
+    real(kind=8)               :: xhii,xheii,xheiii,nh,nhi,nhii,n_e,mu,TK,Ta,prob_case_B,alpha_B,lambda,nhe,LyaEm
     logical                    :: subsample
     
     ! get conversion factors if necessary
@@ -2234,7 +2234,7 @@ contains
     iunit=10+rank*2
     iu2 = 10+rank*2+1
 
-    ! Vérification de l'existence des fichiers AMR
+    ! Verification de l'existence des fichiers AMR
     write(nomfich,'(a,a,i5.5,a,i5.5,a,i5.5)') trim(repository),'/output_',snapnum,'/amr_',snapnum,'.out',icpu
     inquire(file=nomfich, exist=ok)
     if(.not. ok)then
@@ -3192,7 +3192,13 @@ contains
                    end if
                 else
                    ! convert from tborn to age in Myr
-                   star_age(ilast)   = max(0.d0, (time_cu - age(i)) * dp_scale_t / (365.d0*24.d0*3600.d0*1.d6))
+                   ! JB -  hack to make IC particles older ...
+                   if (age(i) < 0.0) then 
+                      star_age(ilast)   = 8000.0 ! 8 Gyr. 
+                   else
+                      star_age(ilast)   = max(0.d0, (time_cu - age(i)) * dp_scale_t / (365.d0*24.d0*3600.d0*1.d6))
+                   end if
+                   ! - JB 
                 endif
                 if (use_initial_mass) then 
                    star_mass(ilast) = imass(i) * dp_scale_m ! [g]

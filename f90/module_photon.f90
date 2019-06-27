@@ -464,8 +464,8 @@ contains
 
        ! define/update flag_cell_fully_in_comp_dom to avoid various tests in the following
        pcell = cell_corner + 0.5d0*cell_size
-       cell_fully_in_domain = domain_contains_cell(pcell,cell_size,domaine_calcul)
-
+       cell_fully_in_domain = domain_fully_contains_cell(pcell,cell_size,domaine_calcul)
+       
        ! compute distance of photon to border of cell along propagation direction
        distance_to_border           = path(ppos_cell,kobs)                   ! in cell units
        distance_to_border_cm        = distance_to_border * cell_size_cm     ! cm
@@ -516,6 +516,11 @@ contains
           ppos(1) = ppos(1) + merge(-1.0d0,1.0d0,kobs(1)<0.0d0) * epsilon(ppos(1))
           ppos(2) = ppos(2) + merge(-1.0d0,1.0d0,kobs(2)<0.0d0) * epsilon(ppos(2))
           ppos(3) = ppos(3) + merge(-1.0d0,1.0d0,kobs(3)<0.0d0) * epsilon(ppos(3))
+          ! correct for periodicity
+          do i=1,3
+             if (ppos(i) < 0.0d0) ppos(i)=ppos(i)+1.0d0
+             if (ppos(i) > 1.0d0) ppos(i)=ppos(i)-1.0d0
+          enddo
           call whereIsPhotonGoing(domesh,icell,ppos,icellnew,flagoutvol)
           if (npush == 10) then
              print*,'npush == 10 ... using les grands moyens ... '
