@@ -189,9 +189,11 @@ contains
     do i=1,n
        xc(1:3) = xp(i,1:3)
        dx = 0.5d0**(level(i))
-       if(domain_contains_cell(xc,dx,dom))then
-          ii=ii+1
-          indsel(ii)=i
+       if(level(i)>0)then
+          if(domain_contains_cell(xc,dx,dom))then
+             ii=ii+1
+             indsel(ii)=i
+          endif
        endif
     enddo
     nsel=ii
