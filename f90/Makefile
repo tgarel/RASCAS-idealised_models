@@ -95,11 +95,11 @@ endif
 # TIBO-1/ pure HI + idealised_models
 #COMPOBJS = module_HI_1216_model.o module_idealised_models.o module_gas_composition_HI.o
 # TIBO-1bis/ HI + dust + idealised_models
- COMPOBJS = module_dust_model.o module_HI_1216_model.o module_idealised_models.o module_gas_composition_HI_dust.o
+# COMPOBJS = module_dust_model.o module_HI_1216_model.o module_idealised_models.o module_gas_composition_HI_dust.o
 # TIBO-2/ SiII_dust + idealised_models
 #COMPOBJS = module_dust_model.o module_SiII_1190_model.o module_SiII_1193_model.o module_idealised_models.o module_gas_composition_SiII_dust.o
 # TIBO-3/ MgII_dust + idealised_models
-# COMPOBJS = module_dust_model.o module_MgII_2796_model.o module_MgII_2804_model.o module_idealised_models.o module_gas_composition_MgII_dust.o
+ COMPOBJS = module_dust_model.o module_MgII_2796_model.o module_MgII_2804_model.o module_idealised_models.o module_gas_composition_MgII_dust.o
 # TIBO-4/ MgII + idealised_models
 #COMPOBJS = module_MgII_2796_model.o module_MgII_2804_model.o module_idealised_models.o module_gas_composition_MgII.o
 # TIBO-5/ FeII + idealised_models

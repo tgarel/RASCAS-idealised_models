@@ -95,9 +95,13 @@ contains
     
     implicit none
 
-    ! Shell (or sphere if r_min=0) with "power-law" V and rho profiles 
+    ! Shell (or sphere if r_min=0) with V and rho profiles 
     ! point source at center and medium transparent at R < r_min and at R > r_max
 
+    ! V(r) = Vmax / 1.35 * sqrt(alpha*(1-r_min/r)+ln(r_min/r))
+    ! Vxxz = V(r) * xyz / r
+    ! alpha = 3.15340
+    
     ! Declare arguments
     real(kind=8)                          :: dx_cell
     real(kind=8),intent(inout)            :: ndust_ideal,ngas_ideal,bparam_ideal
@@ -127,7 +131,7 @@ contains
        if (ngas_slope .ne. 1.0) then
           n0 = coldens_norm * (1.0-ngas_slope) / ((r_min * box_size_IM_cm)**ngas_slope * ((r_max * box_size_IM_cm)**(1.0-ngas_slope) - (r_min * box_size_IM_cm)**(1.0-ngas_slope)))  ! cm-3
        else
-          n0 = coldens_norm / ((r_min * box_size_IM_cm) * log(r_max / r_min))  ! cm-3
+          n0 = coldens_norm / ((r_min * box_size_IM_cm) * log10(r_max / r_min))  ! cm-3
        end if
     else
        ! I use the std density ngas_norm
@@ -260,7 +264,7 @@ contains
        if (ngas_slope .ne. 1.0) then
           n0 = coldens_norm * (1.0-ngas_slope) / ((r_min * box_size_IM_cm)**ngas_slope * ((r_max * box_size_IM_cm)**(1.0-ngas_slope) - (r_min * box_size_IM_cm)**(1.0-ngas_slope)))  ! cm-3
        else
-          n0 = coldens_norm / ((r_min * box_size_IM_cm) * log(r_max / r_min))  ! cm-3
+          n0 = coldens_norm / ((r_min * box_size_IM_cm) * log10(r_max / r_min))  ! cm-3
        end if
     else
        ! I use the std density ngas_norm
@@ -490,7 +494,7 @@ contains
     real(kind=8)                          :: theta_cone
     real(kind=8)                          :: coldens_dust, ndust_0
 
-    theta_cone = 90.0d0 ! deg
+    theta_cone = 45.0d0 ! deg
     theta_cone = theta_cone * pi / 180.0d0 ! rad
     
     vx_ideal    = 0.0d0
@@ -511,7 +515,7 @@ contains
        if (ngas_slope .ne. 1.0) then
           n0 = coldens_norm * (1.0-ngas_slope) / ((r_min * box_size_IM_cm)**ngas_slope * ((r_max * box_size_IM_cm)**(1.0-ngas_slope) - (r_min * box_size_IM_cm)**(1.0-ngas_slope)))  ! cm-3
        else
-          n0 = coldens_norm / ((r_min * box_size_IM_cm) * log(r_max / r_min))  ! cm-3
+          n0 = coldens_norm / ((r_min * box_size_IM_cm) * log10(r_max / r_min))  ! cm-3
        end if
     else
        ! I use the std density ngas_norm
