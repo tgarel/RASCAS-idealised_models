@@ -202,6 +202,7 @@ contains
     nleaftot = get_nleaf_omp(repository,snapnum,ncpu_read,cpu_list)
     nvar     = get_nvar(repository,snapnum)
     allocate(ramses_var_all(nvar,nleaftot), xleaf_all(nleaftot,3), leaf_level_all(nleaftot))
+    ncpu = get_ncpu(repository,snapnum) !!! ncpu should be known before calling read_amr_hydro!!!
 
     if(verbose) print *,'-- read_leaf_cells_omp: nleaftot(_read), nvar, ncpu(_read) =',nleaftot,nvar,ncpu_read
 
