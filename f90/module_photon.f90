@@ -51,10 +51,6 @@ module module_photon
   integer(kind=4)                      :: nPeeled
   !--LEEP--
 
-  ! parameters in the [photon] section :
-  !--Val--
-  logical         :: no_scatter   = .false.
-  !--laV-- 
 
   public  :: MCRT, propagate, init_photons_from_file, dump_photons
   
@@ -169,7 +165,6 @@ contains
 
        ! define/update flag_cell_fully_in_comp_dom to avoid various tests in the following
        pcell = cell_corner + 0.5d0*cell_size
-=
        cell_fully_in_domain = domain_fully_contains_cell(pcell,cell_size,domaine_calcul)
 
        !--CORESKIP--
@@ -486,10 +481,10 @@ contains
 
        ! define/update flag_cell_fully_in_comp_dom to avoid various tests in the following
        pcell = cell_corner + 0.5d0*cell_size
-       cell_fully_in_domain = domain_contains_cell(pcell,cell_size,domaine_calcul)
+       cell_fully_in_domain = domain_fully_contains_cell(pcell,cell_size,domaine_calcul)
 
        ! compute distance of photon to border of cell along propagation direction
-       distance_to_border           = path(ppos_cell,kobs)                   ! in cell units
+       distance_to_border           = path(ppos_cell,kobs)                  ! in cell units
        distance_to_border_cm        = distance_to_border * cell_size_cm     ! cm
        distance_to_border_box_units = distance_to_border * cell_size        ! in box units
        ! if cell not fully in domain, modify distance_to_border to "distance_to_domain_border" if relevant
@@ -523,7 +518,7 @@ contains
        enddo
 
 
-       if (OutOfDomainBeforeCell) then ! photon exits computational domain and is done 
+       if (OutOfDomainBeforeCell) then ! photon exits computational domain and is done
           exit photon_propagation
        end if
 
@@ -559,7 +554,7 @@ contains
        if (npush > 1) print*,'WARNING : npush > 1 needed in module_photon:propagate.'
        ! test whether photon was pushed out of domain with the extra pushes
        ! (and in that case, call it done). 
-       if (npush > 0) then 
+       if (npush > 0) then
           in_domain = domain_contains_point(ppos,domaine_calcul)
           if (.not. in_domain) then
              print*,'WARNING: pushed photon outside domain ... '
