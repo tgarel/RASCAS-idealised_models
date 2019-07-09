@@ -41,6 +41,8 @@ module module_gas_composition
   real(kind=8)             :: fix_vel             = 0.0d0   ! ad-hoc cell velocity (cm/s) -> NEED BETTER PARAMETERIZATION for more than static... 
   real(kind=8)             :: fix_ndust           = 0.0d0
   real(kind=8)             :: fix_box_size_cm     = 1.0d8   ! ad-hoc box size in cm.
+  logical                  :: no_v                = .false.
+  logical                  :: no_dust             = .false.
   ! miscelaneous
   logical                  :: verbose             = .true. ! display some run-time info on this module
   logical                  :: HI_core_skip        = .false.
@@ -53,7 +55,7 @@ module module_gas_composition
   public :: gas_get_n_CD, gas_get_CD
   !laV
     !--PEEL--
-  public :: gas_peeloff_weight,gas_get_tau!,gas_get_tau_gray
+  public :: gas_peeloff_weight,gas_get_tau
   !--LEEP--
   !--CORESKIP--
   public :: HI_core_skip
@@ -93,7 +95,7 @@ contains
     read(20) nhii         !remove for 2*2*2 test
     read(20) metallicity  !remove for 2*2*2 test
     read(20) gas_leaves%dopwidth
-     gas_leaves%dopwidth = gas_leaves%dopwidth / sqrt(mSi/amu)  ! remove for 2*2*2 test
+    gas_leaves%dopwidth = gas_leaves%dopwidth / sqrt(mSi/amu)  ! remove for 2*2*2 test
     !read(20) gas_leaves%ndust !add for 2*2*2 test
     !read(20) gas_leaves%nSiII !add for 2*2*2 test
     read(21) gas_leaves%nSiII !remove for 2*2*2 test
@@ -248,35 +250,6 @@ contains
     return
 
   end subroutine gas_from_ramses_leaves
-
-
-  ! !Bad
-  ! function gas_get_tau_gray(cell_gas, distance_cm, nu_cell)
-
-  !   ! --------------------------------------------------------------------------
-  !   ! compute opacity due to dust accross distance_cm
-  !   ! --------------------------------------------------------------------------
-  !   ! INPUTS:
-  !   ! - cell_gas : a mix of SiII and dust
-  !   ! - distance_cm : the distance along which to compute tau [cm]
-  !   ! OUTPUTS:
-  !   ! - gas_get_tau_gray : the total optical depth
-
-  !   ! --------------------------------------------------------------------------
-
-  !   ! check whether scattering occurs within cell (scatter_flag > 0) or not (scatter_flag==0)
-  !   type(gas),intent(in)    :: cell_gas
-  !   real(kind=8),intent(in) :: distance_cm, nu_cell
-  !   real(kind=8)            :: gas_get_tau_gray
-
-  !   ! compute optical depths for different components of the gas.
-  !   gas_get_tau_gray = get_tau_dust(cell_gas%ndust, distance_cm, nu_cell) + get_tau_SiI_photoionization(cell_gas%nSiII, distance_cm, nu_cell)
-
-
-  !   return
-
-  ! end function gas_get_tau_gray
-  ! ! --------------------------------------------------------------------------
 
 
   !Val
@@ -483,7 +456,7 @@ contains
 
 
 
-  subroutine read_gas(unit,n,g)
+subroutine read_gas(unit,n,g)
     integer,intent(in)                             :: unit,n
     type(gas),dimension(:),allocatable,intent(out) :: g
     integer                                        :: i
@@ -492,10 +465,27 @@ contains
     if (gas_overwrite) then
        call overwrite_gas(g)
     else
-       read(unit) (g(i)%v(:),i=1,n)
+       if(no_v) then
+          do i=1,n
+             g(i)%v(:) = 0d0
+          end do
+          read(unit)
+       else
+          read(unit) (g(i)%v(:),i=1,n)
+       end if
+
        read(unit) (g(i)%nSiII,i=1,n)
        read(unit) (g(i)%dopwidth,i=1,n)
-       read(unit) (g(i)%ndust,i=1,n)
+
+       if(no_dust) then
+          do i=1,n
+             g(i)%ndust = 0d0
+          end do
+          read(unit)
+       else
+          read(unit) (g(i)%ndust,i=1,n)
+       end if
+
        read(unit) box_size_cm
     end if
 
@@ -571,6 +561,10 @@ contains
              read(value,*) fix_ndust
           case ('verbose')
              read(value,*) verbose
+          case ('no_v')
+             read(value,*) no_v
+          case ('no_dust')
+             read(value,*) no_dust
           case ('fix_box_size_cm')
              read(value,*) fix_box_size_cm
           end select
