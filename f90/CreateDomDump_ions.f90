@@ -528,7 +528,7 @@ contains
        end select
        write(unit,'(a)')             '# miscelaneous parameters'
        write(unit,'(a,L1)')          '  verbose         = ',verbose
-       write(unit,'(a,i5)')          '  max_cells       = ',max_cells
+       write(unit,'(a,i9)')          '  max_cells       = ',max_cells
        write(unit,'(a)')             ' '
        call print_mesh_params(unit)
        call print_ramses_params(unit)
@@ -575,7 +575,7 @@ contains
        end select
        write(*,'(a)')             '# miscelaneous parameters'
        write(*,'(a,L1)')          '  verbose         = ',verbose
-       write(*,'(a,i5)')          '  max_cells       = ',max_cells
+       write(*,'(a,i9)')          '  max_cells       = ',max_cells
        write(*,'(a)')             ' '
        call print_mesh_params
        write(*,'(a)')             ' '

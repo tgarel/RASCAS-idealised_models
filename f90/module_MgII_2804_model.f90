@@ -41,7 +41,7 @@ contains
     ! --------------------------------------------------------------------------
     ! INPUTS:
     ! - nMgII    : number density of MgII ions                              [ cm^-3 ]
-    ! - vth      : thermal (+ small-scale turbulence) velocity of SiII ions [ cm / s ]
+    ! - vth      : thermal (+ small-scale turbulence) velocity of MgII ions [ cm / s ]
     ! - distance_to_border_cm : distance over which we compute tau          [ cm ]
     ! - nu_cell  : photon's frequency in the frame of the cell              [ Hz ]
     ! OUTPUT :

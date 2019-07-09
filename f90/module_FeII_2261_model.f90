@@ -43,7 +43,7 @@ contains
   function get_tau_FeII_2261(nFeII, vth, distance_to_border_cm, nu_cell)
 
     ! --------------------------------------------------------------------------
-    ! compute optical depth of SiII-2260.78 over a given distance
+    ! compute optical depth of FeII-2260.78 over a given distance
     ! --------------------------------------------------------------------------
     ! INPUTS:
     ! - nFeII    : number density of FeII ions                              [ cm^-3 ]

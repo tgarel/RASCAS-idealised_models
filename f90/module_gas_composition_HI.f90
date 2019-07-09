@@ -161,7 +161,7 @@ contains
     real(kind=8)            :: tau_HI
 
     ! compute optical depths for different components of the gas.
-    tau_HI   = get_tau_HI(cell_gas%nHI, cell_gas%dopwidth, distance_cm, nu_cell)
+    tau_HI   = get_tau_HI_1216(cell_gas%nHI, cell_gas%dopwidth, distance_cm, nu_cell)
     gas_get_tau = tau_HI
 
     return
@@ -183,7 +183,7 @@ contains
 
     select case(flag)
     case(1)
-       gas_peeloff_weight = HI_peeloff_weight(cell_gas%v, cell_gas%dopwidth, nu_ext, kin, kout, iran)
+       gas_peeloff_weight = HI_1216_peeloff_weight(cell_gas%v, cell_gas%dopwidth, nu_ext, kin, kout, iran)
     case default
        print*,'ERROR in module_gas_composition_HI.f90:gas_peeloff_weight - unknown case : ',flag 
        stop

@@ -35,9 +35,9 @@ module module_HI_1216_model
   !--PIKSEROC--
   ! --------------------------------------------------------------------------
 
-  public :: get_tau_HI, scatter_HI, read_HI_params, print_HI_params
+  public :: get_tau_HI_1216, scatter_HI_1216, read_HI_1216_params, print_HI_1216_params
   !--PEEL--
-  public :: HI_peeloff_weight
+  public :: HI_1216_peeloff_weight
   !--LEEP--
 
 
@@ -187,7 +187,7 @@ contains
 
   
 !--PEEL--
-  function HI_peeloff_weight(vcell,vth,nu_ext,kin,kout,iran)
+  function HI_1216_peeloff_weight(vcell,vth,nu_ext,kin,kout,iran)
 
     ! ---------------------------------------------------------------------------------
     ! Compute probability that a photon coming along kin scatters off in direction kout.
@@ -217,7 +217,7 @@ contains
     real(kind=8),dimension(3),intent(in)    :: vcell
     real(kind=8),intent(in)                 :: vth
     integer(kind=4),intent(inout)           :: iran
-    real(kind=8)                            :: HI_peeloff_weight
+    real(kind=8)                            :: HI_1216_peeloff_weight
     real(kind=8)                            :: delta_nu_doppler, a, x_cell, upar, ruper
     real(kind=8)                            :: r2, uper, nu_atom, mu, bu, scalar
     real(kind=8)                            :: x_atom,nu_cell
@@ -247,15 +247,15 @@ contains
 
     ! 4/ determine direction of scattered photon
     if (isotropic) then
-       HI_peeloff_weight = 0.5d0  ! P(mu) for isotropic phase function
+       HI_1216_peeloff_weight = 0.5d0  ! P(mu) for isotropic phase function
        mu = kin(1)*kout(1) + kin(2)*kout(2) + kin(3)*kout(3)
        bu = sqrt(1.0d0 - mu*mu)
     else
        x_atom  = (nu_atom -nu_0) / delta_nu_doppler
        if (abs(x_atom) < 0.2) then ! core scattering 
-          HI_peeloff_weight = anisotropic_probability_HIcore(kin,kout,mu,bu)
+          HI_1216_peeloff_weight = anisotropic_probability_HIcore(kin,kout,mu,bu)
        else ! wing scattering 
-          HI_peeloff_weight = anisotropic_probability_Rayleigh(kin,kout,mu,bu)
+          HI_1216_peeloff_weight = anisotropic_probability_Rayleigh(kin,kout,mu,bu)
        end if
     end if
 
@@ -268,7 +268,7 @@ contains
     scalar = kout(1) * vcell(1) + kout(2) * vcell(2) + kout(3)* vcell(3)
     nu_ext = nu_atom * (1.0d0 + scalar/clight + (upar*mu + bu*uper)/clight)
 
-  end function HI_peeloff_weight
+  end function HI_1216_peeloff_weight
 !--LEEP--
 
   subroutine read_HI_1216_params(pfile)
