@@ -166,7 +166,7 @@ contains
 
        ! define/update flag_cell_fully_in_comp_dom to avoid various tests in the following
        pcell = cell_corner + 0.5d0*cell_size
-       cell_fully_in_domain = domain_contains_cell(pcell,cell_size,domaine_calcul)
+       cell_fully_in_domain = domain_fully_contains_cell(pcell,cell_size,domaine_calcul)
 
        !--CORESKIP--
        if (HI_core_skip) then 
