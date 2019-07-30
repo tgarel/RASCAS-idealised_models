@@ -98,7 +98,7 @@ program LyaPhotonsFromGas
 
   call select_cells_in_domain(emission_domain,nleaftot,x_leaf,leaf_level,emitting_cells)
   nsel = size(emitting_cells)
-  
+  print*,'Ncell emit = ',nsel
   if (verbose) print*,'done selecting cells in domain'
   allocate(recomb_em(nsel),coll_em(nsel),HIDopWidth(nsel))
   call ramses_get_LyaEmiss_HIDopwidth(repository,snapnum,nleaftot,nvar,ramses_var,recomb_em,coll_em,HIDopWidth,sample=emitting_cells)
@@ -143,7 +143,10 @@ program LyaPhotonsFromGas
      do i = 2,nsel
         low_prob_rec(i) = low_prob_rec(i-1) + recomb_em(i-1) 
      end do
-     low_prob_rec = low_prob_rec / (low_prob_rec(nsel)+recomb_em(nsel))
+     ! TIBO
+     !low_prob_rec = low_prob_rec / (low_prob_rec(nsel)+recomb_em(nsel))
+     low_prob_rec = low_prob_rec / low_prob_rec(nsel)
+     ! OBIT
      low_prob_rec(nsel+1) = 1.1  ! higher than upper limit 
   end if
   if (doColls) then 
@@ -152,7 +155,10 @@ program LyaPhotonsFromGas
      do i = 2,nsel
         low_prob_col(i) = low_prob_col(i-1) + coll_em(i-1) 
      end do
-     low_prob_col = low_prob_col / (low_prob_col(nsel)+coll_em(nsel)) 
+     ! TIBO
+     !low_prob_col = low_prob_col / (low_prob_col(nsel)+coll_em(nsel)) 
+     low_prob_col = low_prob_col / low_prob_col(nsel)
+     ! OBIT
      low_prob_col(nsel+1) = 1.1  ! higher than upper limit 
   end if
   ! - NewScheme
@@ -183,6 +189,7 @@ program LyaPhotonsFromGas
            ilow = 1
            do while (iup - ilow > 1)
               imid = (iup+ilow)/2
+              !print*,ilow,iup,imid    
               mid  = low_prob_rec(imid)
               if (r1 >= mid) then 
                  ilow = imid
@@ -190,9 +197,20 @@ program LyaPhotonsFromGas
                  iup = imid
               end if
            end do
+           
+           ! TIBO
+           !if (ilow == nsel) then
+           !   print*,'Blah = ',ilow,imid,iup,nsel
+           !   stop
+           !endif
+           ! TIBO
+
            ! check
            if (.not. (r1 >= low_prob_rec(ilow) .and. r1 < low_prob_rec(iup) )) then
+              !print*,ilow,iup,imid,r1,low_prob_rec(ilow),low_prob_rec(iup)
               print*,'hi Harley ;) '
+              !print*,low_prob_rec
+              !stop
            end if
            ! draw photon's ICs from cell ilow
            j  = emitting_cells(ilow)
@@ -216,6 +234,7 @@ program LyaPhotonsFromGas
               ! compute frequency in exteral frame 
               scalar = k(1)*v_leaf(1,j) + k(2)*v_leaf(2,j) + k(3)*v_leaf(3,j)
               nu_em(iphot)  = nu_cell(iphot) / (1d0 - scalar/clight)
+              !print*,'Nu = ',nu_em(iphot)
               ok = .true.
            end if
         end do
