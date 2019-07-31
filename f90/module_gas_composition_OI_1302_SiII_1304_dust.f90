@@ -46,6 +46,8 @@ module module_gas_composition
   real(kind=8)             :: fix_ndust           = 0.0d0
   real(kind=8)             :: fix_box_size_cm     = 1.0d8   ! ad-hoc box size in cm.
   logical                  :: HI_core_skip        = .false.
+  logical                  :: no_v                = .false.
+  logical                  :: no_dust             = .false.
   ! --------------------------------------------------------------------------
 
   ! public functions:
@@ -420,11 +422,27 @@ contains
     if (gas_overwrite) then
        call overwrite_gas(g)
     else
-       read(unit) (g(i)%v(:),i=1,n)
+      if(no_v) then
+          do i=1,n
+             g(i)%v(:) = 0d0
+          end do
+          read(unit)
+       else
+          read(unit) (g(i)%v(:),i=1,n)
+       end if
+
        read(unit) (g(i)%nOI,i=1,n)
        read(unit) (g(i)%nSiII,i=1,n)
        read(unit) (g(i)%dopwidth,i=1,n)
-       read(unit) (g(i)%ndust,i=1,n)
+
+       if(no_dust) then
+          do i=1,n
+             g(i)%ndust = 0d0
+          end do
+          read(unit)
+       else
+          read(unit) (g(i)%ndust,i=1,n)
+       end if
        read(unit) box_size_cm 
     end if
   end subroutine read_gas
@@ -520,6 +538,10 @@ contains
              read(value,*) fix_ndust
           case ('fix_box_size_cm')
              read(value,*) fix_box_size_cm
+          case ('no_v')
+             read(value,*) no_v
+          case ('no_dust')
+             read(value,*) no_dust
           end select
        end do
     end if

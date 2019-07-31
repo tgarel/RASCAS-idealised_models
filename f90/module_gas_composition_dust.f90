@@ -37,7 +37,9 @@ module module_gas_composition
   real(kind=8)             :: fix_ndust           = 0.0d0   ! ad-hoc dust number density (/cm3)
   real(kind=8)             :: fix_vth             = 1d5
   real(kind=8)             :: fix_vel             = 0.0d0   ! ad-hoc cell velocity (cm/s) -> NEED BETTER PARAMETERIZATION for more than static... 
-  real(kind=8)             :: fix_box_size_cm     = 1.0d8   ! ad-hoc box size in cm. 
+  real(kind=8)             :: fix_box_size_cm     = 1.0d8   ! ad-hoc box size in cm.
+  logical                  :: no_v                = .false.
+  logical                  :: no_dust             = .false.
   ! miscelaneous
   logical                  :: verbose             = .true. ! display some run-time info on this module
   logical                  :: HI_core_skip        = .false.
@@ -360,8 +362,23 @@ contains
     if (gas_overwrite) then
        call overwrite_gas(g)
     else
-       read(unit) (g(i)%v(:),i=1,n)
-       read(unit) (g(i)%ndust,i=1,n)
+       if(no_v) then
+          do i=1,n
+             g(i)%v(:) = 0d0
+          end do
+          read(unit)
+       else
+          read(unit) (g(i)%v(:),i=1,n)
+       end if
+
+       if(no_dust) then
+          do i=1,n
+             g(i)%ndust = 0d0
+          end do
+          read(unit)
+       else
+          read(unit) (g(i)%ndust,i=1,n)
+       end if
        read(unit) box_size_cm 
     end if
   end subroutine read_gas
@@ -427,6 +444,10 @@ contains
              read(value,*) fix_vel
           case ('verbose')
              read(value,*) verbose
+          case ('no_v')
+             read(value,*) no_v
+          case ('no_dust')
+             read(value,*) no_dust
           case ('fix_box_size_cm')
              read(value,*) fix_box_size_cm
           end select
