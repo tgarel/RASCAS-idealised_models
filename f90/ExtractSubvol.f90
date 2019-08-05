@@ -79,19 +79,12 @@ program ExtractSubvol
   ! Read all the leaf cells
   nOctSnap = get_nGridTot(repository,snapnum)
   if (reading_method == 'fullbox') then
-     call read_leaf_cells(repository, snapnum, nleaftot, nvar, x_leaf, ramses_var, leaf_level)
-     ! Extract and convert properties of cells into gas mix properties
-     call gas_from_ramses_leaves(repository,snapnum,nleaftot,nvar,ramses_var, gas_leaves)
-     call cpu_time(finish)
-     print '(" --> Time to read all leaves in fullbox = ",f12.3," seconds.")',finish-start
-  end if
-  if (reading_method == 'fullbox_omp') then
      ncpu_read = get_ncpu(repository,snapnum)
      allocate(cpu_list(1:ncpu_read))
      do i=1,ncpu_read
         cpu_list(i)=i
      end do
-     call read_leaf_cells_omp(repository, snapnum, ncpu_read, cpu_list, nleaftot, nvar, x_leaf, ramses_var, leaf_level)
+     call read_leaf_cells(repository, snapnum, ncpu_read, cpu_list, nleaftot, nvar, x_leaf, ramses_var, leaf_level)
      ! Extract and convert properties of cells into gas mix properties
      call gas_from_ramses_leaves(repository,snapnum,nleaftot,nvar,ramses_var, gas_leaves)
      call cpu_time(finish)
@@ -193,7 +186,7 @@ program ExtractSubvol
            zmin = decomp_dom_zc(i) - decomp_dom_thickness(i)*0.5d0
         end select
         call get_cpu_list_periodic(repository, snapnum, xmin,xmax,ymin,ymax,zmin,zmax, ncpu_read, cpu_list)
-        call read_leaf_cells_omp(repository, snapnum, ncpu_read, cpu_list, nleaftot, nvar, x_leaf, ramses_var, leaf_level)
+        call read_leaf_cells(repository, snapnum, ncpu_read, cpu_list, nleaftot, nvar, x_leaf, ramses_var, leaf_level)
         ! Extract and convert properties of cells into gas mix properties
         call gas_from_ramses_leaves(repository,snapnum,nleaftot,nvar,ramses_var, gas_leaves)
         call cpu_time(finish)

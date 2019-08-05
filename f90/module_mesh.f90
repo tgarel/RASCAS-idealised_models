@@ -27,7 +27,8 @@ module module_mesh
 
   ! WORKING VARIABLES (internal to this module, could be renamed)
   
-  integer(kind=4)                            :: nCoarse,nOct,nCell,nleaf
+  integer(kind=8)                            :: nOct,nCell
+  integer(kind=4)                            :: nCoarse,nleaf
   integer(kind=4)                            :: countleaf,countempty
 
   ! oct-tree data
@@ -92,7 +93,8 @@ module module_mesh
       integer(kind=4),dimension(1:nleaves),intent(in)  :: leaveslevel
       type(mesh),intent(out)                           :: m
 
-      integer(kind=4)                                  :: ilastoct,lfather,ifathercell,i
+      integer(kind=8)                                  :: ilastoct,ifathercell
+      integer(kind=4)                                  :: lfather,i
       real(kind=8),dimension(3)                        :: xnew
       integer(kind=4), dimension(:),allocatable        :: ileaf
       integer(kind=4)                                  :: nocttrue
@@ -481,12 +483,14 @@ module module_mesh
 
     recursive subroutine add_oct_domain(ilastoct,n,id,fcx,fcl,ifc)
     
-      integer(kind=4),intent(inout)            :: ilastoct
+      integer(kind=8),intent(inout)            :: ilastoct
       integer(kind=4),intent(in)               :: n
       integer(kind=4),dimension(n),intent(in)  :: id
-      integer(kind=4),intent(in)               :: fcl,ifc
+      integer(kind=4),intent(in)               :: fcl
+      integer(kind=8),intent(in)               :: ifc
       real(kind=8),dimension(3),intent(in)     :: fcx
-      integer(kind=4)                          :: ind,level,nleaflocal,icell,ilastoctLevel
+      integer(kind=8)                          :: icell,ilastoctLevel
+      integer(kind=4)                          :: ind,level,nleaflocal
       integer(kind=4),dimension(:),allocatable :: ileaflocal
       real(kind=8),dimension(3)                :: xcentre
       logical                                  :: same_level
@@ -510,6 +514,10 @@ module module_mesh
          nleaflocal = get_nleaflocal(n,id,xcentre,level)
 
          icell = nCoarse+ilastoctLevel+(ind-1)*nOct
+         if(icell .gt. size(son)) then !JOKI DEBUG!!
+            print*,'problem in module_mesh, add_oct_domain ',icell,nCoarse,ilastoctLevel,nOct,ind,nleaflocal,level, size(son)
+            stop
+         endif
 
          ! 3 possible cases according to the value of nleaflocal:
          ! 1/ nleaflocal > 1 -> add a new oct
@@ -679,7 +687,8 @@ module module_mesh
       ! copyright JB
       ! returns icell indexed with ngridmin instead of ngridmax
 
-      integer(kind=4),intent(in) :: icell,ngridmax,ngridmin,ncoarse
+      integer(kind=4),intent(in) :: icell,ngridmin,ncoarse
+      integer(kind=8),intent(in) :: ngridmax
       integer(kind=4)            :: icell2icell
       integer(kind=4)            :: ind,jcell
 
@@ -777,14 +786,15 @@ module module_mesh
       end do
       if (noops1 /= 0) print*,'-- make_nbor_array: error flag = ',noops1
       !-JB
-      
+
     end subroutine make_nbor_array
 
 
 
     subroutine resize_octtree(nold,nnew)
 
-      integer(kind=4), intent(in)              :: nold,nnew
+      integer(kind=8), intent(in)              :: nold
+      integer(kind=4), intent(in)              :: nnew
       real(kind=8),dimension(:,:),allocatable  :: tmpr
       integer(kind=4),dimension(:),allocatable :: tmpi
       integer(kind=4)                          :: ncellnew,i

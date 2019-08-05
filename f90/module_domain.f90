@@ -138,39 +138,6 @@ contains
   ! public use
   !--------------------------------------------------------------------------------------------------
 
-  subroutine select_in_domain(dom,n,xp,indsel)
-
-    implicit none
-    integer(kind=4),intent(in)                           :: n
-    type(domain),intent(in)                              :: dom 
-    real(kind=8),dimension(1:n,1:3),intent(in)           :: xp
-    integer(kind=4),dimension(:),allocatable,intent(out) :: indsel
-    integer(kind=4)                                      :: i,ii,nsel
-    integer(kind=4),dimension(:),allocatable             :: tmpi 
-    real(kind=8),dimension(1:3)                          :: xc
-   
-    allocate(indsel(1:n))
-    indsel=0
-    ii=0
-    do i=1,n
-       xc(1:3) = xp(i,1:3)
-       if(domain_contains_point(xc,dom))then
-          ii=ii+1
-          indsel(ii)=i
-       endif
-    enddo
-    nsel=ii
-    allocate(tmpi(1:nsel))
-    tmpi(1:nsel) = indsel(1:nsel)
-    deallocate(indsel)
-    allocate(indsel(1:nsel))
-    indsel=tmpi
-    deallocate(tmpi)
-    
-  end subroutine select_in_domain
-
-
-
   subroutine select_cells_in_domain(dom,n,xp,level,indsel)
     
     implicit none
@@ -329,7 +296,6 @@ contains
     character(*),intent(in) :: file
     type(domain),intent(in) :: dom 
 
-    !!!write(file ,'(a,a)') trim(fichier),'.dom'
     open(unit=14, file=trim(file), status='unknown', form='formatted', action='write')
     call dump_domain_form(unit=14,dom=dom)
     close(14)

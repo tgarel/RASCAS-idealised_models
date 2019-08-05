@@ -1,14 +1,15 @@
 #############################################################################
 # Fortran compiler options and directives
 
-#SYSTYPE="CCF"
+SYSTYPE="CCF"
 #SYSTYPE="lyocral"
 #SYSTYPE="lyocralP"
-SYSTYPE="mac"
+#SYSTYPE="mac"
 #SYSTYPE="macP"
 #SYSTYPE="ccage"
 
-OPTIONS = -cpp
+OPTIONS = -cpp -fopenmp
+OPTIONS += -DDISPLAY_PROGRESS_PERCENT
 
 
 ifeq ($(SYSTYPE),"lyocral")
@@ -32,12 +33,10 @@ endif
 
 ifeq ($(SYSTYPE),"CCF")
 F90         = ifort
-#FFLAGS      = -g -fpp -check all -debug -warn all -ftrapuv -traceback
-##FFLAGS      = -O3 -fpp -ftz  -xavx -sox -ipo -fno-alias -fno-fnalias -no-prec-div -no-prec-sqrt -align all
+##FFLAGS      = -g -fpp -check all -debug -warn all -ftrapuv -traceback
 FFLAGS      = -O3 -fpp -ftz  -xavx -ipo -fno-alias -fno-fnalias -no-prec-div -no-prec-sqrt -align all
-##FFLAGS      = -p -g
 FFLAGS += $(OPTIONS)
-LDFLAGS     =  -lmpi
+LDFLAGS     =  -lmpi 
 endif
 
 ifeq ($(SYSTYPE),"mac")
@@ -66,7 +65,6 @@ FFLAGS      = -O3 -ffree-line-length-none -ffree-form
 FFLAGS += $(OPTIONS)
 LDFLAGS     = 
 endif
-
 
 #############################################################################
 # All objects
@@ -98,7 +96,8 @@ COMPOBJS = module_dust_model.o module_D_1215_model.o module_HI_1216_model.o modu
 #COMPOBJS = module_dust_model.o module_SiII_1260_model.o module_gas_composition_SiII_1260_dust.o
 # 13/ pure dust
 #COMPOBJS = module_dust_model.o module_gas_composition_dust.o
-
+# 14/ HI, HeI, HeII -> WARNING, this is for fesc measurements only ! 
+COMPOBJS = module_gas_composition_HI_HeI_HeII.o
 
 GASOBJS = module_constants.o module_random.o module_utils.o module_voigt.o module_domain.o coolrates_module.o module_ramses.o module_uparallel.o $(COMPOBJS)
 
@@ -109,6 +108,9 @@ OBJSPHO = $(GASOBJS) module_mesh.o module_photon.o
 OBJSMPI = $(OBJSPHO) module_parallel_mpi.o module_worker.o module_master.o
 
 OBJLYAFG = module_constants.o module_random.o module_utils.o module_voigt.o module_domain.o coolrates_module.o module_ramses.o module_uparallel.o module_HI_1216_model.o
+
+OBJFESC	= $(GASOBJS) module_mesh.o module_gray_ray.o
+
 
 #############################################################################
 #.SUFFIXES: .o .f90
@@ -135,6 +137,9 @@ CreateDomDump: $(OBJSDOM) CreateDomDump.o
 
 ExtractSubvol: $(OBJSDOM) ExtractSubvol.o
 	$(F90) $(FFLAGS) $(LDFLAGS) -o $@ $(OBJSDOM) ExtractSubvol.o
+
+FescFromStars: $(OBJFESC) FescFromStars.o
+	$(F90) $(FFLAGS) $(LDFLAGS) -o $@ $(OBJFESC) FescFromStars.o
 
 rascas-serial: $(OBJSPHO) rascas-serial.o
 	$(F90) $(FFLAGS) $(LDFLAGS) -o $@ $(OBJSPHO) rascas-serial.o
