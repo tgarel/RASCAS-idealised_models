@@ -80,6 +80,9 @@ contains
     real(kind=8)                         :: dborder, dborder_cm, error
     !--CORESKIP--
     real(kind=8) :: xcrit,tau_cell,delta_nu_doppler,a,xcw,nu_0
+    ! TIBO
+    real(kind=8) :: x
+    ! OBIT
     !--PIKSEROC--
     
     ! initialise working props of photon
