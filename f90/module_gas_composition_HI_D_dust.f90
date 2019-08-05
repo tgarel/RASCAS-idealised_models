@@ -57,6 +57,10 @@ module module_gas_composition
   public :: gas_from_idealised_models
   ! OBIT
   public :: read_gas,gas_destructor,read_gas_composition_params,print_gas_composition_params
+
+  !--CORESKIP-- push variable from module_HI_model up so that module_photon knows about it... 
+  public :: HI_core_skip 
+  !--PIKSEROC--
   
 contains
 
@@ -266,20 +270,28 @@ contains
     return
   end function gas_get_scatter_flag
 
-
-
-  subroutine gas_scatter(flag,cell_gas,nu_cell,k,nu_ext,iran)
+  !--CORESKIP-- 
+  subroutine gas_scatter(flag,cell_gas,nu_cell,k,nu_ext,iran,xcrit)
+  !subroutine gas_scatter(flag,cell_gas,nu_cell,k,nu_ext,iran)
+  !--PIKSEROC--
 
     integer(kind=4),intent(inout)            :: flag
     type(gas),intent(in)                     :: cell_gas
     real(kind=8),intent(inout)               :: nu_cell, nu_ext
     real(kind=8),dimension(3), intent(inout) :: k
     integer(kind=4),intent(inout)            :: iran
+    !--CORESKIP--
+    real(kind=8),intent(in)                  :: xcrit
+    !--PIKSEROC--
     integer(kind=4)                          :: ilost
 
     select case(flag)
     case(1)
-       call scatter_HI_1216(cell_gas%v, cell_gas%dopwidth, nu_cell, k, nu_ext, iran)
+       !--CORESKIP--
+       call scatter_HI_1216(cell_gas%v, cell_gas%dopwidth, nu_cell, k, nu_ext, iran,xcrit)
+       !call scatter_HI(cell_gas%v, cell_gas%dopwidth, nu_cell, k, nu_ext, iran)
+       !--PIKSEROC--
+       !call scatter_HI_1216(cell_gas%v, cell_gas%dopwidth, nu_cell, k, nu_ext, iran)
     case(2)
        call scatter_D_1215(cell_gas%v,cell_gas%dopwidth*sqrt_H2Deut_mass_ratio, nu_cell, k, nu_ext, iran)
     case(3)
