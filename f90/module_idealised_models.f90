@@ -164,6 +164,17 @@ contains
        end if
        
        ngas_ideal  = n0 *  (r_min / dist_cell)**(ngas_slope) * volfrac2 ! ngas_slope  = +2 for P+11 fiducial model
+
+       if (ngas_ideal .lt. 0.0d0) then
+          print*,'ngas_ideal < 0... = ',ngas_ideal,dist_cell,ngas_slope,n0,volfrac2,coldens_norm
+          if (ngas_ideal .gt. -1.d-14) then
+             ngas_ideal = 0.0d0
+          else
+             print*,'ngas_ideal < -1.d-14 = ',ngas_ideal
+             stop
+          endif
+       endif
+       
        ndust_ideal = ndust_0 * ngas_ideal / n0
 
        if (ngas_ideal .lt. 0.0d0) then
@@ -297,12 +308,18 @@ contains
        end if
        
        ngas_ideal  = n0 *  (r_min / dist_cell)**(ngas_slope) * volfrac2 ! ngas_slope  = +2 for P+11 fiducial model
-       ndust_ideal = ndust_0 * ngas_ideal / n0
-
+     
        if (ngas_ideal .lt. 0.0d0) then
-          print*,ngas_ideal,dist_cell,ngas_slope,n0
-          stop
+          print*,'ngas_ideal < 0... = ',ngas_ideal,dist_cell,ngas_slope,n0,volfrac2,coldens_norm
+          if (ngas_ideal .gt. -1.d-14) then
+             ngas_ideal = 0.0d0
+          else
+             print*,'ngas_ideal < -1.d-14 = ',ngas_ideal
+             stop
+          endif
        endif
+
+       ndust_ideal = ndust_0 * ngas_ideal / n0
        
        vx_ideal = Vgas_norm / r_max**(Vgas_slope) * dist_cell**(Vgas_slope-1.0) * (xcell_ideal - 0.5d0)
        vy_ideal = Vgas_norm / r_max**(Vgas_slope) * dist_cell**(Vgas_slope-1.0) * (ycell_ideal - 0.5d0)
@@ -423,6 +440,17 @@ contains
        end if
        
        ngas_ideal  = n0 *  (r_min / dist_cell)**(Vgas_slope+2.0) * volfrac2 
+
+       if (ngas_ideal .lt. 0.0d0) then
+          print*,'ngas_ideal < 0... = ',ngas_ideal,dist_cell,ngas_slope,n0,volfrac2,coldens_norm
+          if (ngas_ideal .gt. -1.d-14) then
+             ngas_ideal = 0.0d0
+          else
+             print*,'ngas_ideal < -1.d-14 = ',ngas_ideal
+             stop
+          endif
+       endif
+       
        ndust_ideal = ndust_0 / n0 * ngas_ideal
 
        vx_ideal = Vgas_norm / r_max**(Vgas_slope) * dist_cell**(Vgas_slope-1.0) * (xcell_ideal - 0.5d0)
@@ -547,6 +575,17 @@ contains
        vz_ideal    = Vgas_norm / r_max**(Vgas_slope) * dist_cell**(Vgas_slope-1.0) * (zcell_ideal - 0.5d0)
        
        ngas_ideal  = n0 * (r_min / dist_cell)**(ngas_slope) ! ngas_slope  = +2 for P+11 fiducial model
+
+       if (ngas_ideal .lt. 0.0d0) then
+          print*,'ngas_ideal < 0... = ',ngas_ideal,dist_cell,ngas_slope,n0,volfrac2,coldens_norm
+          if (ngas_ideal .gt. -1.d-14) then
+             ngas_ideal = 0.0d0
+          else
+             print*,'ngas_ideal < -1.d-14 = ',ngas_ideal
+             stop
+          endif
+       endif
+       
        ndust_ideal = ndust_0 / n0 * ngas_ideal
 
        missed_cell = 0
@@ -655,6 +694,17 @@ contains
           vz_ideal    = Vgas_norm * (1.0d0 - (r_min / dist_cell))**(Vgas_slope) * (zcell_ideal-0.5d0) / dist_cell
           
           ngas_ideal  = n0 *  (dist_cell / r_min)**(ngas_slope) ! ngas_slope  = -5.47 for Chisholm model
+
+          if (ngas_ideal .lt. 0.0d0) then
+             print*,'ngas_ideal < 0... = ',ngas_ideal,dist_cell,ngas_slope,n0,volfrac2,coldens_norm
+             if (ngas_ideal .gt. -1.d-14) then
+                ngas_ideal = 0.0d0
+             else
+                print*,'ngas_ideal < -1.d-14 = ',ngas_ideal
+                stop
+             endif
+          endif
+          
           ndust_ideal = ndust_0 / n0 * ngas_ideal
           
           missed_cell = 0
@@ -747,6 +797,17 @@ contains
        end if
        
        ngas_ideal  = n0 * volfrac2
+
+       if (ngas_ideal .lt. 0.0d0) then
+          print*,'ngas_ideal < 0... = ',ngas_ideal,dist_cell,ngas_slope,n0,volfrac2,coldens_norm
+          if (ngas_ideal .gt. -1.d-14) then
+             ngas_ideal = 0.0d0
+          else
+             print*,'ngas_ideal < -1.d-14 = ',ngas_ideal
+             stop
+          endif
+       endif
+       
        ndust_ideal = ndust_0 / n0 * ngas_ideal
 
        vx_ideal = Vgas_norm * (xcell_ideal-0.5d0) / dist_cell
@@ -861,6 +922,17 @@ contains
        end if
        
        ngas_ideal  = n0 * volfrac2
+
+       if (ngas_ideal .lt. 0.0d0) then
+          print*,'ngas_ideal < 0... = ',ngas_ideal,dist_cell,ngas_slope,n0,volfrac2,coldens_norm
+          if (ngas_ideal .gt. -1.d-14) then
+             ngas_ideal = 0.0d0
+          else
+             print*,'ngas_ideal < -1.d-14 = ',ngas_ideal
+             stop
+          endif
+       endif
+       
        ndust_ideal = ndust_0 / n0 * ngas_ideal
 
        vx_ideal = Vgas_norm / r_max**(Vgas_slope) * dist_cell**(Vgas_slope-1.0) * (xcell_ideal - 0.5d0)
