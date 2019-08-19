@@ -105,7 +105,7 @@ contains
 !!$       write(15) x_leaf(ileaf,1),x_leaf(ileaf,2),x_leaf(ileaf,3),g(ileaf)%v(1),g(ileaf)%v(2),g(ileaf)%v(3),g(ileaf)%dopwidth,g(ileaf)%nSiII,g(ileaf)%ndust
 !!$    end do
 !!$    close(15)
-\    
+    
     deallocate(ndust_temp,ngas_temp,dopwidth_temp,vel_temp)
 
     return
