@@ -136,7 +136,6 @@ program LyaPhotonsFromGas
   recomb_em = recomb_em / maxrec
   coll_em   = coll_em / maxcol
   
-  ! NewScheme -
   if (doRecombs) then 
      allocate(low_prob_rec(nsel+1))
      low_prob_rec(1) = 0.0d0
@@ -155,7 +154,6 @@ program LyaPhotonsFromGas
      low_prob_col = low_prob_col / (low_prob_col(nsel)+coll_em(nsel)) 
      low_prob_col(nsel+1) = 1.1  ! higher than upper limit 
   end if
-  ! - NewScheme
   
   allocate(v_leaf(3,nleaftot))
   call ramses_get_velocity_cgs(repository,snapnum,nleaftot,nvar,ramses_var,v_leaf)
@@ -169,17 +167,14 @@ program LyaPhotonsFromGas
      if (verbose) then
         write(*,*) "Starting to sample recombination emissivity" 
         call cpu_time(start_photpacket)
-     end if
-     ! --------------------------------------------------------------------------------------
-     
-     ! NewScheme -
+     end if     
      iseed = ranseed
      do iphot = 1,nphotons
         ok = .false.
         do while (.not. ok) 
            r1 = ran3(iseed)
            ! binary search
-           iup = nsel
+           iup = nsel+1
            ilow = 1
            do while (iup - ilow > 1)
               imid = (iup+ilow)/2
@@ -192,7 +187,8 @@ program LyaPhotonsFromGas
            end do
            ! check
            if (.not. (r1 >= low_prob_rec(ilow) .and. r1 < low_prob_rec(iup) )) then
-              print*,'hi Harley ;) '
+              print*,'ERROR '
+              stop
            end if
            ! draw photon's ICs from cell ilow
            j  = emitting_cells(ilow)
@@ -220,7 +216,6 @@ program LyaPhotonsFromGas
            end if
         end do
      end do
-     ! - NewScheme
      ! --------------------------------------------------------------------------------------
      ! write ICs
      ! --------------------------------------------------------------------------------------
@@ -251,14 +246,13 @@ program LyaPhotonsFromGas
         write(*,*) "Starting to sample collisional emissivity" 
         call cpu_time(start_photpacket)
      end if
-     ! NewScheme -
      iseed = ranseed
      do iphot = 1,nphotons
         ok = .false.
         do while (.not. ok) 
            r1 = ran3(iseed)
            ! binary search
-           iup = nsel
+           iup = nsel+1
            ilow = 1
            do while (iup - ilow > 1)
               imid = (iup+ilow)/2
@@ -271,7 +265,8 @@ program LyaPhotonsFromGas
            end do
            ! check
            if (.not. (r1 >= low_prob_col(ilow) .and. r1 < low_prob_col(iup) )) then
-              print*,'hi Harley ;) '
+              print*,'ERROR'
+              stop
            end if
            ! draw photon's ICs from cell ilow
            j  = emitting_cells(ilow)
@@ -299,7 +294,6 @@ program LyaPhotonsFromGas
            end if
         end do
      end do
-     ! - NewScheme
      ! --------------------------------------------------------------------------------------
      ! write ICs
      ! --------------------------------------------------------------------------------------
