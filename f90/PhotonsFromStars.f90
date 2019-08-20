@@ -401,8 +401,8 @@ contains
     do i = 2,n
        low_prob(i) = low_prob(i-1) + weight(i-1)
     end do
-    low_prob = low_prob / low_prob(n)
-    low_prob(n+1) = 1.1  ! higher than upper limit 
+    low_prob = low_prob / (low_prob(n)+weight(n))
+    low_prob(n+1) = 1.1d0  ! higher than upper limit 
     
     return
   end subroutine compute_cum_low_prob
@@ -420,7 +420,7 @@ contains
     
     r1 = ran3(iseed)
     ! binary search
-    iup = nbin
+    iup = nbin+1
     ilow = 1
     do while (iup - ilow > 1)
        imid = (iup+ilow)/2
@@ -433,7 +433,8 @@ contains
     end do
     ! check
     if (.not. (r1 >= low_prob(ilow) .and. r1 < low_prob(iup) )) then
-       print*,'hi Harley ;) '
+       print*,'ERROR'
+       stop
     end if
     return
   end subroutine binary_search
