@@ -143,11 +143,8 @@ program LyaPhotonsFromGas
      do i = 2,nsel
         low_prob_rec(i) = low_prob_rec(i-1) + recomb_em(i-1) 
      end do
-     ! TIBO
-     !low_prob_rec = low_prob_rec / (low_prob_rec(nsel)+recomb_em(nsel))
-     low_prob_rec = low_prob_rec / low_prob_rec(nsel)
-     ! OBIT
-     low_prob_rec(nsel+1) = 1.1  ! higher than upper limit 
+     low_prob_rec = low_prob_rec / (low_prob_rec(nsel)+recomb_em(nsel))
+     low_prob_rec(nsel+1) = 1.1d0  ! higher than upper limit 
   end if
   if (doColls) then 
      allocate(low_prob_col(nsel+1))
@@ -155,12 +152,10 @@ program LyaPhotonsFromGas
      do i = 2,nsel
         low_prob_col(i) = low_prob_col(i-1) + coll_em(i-1) 
      end do
-     ! TIBO
-     !low_prob_col = low_prob_col / (low_prob_col(nsel)+coll_em(nsel)) 
-     low_prob_col = low_prob_col / low_prob_col(nsel)
-     ! OBIT
-     low_prob_col(nsel+1) = 1.1  ! higher than upper limit 
+     low_prob_col = low_prob_col / (low_prob_col(nsel)+coll_em(nsel)) 
+     low_prob_col(nsel+1) = 1.1d0  ! higher than upper limit 
   end if
+
   
   allocate(v_leaf(3,nleaftot))
   call ramses_get_velocity_cgs(repository,snapnum,nleaftot,nvar,ramses_var,v_leaf)
@@ -194,13 +189,6 @@ program LyaPhotonsFromGas
               end if
            end do
            
-           ! TIBO
-           !if (ilow == nsel) then
-           !   print*,'Blah = ',ilow,imid,iup,nsel
-           !   stop
-           !endif
-           ! TIBO
-
            ! check
            if (.not. (r1 >= low_prob_rec(ilow) .and. r1 < low_prob_rec(iup) )) then
               print*,'ERROR '
