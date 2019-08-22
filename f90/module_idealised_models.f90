@@ -183,8 +183,6 @@ contains
           print*,ngas_ideal,dist_cell,ngas_slope,n0
           stop
        endif
-
-       !print*,'Humhum  : ',dist_cell,alpha*(1.0-r_min/dist_cell) , log(r_min/dist_cell)
        
        ! Ensure that BLAH > 0 for sqrt(BLAH)...
        test_neg = alpha*(1.0-r_min/dist_cell) + log(r_min/dist_cell)
@@ -252,9 +250,6 @@ contains
        stop
     endif
 
-   ! print*, ndust_ideal , ngas_ideal , n0 , dist_cell , volfrac2
-   ! print*,n0,coldens_norm,ngas_slope,r_max ,box_size_IM_cm,r_min
-    
     return
     
   end subroutine shell_starburst_rho_gradient
