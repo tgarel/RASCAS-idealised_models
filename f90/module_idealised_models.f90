@@ -89,7 +89,7 @@ contains
 
   !!\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\ BEGINNING MODELS //////////////////////////////////////////////////////////////////////////
 
-!+++++++++++++++++++++++++++++++++++++++++++++++ SHELL with velocity from r^-2 force and density gradient (rho must be isothermal) +++++++++++++++++++++++++++++++++++++++++++++
+!+++++++++++++++++++++++++++++++++++++++++++++++ SHELL with velocity from r^-2 force and power-law density gradient +++++++++++++++++++++++++++++++++++++++++++++
 
    subroutine shell_starburst_rho_gradient(ndust_ideal,ngas_ideal,bparam_ideal,vx_ideal,vy_ideal,vz_ideal,xcell_ideal,ycell_ideal,zcell_ideal,dx_cell)
     
@@ -97,13 +97,13 @@ contains
 
     ! Shell (or sphere if r_min=0) with V and rho profiles 
     ! point source at center and medium transparent at R < r_min and at R > r_max
-
-    ! V(r) = Vmax / 1.35 * sqrt(alpha*(1-r_min/r)+ln(r_min/r))
+    ! V=Vmax at Rg = alpha*r_min
+    ! V(r) = Vmax / sqrt(alpha-1-ln(alpha)) * sqrt(alpha*(1-r_min/r)+ln(r_min/r))
     ! Vxxz = V(r) * xyz / r
-    ! alpha = 3.15340
+    ! alpha = 3.8 !! must be > 3.78
     
     ! Declare arguments
-    real(kind=8)                          :: dx_cell
+    real(kind=8)                          :: dx_cell,test_neg
     real(kind=8),intent(inout)            :: ndust_ideal,ngas_ideal,bparam_ideal
     real(kind=8),intent(inout)            :: vx_ideal,vy_ideal,vz_ideal
     real(kind=8),intent(in)               :: xcell_ideal,ycell_ideal,zcell_ideal    
@@ -111,6 +111,8 @@ contains
     real(kind=8)                          :: dist_cell,dist2,dist_cell_min,dist_cell_max
     integer(kind=4)                       :: missed_cell
     real(kind=8)                          :: n0, coldens_dust, ndust_0
+    real(kind=8),parameter                :: alpha=3.8
+    real(kind=8),parameter                :: vmax_alpha_normed = 0.8262 ! assuming alpha=3.8 ! = 1./sqrt(alpha-1.0-log(alpha))
 
     
     vx_ideal    = 0.0d0
@@ -181,10 +183,31 @@ contains
           print*,ngas_ideal,dist_cell,ngas_slope,n0
           stop
        endif
+
+       !print*,'Humhum  : ',dist_cell,alpha*(1.0-r_min/dist_cell) , log(r_min/dist_cell)
        
-       vx_ideal = Vgas_norm / r_max**(Vgas_slope) * dist_cell**(Vgas_slope-1.0) * (xcell_ideal - 0.5d0)
-       vy_ideal = Vgas_norm / r_max**(Vgas_slope) * dist_cell**(Vgas_slope-1.0) * (ycell_ideal - 0.5d0)
-       vz_ideal = Vgas_norm / r_max**(Vgas_slope) * dist_cell**(Vgas_slope-1.0) * (zcell_ideal - 0.5d0)
+       ! Ensure that BLAH > 0 for sqrt(BLAH)...
+       test_neg = alpha*(1.0-r_min/dist_cell) + log(r_min/dist_cell)
+       if (test_neg < 0.0) then
+          !print*,'test_neg  : ',test_neg,dist_cell,alpha*(1.0-r_min/dist_cell) , log(r_min/dist_cell)
+          vx_ideal    = 0.0d0
+          vy_ideal    = 0.0d0
+          vz_ideal    = 0.0d0
+       else
+          vx_ideal = vmax_alpha_normed * Vgas_norm * sqrt(alpha*(1.0-r_min/dist_cell) + log(r_min/dist_cell)) * (xcell_ideal - 0.5d0) / dist_cell
+          vy_ideal = vmax_alpha_normed * Vgas_norm * sqrt(alpha*(1.0-r_min/dist_cell) + log(r_min/dist_cell)) * (ycell_ideal - 0.5d0) / dist_cell
+          vz_ideal = vmax_alpha_normed * Vgas_norm * sqrt(alpha*(1.0-r_min/dist_cell) + log(r_min/dist_cell)) * (zcell_ideal - 0.5d0) / dist_cell
+       end if
+       
+       if (vx_ideal > Vgas_norm .or. vx_ideal < -1.0*Vgas_norm) then
+          print*,vx_ideal,Vgas_norm,dist_cell
+          stop
+       end if
+
+       if (isnan(vx_ideal) .or. isnan(vy_ideal) .or. isnan(vz_ideal)) then
+          print*,alpha*(1.0-r_min/dist_cell) + log(r_min/dist_cell)
+          stop
+       end if
        
        if (dist_cell_min > r_max .or. dist_cell_max < r_min) then  ! cell completely out of shell or completely within r_min                                                       
           vx_ideal    = 0.0d0
@@ -197,12 +220,10 @@ contains
        
     else  !! Brut force: compare dist to cell center against Rmin/Rmax 
        if (dist_cell < r_max .and. dist_cell > r_min) then ! cell completely within sphere
-!!$          vx_ideal    = Vgas_norm * (xcell_ideal-0.5d0) / r_max
-!!$          vy_ideal    = Vgas_norm * (ycell_ideal-0.5d0) / r_max
-!!$          vz_ideal    = Vgas_norm * (zcell_ideal-0.5d0) / r_max
-          vx_ideal    = Vgas_norm / r_max**(Vgas_slope) * dist_cell**(Vgas_slope-1.0) * (xcell_ideal - 0.5d0)
-          vy_ideal    = Vgas_norm / r_max**(Vgas_slope) * dist_cell**(Vgas_slope-1.0) * (ycell_ideal - 0.5d0)
-          vz_ideal    = Vgas_norm / r_max**(Vgas_slope) * dist_cell**(Vgas_slope-1.0) * (zcell_ideal - 0.5d0)
+          
+          vx_ideal = vmax_alpha_normed * Vgas_norm * sqrt(alpha*(1.0-r_min/dist_cell) + log(r_min/dist_cell)) * (xcell_ideal - 0.5d0) / dist_cell
+          vy_ideal = vmax_alpha_normed * Vgas_norm * sqrt(alpha*(1.0-r_min/dist_cell) + log(r_min/dist_cell)) * (ycell_ideal - 0.5d0) / dist_cell
+          vz_ideal = vmax_alpha_normed * Vgas_norm * sqrt(alpha*(1.0-r_min/dist_cell) + log(r_min/dist_cell)) * (zcell_ideal - 0.5d0) / dist_cell
           
           ngas_ideal  = n0 *  (r_min / dist_cell)**(ngas_slope) ! ngas_slope  = +2 for P+11 fiducial model
           ndust_ideal = ndust_0 * ngas_ideal / n0
@@ -230,6 +251,9 @@ contains
        print*,dist_cell
        stop
     endif
+
+   ! print*, ndust_ideal , ngas_ideal , n0 , dist_cell , volfrac2
+   ! print*,n0,coldens_norm,ngas_slope,r_max ,box_size_IM_cm,r_min
     
     return
     
@@ -577,7 +601,7 @@ contains
        ngas_ideal  = n0 * (r_min / dist_cell)**(ngas_slope) ! ngas_slope  = +2 for P+11 fiducial model
 
        if (ngas_ideal .lt. 0.0d0) then
-          print*,'ngas_ideal < 0... = ',ngas_ideal,dist_cell,ngas_slope,n0,volfrac2,coldens_norm
+          print*,'ngas_ideal < 0... = ',ngas_ideal,dist_cell,ngas_slope,n0,coldens_norm
           if (ngas_ideal .gt. -1.d-14) then
              ngas_ideal = 0.0d0
           else
