@@ -1014,7 +1014,7 @@ contains
     implicit none
 
     real(kind=8)                   :: dx_cell
-    integer(kind=4)                :: nMC
+    integer(kind=8)                :: nMC
     real(kind=8)                   :: volfrac
     real(kind=8)                   :: xmin,xmax,xmc,ymin,ymax,ymc,zmin,zmax,zmc
     real(kind=8)                   :: r,dist_mc,dist_mc2
