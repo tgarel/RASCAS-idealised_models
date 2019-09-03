@@ -162,12 +162,12 @@ program PhotonsFromSourceModel
         print*,'ERROR: unknown source_type :',trim(source_type)
      end select
      photgrid(i)%iran  = -i 
-     call isotropic_direction(photgrid(i)%k_em,iran)
-!!$     ! OBIT for cone tests
-!!$     photgrid(i)%k_em(1) = 0.0
-!!$     photgrid(i)%k_em(2) = 0.0 ! -0.707107  ! 0.0
-!!$     photgrid(i)%k_em(3) = 1.0 ! 0.707107 ! 1.0
-!!$     ! OBIT
+!     call isotropic_direction(photgrid(i)%k_em,iran)
+     ! OBIT for cone tests
+     photgrid(i)%k_em(1) = 0.0
+     photgrid(i)%k_em(2) = -1.0 ! -0.707107  ! 0.0
+     photgrid(i)%k_em(3) = 0.0 ! 0.707107 ! 1.0
+     ! OBIT
   enddo
 
   if (trim(spec_type) == 'Table') then ! deallocate stuff
