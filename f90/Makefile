@@ -3,8 +3,8 @@
 
 #SYSTYPE="CCF"
 #SYSTYPE="lyocral"
-SYSTYPE="lyocralP"
-#SYSTYPE="mac"
+#SYSTYPE="lyocralP"
+SYSTYPE="mac"
 #SYSTYPE="macP"
 #SYSTYPE="ccage"
 
@@ -96,6 +96,8 @@ endif
 #COMPOBJS = module_HI_1216_model.o module_idealised_models.o module_gas_composition_HI.o
 # TIBO-1bis/ HI + dust + idealised_models
 # COMPOBJS = module_dust_model.o module_HI_1216_model.o module_idealised_models.o module_gas_composition_HI_dust.o
+# TIBO-1ter/ HI + dust + D + idealised_models
+ COMPOBJS = module_dust_model.o module_D_1215_model.o module_HI_1216_model.o module_idealised_models.o module_gas_composition_HI_D_dust.o
 # TIBO-2/ SiII_dust + idealised_models
 #COMPOBJS = module_dust_model.o module_SiII_1190_model.o module_SiII_1193_model.o module_idealised_models.o module_gas_composition_SiII_dust.o
 # TIBO-3/ MgII_dust + idealised_models
@@ -105,7 +107,7 @@ endif
 # TIBO-5/ FeII + idealised_models
 #COMPOBJS =  module_FeII_2587_model.o module_FeII_2600_model.o module_idealised_models.o module_gas_composition_FeII_UV1.o
 # TIBO-6/ FeII + dust + idealised_models
- COMPOBJS =  module_dust_model.o module_FeII_2587_model.o module_FeII_2600_model.o module_idealised_models.o module_gas_composition_FeII_UV1_dust.o
+# COMPOBJS =  module_dust_model.o module_FeII_2587_model.o module_FeII_2600_model.o module_idealised_models.o module_gas_composition_FeII_UV1_dust.o
 # TIBO-7/ SiII-1190 + idealised_models
 #COMPOBJS =  module_SiII_1190_model.o module_SiII_1193_model.o module_idealised_models.o module_gas_composition_SiII_1190_1193.o
 # TIBO-8/ SiII-1190 + dust + idealised_models
