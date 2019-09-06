@@ -133,7 +133,7 @@ contains
        if (ngas_slope .ne. 1.0) then
           n0 = coldens_norm * (1.0-ngas_slope) / ((r_min * box_size_IM_cm)**ngas_slope * ((r_max * box_size_IM_cm)**(1.0-ngas_slope) - (r_min * box_size_IM_cm)**(1.0-ngas_slope)))  ! cm-3
        else
-          n0 = coldens_norm / ((r_min * box_size_IM_cm) * log10(r_max / r_min))  ! cm-3
+          n0 = coldens_norm / ((r_min * box_size_IM_cm) * log(r_max / r_min))  ! cm-3
        end if
     else
        ! I use the std density ngas_norm
@@ -294,7 +294,7 @@ contains
        if (ngas_slope .ne. 1.0) then
           n0 = coldens_norm * (1.0-ngas_slope) / ((r_min * box_size_IM_cm)**ngas_slope * ((r_max * box_size_IM_cm)**(1.0-ngas_slope) - (r_min * box_size_IM_cm)**(1.0-ngas_slope)))  ! cm-3
        else
-          n0 = coldens_norm / ((r_min * box_size_IM_cm) * log10(r_max / r_min))  ! cm-3
+          n0 = coldens_norm / ((r_min * box_size_IM_cm) * log(r_max / r_min))  ! cm-3
        end if
     else
        ! I use the std density ngas_norm
@@ -562,7 +562,7 @@ contains
        if (ngas_slope .ne. 1.0) then
           n0 = coldens_norm * (1.0-ngas_slope) / ((r_min * box_size_IM_cm)**ngas_slope * ((r_max * box_size_IM_cm)**(1.0-ngas_slope) - (r_min * box_size_IM_cm)**(1.0-ngas_slope)))  ! cm-3
        else
-          n0 = coldens_norm / ((r_min * box_size_IM_cm) * log10(r_max / r_min))  ! cm-3
+          n0 = coldens_norm / ((r_min * box_size_IM_cm) * log(r_max / r_min))  ! cm-3
        end if
     else
        ! I use the std density ngas_norm
