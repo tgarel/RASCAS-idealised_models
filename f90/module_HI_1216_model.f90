@@ -313,10 +313,10 @@ contains
           case ('isotropic')
              read(value,*) isotropic
           !--CORESKIP--
-          !case ('HI_core_skip') 
-           !  read(value,*) HI_core_skip
-          !case ('xcritmax')
-          !   read(value,*) xcritmax
+          case ('HI_core_skip') 
+             read(value,*) HI_core_skip
+          case ('xcritmax')
+             read(value,*) xcritmax
           !--PIKSEROC--
           end select
        end do

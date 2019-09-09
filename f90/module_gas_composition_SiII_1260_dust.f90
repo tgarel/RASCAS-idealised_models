@@ -300,7 +300,7 @@ contains
 
 
   
-  function  gas_get_scatter_flag(cell_gas, distance_to_border_cm, nu_cell, tau_abs,iran)
+  function gas_get_scatter_flag(cell_gas, distance_to_border_cm, nu_cell, tau_abs,iran)
 
     ! --------------------------------------------------------------------------
     ! Decide whether a scattering event occurs, and if so, on which element
@@ -605,13 +605,9 @@ subroutine read_gas(unit,n,g)
        write(unit,'(a,ES10.3)') '  fix_vth              = ',fix_vth
        write(unit,'(a,ES10.3)') '  fix_vel              = ',fix_vel
        write(unit,'(a,ES10.3)') '  fix_box_size_cm      = ',fix_box_size_cm
-       write(unit,'(a)')       '# miscelaneous parameters'
-       write(unit,'(a,L1)')    '  verbose               = ',verbose
        write(unit,'(a)')             ' '
-       call print_ramses_params(unit)
-       write(unit,'(a)')             ' '
-       call print_dust_params
        call print_SiII_1260_params(unit)
+       call print_dust_params
     else
        write(*,'(a,a,a)') '[gas_composition]'
        !Val---
@@ -626,13 +622,9 @@ subroutine read_gas(unit,n,g)
        write(*,'(a,ES10.3)') '  fix_vth              = ',fix_vth
        write(*,'(a,ES10.3)') '  fix_vel              = ',fix_vel
        write(*,'(a,ES10.3)') '  fix_box_size_cm      = ',fix_box_size_cm
-       write(*,'(a)')       '# miscelaneous parameters'
-       write(*,'(a,L1)')    '  verbose               = ',verbose
        write(*,'(a)')             ' '
-       call print_ramses_params
-       write(*,'(a)')             ' '
-       call print_dust_params
-	   call print_SiII_1260_params()
+       call print_SiII_1260_params()
+       call print_dust_params	   
     end if
 
     return

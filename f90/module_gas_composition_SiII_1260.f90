@@ -529,10 +529,6 @@ contains
        write(unit,'(a,ES10.3)') '  fix_vth              = ',fix_vth
        write(unit,'(a,ES10.3)') '  fix_vel              = ',fix_vel
        write(unit,'(a,ES10.3)') '  fix_box_size_cm      = ',fix_box_size_cm
-       write(unit,'(a)')       '# miscelaneous parameters'
-       write(unit,'(a,L1)')    '  verbose               = ',verbose
-       write(unit,'(a)')             ' '
-       call print_ramses_params(unit)
        write(unit,'(a)')             ' '
        call print_SiII_1260_params(unit)
     else
@@ -549,12 +545,8 @@ contains
        write(*,'(a,ES10.3)') '  fix_vth              = ',fix_vth
        write(*,'(a,ES10.3)') '  fix_vel              = ',fix_vel
        write(*,'(a,ES10.3)') '  fix_box_size_cm      = ',fix_box_size_cm
-       write(*,'(a)')       '# miscelaneous parameters'
-       write(*,'(a,L1)')    '  verbose               = ',verbose
        write(*,'(a)')             ' '
-       call print_ramses_params
-       write(*,'(a)')             ' '
-	   call print_SiII_1260_params()
+       call print_SiII_1260_params()
     end if
 
     return

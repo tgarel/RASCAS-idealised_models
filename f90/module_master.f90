@@ -82,7 +82,11 @@ contains
     if(4*nbundle*nworker>nphottodo)then
        print *,'ERROR: decrease nbundle for a good load-balancing of the code'
        print *,'--> suggested nbundle =', nphottodo/nworker/10
-       call stop_mpi
+       if(nphot>1) then
+          call stop_mpi
+       else
+          print*, 'Since you have only one photon, the code continues'
+       end if
     endif
 
     allocate(photpacket(nbundle))
@@ -642,6 +646,7 @@ contains
     end if
     close(10)
 
+    call read_photon_params(pfile)
     call read_mesh_params(pfile)
 
     return
@@ -666,6 +671,7 @@ contains
        write(unit,'(a,a)')           '  PhotonBakFile  = ',trim(PhotonBakFile)
        write(unit,'(a,f12.3)')       '  dt_backup      = ',dt_backup
        write(unit,'(a)')             ' '
+       call print_photon_params(unit)
        call print_mesh_params(unit)
     else
        write(*,'(a)')             '[master]'
@@ -673,7 +679,8 @@ contains
        write(*,'(a,L1)')          '  restart        = ',restart
        write(*,'(a,a)')           '  PhotonBakFile  = ',trim(PhotonBakFile)
        write(*,'(a,f12.3)')       '  dt_backup      = ',dt_backup
-       write(*,'(a)')             ' '       
+       write(*,'(a)')             ' '
+       call print_photon_params
        call print_mesh_params
     end if
 
