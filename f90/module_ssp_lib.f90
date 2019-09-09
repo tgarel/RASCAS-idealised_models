@@ -63,7 +63,6 @@ contains
 
     isLoaded=.true.
     
-    
     ! deallocate
     deallocate(metallicities, agebins, lambda, sed_list)
     

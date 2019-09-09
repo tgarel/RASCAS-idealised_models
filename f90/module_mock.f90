@@ -45,9 +45,11 @@ module module_mock
   
   ! public variables 
   public :: peeling_off, nDirections, mock
+
   ! public functions 
   public :: read_mock_params, mock_line_of_sight, mock_point_in_spectral_aperture, mock_point_in_flux_aperture, mock_point_in_image, mock_point_in_cube
   public :: mock_projected_pos, peel_to_flux, peel_to_map, peel_to_spec, peel_to_cube, dump_mocks
+  
 contains
 
   
@@ -98,7 +100,7 @@ contains
           mock(idir)%kobs = mock(idir)%kobs / sqrt(mock(idir)%kobs(1)*mock(idir)%kobs(1)+&
                & mock(idir)%kobs(2)*mock(idir)%kobs(2)+mock(idir)%kobs(3)*mock(idir)%kobs(3))
           ! define basis for sky plane
-          if (mock(idir)%kobs(1) < 1.d0) then
+          if (abs(mock(idir)%kobs(1)) < 1.d0) then
              ! kobs_perp_1 is cross prod. of kobs and x 
              mock(idir)%kobs_perp_1(1) = 0.
              mock(idir)%kobs_perp_1(2) = mock(idir)%kobs(3)
@@ -268,8 +270,8 @@ contains
     
     return
   end subroutine peel_to_cube
-  
 
+  
   subroutine dump_mocks(rank)
     implicit none
     integer(kind=4),intent(in) :: rank

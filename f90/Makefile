@@ -42,19 +42,19 @@ endif
 ifeq ($(SYSTYPE),"mac")
 #F90         = gfortran-mp-4.7 -ffree-line-length-none -ffree-form  ###-fopenmp
 F90         = gfortran-mp-6 -ffree-line-length-none -ffree-form -fopenmp
-#FFLAGS      = -g -fcheck=all -ftrapv -fbacktrace -Wall -fbounds-check
-FFLAGS      = -O2
+FFLAGS      = -g -fcheck=all -ftrapv -fbacktrace -Wall -fbounds-check
+#FFLAGS      = -O2
 FFLAGS += $(OPTIONS)
 LDFLAGS     = 
 endif
 
 
 ifeq ($(SYSTYPE),"macP")
-F90         = mpif90-openmpi-gcc8
+F90         = mpif90-openmpi-gcc6
 FFLAGS      = -g -fcheck=all -ffree-line-length-none -ffree-form -ftrapv -fbounds-check -fbacktrace -Wall
 #FFLAGS      = -O3
 FFLAGS += $(OPTIONS)
-LDFLAGS     = #-lmpi
+LDFLAGS     = -lmpi
 endif
 
 
@@ -128,6 +128,10 @@ PhotonsFromStars: $(OBJSPHO) module_ssp_lib.o PhotonsFromStars.o
 
 LyaPhotonsFromGas: $(OBJLYAFG)  LyaPhotonsFromGas.o
 	$(F90) $(FFLAGS) $(LDFLAGS) -o $@ $(OBJLYAFG)  LyaPhotonsFromGas.o
+
+
+HaPhotonsFromGas: $(OBJLYAFG)  HaPhotonsFromGas.o
+	$(F90) $(FFLAGS) $(LDFLAGS) -o $@ $(OBJLYAFG)  HaPhotonsFromGas.o
 
 CreateDomDump: $(OBJSDOM) CreateDomDump.o
 	$(F90) $(FFLAGS) $(LDFLAGS) -o $@ $(OBJSDOM) CreateDomDump.o

@@ -467,7 +467,7 @@ contains
        ! define/update flag_cell_fully_in_comp_dom to avoid various tests in the following
        pcell = cell_corner + 0.5d0*cell_size
        cell_fully_in_domain = domain_fully_contains_cell(pcell,cell_size,domaine_calcul)
-
+       
        ! compute distance of photon to border of cell along propagation direction
        distance_to_border           = path(ppos_cell,kobs)                   ! in cell units
        distance_to_border_cm        = distance_to_border * cell_size_cm     ! cm
@@ -518,6 +518,11 @@ contains
           ppos(1) = ppos(1) + merge(-1.0d0,1.0d0,kobs(1)<0.0d0) * epsilon(ppos(1))
           ppos(2) = ppos(2) + merge(-1.0d0,1.0d0,kobs(2)<0.0d0) * epsilon(ppos(2))
           ppos(3) = ppos(3) + merge(-1.0d0,1.0d0,kobs(3)<0.0d0) * epsilon(ppos(3))
+          ! correct for periodicity
+          do i=1,3
+             if (ppos(i) < 0.0d0) ppos(i)=ppos(i)+1.0d0
+             if (ppos(i) > 1.0d0) ppos(i)=ppos(i)-1.0d0
+          enddo
           call whereIsPhotonGoing(domesh,icell,ppos,icellnew,flagoutvol)
           if (npush == 10) then
              print*,'npush == 10 ... using les grands moyens ... '
@@ -572,10 +577,11 @@ contains
     real(kind=8),parameter        :: tau_max = 60   ! stop computation when tau reaches tau_max ... 
     integer(kind=4)               :: ipeel,idir,ileaf
     real(kind=8)                  :: tau,peel_contrib
-    real(kind=8)                  :: projpos(2),kobs(3),x
+    real(kind=8)                  :: projpos(2),kobs(3)
     logical                       :: increment_flux, increment_spec, increment_image, increment_cube
     type(gas)                     :: cell_gas       ! gas in the current cell 
-
+    real(kind=8)                  :: nupeel
+    
     do idir = 1,nDirections
        kobs = mock_line_of_sight(idir)
        do ipeel = 1,nPeeled
@@ -586,24 +592,25 @@ contains
           increment_image = mock(idir)%compute_image .and. mock_point_in_image(projpos,idir)
           increment_cube  = mock(idir)%compute_cube .and. mock_point_in_cube(projpos,idir)
           tau = tau_max
+          nupeel = PeelBuffer(ipeel)%nu ! save to restore for next directions
           if (increment_flux .or. increment_spec .or. increment_image .or. increment_cube) then
              if (PeelBuffer(ipeel)%scatter_flag > 0) then 
                 ileaf    = - domesh%son(PeelBuffer(ipeel)%icell)
                 cell_gas = domesh%gas(ileaf)
-                x        = PeelBuffer(ipeel)%nu ! incoming direction ... 
-                PeelBuffer(ipeel)%weight = gas_peeloff_weight(PeelBuffer(ipeel)%scatter_flag, cell_gas, x, PeelBuffer(ipeel)%kin, kobs, iran)
-                PeelBuffer(ipeel)%nu     = x ! frequency in the direction of observation 
+                ! NB: the following line updates peel%nu to the frequency in the direction of observation. 
+                PeelBuffer(ipeel)%weight = gas_peeloff_weight(PeelBuffer(ipeel)%scatter_flag, cell_gas, PeelBuffer(ipeel)%nu, PeelBuffer(ipeel)%kin, kobs, iran)
              end if
              tau = tau_to_border(PeelBuffer(ipeel),domesh,domaine_calcul,tau_max,kobs)
           end if
           ! if tau is not absurdly large, increment detectors 
           if (tau < tau_max) then
-             peel_contrib = PeelBuffer(ipeel)%weight * exp(-tau)
+             peel_contrib = PeelBuffer(ipeel)%weight * exp(-tau) * 2.0d0 
              if (increment_flux)  call peel_to_flux(peel_contrib,idir) 
              if (increment_spec)  call peel_to_spec(PeelBuffer(ipeel)%nu,peel_contrib,idir)
              if (increment_image) call peel_to_map(projpos,peel_contrib,idir)
              if (increment_cube)  call peel_to_cube(projpos,PeelBuffer(ipeel)%nu,peel_contrib,idir)
           end if
+          PeelBuffer(ipeel)%nu = nupeel ! restore for next directions
        end do
     end do
     

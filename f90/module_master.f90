@@ -3,6 +3,9 @@ module module_master
   use module_parallel_mpi
   use module_domain
   use module_photon
+  ! GATHER --
+  use module_mock
+  ! -- GATHER 
 
   implicit none
 
@@ -45,6 +48,9 @@ contains
     logical                                       :: everything_not_done
     real(kind=8)                                  :: start_initphot, end_initphot, time_now, dt_since_last_backup, time_last_backup
     real(kind=8)                                  :: percentDone, percentBefore
+    ! GATHER --
+    integer(kind=4) :: nmocks_received
+    ! -- GATHER 
     
     call cpu_time(start_initphot)
 
@@ -111,7 +117,7 @@ contains
           call add_photon_to_domain(i,j)
        endif
     enddo
-    
+
     ! according to the distribution of photons in domains, ditribute cpus to each domain
     call init_loadb(nbundle,ndomain)
 
@@ -248,9 +254,28 @@ contains
 
     enddo
 
-    ! finale synchronization, for profiling purposes
+    
+    ! final synchronization, for profiling purposes
     call MPI_BARRIER(MPI_COMM_WORLD,code)    
 
+    ! GATHER --
+    if (peeling_off) then 
+       nmocks_received = 0
+       print*,'[master] gathering mocks from workers ... '
+       do while (nmocks_received /= nworker)
+          call master_receives_mock
+          nmocks_received = nmocks_received + 1
+          print*,'[master] \__ ',nmocks_received,'/',nworker
+       end do
+       
+       ! post-final synchronization, for profiling purposes
+       call MPI_BARRIER(MPI_COMM_WORLD,code)    
+       
+       print*,'[master] writing mock to file'
+       call dump_mocks(0)
+    end if
+    ! -- GATHER
+       
     if(verbose)then
        call print_diagnostics
        !print *,' '

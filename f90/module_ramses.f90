@@ -1,9 +1,10 @@
 module module_ramses
 
-  use module_constants, only : kB, mp, XH, planck, clight, cmtoA
+  use module_constants, only : kB, mp, XH, mSi, mMg, planck, clight,cmtoA
   use module_domain
   use coolrates_module
-  
+
+
   implicit none
 
   private 
@@ -29,7 +30,7 @@ module module_ramses
   real(kind=8),allocatable         :: cell_x(:),cell_y(:),cell_z(:)
   integer(kind=4),allocatable      :: cell_level(:)
 
-  integer(kind=4)                  :: ncpu
+  integer(kind=4)                  :: ncpu,nvar
 
   ! conversion factors (units)
   logical                        :: conversion_scales_are_known = .False. 
@@ -85,7 +86,10 @@ module module_ramses
   logical                  :: use_initial_mass  = .false.  ! if true, use initial masses of star particles instead of mass at output time
   logical                  :: cosmo             = .true.   ! if false, assume idealised simulation
   logical                  :: use_proper_time   = .false.  ! if true, use proper time instead of conformal time for cosmo runs. 
-  logical                  :: QuadHilbert       = .false.  ! if true, do not use hilbert indexes for now ... 
+  logical                  :: QuadHilbert       = .false.  ! if true, do not use hilbert indexes for now ...
+  integer(kind=4)          :: U_precision=8  ! hydro-precision in RAMSES output
+  integer(kind=4)          :: RT_precision=8 ! RT-precision in RAMSES output
+
   ! miscelaneous
   logical                  :: verbose        = .false. ! display some run-time info on this module
   ! RT variable indices
@@ -114,6 +118,7 @@ module module_ramses
   public :: ramses_read_stars_in_domain
   public :: read_ramses_params, print_ramses_params, dump_ramses_info
   public :: ramses_get_LyaEmiss_HIDopwidth,ramses_get_cooling_time
+  public :: ramses_get_HaEmiss_HIDopwidth
   
   !==================================================================================
 contains
@@ -147,9 +152,12 @@ contains
     nvar     = get_nvar(repository,snapnum)
     allocate(ramses_var(nvar,nleaftot), xleaf(nleaftot,3), leaf_level(nleaftot))
     ncpu = get_ncpu(repository,snapnum)
+!!$    ! Check whether the ramses output is in single or double precision
+!!$    if(check_param_real(repository,snapnum,'U_precision')) &
+!!$         U_precision = nint(get_param_real(repository,snapnum,'U_precision'))
 
     if(verbose)print *,'-- read_leaf_cells: nleaftot, nvar, ncpu =',nleaftot,nvar,ncpu
-
+    
     do_allocs = .true.
     ileaf = 0
     do icpu = 1,ncpu
@@ -197,12 +205,16 @@ contains
     integer(kind=4)                           :: k, icpu, ileaf, icell, ivar, ilast, iloop
     logical                                   :: do_allocs
     
-    if(verbose) print *,'Reading RAMSES cells...'
+    if(verbose) print *,'Reading RAMSES cells...',ncpu_read
 
     nleaftot = get_nleaf_omp(repository,snapnum,ncpu_read,cpu_list)
     nvar     = get_nvar(repository,snapnum)
+    ncpu     = get_ncpu(repository,snapnum)
     allocate(ramses_var_all(nvar,nleaftot), xleaf_all(nleaftot,3), leaf_level_all(nleaftot))
-    ncpu = get_ncpu(repository,snapnum) !!! ncpu should be known before calling read_amr_hydro!!!
+
+!!$    ! Check whether the ramses output is in single or double precision
+!!$    if(check_param_real(repository,snapnum,'U_precision')) &
+!!$    U_precision = nint(get_param_real(repository,snapnum,'U_precision'))
 
     if(verbose) print *,'-- read_leaf_cells_omp: nleaftot(_read), nvar, ncpu(_read) =',nleaftot,nvar,ncpu_read
 
@@ -300,6 +312,9 @@ contains
 
     nvar = get_nvar(repository,snapnum)
     ncpu = get_ncpu(repository,snapnum)
+!!$    ! Check whether the ramses output is in single or double precision
+!!$    if(check_param_real(repository,snapnum,'U_precision')) &
+!!$         U_precision = nint(get_param_real(repository,snapnum,'U_precision'))
 
     ! first count leaf cells in domain...
     nleaftot = 0 ; nleaf_in_domain = 0
@@ -1053,8 +1068,8 @@ contains
     ! Heating terms (RT)
     real(kind=8),parameter::eV_to_erg=1.6022d-12  ! eV to erg conv. constant
     !!JB- should read these from files ! 
-    !real(kind=8),parameter,dimension(3)::ion_egy = (/13.60d0, 24.59d0, 54.42d0/)*eV_to_erg
-    real(kind=8),parameter,dimension(4)::ion_egy = (/13.60d0, 15.20d0, 24.59d0, 54.42d0/)*eV_to_erg
+    real(kind=8),parameter,dimension(3)::ion_egy = (/13.60d0, 24.59d0, 54.42d0/)*eV_to_erg
+    !real(kind=8),parameter,dimension(4)::ion_egy = (/13.60d0, 15.20d0, 24.59d0, 54.42d0/)*eV_to_erg
     !! -JB
     character(1000)            :: filename
     integer(kind=4)            :: ilun=33,nRTvar,nIons,nGroups,igroup,indexgroup,nvarH
@@ -1084,11 +1099,6 @@ contains
        call read_int( ilun, 'nRTvar', nRTvar)
        nvarH = nvar - nRTvar
        call read_int( ilun, 'nIons', nIons)
-! JB: make sure this is OK for non-Harley cases ... 
-!!$       if (nIons .ne. 3) then
-!!$          print*,'nIons has to be 3 with current implementation ... '
-!!$          stop
-!!$       end if
        call read_int( ilun, 'nGroups', nGroups)
        allocate(group_egy(nGroups),group_csn(ngroups,nions),group_cse(ngroups,nions))
        call read_real(ilun, 'unit_pf', unit_fp)
@@ -1096,6 +1106,13 @@ contains
        close(ilun)
     end if
 
+    !JB: implementation is not quite satisfactory ... move back to 3 ions only
+    if (nions .ne. 3) then
+       print*,'> ERROR : nIons .ne. 3'
+       print*,'> To use different number of ions, change the code in module_ramses.f90:ramses_get_cooling_time'
+       stop
+    end if
+       
     
     ! compute cooling rate for all sample cells 
     if (present(sample)) then
@@ -1135,13 +1152,13 @@ contains
                      & + nhei * ramses_var(indexgroup,i) * unit_fp * (group_cse(igroup,2)*group_egy(igroup) -group_csn(iGroup,2)*ion_egy(2)) &
                      & + nheii * ramses_var(indexgroup,i) * unit_fp * (group_cse(igroup,3)*group_egy(igroup) -group_csn(iGroup,3)*ion_egy(3)) 
              end do
-          else !!HK addition for nIons=4 (molecular hydrogen case)
-             do igroup=1,ngroups
-                indexgroup = nvarH+1+(igroup-1)*(1+ndim)
-                hrate = hrate + nhi * ramses_var(indexgroup,i) * unit_fp * (group_cse(igroup,2)*group_egy(igroup) -group_csn(iGroup,2)*ion_egy(2)) &
-                     & + nhei * ramses_var(indexgroup,i) * unit_fp * (group_cse(igroup,3)*group_egy(igroup) -group_csn(iGroup,3)*ion_egy(3)) &
-                     & + nheii * ramses_var(indexgroup,i) * unit_fp * (group_cse(igroup,4)*group_egy(igroup) -group_csn(iGroup,4)*ion_egy(4))
-             end do
+!!$          else !!HK addition for nIons=4 (molecular hydrogen case)
+!!$             do igroup=1,ngroups
+!!$                indexgroup = nvarH+1+(igroup-1)*(1+ndim)
+!!$                hrate = hrate + nhi * ramses_var(indexgroup,i) * unit_fp * (group_cse(igroup,2)*group_egy(igroup) -group_csn(iGroup,2)*ion_egy(2)) &
+!!$                     & + nhei * ramses_var(indexgroup,i) * unit_fp * (group_cse(igroup,3)*group_egy(igroup) -group_csn(iGroup,3)*ion_egy(3)) &
+!!$                     & + nheii * ramses_var(indexgroup,i) * unit_fp * (group_cse(igroup,4)*group_egy(igroup) -group_csn(iGroup,4)*ion_egy(4))
+!!$             end do
           endif
           ! -JB 
           crate = max(1.0d-40,crate-hrate)  ! we're only interested in relatively fast cooling rates. 
@@ -1339,6 +1356,75 @@ contains
     end if
     
   end subroutine ramses_get_LyaEmiss_HIDopwidth
+
+
+  subroutine ramses_get_HaEmiss_HIDopwidth(repository,snapnum,nleaf,nvar,var,HaEm,HIDopwidth,sample)
+
+    implicit none
+
+    character(1000),intent(in)  :: repository
+    integer(kind=4),intent(in)  :: snapnum
+    integer(kind=4),intent(in) :: nleaf,nvar
+    real(kind=8),intent(in)    :: var(nvar,nleaf)
+    real(kind=8),intent(inout) :: HaEm(:),HIDopwidth(:)
+    integer(kind=4),intent(in),optional :: sample(:)
+
+    integer(kind=4)            :: n,j,i
+    real(kind=8),parameter     :: e_lya = planck * clight / (1215.67d0/cmtoA) ! [erg] energy of a Lya photon (consistent with HI_model)
+    real(kind=8)               :: xhii,xheii,xheiii,nh,nhi,nhii,n_e,mu,TK,Ta,prob_case_B,alpha_B,lambda,nhe,LyaEm
+    logical                    :: subsample
+    
+    ! get conversion factors if necessary
+    if (.not. conversion_scales_are_known) then 
+       call read_conversion_scales(repository,snapnum)
+       conversion_scales_are_known = .True.
+    end if
+
+    if (present(sample)) then
+       n = size(sample)
+       subsample = .true.
+    else
+       n = nleaf
+       subsample = .false. 
+    end if
+
+    if(ramses_rt)then
+       do j=1,n
+
+          if (subsample) then
+             i = sample(j)
+          else
+             i = j
+          end if
+
+          xhii   = var(ihii,i)
+          xheii  = var(iheii,i)
+          xheiii = var(iheiii,i)
+          nh     = var(1,i) * dp_scale_nh
+          nhe    = 0.25*nh*(1.0d0-XH)/XH
+          nhii   = nh * xhii
+          nhi    = nh * (1.0d0 - xhii)
+          n_e    = nHII + nHe * (xHeII + 2.0d0*xHeIII)
+          mu     = 1./( XH*(1.+xHII) + 0.25d0*(1.0d0-XH)*(1.+xHeII+2.*xHeIII) )
+          TK     = var(itemp,i)/var(1,i)*mu*dp_scale_T2
+          HIDopwidth(j) = sqrt((2.0d0*kb/mp)*TK)
+          ! Cantalupo+(08)
+          Ta = max(TK,100.0) ! no extrapolation..
+          prob_case_B = 0.686 - 0.106*log10(Ta/1e4) - 0.009*(Ta/1e4)**(-0.44)
+          ! Hui & Gnedin (1997)
+          lambda = 315614.d0/TK
+          alpha_B = 2.753d-14*(lambda**(1.5))/(1+(lambda/2.74)**0.407)**(2.242) ![cm3/s]
+          LyaEm = prob_case_B * alpha_B * n_e * nhii * e_lya ! [erg/cm3/s]
+          ! convert Lya to Ha using a simple ratio ... 
+          HaEm(j) = LyaEm / 8.7 
+          
+       end do
+    else
+       print*,'Not implemented ... '
+       stop
+    end if
+    
+  end subroutine ramses_get_HaEmiss_HIDopwidth
 
   
   subroutine ramses_get_T_nSiII_cgs(repository,snapnum,nleaf,nvar,ramses_var,temp,nSiII)
@@ -1764,6 +1850,8 @@ contains
 
 
 
+
+
   function ramses_get_box_size_cm(repository,snapnum)
 
     implicit none
@@ -1839,6 +1927,7 @@ contains
     character(1000)             :: nomfich
     integer(kind=4)             :: i,nlevelmax,nboundary,ix,iy,iz,ind,ilevel,ibound,ncache,istart,ivar,iskip,igrid,nvarH,nvarRT
     real(kind=8),allocatable    :: xc(:,:),xx(:)
+    real(kind=4),allocatable    :: xx_sp(:)
     integer(kind=4),allocatable :: ind_grid(:)
 
     write(nomfich,'(a,a,i5.5,a,i5.5,a,i5.5)') trim(repository),'/output_',snapnum,'/hydro_',snapnum,'.out',icpu
@@ -1901,7 +1990,12 @@ contains
           end if
           if(ncache>0)then
              allocate(ind_grid(1:ncache))
-             allocate(xx(1:ncache))
+             if(U_precision.eq.4 .or. RT_precision==4) then
+                allocate(xx_sp(1:ncache))
+             end if
+             if(U_precision == 8 .or. RT_precision == 8) then 
+                allocate(xx(1:ncache))
+             endif
              ! Loop over level grids
              igrid=istart
              do i=1,ncache
@@ -1913,19 +2007,35 @@ contains
                 iskip=ncoarse+(ind-1)*ngridmax
                 ! Loop over conservative variables
                 do ivar=1,nvarH
-                   read(10) xx
-                   if (ibound > ncpu) cycle  ! dont bother with boundaries
-                   do i = 1, ncache
-                      var(ind_grid(i)+iskip,ivar) = xx(i)
-                   end do
+                   if(U_precision.eq.4) then
+                      read(10) xx_sp
+                      if (ibound > ncpu) cycle  ! dont bother with boundaries
+                      do i = 1, ncache
+                         var(ind_grid(i)+iskip,ivar) = xx_sp(i)
+                      end do
+                   else
+                      read(10) xx
+                      if (ibound > ncpu) cycle  ! dont bother with boundaries
+                      do i = 1, ncache
+                         var(ind_grid(i)+iskip,ivar) = xx(i)
+                      end do
+                   end if
                 end do
                 if (read_rt_variables) then 
                    do ivar=1,nvarRT
-                      read(12) xx
-                      if (ibound > ncpu) cycle  ! dont bother with boundaries
-                      do i = 1, ncache
-                         var(ind_grid(i)+iskip,ivar+nvarH) = xx(i)
-                      end do
+                      if(RT_precision.eq.4) then
+                         read(12) xx_sp
+                         if (ibound > ncpu) cycle  ! dont bother with boundaries
+                         do i = 1, ncache
+                            var(ind_grid(i)+iskip,ivar+nvarH) = xx_sp(i)
+                         end do
+                      else
+                         read(12) xx
+                         if (ibound > ncpu) cycle  ! dont bother with boundaries
+                         do i = 1, ncache
+                            var(ind_grid(i)+iskip,ivar+nvarH) = xx(i)
+                         end do
+                      end if
                    end do
                 end if
                 do i = 1,ncache
@@ -1941,7 +2051,9 @@ contains
                    cell_level(ind_grid(i)+iskip)      = ilevel
                 end do
              end do
-             deallocate(ind_grid,xx)
+             deallocate(ind_grid)
+             if(allocated(xx_sp)) deallocate(xx_sp)
+             if(allocated(xx)) deallocate(xx)
           end if
        end do
     end do
@@ -2150,6 +2262,7 @@ contains
     real(kind=8)                :: dx
     integer(kind=4)             :: ix,iy,iz,istart,ivar,igrid,nvarH,nvarRT
     real(kind=8),allocatable    :: xc(:,:),xx(:)
+    real(kind=4),allocatable    :: xx_sp(:)
 
     ! stuff read from the HYDRO files
     real(kind=8),allocatable,intent(out)     :: var_l(:,:)
@@ -2161,7 +2274,7 @@ contains
     iunit=10+rank*2
     iu2 = 10+rank*2+1
 
-    ! Vérification de l'existence des fichiers AMR
+    ! Verification de l'existence des fichiers AMR
     write(nomfich,'(a,a,i5.5,a,i5.5,a,i5.5)') trim(repository),'/output_',snapnum,'/amr_',snapnum,'.out',icpu
     inquire(file=nomfich, exist=ok)
     if(.not. ok)then
@@ -2354,7 +2467,12 @@ contains
           end if
           if(ncache>0)then
              allocate(ind_grid(1:ncache))
-             allocate(xx(1:ncache))
+             if(U_precision.eq.4 .or. RT_precision == 4) then
+                allocate(xx_sp(1:ncache))
+             end if
+             if(U_precision == 8 .or. RT_precision == 8) then 
+                allocate(xx(1:ncache))
+             endif
              ! Loop over level grids
              igrid=istart
              do i=1,ncache
@@ -2366,19 +2484,35 @@ contains
                 iskip=ncoarse_l+(ind-1)*ngridmax_l
                 ! Loop over conservative variables
                 do ivar=1,nvarH
-                   read(iunit) xx
-                   if (ibound > ncpu) cycle  ! dont bother with boundaries
-                   do i = 1, ncache
-                      var_l(ind_grid(i)+iskip,ivar) = xx(i)
-                   end do
+                   if(U_precision.eq.4) then
+                      read(iunit) xx_sp
+                      if (ibound > ncpu) cycle  ! dont bother with boundaries
+                      do i = 1, ncache
+                         var_l(ind_grid(i)+iskip,ivar) = xx_sp(i)
+                      end do
+                   else
+                      read(iunit) xx
+                      if (ibound > ncpu) cycle  ! dont bother with boundaries
+                      do i = 1, ncache
+                         var_l(ind_grid(i)+iskip,ivar) = xx(i)
+                      end do
+                   end if
                 end do
                 if (read_rt_variables) then 
                    do ivar=1,nvarRT
-                      read(iu2) xx
-                      if (ibound > ncpu) cycle  ! dont bother with boundaries
-                      do i = 1, ncache
-                         var_l(ind_grid(i)+iskip,ivar+nvarH) = xx(i)
-                      end do
+                      if(RT_precision.eq.4) then
+                         read(iu2) xx_sp
+                         if (ibound > ncpu) cycle  ! dont bother with boundaries
+                         do i = 1, ncache
+                            var_l(ind_grid(i)+iskip,ivar+nvarH) = xx_sp(i)
+                         end do
+                      else
+                         read(iu2) xx
+                         if (ibound > ncpu) cycle  ! dont bother with boundaries
+                         do i = 1, ncache
+                            var_l(ind_grid(i)+iskip,ivar+nvarH) = xx(i)
+                         end do
+                      end if
                    end do
                 end if
                 do i = 1,ncache
@@ -2388,7 +2522,10 @@ contains
                    cell_level_l(ind_grid(i)+iskip)      = ilevel
                 end do
              end do
-             deallocate(ind_grid,xx)
+             deallocate(ind_grid)
+             if(allocated(xx_sp)) deallocate(xx_sp)
+             if(allocated(xx)) deallocate(xx)
+
           end if
        end do
     end do
@@ -2809,7 +2946,44 @@ contains
 
   end function get_param_real
 
-  
+  function check_param_real(repository,snapnum,param)
+    ! Check if parameter with given name exists in RAMSES info-file.
+
+    implicit none 
+
+    logical                    :: check_param_real
+    character(512),intent(in)  :: repository
+    integer(kind=4),intent(in) :: snapnum
+    character(*),intent(in)    :: param
+    character(512)             :: nomfich
+    character(512)             :: line,name,value
+    integer(kind=4)            :: i
+    integer(kind=4),parameter  :: param_unit = 14
+
+    write(nomfich,'(a,a,i5.5,a,i5.5,a)') trim(repository),'/output_',snapnum,'/info_',snapnum,'.txt'
+    open(unit=param_unit,file=nomfich,status='old',form='formatted')
+    check_param_real = .false.
+    do 
+       read(param_unit,'(a)',end=3) line
+       i = scan(line,'=')
+       if (i==0 .or. line(1:1)=='#') cycle
+       name=trim(adjustl(line(:i-1)))
+       value=trim(adjustl(line(i+1:)))
+       ! check for a comment at end of line !
+       i = scan(value,'!')
+       if (i /= 0) value = trim(adjustl(value(:i-1)))
+       if (trim(name) .eq. trim(param)) then 
+          check_param_real = .true.
+          exit
+       end if
+
+    end do
+3   close (param_unit)  
+
+    return
+
+  end function check_param_real
+
   
   subroutine read_conversion_scales(repository,snapnum)
 
@@ -2990,6 +3164,10 @@ contains
     character(1000)                        :: filename
     integer(kind=4),allocatable            :: id(:)
     real(kind=8),allocatable               :: age(:),m(:),x(:,:),v(:,:),mets(:),imass(:)
+    ! TRACER--
+    integer(kind=4),allocatable :: fam(:)
+    logical :: ok 
+    ! --TRACER 
     real(kind=8)                           :: temp(3)
     integer(kind=4)                        :: rank, iunit, ilast_all
     
@@ -3023,6 +3201,7 @@ contains
        stop
     end if
     allocate(star_pos_all(3,nstars),star_age_all(nstars),star_mass_all(nstars),star_vel_all(3,nstars),star_met_all(nstars))
+    
     ! get list of particle fields in outputs 
     call get_fields_from_header(repository,snapnum,nfields)
     ncpu  = get_ncpu(repository,snapnum)
@@ -3076,9 +3255,15 @@ contains
              read(iunit) mets(1:npart)
           case('imass')
              read(iunit) imass(1:npart)
+          ! TRACER--
+          case('family')
+             allocate(fam(npart))
+             read(iunit) fam(1:npart)
+          ! --TRACER
           case default
-             read(iunit)
-             print*,'Error, Field unknown: ',trim(ParticleFields(ifield))
+             print*,'WARNING: Field unknown in particle files: ',trim(ParticleFields(ifield))
+             print*,'+-- skipping the record. '
+             read(iunit) 
           end select
        end do
        close(iunit)
@@ -3091,7 +3276,12 @@ contains
        ! save star particles within selection region
        ilast = 0
        do i = 1,npart
-          if (age(i).ne.0.0d0) then ! This is a star
+          ! TRACER--
+          !if (age(i).ne.0.0d0) then ! This is a star
+          ok = (age(i).ne.0.0d0)
+          if (allocated(fam)) ok = ok .and. (fam(i) < 50)
+          if (ok) then 
+          ! --TRACER
              temp(:) = x(i,:)
              if (domain_contains_point(temp,selection_domain)) then ! it is inside the domain
                 ilast = ilast + 1
@@ -3104,7 +3294,13 @@ contains
                    end if
                 else
                    ! convert from tborn to age in Myr
-                   star_age(ilast)   = max(0.d0, (time_cu - age(i)) * dp_scale_t / (365.d0*24.d0*3600.d0*1.d6))
+                   ! JB -  hack to make IC particles older ...
+                   if (age(i) < 0.0) then 
+                      star_age(ilast)   = 8000.0 ! 8 Gyr. 
+                   else
+                      star_age(ilast)   = max(0.d0, (time_cu - age(i)) * dp_scale_t / (365.d0*24.d0*3600.d0*1.d6))
+                   end if
+                   ! - JB 
                 endif
                 if (use_initial_mass) then 
                    star_mass(ilast) = imass(i) * dp_scale_m ! [g]
@@ -3117,8 +3313,10 @@ contains
              end if
           end if
        end do
-
        deallocate(age,m,x,id,mets,v,imass)
+       ! TRACER--
+       if (allocated(fam)) deallocate(fam)
+       ! --TRACER
 
 !$OMP CRITICAL
        if(ilast .gt. 0) then
@@ -3486,6 +3684,10 @@ contains
              read(value,*) iheiii
           case('QuadHilbert') ! True if simulation was run with -DQUADHILBERT option  
              read(value,*) QuadHilbert
+          case('U_precision') ! precision of hydro vars  
+             read(value,*) U_precision
+          case('RT_precision') ! precision of RT vars  
+             read(value,*) RT_precision
           end select
        end do
     end if
@@ -3507,34 +3709,38 @@ contains
 
     if (present(unit)) then 
        write(unit,'(a,a,a)') '[ramses]'
-       write(unit,'(a,L1)') '  self_shielding    = ',self_shielding
-       write(unit,'(a,L1)') '  ramses_rt         = ',ramses_rt
-       write(unit,'(a,L1)') '  read_rt_variables = ',read_rt_variables
-       write(unit,'(a,L1)') '  use_initial_mass  = ',use_initial_mass
-       write(unit,'(a,L1)') '  cosmo             = ',cosmo
-       write(unit,'(a,L1)') '  use_proper_time   = ',use_proper_time
-       write(unit,'(a,L1)') '  QuadHilbert       = ',QuadHilbert
-       write(unit,'(a,L1)') '  verbose           = ',verbose
-       write(unit,'(a,i2)') '  itemp             = ', itemp
-       write(unit,'(a,i2)') '  imetal            = ', imetal
-       write(unit,'(a,i2)') '  ihii              = ', ihii
-       write(unit,'(a,i2)') '  iheii             = ', iheii
-       write(unit,'(a,i2)') '  iheiii            = ', iheiii
+       write(unit,'(a,L1)') '  self_shielding     = ',self_shielding
+       write(unit,'(a,L1)') '  ramses_rt          = ',ramses_rt
+       write(unit,'(a,L1)') '  read_rt_variables  = ',read_rt_variables
+       write(unit,'(a,L1)') '  use_initial_mass   = ',use_initial_mass
+       write(unit,'(a,L1)') '  cosmo              = ',cosmo
+       write(unit,'(a,L1)') '  use_proper_time    = ',use_proper_time
+       write(unit,'(a,L1)') '  QuadHilbert        = ',QuadHilbert
+       write(unit,'(a,L1)') '  verbose            = ',verbose
+       write(unit,'(a,i2)') '  itemp              = ', itemp
+       write(unit,'(a,i2)') '  imetal             = ', imetal
+       write(unit,'(a,i2)') '  ihii               = ', ihii
+       write(unit,'(a,i2)') '  iheii              = ', iheii
+       write(unit,'(a,i2)') '  iheiii             = ', iheiii
+       write(unit,'(a,i2)') '  U_precision        = ', U_precision
+       write(unit,'(a,i2)') '  RT_precision       = ', RT_precision
     else
        write(*,'(a,a,a)') '[ramses]'
-       write(*,'(a,L1)') '  self_shielding    = ',self_shielding
-       write(*,'(a,L1)') '  ramses_rt         = ',ramses_rt
-       write(*,'(a,L1)') '  read_rt_variables = ',read_rt_variables
-       write(*,'(a,L1)') '  use_initial_mass  = ',use_initial_mass
-       write(*,'(a,L1)') '  cosmo             = ',cosmo
-       write(*,'(a,L1)') '  use_proper_time   = ',use_proper_time
-       write(*,'(a,L1)') '  QuadHilbert       = ',QuadHilbert
-       write(*,'(a,L1)') '  verbose           = ',verbose
-       write(*,'(a,i2)') '  itemp             = ', itemp
-       write(*,'(a,i2)') '  imetal            = ', imetal
-       write(*,'(a,i2)') '  ihii              = ', ihii
-       write(*,'(a,i2)') '  iheii             = ', iheii
-       write(*,'(a,i2)') '  iheiii            = ', iheiii
+       write(*,'(a,L1)') '  self_shielding     = ',self_shielding
+       write(*,'(a,L1)') '  ramses_rt          = ',ramses_rt
+       write(*,'(a,L1)') '  read_rt_variables  = ',read_rt_variables
+       write(*,'(a,L1)') '  use_initial_mass   = ',use_initial_mass
+       write(*,'(a,L1)') '  cosmo              = ',cosmo
+       write(*,'(a,L1)') '  use_proper_time    = ',use_proper_time
+       write(*,'(a,L1)') '  QuadHilbert        = ',QuadHilbert
+       write(*,'(a,L1)') '  verbose            = ',verbose
+       write(*,'(a,i2)') '  itemp              = ', itemp
+       write(*,'(a,i2)') '  imetal             = ', imetal
+       write(*,'(a,i2)') '  ihii               = ', ihii
+       write(*,'(a,i2)') '  iheii              = ', iheii
+       write(*,'(a,i2)') '  iheiii             = ', iheiii
+       write(*,'(a,i2)') '  U_precision        = ', U_precision
+       write(*,'(a,i2)') '  RT_precision       = ', RT_precision
     end if
     
     return

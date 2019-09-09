@@ -1,12 +1,11 @@
 module module_HI_1216_model
 
   use module_constants
-
   use module_utils, only : isotropic_direction, anisotropic_direction_HIcore, anisotropic_direction_Rayleigh
   !--PEEL--
   use module_utils, only : anisotropic_probability_HIcore,anisotropic_probability_Rayleigh
   !--LEEP--
-  
+
   use module_uparallel
   use module_random
   use module_voigt
@@ -28,9 +27,8 @@ module module_HI_1216_model
   ! --------------------------------------------------------------------------
   ! user-defined parameters - read from section [HI] in the parameter file 
   ! --------------------------------------------------------------------------
-
-  logical                       :: recoil       = .true.      ! if set to true, recoil effect is computed [default is true]
-  logical                       :: isotropic    = .false.     ! if set to true, scattering events will be isotropic [default is false]
+  logical                  :: recoil       = .true.      ! if set to true, recoil effect is computed [default is true]
+  logical                  :: isotropic    = .false.     ! if set to true, scattering events will be isotropic [default is false]
   !--CORESKIP--
   logical                  :: HI_core_skip    = .false.     ! if true, skip scatterings in the core of the line (as in Smith+15).
   real(kind=8)             :: xcritmax        = 1d10        ! core-skipping will truncate at min(xcrit, xcritmax) -> set to a low value to activate. 
@@ -38,11 +36,10 @@ module module_HI_1216_model
   ! --------------------------------------------------------------------------
 
   public :: get_tau_HI_1216, scatter_HI_1216, read_HI_1216_params, print_HI_1216_params
-
   !--PEEL--
-  public :: HI_peeloff_weight
+  public :: HI_1216_peeloff_weight
   !--LEEP--
-  
+
   !--CORESKIP--
   public :: HI_core_skip 
   !--PIKSEROC-- 
@@ -82,12 +79,10 @@ contains
   end function get_tau_HI_1216
 
 
-  
   !--CORESKIP--
   subroutine scatter_HI_1216(vcell,vth,nu_cell,k,nu_ext,iran,xcrit)
-  !subroutine scatter_HI(vcell,vth,nu_cell,k,nu_ext,iran)
+  !subroutine scatter_HI_1216(vcell,vth,nu_cell,k,nu_ext,iran)
   !--PIKSEROC--
-    
     ! ---------------------------------------------------------------------------------
     ! perform scattering event on a Hydrogen atom with an anisotropic phase function
     ! ---------------------------------------------------------------------------------
@@ -131,7 +126,11 @@ contains
        print*,'ERROR: core skipping is on but xcrit is not zero ... '
        stop
     end if
-    if (HI_core_skip) xc = min(xcrit,xcritmax)
+    if (HI_core_skip)  then
+       xc = min(xcrit,xcritmax)
+    else
+       xc=0
+    endif
     !--PIKSEROC-- 
     
     ! define x_cell & a
@@ -184,7 +183,7 @@ contains
 
   
 !--PEEL--
-  function HI_peeloff_weight(vcell,vth,nu_ext,kin,kout,iran)
+  function HI_1216_peeloff_weight(vcell,vth,nu_ext,kin,kout,iran)
 
     ! ---------------------------------------------------------------------------------
     ! Compute probability that a photon coming along kin scatters off in direction kout.
@@ -214,7 +213,7 @@ contains
     real(kind=8),dimension(3),intent(in)    :: vcell
     real(kind=8),intent(in)                 :: vth
     integer(kind=4),intent(inout)           :: iran
-    real(kind=8)                            :: HI_peeloff_weight
+    real(kind=8)                            :: HI_1216_peeloff_weight
     real(kind=8)                            :: delta_nu_doppler, a, x_cell, upar, ruper
     real(kind=8)                            :: r2, uper, nu_atom, mu, bu, scalar
     real(kind=8)                            :: x_atom,nu_cell
@@ -244,15 +243,15 @@ contains
 
     ! 4/ determine direction of scattered photon
     if (isotropic) then
-       HI_peeloff_weight = 0.5d0  ! P(mu) for isotropic phase function
+       HI_1216_peeloff_weight = 0.5d0  ! P(mu) for isotropic phase function
        mu = kin(1)*kout(1) + kin(2)*kout(2) + kin(3)*kout(3)
        bu = sqrt(1.0d0 - mu*mu)
     else
        x_atom  = (nu_atom -nu_0) / delta_nu_doppler
        if (abs(x_atom) < 0.2) then ! core scattering 
-          HI_peeloff_weight = anisotropic_probability_HIcore(kin,kout,mu,bu)
+          HI_1216_peeloff_weight = anisotropic_probability_HIcore(kin,kout,mu,bu)
        else ! wing scattering 
-          HI_peeloff_weight = anisotropic_probability_Rayleigh(kin,kout,mu,bu)
+          HI_1216_peeloff_weight = anisotropic_probability_Rayleigh(kin,kout,mu,bu)
        end if
     end if
 
@@ -265,7 +264,7 @@ contains
     scalar = kout(1) * vcell(1) + kout(2) * vcell(2) + kout(3)* vcell(3)
     nu_ext = nu_atom * (1.0d0 + scalar/clight + (upar*mu + bu*uper)/clight)
 
-  end function HI_peeloff_weight
+  end function HI_1216_peeloff_weight
 !--LEEP--
 
   subroutine read_HI_1216_params(pfile)
@@ -346,7 +345,7 @@ contains
        write(unit,'(a,L1)')     '  HI_core_skip = ',HI_core_skip
        write(unit,'(a,ES10.3)') '  xcritmax     = ',xcritmax
        !--PIKSEROC--
-
+       write(unit,'(a)') ''
        call print_uparallel_params(unit)
        call print_voigt_params(unit)
     else
@@ -357,6 +356,7 @@ contains
        write(*,'(a,L1)')     '  HI_core_skip = ',HI_core_skip
        write(*,'(a,ES10.3)') '  xcritmax     = ',xcritmax
        !--PIKSEROC--
+       write(*,'(a)') ''
        call print_uparallel_params()
        call print_voigt_params()
     end if

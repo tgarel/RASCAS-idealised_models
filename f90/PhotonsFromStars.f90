@@ -115,6 +115,7 @@ program PhotonsFromStars
   call ramses_read_stars_in_domain(repository,snapnum,emission_domain,star_pos,star_age,star_mass,star_vel,star_met)
   ! --------------------------------------------------------------------------------------
   
+
   print*,'Nstars read =',size(star_mass)
   print*,'minmax pos =',minval(star_pos),maxval(star_pos)
   print*,'minmax vel =',minval(star_vel),maxval(star_vel)

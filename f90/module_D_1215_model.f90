@@ -31,10 +31,11 @@ module module_D_1215_model
   logical                  :: isotropic    = .false.     ! if set to true, scattering events will be isotropic [default is false]
   ! --------------------------------------------------------------------------
 
-  !--PEEL--
-  public :: D_peeloff_weight
-  !--LEEP--
+
   public :: get_tau_D_1215, scatter_D_1215, read_D_1215_params, print_D_1215_params
+  !--PEEL--
+  public :: D_1215_peeloff_weight
+  !--LEEP--
 
 contains
 
@@ -159,7 +160,7 @@ contains
   end subroutine scatter_D_1215
 
 !--PEEL--
-  function D_peeloff_weight(vcell,vth,nu_ext,kin,kout,iran)
+  function D_1215_peeloff_weight(vcell,vth,nu_ext,kin,kout,iran)
 
     ! ---------------------------------------------------------------------------------
     ! Compute probability that a photon coming along kin scatters off in direction kout.
@@ -189,7 +190,7 @@ contains
     real(kind=8),dimension(3),intent(in)    :: vcell
     real(kind=8),intent(in)                 :: vth
     integer(kind=4),intent(inout)           :: iran
-    real(kind=8)                            :: D_peeloff_weight
+    real(kind=8)                            :: D_1215_peeloff_weight
     real(kind=8)                            :: delta_nu_doppler, a, x_cell, upar, ruper
     real(kind=8)                            :: r2, uper, nu_atom, mu, bu, scalar
     real(kind=8)                            :: x_atom,nu_cell
@@ -219,15 +220,15 @@ contains
 
     ! 4/ determine direction of scattered photon
     if (isotropic) then
-       D_peeloff_weight = 0.5d0  ! P(mu) for isotropic phase function
+       D_1215_peeloff_weight = 0.5d0  ! P(mu) for isotropic phase function
        mu = kin(1)*kout(1) + kin(2)*kout(2) + kin(3)*kout(3)
        bu = sqrt(1.0d0 - mu*mu)
     else
        x_atom  = (nu_atom -nu_0) / delta_nu_doppler
        if (abs(x_atom) < 0.2) then ! core scattering 
-          D_peeloff_weight = anisotropic_probability_HIcore(kin,kout,mu,bu)
+          D_1215_peeloff_weight = anisotropic_probability_HIcore(kin,kout,mu,bu)
        else ! wing scattering 
-          D_peeloff_weight = anisotropic_probability_Rayleigh(kin,kout,mu,bu)
+          D_1215_peeloff_weight = anisotropic_probability_Rayleigh(kin,kout,mu,bu)
        end if
     end if
 
@@ -240,7 +241,7 @@ contains
     scalar = kout(1) * vcell(1) + kout(2) * vcell(2) + kout(3)* vcell(3)
     nu_ext = nu_atom * (1.0d0 + scalar/clight + (upar*mu + bu*uper)/clight)
 
-  end function D_peeloff_weight
+  end function D_1215_peeloff_weight
 !--LEEP--
 
 

@@ -124,7 +124,7 @@ contains
     real(kind=8)                            :: dust_peeloff_weight
     real(kind=8)                            :: scalar,nu_cell
 
-    dust_peeloff_weight = anisotropic_probability_Dust(kin,kout,g_dust)
+    dust_peeloff_weight = anisotropic_probability_Dust(kin,kout,g_dust) * albedo
     ! compute freq. in cell frame
     scalar  = kin(1) * vcell(1) + kin(2) * vcell(2) + kin(3) * vcell(3)
     nu_cell = (1.d0 - scalar/clight) * nu_ext

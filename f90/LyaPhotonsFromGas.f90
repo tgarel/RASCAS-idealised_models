@@ -95,10 +95,9 @@ program LyaPhotonsFromGas
   call read_leaf_cells_omp(repository, snapnum, ncpu_read, cpu_list, nleaftot, nvar, x_leaf, ramses_var, leaf_level)
   !call read_leaf_cells(repository, snapnum, nleaftot, nvar, x_leaf, ramses_var, leaf_level)
   if (verbose) print*,'done reading'
-
   call select_cells_in_domain(emission_domain,nleaftot,x_leaf,leaf_level,emitting_cells)
   nsel = size(emitting_cells)
-  print*,'Ncell emit = ',nsel
+  
   if (verbose) print*,'done selecting cells in domain'
   allocate(recomb_em(nsel),coll_em(nsel),HIDopWidth(nsel))
   call ramses_get_LyaEmiss_HIDopwidth(repository,snapnum,nleaftot,nvar,ramses_var,recomb_em,coll_em,HIDopWidth,sample=emitting_cells)
@@ -131,12 +130,11 @@ program LyaPhotonsFromGas
   
   recomb_total = sum(recomb_em) / (planck*nu_0)  ! nb of photons per second
   coll_total   = sum(coll_em) / (planck*nu_0)  ! nb of photons per second
-
+  
   print*,'coll_total,recomb_total [erg/s] = ',coll_total*(planck*nu_0),recomb_total*(planck*nu_0)
   
   recomb_em = recomb_em / maxrec
   coll_em   = coll_em / maxcol
-
   if (doRecombs) then 
      allocate(low_prob_rec(nsel+1))
      low_prob_rec(1) = 0.0d0
@@ -155,7 +153,6 @@ program LyaPhotonsFromGas
      low_prob_col = low_prob_col / (low_prob_col(nsel)+coll_em(nsel)) 
      low_prob_col(nsel+1) = 1.1d0  ! higher than upper limit 
   end if
-
   
   allocate(v_leaf(3,nleaftot))
   call ramses_get_velocity_cgs(repository,snapnum,nleaftot,nvar,ramses_var,v_leaf)
@@ -169,7 +166,8 @@ program LyaPhotonsFromGas
      if (verbose) then
         write(*,*) "Starting to sample recombination emissivity" 
         call cpu_time(start_photpacket)
-     end if     
+     end if
+     ! --------------------------------------------------------------------------------------
      iseed = ranseed
      do iphot = 1,nphotons
         ok = .false.
@@ -245,6 +243,7 @@ program LyaPhotonsFromGas
   ! --------------------------------------------------------------------------------------
   
   
+  
   ! --------------------------------------------------------------------------------------
   if (doColls) then 
      if (verbose) then
@@ -299,7 +298,7 @@ program LyaPhotonsFromGas
            end if
         end do
      end do
-
+     
      ! --------------------------------------------------------------------------------------
      ! write ICs
      ! --------------------------------------------------------------------------------------

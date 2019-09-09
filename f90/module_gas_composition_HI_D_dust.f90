@@ -263,7 +263,7 @@ contains
     case(1)
        !--CORESKIP--
        call scatter_HI_1216(cell_gas%v, cell_gas%dopwidth, nu_cell, k, nu_ext, iran,xcrit)
-       !call scatter_HI(cell_gas%v, cell_gas%dopwidth, nu_cell, k, nu_ext, iran)
+       !call scatter_HI_1216(cell_gas%v, cell_gas%dopwidth, nu_cell, k, nu_ext, iran)
        !--PIKSEROC--
     case(2)
        call scatter_D_1215(cell_gas%v,cell_gas%dopwidth*sqrt_H2Deut_mass_ratio, nu_cell, k, nu_ext, iran)
@@ -286,9 +286,9 @@ contains
 
     select case(flag)
     case(1)
-       gas_peeloff_weight = HI_peeloff_weight(cell_gas%v, cell_gas%dopwidth, nu_ext, kin, kout, iran)
+       gas_peeloff_weight = HI_1216_peeloff_weight(cell_gas%v, cell_gas%dopwidth, nu_ext, kin, kout, iran)
     case(2)
-       gas_peeloff_weight = D_peeloff_weight(cell_gas%v, cell_gas%dopwidth*sqrt_H2Deut_mass_ratio, nu_ext, kin, kout, iran)
+       gas_peeloff_weight = D_1215_peeloff_weight(cell_gas%v, cell_gas%dopwidth*sqrt_H2Deut_mass_ratio, nu_ext, kin, kout, iran)
     case(3)
        gas_peeloff_weight = dust_peeloff_weight(cell_gas%v, nu_ext, kin, kout)
     case default

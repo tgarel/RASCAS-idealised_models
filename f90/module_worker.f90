@@ -4,9 +4,6 @@ module module_worker
   use module_domain
   use module_photon
   use module_mesh
-  !--PEEL--
-  use module_mock
-  !--LEEP--
 
   private 
 
@@ -22,8 +19,6 @@ contains
 
   subroutine worker(file_compute_dom, ndomain, mesh_file_list, nbundle)
 
-    implicit none
-    
     character(2000),intent(in)                    :: file_compute_dom
     integer(kind=4),intent(in)                    :: ndomain
     character(2000),dimension(ndomain),intent(in) :: mesh_file_list
@@ -88,6 +83,17 @@ contains
 
     ! final synchronization, for profiling purposes
     call MPI_BARRIER(MPI_COMM_WORLD,code)
+
+    !--PEEL--
+    if (peeling_off) then
+       ! GATHER -- 
+       !call dump_mocks(rank)
+       call send_mock_to_master(rank)
+       ! post-final synchronization, for profiling purposes
+       call MPI_BARRIER(MPI_COMM_WORLD,code)    
+       ! -- GATHER
+    end if
+    !--LEEP--
 
 
   end subroutine worker

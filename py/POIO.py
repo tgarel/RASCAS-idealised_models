@@ -3,23 +3,22 @@ import jphot as jp
 import numpy as np
 
 class mockobs(object):
-    def __init__(self,Dir,FileName,ncpu,load_spectrum=False,load_image=False,load_cube=False,unit_l_arcsec=1.0,lumdist_cm=1.0,redshift=0.0,cube_h5_file=None,idirection=1):
+    def __init__(self,Dir,FileName,ICFile,load_spectrum=False,load_image=False,load_cube=False,unit_l_arcsec=1.0,lumdist_cm=1.0,redshift=0.0,cube_h5_file=None,idirection=1):
         self.Dir      = Dir
         self.FileName = FileName 
-        self.ncpu     = ncpu
-        ICFile = FileName.replace('result.','')
-        p = jp.photonlist("%s/%s"%(self.Dir,ICFile),'',load=False)
+        self.ICFile = ICFile
+        p = jp.photonlist("%s/%s"%(self.Dir,self.ICFile),'',load=False)
         nRealPhotons = p.get_nRealPhotons()
-        nPhotons     = p.get_nphoton()
-        self.nPhotPerPacket = nRealPhotons / nPhotons
+        self.nPhotons     = p.get_nphoton()
+        self.nPhotPerPacket = nRealPhotons / self.nPhotons
         self.LumPerPacket = self.nPhotPerPacket * ly.h_cgs * ly.nu0 
 
         if load_image:
-            self.imsize_cu, self.image_npix, self.imtot = self.__read_image()
+            self.imsize_cu, self.image_npix, self.imtot = self.__read_image(index=idirection)
             self.imtot = self.imtot * self.LumPerPacket # [erg/s]
 
         if load_spectrum:  # restframe spectrum
-            self.spec_lmin,self.spec_lmax,self.spec_npix,self.spec = self.__read_spectrum()
+            self.spec_lmin,self.spec_lmax,self.spec_npix,self.spec = self.__read_spectrum(index=idirection)
             dl = (self.spec_lmax - self.spec_lmin) / self.spec_npix  # [A] 
             l = np.arange(self.spec_lmin,self.spec_lmax,dl) + 0.5*dl # [A]
             self.spec_lbda_Angstrom  = l
@@ -59,58 +58,42 @@ class mockobs(object):
             
     def __read_cube(self,index=1):
         from scipy.io import FortranFile as ff
-        first = True
-        for i in range(1,self.ncpu):
-            f = ff('%s/%s_cube.%5.5i'%(self.Dir,self.FileName,i))
-            for j in range(1,index+1): 
-                nlbda,nxy = f.read_ints()
-                lmin,lmax,imsize = f.read_reals('d')
-                center = f.read_reals('d')
-                cube = f.read_reals('d')
-            cube = cube.reshape((nxy,nxy,nlbda))
-            f.close()
-            if first:
-                cubetot = cube
-                first=False
-            else:
-                cubetot = cubetot + cube
-        return nlbda,nxy,lmin,lmax,imsize,cubetot
+        f = ff('%s/%s_cube.%5.5i'%(self.Dir,self.FileName,0))
+        for j in range(1,index+1):
+            nlbda,nxy = f.read_ints()
+            lmin,lmax,imsize = f.read_reals('d')
+            center = f.read_reals('d')
+            cube = f.read_reals('d')
+        cube = cube.reshape((nxy,nxy,nlbda))
+        f.close()
+
+        return nlbda,nxy,lmin,lmax,imsize,cube
 
     
-    def __read_image(self):
+    def __read_image(self,index=1):
         from scipy.io import FortranFile as ff
-        first = True
-        for i in range(1,self.ncpu):
-            f = ff('%s/%s_image.%5.5i'%(self.Dir,self.FileName,i))
+        f = ff('%s/%s_image.%5.5i'%(self.Dir,self.FileName,0))
+        for j in range(index):
             n = f.read_ints()[0]
             imsize = f.read_reals('d')[0]
             imcenter = f.read_reals('d')
             im = f.read_reals('d')
-            im=im.reshape((n,n))
-            f.close()
-            if first:
-                imtot = im
-                first=False
-            else:
-                imtot = imtot + im
-        return imsize,n,imtot 
+        im=im.reshape((n,n))
+        f.close()
+
+        return imsize,n,im
 
 
-    def __read_spectrum(self):
+    def __read_spectrum(self,index=1):
         from scipy.io import FortranFile as ff
-        first = True
-        for i in range(1,self.ncpu):
-            f = ff('%s/%s_spectrum.%5.5i'%(self.Dir,self.FileName,i))
+        f = ff('%s/%s_spectrum.%5.5i'%(self.Dir,self.FileName,0))
+        for j in range(index):
             n = f.read_ints()[0]
             aperture,lmin,lmax = f.read_reals('d')
             spec = f.read_reals('d')
-            f.close()
-            if first:
-                spectot = spec
-                first=False
-            else:
-                spectot = spectot + spec
-        return lmin,lmax,n,spectot
+        f.close()
+
+        return lmin,lmax,n,spec
 
     
     def show_image(self,plotFile,vmin=1e-15,vmax=10,showCB=True):
@@ -132,8 +115,8 @@ class mockobs(object):
         from matplotlib import pyplot as plt
         from numpy import linspace
         plt.figure()
-        l = linspace(self.lmin,self.lmax,num=self.spec_npix)  # [A]
-        plt.plot(l,self.spectot)
+        l = linspace(self.spec_lmin,self.spec_lmax,num=self.spec_npix)  # [A]
+        plt.plot(l,self.spec)
         plt.savefig(plotFile)
 
 

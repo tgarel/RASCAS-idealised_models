@@ -4,6 +4,9 @@ program main
   use module_master
   use module_worker
   use module_utils, only : print_rascas_header
+  !--PEEL--
+  use module_mock, only : read_mock_params
+  !--LEEP--
 
   implicit none
 
