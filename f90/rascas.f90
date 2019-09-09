@@ -33,7 +33,7 @@ program main
   call cpu_time(start)
   
   call start_mpi
-  call define_mpi_type
+ ! call define_mpi_type
   
   nworker=nb_cpus-1
   if(nworker==0)then
@@ -41,7 +41,7 @@ program main
      stop
   end if
   
-  call test_mpi_type
+  !call test_mpi_type
   
   ! -------------------- read parameters -----------------------------------------------------
   narg = command_argument_count()
