@@ -40,9 +40,11 @@ program main
 
   ! --- miscelaneous
   integer(kind=4)           :: nphot   = 1000000      ! number of photons to generate
-  character(2000)           :: method  = 'fromstars'
+  character(2000)           :: method  = 'fromstars'  !Either fromstar, or onepoint
   !real(kind=8)              :: frac_lum = 1d0
   logical                   :: verbose = .true.
+
+  real(kind=8),dimension(3) :: x_phot = (/ 0.5, 0.5, 0.5 /)
   ! --------------------------------------------------------------------------
 
 
@@ -125,11 +127,10 @@ program main
      end do
      
      deallocate(star_pos, star_mass, star_met, star_age)
-  elseif(method == 'byHand') then
+  elseif(method == 'onepoint') then
      nphot = 1
      allocate(x_em(3,nphot), k_em(3,nphot), weight(nphot))
-     !x_em(:,1) = (/ 0.48017406463623047d0, 0.49761295318603516d0, 0.5159425735473633d0 /) - 0.003597617*0.9*(/ 0d0, 0d0, -1d0 /)
-     x_em(:,1) = (/ 0.48007406463623047d0, 0.49721295318603516d0, 0.5158525735473633d0 /) - 0.003597617*0.9*(/ 0d0, 0d0, -1d0 /)
+     x_em(:,1) = x_phot(:)
      weight(1) = 1
   else
      
@@ -253,6 +254,8 @@ contains
              read(value,*) star_dom_rout
           case ('star_dom_thickness')
              read(value,*) star_dom_thickness
+          case ('x_phot')
+             read(value,*) x_phot(1),x_phot(2),x_phot(3)
           case ('nphot')
              read(value,*) nphot
           case('method')
@@ -294,7 +297,9 @@ contains
        write(unit,'(a,i5)')          '  snapnum         = ',snapnum
        write(unit,'(a)')             '# computational domain parameters'
        write(unit,'(a,a)')           '  star_dom_type      = ',trim(star_dom_type)
-       write(unit,'(a,3(ES10.3,1x))') '  star_dom_pos       = ',star_dom_pos(1),star_dom_pos(2),star_dom_pos(3)
+       write(unit,'(a,3(ES10.3,1x))')'  star_dom_pos       = ',star_dom_pos(1),star_dom_pos(2),star_dom_pos(3)
+
+       write(unit,'(a,3(ES10.3,1x))')'  x_phot             = ',x_phot(1),x_phot(2),x_phot(3)
 
        write(unit,'(a)')             '# miscelaneous parameters'
        write(unit,'(a,i8)')          '  nphot           = ',nphot
@@ -313,6 +318,8 @@ contains
        write(*,'(a)')             '# computational domain parameters'
        write(*,'(a,a)')           '  star_dom_type      = ',trim(star_dom_type)
        write(*,'(a,3(ES10.3,1x))') '  star_dom_pos       = ',star_dom_pos(1),star_dom_pos(2),star_dom_pos(3)
+
+       write(*,'(a,3(ES10.3,1x))') '  x_phot             = ',x_phot(1),x_phot(2),x_phot(3)
 
        write(*,'(a)')             '# miscelaneous parameters'
        write(*,'(a,i8)')          '  nphot           = ',nphot
