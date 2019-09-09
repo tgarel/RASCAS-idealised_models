@@ -51,8 +51,18 @@ module module_photon
   integer(kind=4)                      :: nPeeled
   !--LEEP--
 
+  ! --------------------------------------------------------------------------
+  ! user-defined parameters - read from section [photon] of the parameter file
+  ! --------------------------------------------------------------------------
+  logical            :: no_scatter    = .false.
+  logical            :: fix_phot_pos  = .false.
+  real(kind=8)       :: phot_pos(3)   = (/ 0.5, 0.5, 0.5 /)
+  logical            :: fix_phot_k    = .false.
+  real(kind=8)       :: phot_k(3)     = (/ 0.5, 0.5, 0.5 /)
+  ! --------------------------------------------------------------------------
 
-  public  :: MCRT, propagate, init_photons_from_file, dump_photons
+
+  public  :: read_photon_params, print_photon_params, MCRT, propagate, init_photons_from_file, dump_photons
   
 contains
 
@@ -648,6 +658,17 @@ contains
     read(14) (pgridinit(i)%iran,i=1,n_photon)
     close(14)
 
+    if(fix_phot_k) then
+       do i=1,n_photon
+          pgridinit(i)%k_em(:) = phot_k(:)
+       end do
+    end if
+    if(fix_phot_pos) then
+       do i=1,n_photon
+          pgridinit(i)%x_em(:) = phot_pos(:)
+       end do
+    end if
+
     ! build photgrid current
     allocate(pgrid(n_photon))
     do i=1,n_photon
@@ -664,6 +685,7 @@ contains
        pgrid(i)%tau_abs_curr = -1.0d0
        pgrid(i)%iran         = pgridinit(i)%iran
     enddo
+    
     deallocate(pgridinit)
 
   end subroutine init_photons_from_file
@@ -743,5 +765,98 @@ contains
     close(14)
 
   end subroutine dump_photons
+
+
+  subroutine read_photon_params(pfile)
+    
+    ! ---------------------------------------------------------------------------------
+    ! subroutine which reads parameters of current module in the parameter file pfile
+    !
+    ! default parameter values are set at declaration (head of module)
+    ! ---------------------------------------------------------------------------------
+
+    character(*),intent(in) :: pfile
+    character(1000)         :: line,name,value
+    integer(kind=4)         :: err,i
+    logical                 :: section_present
+
+    section_present = .false.
+    open(unit=10,file=trim(pfile),status='old',form='formatted')
+    ! search for section start
+    do
+       read (10,'(a)',iostat=err) line
+       if(err/=0) exit
+       if (line(1:8) == '[photon]') then
+          section_present = .true.
+          exit
+       end if
+    end do
+
+    ! read section if present
+    if (section_present) then 
+       do
+          read (10,'(a)',iostat=err) line
+          if(err/=0) exit
+          if (line(1:1) == '[') exit ! next section starting... -> leave
+          i = scan(line,'=')
+          if (i==0 .or. line(1:1)=='#' .or. line(1:1)=='!') cycle  ! skip blank or commented lines
+          name=trim(adjustl(line(:i-1)))
+          value=trim(adjustl(line(i+1:)))
+          i = scan(value,'!')
+          if (i /= 0) value = trim(adjustl(value(:i-1)))
+          select case (trim(name))
+          case ('no_scatter')
+             read(value,*) no_scatter
+          case ('fix_phot_pos')
+             read(value,*) fix_phot_pos
+          case ('phot_pos')
+             read(value,*) phot_pos(1),phot_pos(2),phot_pos(3)
+          case ('fix_phot_k')
+             read(value,*) fix_phot_k
+          case ('phot_k')
+             read(value,*) phot_k(1),phot_k(2),phot_k(3)
+          end select
+       end do
+    end if
+    close(10)
+       
+    return
+
+  end subroutine read_photon_params
+
+
+    !#################################################################################################
+  subroutine print_photon_params(unit)
+
+    ! ---------------------------------------------------------------------------------
+    ! write parameter values to std output or to an open file if argument unit is
+    ! present.
+    ! ---------------------------------------------------------------------------------
+
+    integer(kind=4),optional,intent(in) :: unit
+
+    if (present(unit)) then 
+       write(unit,'(a,a,a)') '[photon]'
+       write(unit,'(a,L1)')     '  no_scatter          = ', no_scatter
+       write(unit,'(a,L1)')     '  fix_phot_pos        = ', fix_phot_pos
+       if(fix_phot_pos) write(unit,'(a,3(ES10.3,1x))')'  phot_pos       = ',phot_pos(1),phot_pos(2),phot_pos(3)
+       write(unit,'(a,L1)')     '  fix_phot_k          = ', fix_phot_k
+       if(fix_phot_k) write(unit,'(a,3(ES10.3,1x))')'  phot_k           = ',phot_k(1),phot_k(2),phot_k(3)
+       write(unit,'(a)')             ' '
+    else
+       write(*,'(a,a,a)') '[photon]'
+       write(*,'(a,L1)')     '  no_scatter          = ', no_scatter
+       write(*,'(a,L1)')     '  fix_phot_pos        = ', fix_phot_pos
+       if(fix_phot_pos) write(*,'(a,3(ES10.3,1x))')'  phot_pos       = ',phot_pos(1),phot_pos(2),phot_pos(3)
+       write(*,'(a,L1)')     '  fix_phot_k          = ', fix_phot_k
+       if(fix_phot_k) write(*,'(a,3(ES10.3,1x))')'  phot_k           = ',phot_k(1),phot_k(2),phot_k(3)
+       write(*,'(a)')             ' '
+    end if
+
+    2000 format (a,1000(ES10.3,1x))
+
+    return
+  end subroutine print_photon_params
+  !#################################################################################################
 
 end module module_photon

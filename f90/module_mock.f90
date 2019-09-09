@@ -36,15 +36,13 @@ module module_mock
   end type mockObs
   type(mockObs),allocatable :: mock(:)
 
-  ! parameters in the [mock] section :
+  ! --------------------------------------------------------------------------
+  ! user-defined parameters - read from section [mock] of the parameter file
+  ! --------------------------------------------------------------------------
   integer(kind=4) :: nDirections = 0
   character(2000) :: mock_parameter_file
   character(2000) :: mock_outputfilename  ! Prefix for output files (including absolute path) -> will be followed by "_image.xxxxx" or "_spectrum.xxxxx", with xxxxx the cpu number.
-  !--Val--
-  logical         :: no_scatter   = .false.
-
-  public :: no_scatter
-  !--laV-- 
+  ! --------------------------------------------------------------------------
 
 
   ! global parameter setting peeling-off on or off.
@@ -510,8 +508,6 @@ contains
              write(mock_parameter_file,'(a)') trim(value)
           case ('mock_outputfilename')
              write(mock_outputfilename,'(a)') trim(value)
-          case ('no_scatter')
-             read(value,*) no_scatter
           end select
        end do
     end if
@@ -539,13 +535,13 @@ contains
        write(unit,'(a,i5)')     '  nDirections         = ', nDirections
        write(unit,'(a,a)')      '  mock_parameter_file = ', trim(mock_parameter_file)
        write(unit,'(a,a)')      '  mock_outputfilename = ', trim(mock_outputfilename)
-       write(unit,'(a,L1)')     '  no_scatter          = ', no_scatter
+       write(unit,'(a)')             ' '
     else
        write(*,'(a,a,a)') '[mock]'
        write(*,'(a,i5)')     '  nDirections         = ', nDirections
        write(*,'(a,a)')      '  mock_parameter_file = ', trim(mock_parameter_file)
        write(*,'(a,a)')      '  mock_outputfilename = ', trim(mock_outputfilename)
-       write(*,'(a,L1)')     '  no_scatter          = ', no_scatter
+       write(*,'(a)')             ' '
 
     end if
 
