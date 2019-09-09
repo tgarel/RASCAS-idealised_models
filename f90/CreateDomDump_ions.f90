@@ -27,6 +27,7 @@ program CreateDomDump
   integer(kind=4) :: ncpu_read
   character(2000),allocatable :: ion_data_path(:)
   character(2000),allocatable :: ions(:)
+  integer(kind=4)             :: metal_number
 
   ! --------------------------------------------------------------------------
   ! user-defined parameters - read from section [CreateDomDump] of the parameter file
@@ -35,7 +36,6 @@ program CreateDomDump
   character(2000)             :: DomDumpDir = 'test/'       ! directory to which outputs will be written
   character(2000)             :: repository = './'          ! ramses run directory (where all output_xxxxx dirs are).
   character(2000)             :: ion_parameter_file = './ions.dat' 
-  integer(kind=4)             :: ion_number = 1             ! number of ions we want to read
   integer(kind=4)             :: snapnum = 1                ! ramses output number to use
   character(20)               :: reading_method = 'fullbox' ! strategy to read ramses data
   ! --- computational domain  
@@ -212,6 +212,7 @@ program CreateDomDump
      ! building of the meshes
      do i = 1,decomp_dom_ndomain
         if (reading_method == 'hilbert') then
+           
            call cpu_time(intermed)
            ! read leaf cells in domain on the fly...
            ! define max extent of domain i
@@ -248,7 +249,7 @@ program CreateDomDump
            call get_cpu_list_periodic(repository, snapnum, xmin,xmax,ymin,ymax,zmin,zmax, ncpu_read, cpu_list)
            call read_leaf_cells_omp(repository, snapnum, ncpu_read, cpu_list, nleaftot, nvar, x_leaf, ramses_var, leaf_level)
            ! Extract and convert properties of cells into gas mix properties
-           call gas_from_ramses_leaves(repository,snapnum,nleaftot,nvar,ramses_var, gas_leaves)
+           call gas_from_ramses_leaves(repository,snapnum,nleaftot,nvar,ramses_var,gas_leaves)
            call cpu_time(finish)
            print '(" --> Time to read leaves in hilbert domain = ",f12.3," seconds.")',finish-intermed
         endif
@@ -288,9 +289,9 @@ program CreateDomDump
               zmin = decomp_dom_zc(i) - decomp_dom_thickness(i)*0.5d0
            end select
            call get_cpu_list_periodic(repository, snapnum, xmin,xmax,ymin,ymax,zmin,zmax, ncpu_read, cpu_list)
-           call read_leaf_cells_omp_ions(repository, snapnum, ion_number, ion_data_path, ions, max_cells, ncpu_read, cpu_list, nleaftot, nvar, x_leaf, ramses_var, leaf_level, ion_density)
+           call read_leaf_cells_omp_ions(repository, snapnum, metal_number, ion_data_path, ions, max_cells, ncpu_read, cpu_list, nleaftot, nvar, x_leaf, ramses_var, leaf_level, ion_density)
            ! Extract and convert properties of cells into gas mix properties
-           call gas_from_ramses_leaves_ions(repository,snapnum,nleaftot,nvar,ramses_var,ion_number,ion_density,gas_leaves)
+           call gas_from_ramses_leaves_ions(repository,snapnum,nleaftot,nvar,ramses_var,ion_density,gas_leaves)
            call cpu_time(finish)
            print '(" --> Time to read leaves in hilbert domain = ",f12.3," seconds.")',finish-intermed
         endif
@@ -401,8 +402,6 @@ contains
              write(repository,'(a)') trim(value)
           case ('ion_parameter_file')
              write(ion_parameter_file,'(a)') trim(value)
-          case ('ion_number')
-             read(value,*) ion_number
           case ('snapnum')
              read(value,*) snapnum
           case ('max_cells')
@@ -465,14 +464,39 @@ contains
     implicit none
 
     integer(kind=4) :: i
+    
 
-    allocate(ions(ion_number),ion_data_path(ion_number))
+    if(mix_H_metals .and. ion_number < 2) then
+       print*, 'Problem, when mix_H_metals is true, ion_number should be at least 2'
+       stop
+    end if
 
-    open(unit=10,file=trim(ion_parameter_file),action='read',form='formatted')
-    do i=1,ion_number
-       read(10,'(a)') ions(i)
-       read(10,'(a)') ion_data_path(i)
-    end do
+    if(reading_method == 'hilbert' .and. mix_H_metals) then
+       print*, 'Problem, mix_H_metals cannot be True when the Hilbert method is used. This method is for when hydrogen is the only element.'
+       stop
+    end if
+
+    if(reading_method == 'hilbert' .and. ion_number > 1) then
+       print*, 'Problem, the Hilbert method should only be used when hydrogen is the only element, hence ion_number must be 1, which is not the case here.'
+       stop
+    end if
+    
+
+    if(reading_method /= 'hilbert') then
+       if(mix_H_metals) then
+          metal_number = ion_number - 1
+       else
+          metal_number = ion_number
+       end if
+
+       allocate(ions(metal_number),ion_data_path(metal_number))
+
+       open(unit=10,file=trim(ion_parameter_file),action='read',form='formatted')
+       do i=1,metal_number
+          read(10,'(a)') ions(i)
+          read(10,'(a)') ion_data_path(i)
+       end do
+    end if
     
   end subroutine read_ion_params_file
 
