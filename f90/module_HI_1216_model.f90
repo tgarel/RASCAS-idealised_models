@@ -25,10 +25,17 @@ module module_HI_1216_model
   ! --------------------------------------------------------------------------
   logical                       :: recoil       = .true.      ! if set to true, recoil effect is computed [default is true]
   logical                       :: isotropic    = .false.     ! if set to true, scattering events will be isotropic [default is false]
+  !--CORESKIP--
+  logical                       :: HI_core_skip    = .false.     ! if true, skip scatterings in the core of the line (as in Smith+15).
+  real(kind=8)                  :: xcritmax        = 1d10        ! core-skipping will truncate at min(xcrit, xcritmax) -> set to a low value to activate. 
+  !--PIKSEROC--
   ! --------------------------------------------------------------------------
 
   public :: get_tau_HI_1216, scatter_HI_1216, read_HI_1216_params, print_HI_1216_params
-
+  !--CORESKIP--
+  public :: HI_core_skip 
+  !--PIKSEROC-- 
+  
 contains
 
   function get_tau_HI_1216(nhi, vth, distance_to_border_cm, nu_cell)
@@ -65,8 +72,10 @@ contains
 
 
   
-  subroutine scatter_HI_1216(vcell,vth,nu_cell,k,nu_ext,iran)
-
+  !--CORESKIP--
+  subroutine scatter_HI_1216(vcell,vth,nu_cell,k,nu_ext,iran,xcrit)
+  !subroutine scatter_HI_1216(vcell,vth,nu_cell,k,nu_ext,iran)
+  !--PIKSEROC--
     ! ---------------------------------------------------------------------------------
     ! perform scattering event on a Hydrogen atom with an anisotropic phase function
     ! ---------------------------------------------------------------------------------
@@ -95,12 +104,28 @@ contains
     real(kind=8),dimension(3),intent(inout) :: k
     real(kind=8),dimension(3),intent(in)    :: vcell
     real(kind=8),intent(in)                 :: vth
+    !--CORESKIP--
+    real(kind=8),intent(in)                 :: xcrit
+    real(kind=8)                            :: xc
+    !--PIKSEROC--
     integer(kind=4),intent(inout)           :: iran
     real(kind=8)                            :: delta_nu_doppler, a, x_cell, upar, ruper
     real(kind=8)                            :: r2, uper, nu_atom, mu, bu, scalar
     real(kind=8)                            :: x_atom
     real(kind=8),dimension(3)               :: knew
 
+    !--CORESKIP--  sanity check ... 
+    if (.not. HI_core_skip .and. xcrit .ne. 0.0d0) then
+       print*,'ERROR: core skipping is on but xcrit is not zero ... '
+       stop
+    end if
+    if (HI_core_skip)  then
+       xc = min(xcrit,xcritmax)
+    else
+       xc=0
+    endif
+    !--PIKSEROC-- 
+    
     ! define x_cell & a
     delta_nu_doppler = vth / lambda_0_cm 
     a = gamma_over_fourpi / delta_nu_doppler
@@ -114,7 +139,10 @@ contains
     ! 2/ component perpendicular to photon's propagation
     ruper  = ran3(iran)
     r2     = ran3(iran)
-    uper   = sqrt(-log(ruper))*cos(twopi*r2)
+    !--CORESKIP--
+    uper   = sqrt(xc**2-log(ruper))*cos(twopi*r2)
+    !uper   = sqrt(-log(ruper))*cos(twopi*r2)
+    !--PIKSEROC--
     uper   = uper * vth  ! from x to velocity
 
     ! 3/ incoming frequency in atom's frame
@@ -190,6 +218,12 @@ contains
              read(value,*) recoil
           case ('isotropic')
              read(value,*) isotropic
+          !--CORESKIP--
+          case ('HI_core_skip') 
+             read(value,*) HI_core_skip
+          case ('xcritmax')
+             read(value,*) xcritmax
+          !--PIKSEROC--
           end select
        end do
     end if
@@ -217,6 +251,10 @@ contains
        write(unit,'(a,a,a)') '[HI]'
        write(unit,'(a,L1)') '  recoil    = ',recoil
        write(unit,'(a,L1)') '  isotropic = ',isotropic
+       !--CORESKIP--
+       write(unit,'(a,L1)')     '  HI_core_skip = ',HI_core_skip
+       write(unit,'(a,ES10.3)') '  xcritmax     = ',xcritmax
+       !--PIKSEROC--
        write(unit,'(a)') ''
        call print_uparallel_params(unit)
        call print_voigt_params(unit)
@@ -224,6 +262,10 @@ contains
        write(*,'(a,a,a)') '[HI]'
        write(*,'(a,L1)') '  recoil    = ',recoil
        write(*,'(a,L1)') '  isotropic = ',isotropic
+       !--CORESKIP--
+       write(*,'(a,L1)')     '  HI_core_skip = ',HI_core_skip
+       write(*,'(a,ES10.3)') '  xcritmax     = ',xcritmax
+       !--PIKSEROC--
        write(*,'(a)') ''
        call print_uparallel_params()
        call print_voigt_params()

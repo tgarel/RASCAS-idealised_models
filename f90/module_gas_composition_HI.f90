@@ -37,6 +37,13 @@ module module_gas_composition
   public :: gas_from_ramses_leaves,get_gas_velocity,gas_get_scatter_flag,gas_scatter,dump_gas
   public :: read_gas,gas_destructor,read_gas_composition_params,print_gas_composition_params
 
+  !--CORESKIP--
+  ! make function public so that module_photon knows about it and can call it...
+  public :: gas_get_tau
+  ! and push variable from module_HI_model up so that module_photon knows about it... 
+  public :: HI_core_skip 
+  !--PIKSEROC--
+  
 contains
   
 
@@ -161,17 +168,54 @@ contains
 
 
 
-  subroutine gas_scatter(flag,cell_gas,nu_cell,k,nu_ext,iran)
+  !--CORESKIP-- 
+  function  gas_get_tau(cell_gas, distance_cm, nu_cell)
+    ! --------------------------------------------------------------------------
+    ! compute total opacity of gas accross distance_cm at freq. nu_cell
+    ! --------------------------------------------------------------------------
+    ! INPUTS:
+    ! - cell_gas : pure HI gas
+    ! - distance_cm : the distance along which to compute tau [cm]
+    ! - nu_cell : photon frequency in cell's frame [ Hz ]
+    ! OUTPUTS:
+    ! - gas_get_tau : the total optical depth
+    ! --------------------------------------------------------------------------
+    ! check whether scattering occurs within cell (scatter_flag > 0) or not (scatter_flag==0)
+    type(gas),intent(in)    :: cell_gas
+    real(kind=8),intent(in) :: distance_cm
+    real(kind=8),intent(in) :: nu_cell
+    real(kind=8)            :: gas_get_tau
+    real(kind=8)            :: tau_HI
+    ! compute optical depths for different components of the gas.
+    tau_HI   = get_tau_HI_1216(cell_gas%nHI, cell_gas%dopwidth, distance_cm, nu_cell)
+    gas_get_tau = tau_HI
+    return
+  end function gas_get_tau
+  ! --------------------------------------------------------------------------
+  !--PIKSEROC--
 
+
+
+  !--CORESKIP-- 
+  subroutine gas_scatter(flag,cell_gas,nu_cell,k,nu_ext,iran,xcrit)
+  !subroutine gas_scatter(flag,cell_gas,nu_cell,k,nu_ext,iran)
+  !--PIKSEROC--
+    
     integer(kind=4),intent(inout)            :: flag
     type(gas),intent(in)                     :: cell_gas
     real(kind=8),intent(inout)               :: nu_cell, nu_ext
     real(kind=8),dimension(3), intent(inout) :: k
     integer(kind=4),intent(inout)            :: iran
+    !--CORESKIP--
+    real(kind=8),intent(in)                  :: xcrit
+    !--PIKSEROC--
 
     select case(flag)
     case(1)
-       call scatter_HI_1216(cell_gas%v, cell_gas%dopwidth, nu_cell, k, nu_ext, iran)
+       !--CORESKIP--
+       call scatter_HI_1216(cell_gas%v, cell_gas%dopwidth, nu_cell, k, nu_ext, iran, xcrit)
+       !call scatter_HI_1216(cell_gas%v, cell_gas%dopwidth, nu_cell, k, nu_ext, iran)
+       !--PIKSEROC--
     end select
     
   end subroutine gas_scatter
