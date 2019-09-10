@@ -79,7 +79,7 @@ contains
     logical                              :: cell_fully_in_domain, flagoutvol, in_domain, OutOfDomainBeforeCell
     real(kind=8)                         :: dborder, dborder_cm, error
     !--CORESKIP--
-    real(kind=8)                         :: xcrit,tau_cell,delta_nu_doppler,a,xcw,nu_0,x
+    real(kind=8)                         :: xcrit,tau_cell,delta_nu_doppler,a,xcw,nu_0,x,dist_cm
     !--PIKSEROC--
     
     ! initialise working props of photon
@@ -168,7 +168,9 @@ contains
           if (HI_core_skip) then 
              x    = (nu_cell - nu_0)/delta_nu_doppler
              if (abs(x) < xcw) then ! apply core-skipping
-                tau_cell = gas_get_tau(cell_gas, distance_to_border_cm, nu_cell)
+                ! for core-skipping we are interested in the true distance to cell border, NOT the distance along k 
+                dist_cm = min(ppos_cell(1),1.0d0-ppos_cell(1),ppos_cell(2),1.0d0-ppos_cell(2),ppos_cell(3),1.0d0-ppos_cell(3)) * cell_size_cm
+                tau_cell = gas_get_tau(cell_gas, dist_cm, nu_cell)
                 tau_cell = tau_cell * a
                 if (tau_cell > 1.0d0) xcrit = tau_cell**(1./3.)/5.
              end if
