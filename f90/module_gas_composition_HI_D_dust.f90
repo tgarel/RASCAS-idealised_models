@@ -244,10 +244,10 @@ contains
   !--LEEP--
 
   
-  !--CORESKIP-- 
-  subroutine gas_scatter(flag,cell_gas,nu_cell,k,nu_ext,iran,xcrit)
+  ! HUBBLE-FLOW
+  subroutine gas_scatter(flag,cell_gas,nu_cell,v_hubble,k,nu_ext,iran,xcrit)
   !subroutine gas_scatter(flag,cell_gas,nu_cell,k,nu_ext,iran)
-  !--PIKSEROC--
+  ! WOLF-HUBBLE
     
     integer(kind=4),intent(inout)            :: flag
     type(gas),intent(in)                     :: cell_gas
@@ -258,20 +258,34 @@ contains
     real(kind=8),intent(in)                  :: xcrit
     !--PIKSEROC--
     integer(kind=4)                          :: ilost
+    ! HUBBLE-FLOW
+    real(kind=8),dimension(3)                :: v_hubble, v_gas
+    
+!!$    select case(flag)
+!!$    case(1)
+!!$       !--CORESKIP--
+!!$       call scatter_HI_1216(cell_gas%v, cell_gas%dopwidth, nu_cell, k, nu_ext, iran,xcrit)
+!!$       !call scatter_HI_1216(cell_gas%v, cell_gas%dopwidth, nu_cell, k, nu_ext, iran)
+!!$       !--PIKSEROC--
+!!$    case(2)
+!!$       call scatter_D_1215(cell_gas%v,cell_gas%dopwidth*sqrt_H2Deut_mass_ratio, nu_cell, k, nu_ext, iran)
+!!$    case(3)
+!!$       call scatter_dust(cell_gas%v, nu_cell, k, nu_ext, iran, ilost)
+!!$       if(ilost==1)flag=-1
+!!$    end select
 
+    v_gas = cell_gas%v + v_hubble
     select case(flag)
     case(1)
-       !--CORESKIP--
-       call scatter_HI_1216(cell_gas%v, cell_gas%dopwidth, nu_cell, k, nu_ext, iran,xcrit)
-       !call scatter_HI_1216(cell_gas%v, cell_gas%dopwidth, nu_cell, k, nu_ext, iran)
-       !--PIKSEROC--
+       call scatter_HI_1216(v_gas, cell_gas%dopwidth, nu_cell, k, nu_ext, iran, xcrit)
     case(2)
-       call scatter_D_1215(cell_gas%v,cell_gas%dopwidth*sqrt_H2Deut_mass_ratio, nu_cell, k, nu_ext, iran)
+       call scatter_D_1215(v_gas,cell_gas%dopwidth*sqrt_H2Deut_mass_ratio, nu_cell, k, nu_ext, iran)
     case(3)
-       call scatter_dust(cell_gas%v, nu_cell, k, nu_ext, iran, ilost)
+       call scatter_dust(v_gas, nu_cell, k, nu_ext, iran, ilost)
        if(ilost==1)flag=-1
     end select
-
+    ! WOLF-HUBBLE
+    
   end subroutine gas_scatter
 
   !--PEEL--

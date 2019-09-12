@@ -148,6 +148,7 @@ contains
     r2     = ran3(iran)
     !--CORESKIP--
     uper   = sqrt(xc**2-log(ruper))*cos(twopi*r2)
+    !uper   = sqrt(-log(ruper))*cos(twopi*r2)
     !--PIKSEROC--
     uper   = uper * vth  ! from x to velocity
 

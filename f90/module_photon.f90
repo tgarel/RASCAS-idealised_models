@@ -5,7 +5,7 @@ module module_photon
   use module_constants
   use module_random
   use module_domain
-  use module_utils, only: path
+  use module_utils, only: path, get_voigt_over_dvoigt
   use module_mock
 
   implicit none
@@ -97,6 +97,16 @@ contains
     !--CORESKIP--
     real(kind=8) :: xcrit,tau_cell,delta_nu_doppler,a,xcw,nu_0
     !--PIKSEROC--
+    ! HUBBLE-FLOW                                                                                                                      
+    real(kind=8),dimension(3)            :: v_hubble, r_xlast_ppos,r_xlast_ppos_cm, v_hub_in_cell,v_cell_ext
+    real(kind=8)                         :: Hub_kms_cm, Hub_cms_cm, dmax_hub1, dmax_hub2, scalar_hub, voigt_over_dvoigt,nu_cell_temp,rel_err,nu_cell_save,nu_cell_save2
+    real(kind=8)                         :: x_cell, true_distance_to_border_cm, sum_substeps_distance_cm, substep_distance_cm,remaining_distance_to_border_cm
+    ! H = (1 + z) * sqrt(1 + Omega_M*z + Omega_L*(1/(1 + z)**2 - 1)) * H_0 / kpc ! in cm/s/cm
+    real(kind=8),parameter               :: Hub_kms_Mpc = 20.0d0 ! 660.0d0 ! at z=6 [km/s/Mpc]                                
+    integer(kind=4)                      :: nsubsteps
+    !real(kind=8)                         :: a, delta_nu_doppler,xcw,nu_0
+    ! WOLF-HUBBLE 
+
 
     ! initialise working props of photon
     ppos    = p%xcurr        ! position within full simulation box, in box units.
@@ -158,26 +168,34 @@ contains
           stop
        endif
        
-       ! get gas velocity (in cgs units)
-       vgas         = get_gas_velocity(cell_gas)  ! use xlast-xcell/xcurr for H(z) but conditions periodic...
-       ! compute photon's frequency in cell's moving frame
-       scalar       = p%k(1) * vgas(1) + p%k(2) * vgas(2) + p%k(3) * vgas(3)
-       nu_cell      = (1.0d0 - scalar/clight) * p%nu_ext  
-
+       ! HUBBLE-FLOW                                                                                                                   
+       ! - Read redshift and compute H(z)
+       ! - define hubble flow (vhub=Hr with r=ppos-xlast)                               
+       r_xlast_ppos        = ppos - p%xlast 
+       r_xlast_ppos_cm     = r_xlast_ppos * box_size_cm                             ! from box units to cm              
+       Hub_cms_cm           = Hub_kms_Mpc * 1.0d5 / mpc                             ! [cm/s/cm]              
+       v_hubble             = Hub_cms_cm * r_xlast_ppos_cm
+       !! get gas velocity (in cgs units) and add Hubble flow at xcurr (i.e. when entering cell)                        
+       vgas                 = get_gas_velocity(cell_gas) + v_hubble
+       scalar               = p%k(1) * vgas(1) + p%k(2) * vgas(2) + p%k(3) * vgas(3)
+       !! compute photon's frequency in cell's moving frame
+       nu_cell              = (1.0d0 - scalar/clight) * p%nu_ext
+       ! WOLF-HUBBLE
+       
        ! define/update flag_cell_fully_in_comp_dom to avoid various tests in the following
        pcell = cell_corner + 0.5d0*cell_size
        cell_fully_in_domain = domain_fully_contains_cell(pcell,cell_size,domaine_calcul)
 
        !--CORESKIP--
-       if (HI_core_skip) then 
-          delta_nu_doppler = cell_gas%dopwidth/(1215.67d0/cmtoA)
-          a    = 6.265d8/fourpi/delta_nu_doppler
-          xcw  = 6.9184721d0 + 81.766279d0 / (log10(a)-14.651253d0)  ! Smith+15, Eq. 21
-          nu_0 = clight /(1215.67d0/cmtoA)
-       end if
+       !if (HI_core_skip) then
+       ! Needed for HUBBLE-FLOW  
+       delta_nu_doppler = cell_gas%dopwidth/(1215.67d0/cmtoA)
+       a    = 6.265d8/fourpi/delta_nu_doppler
+       xcw  = 6.9184721d0 + 81.766279d0 / (log10(a)-14.651253d0)  ! Smith+15, Eq. 21
+       nu_0 = clight /(1215.67d0/cmtoA)
+       !end if
        !--PIKSEROC--
-
-       
+  
        propag_in_cell : do
 
           ! generate the opt depth where the photon is scattered/absorbed
@@ -216,10 +234,73 @@ contains
           end if
           !--PIKSEROC--
 
+          ! HUBBLE-FLOW            
+          ! 1st condition : dv < b / 5, i.e. dr < b / (5H(z))
+          dmax_hub1 = cell_gas%dopwidth / (5.0 * Hub_cms_cm)  ! cm
+          ! 2nd condition: dr < 0.01 b/H(z) * V(a,x)/V’(a,x), where V(a,x) is the Voigt function
+!!$          delta_nu_doppler = cell_gas%dopwidth/(1215.67d0/cmtoA)
+!!$          a    = 6.265d8/fourpi/delta_nu_doppler
+!!$          ! Compute the wing/core transition xcw for Lya
+!!$          xcw  = 6.9184721d0 + 81.766279d0 / (log10(a)-14.651253d0)  ! Smith+15, Eq. 21
+!!$          nu_0 = clight /(1215.67d0/cmtoA)
           
-          ! check whether scattering occurs within cell or domain (scatter_flag > 0) or not (scatter_flag==0)
-          scatter_flag = gas_get_scatter_flag(cell_gas, distance_to_border_cm, nu_cell, tau_abs, iran)
-
+          ! Initialize distances
+          true_distance_to_border_cm      = distance_to_border_cm
+          remaining_distance_to_border_cm = distance_to_border_cm
+          
+          sum_substeps_distance_cm = 0.0
+          scatter_flag = 0
+          nsubsteps = 0
+          
+          ! I will need to evaluate nu_cell at each substep
+          nu_cell_temp = nu_cell
+          
+          do while (scatter_flag .eq. 0 .and. sum_substeps_distance_cm < true_distance_to_border_cm)
+             x_cell              = (nu_cell_temp - nu_0) / delta_nu_doppler
+             ! Evaluate V/V'
+             voigt_over_dvoigt   = get_voigt_over_dvoigt(x_cell,xcw)         
+             dmax_hub2           = 0.01 * cell_gas%dopwidth / Hub_cms_cm * voigt_over_dvoigt ! cm
+             substep_distance_cm = min(remaining_distance_to_border_cm,dmax_hub1,dmax_hub2)
+             
+             ! Evaluate V_hubble at [distance that can be travelled] / 2
+             ! v_hub_in_cell       = Hub_cms_cm * substep_distance_cm / 2.0
+             do i=1,3
+                v_hub_in_cell(i) = p%k(i) * Hub_cms_cm * (sum_substeps_distance_cm + substep_distance_cm / 2.0) !+ vgas(i)
+             end do
+             v_cell_ext          = v_hub_in_cell + vgas
+             scalar              = p%k(1) * v_cell_ext(1) + p%k(2) * v_cell_ext(2) + p%k(3) * v_cell_ext(3)
+             !! compute photon's frequency in cell's moving frame
+             nu_cell_temp        = (1.0d0 - scalar/clight) * p%nu_ext
+             
+             ! check whether scattering occurs within cell or domain (scatter_flag > 0) or not (scatter_flag==0)
+             ! The statement above will no longer be true with substepping
+             scatter_flag = gas_get_scatter_flag(cell_gas, substep_distance_cm, nu_cell_temp, tau_abs, iran)
+             ! Re-evaluate nu_cell_temp for substep_distance_cm
+             do i=1,3
+                v_hub_in_cell(i) = p%k(i) * Hub_cms_cm * (sum_substeps_distance_cm + substep_distance_cm) !+ vgas(i)
+             end do
+             v_cell_ext          = v_hub_in_cell + vgas
+             scalar              = p%k(1) * v_cell_ext(1) + p%k(2) * v_cell_ext(2) + p%k(3) * v_cell_ext(3)
+             nu_cell_temp        = (1.0d0 - scalar/clight) * p%nu_ext             
+             
+             ! Update total "travelled" distance" and "remaining" distance
+             sum_substeps_distance_cm = sum_substeps_distance_cm + substep_distance_cm
+             remaining_distance_to_border_cm    = true_distance_to_border_cm-sum_substeps_distance_cm             
+             distance_to_border_cm    = sum_substeps_distance_cm ! -sum_substeps_distance_cm             
+             
+             nsubsteps = nsubsteps + 1
+             
+          end do ! end substepping
+          
+          ! Recompute distance in other units...
+          distance_to_border = distance_to_border_cm / cell_size_cm     ! cell units
+          distance_to_border_box_units = distance_to_border * cell_size ! box units
+          
+          if (scatter_flag==1) then
+             nu_cell = nu_cell_temp
+          endif
+          ! WOLF-HUBBLE
+          
           if (scatter_flag == 0) then   ! next scattering event will not occur in the cell or in the domain
 
              ! move photon out of cell or domain
@@ -348,13 +429,14 @@ contains
              nu_ext = p%nu_ext
              k = p%k
              !--CORESKIP--
-             call gas_scatter(scatter_flag, cell_gas, nu_cell, k, nu_ext, iran, xcrit)    ! NB: nu_cell, k, nu_ext, and iran en inout
-             !call gas_scatter(scatter_flag, cell_gas, nu_cell, k, nu_ext, iran)    ! NB: nu_cell, k, nu_ext, and iran en inout             
+             !call gas_scatter(scatter_flag, cell_gas, nu_cell, k, nu_ext, iran, xcrit)    ! NB: nu_cell, k, nu_ext, and iran en inout
              !--PIKSEROC--
-             p%nu_ext = nu_ext
-
-
-             
+             ! HUBBLE-FLOW            
+             call gas_scatter(scatter_flag, cell_gas, nu_cell,v_cell_ext, k, nu_ext, iran, xcrit)
+             ! Stop after one scattering
+             scatter_flag = -1
+             ! WOLF-HUBBLE
+             p%nu_ext = nu_ext             
              ! NB: for TEST case, to have photons propagating straight on, comment the following line
              p%k = k
              ! there has been an interaction -> reset tau_abs

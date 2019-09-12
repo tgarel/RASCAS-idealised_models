@@ -378,7 +378,46 @@ contains
     
   end function path
 
-
+  ! HUBBLE-FLOW
+  function get_voigt_over_dvoigt(x_cell,xcw)
+    
+    ! Returns V(a,x)/dV(a,x) at x
+    ! CORE
+    !voigt_approx = exp(-x_cell*x_cell) & dvoigt_approx = -2.0 * x_cell * exp(-x_cell*x_cell)
+    ! => voigt_over_dvoigt = abs(1.0 / (2.0 * x_cell))
+    ! WING
+    ! voigt_approx = a / sqrt(pi) / x^2 & dvoigt_approx = -2a / sqrt(pi) / x^3
+    ! => voigt_over_dvoigt = abs(x_cell) / 2.0
+    
+    implicit none
+    
+    real(kind=8)            :: x_cell,xcw
+    real(kind=8)            :: get_voigt_over_dvoigt    
+    
+    if (abs(x_cell-xcw) < 1.0) then
+       ! if |x-xcw| < 1, we evaluate V’/V by the 'lorentzian'  approx at xcw
+       get_voigt_over_dvoigt = xcw / 2.0
+    else
+       if (abs(x_cell) < xcw) then ! core
+          !To avoid dvoigt=0 at x=0, say that if voigt > dvoigt then dmax_hub2 = 0.01 * cell_gas%dopwidth / Hub_cms_cm (i.e. voigt_over_dvoigt=1.)
+          !voigt_approx > dvoigt_approx <=> exp(-x_cell*x_cell) > -2.0 * x_cell * exp(-x_cell*x_cell)
+          ! 1 > -2.0 * x_cell   ===> |x_cell| < 0.5
+          if (abs(x_cell) < 0.5) then
+             get_voigt_over_dvoigt = 1.0
+          else
+             get_voigt_over_dvoigt = abs(1.0 / (2.0 * x_cell))
+          end if
+       else ! wing
+          get_voigt_over_dvoigt = abs(x_cell) / 2.0
+       end if
+    end if
+    
+    return
+    
+  end function get_voigt_over_dvoigt
+  ! WOLF-HUBBLE
+  
+  
   subroutine print_rascas_header
     write(*,'(a)') '                                             '
     write(*,'(a)') '    _____  _____  _____  _____  _____  _____ '
