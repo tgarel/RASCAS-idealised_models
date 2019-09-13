@@ -24,11 +24,25 @@ class mockobs(object):
             self.aperture,self.flux = self.__read_flux(index=idirection)
             #self.flux = self.flux * self.nPhotPerPacket
             self.flux = self.flux * self.LumPerPacket # [erg/s]
+
+        if load_spectrum:  # restframe spectrum
+            self.spec_lmin,self.spec_lmax,self.spec_npix,self.spec = self.__read_spectrum(index=idirection)
+            dl = (self.spec_lmax - self.spec_lmin) / self.spec_npix  # [A] 
+            l = np.arange(self.spec_lmin,self.spec_lmax,dl) + 0.5*dl # [A]
+            self.spec_lbda_Angstrom  = l
+            self.spec_dlbda_Angstrom = dl
+            l = l * 1e-8  # [cm]
+            energy = ly.h_cgs * ly.clight / l      # [erg]
+            energy = energy * self.nPhotPerPacket  # [erg / s / phot packet]
+            energy = energy / dl                   # [erg / s / A / phot packet]
+            self.spec = energy * self.spec         # [erg / s/ A]
+
         if load_image:
             self.imsize_cu, self.image_npix, self.imtot = self.__read_image(index=idirection)
             p.load_ic()
             self.LumPerPacket = self.nPhotPerPacket * ly.h_cgs * np.mean(p.nu_ic)
             self.imtot = self.imtot * self.LumPerPacket # [erg/s]
+            
         if load_cube:  # obs-frame cube
             self.cube_nlbda,self.cube_nxy,self.cube_lmin,self.cube_lmax,self.cube_imsize,self.cube = self.__read_cube(index=idirection)
             self.cube_lmin = self.cube_lmin * (1+redshift)
@@ -62,6 +76,17 @@ class mockobs(object):
         f.close()
         return aperture,flux
 
+    def __read_spectrum(self,index=1):
+        from scipy.io import FortranFile as ff
+        f = ff('%s/%s_spectrum.%5.5i'%(self.Dir,self.FileName,0))
+        for j in range(index):
+            n = f.read_ints()[0]
+            aperture,lmin,lmax = f.read_reals('d')
+            spec = f.read_reals('d')
+        f.close()
+
+        return lmin,lmax,n,spec
+
     def __read_image(self,index=1):
         from scipy.io import FortranFile as ff
         f = ff('%s/%s_image.%5.5i'%(self.Dir,self.FileName,0))
@@ -73,6 +98,20 @@ class mockobs(object):
         im = im.reshape((n,n))
         f.close()
         return imsize,n,im
+
+
+    def show_spectrum(self,plotFile):
+        import lya_utils as ly
+        import matplotlib
+        matplotlib.use('Agg')
+        from matplotlib import pyplot as plt
+        from numpy import linspace
+        plt.figure()
+        l = linspace(self.spec_lmin,self.spec_lmax,num=self.spec_npix)  # [A]
+        plt.plot(l,self.spec)
+        plt.savefig(plotFile)
+
+
     
     def show_image(self,plotFile,vmin=1e-15,vmax=10,showCB=True,smooth=False,smooth_scale_pix=2,noiseLevel=0):
         #import matplotlib
