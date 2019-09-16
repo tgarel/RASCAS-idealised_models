@@ -250,6 +250,9 @@ program CreateDomDump
      fichier = trim(DomDumpDir)//trim(mesh_file_list(i))
      call dump_mesh(domain_mesh, fichier)
      call mesh_destructor(domain_mesh)
+     if (allocated(leaf_level)) deallocate(leaf_level)
+     if (allocated(ramses_var)) deallocate(ramses_var)
+     if (allocated(x_leaf)) deallocate(x_leaf)
   enddo
 
   call cpu_time(finish)
