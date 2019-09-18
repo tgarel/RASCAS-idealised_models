@@ -92,7 +92,9 @@ program CreateDomDump
   
   
   ! Read all the leaf cells
-  nOctSnap = get_nGridTot(repository,snapnum)
+  ! TIBO
+  !nOctSnap = get_nGridTot(repository,snapnum)
+  ! OBIT
   if (reading_method == 'fullbox') then
      if (verbose) print*,'Reading leaf cells...'
      call read_leaf_cells(repository, snapnum, nleaftot, nvar, x_leaf, ramses_var, leaf_level)
@@ -211,6 +213,11 @@ program CreateDomDump
         ! Extract and convert properties of cells into gas mix properties
         call gas_from_ramses_leaves(repository,snapnum,nleaftot,nvar,ramses_var, gas_leaves)
         call cpu_time(finish)
+        ! TIBO
+        nOctSnap = get_nGridTot_cpus(repository, snapnum, ncpu_read, cpu_list)
+        call mesh_from_leaves(nOctSnap,domain_list(i),nleaftot, &
+             gas_leaves,x_leaf,leaf_level,domain_mesh)
+        !OBIT
         print '(" --> Time to read leaves in hilbert domain = ",f12.3," seconds.")',finish-intermed
      endif
      
@@ -232,6 +239,9 @@ program CreateDomDump
         print '(" --> Time to read leaves in domain = ",f12.3," seconds.")',finish-intermed
         if (verbose) write(*,*)'Building the mesh from the collection of leaves...'
         ! and then no need for selection, but to adapt the call to mesh_from_leaves
+        !TIBO
+        nOctSnap = get_nGridTot_cpus(repository, snapnum, ncpu_read, cpu_list)
+        !OBIT
         call mesh_from_leaves(nOctSnap,domain_list(i),nleaftot, &
              gas_leaves,x_leaf,leaf_level,domain_mesh)
      else
@@ -243,6 +253,9 @@ program CreateDomDump
         nleaf_sel = size(ind_sel)
         print*,'in CreateDomDump: nleaf_sel = ',nleaf_sel
         if (verbose) write(*,*)'Building the mesh from the collection of leaves...'
+        !TIBO
+        nOctSnap = get_nGridTot_cpus(repository, snapnum, ncpu_read, cpu_list)
+        !OBIT
         call mesh_from_leaves(nOctSnap,domain_list(i),nleaf_sel, &
              selected_leaves,xleaf_sel,leaflevel_sel,domain_mesh)
      endif

@@ -107,7 +107,7 @@ module module_ramses
   ! --------------------------------------------------------------------------
   
   
-  public :: read_leaf_cells, read_leaf_cells_omp, read_leaf_cells_in_domain
+  public :: read_leaf_cells, read_leaf_cells_omp, read_leaf_cells_in_domain, get_ngridtot_cpus
   public :: get_ngridtot, ramses_get_box_size_cm, get_cpu_list, get_cpu_list_periodic, get_ncpu
   public :: ramses_get_velocity_cgs, ramses_get_T_nhi_cgs, ramses_get_metallicity,  ramses_get_nh_cgs
   public :: ramses_get_T_nSiII_cgs, ramses_get_T_nMgII_cgs, ramses_get_T_nFeII_cgs
@@ -854,7 +854,47 @@ contains
 
   end function get_nGridTot
 
+!!! Function from joki's develop_fesc: needed for fullbox memeory issues
+  function get_nGridTot_cpus(repository,snapnum,ncpu_read,cpu_list)
+    
+    ! get total number of grids in the simulation belonging to given list of cpus
+    
+    implicit none 
+    
+    integer(kind=4),intent(in)  :: snapnum, ncpu_read
+    character(1000),intent(in)  :: repository
+    integer(kind=4),dimension(:),allocatable,intent(in) :: cpu_list
+    integer(kind=4)             :: get_nGridTot_cpus
+    character(1000)             :: filename
+    logical                     :: ok
+    integer(kind=4)             :: k,icpu,ngrid_current
+    
+    get_nGridTot_cpus = 0
+    do k = 1,ncpu_read
+       icpu=cpu_list(k)
+       write(filename,'(a,a,i5.5,a,i5.5,a,i5.5)') trim(repository),'/output_',snapnum,'/amr_',snapnum,'.out',icpu
+       inquire(file=filename, exist=ok)
+       if(.not. ok)then
+          write(*,*)'File '//TRIM(filename)//' not found'    
+          stop
+       end if
+       open(unit=10,file=filename,form='unformatted',status='old',action='read')
+       read(10)
+       read(10)
+       read(10)
+       read(10)
+       read(10)
+       read(10)
+       read(10)ngrid_current
+       close(10)
+       get_nGridTot_cpus = get_nGridTot_cpus + ngrid_current
+    end do
 
+    return
+
+  end function get_nGridTot_cpus
+
+  
 
   subroutine ramses_get_T_nhi_cgs(repository,snapnum,nleaf,nvar,ramses_var,temp,nhi)
 
