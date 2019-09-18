@@ -65,6 +65,10 @@ module module_gas_composition
   public :: HI_core_skip 
   !--PIKSEROC-- 
 
+  ! TIBO
+  public :: redshift_snapshot
+  ! OBIT
+  
 contains
 
   
