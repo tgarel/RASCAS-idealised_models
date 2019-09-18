@@ -197,8 +197,7 @@ program CreateDomDump
            zmin = decomp_dom_zc(i) - decomp_dom_thickness(i)*0.5d0
         end select
         call get_cpu_list_periodic(repository, snapnum, xmin,xmax,ymin,ymax,zmin,zmax, ncpu_read, cpu_list)
-        call read_leaf_cells_in_domain(repository, snapnum, domain_list(i), ncpu_read, cpu_list, &
-             & nleaftot, nvar, x_leaf, ramses_var, leaf_level)
+        call read_leaf_cells_omp(repository, snapnum, ncpu_read, cpu_list, nleaftot, nvar, x_leaf, ramses_var, leaf_level)
         print*,'in CreateDomDump: nleaf_sel = ',nleaftot, size(leaf_level)
         ! Extract and convert properties of cells into gas mix properties
         call gas_from_ramses_leaves(repository,snapnum,nleaftot,nvar,ramses_var, gas_leaves)
@@ -211,7 +210,7 @@ program CreateDomDump
      else if (reading_method == 'select_onthefly') then
         ! another last option would be to read all cpu files but to select cells on the fly to maintain low memory
         ! this would be for zoom-in simulations with -Dquadhilbert
-        if (verbose) print*,'Reading leaf cells...'
+        if (verbose) print*,'Reading leaf cells... Hilbert'
         ncpu_read = get_ncpu(repository,snapnum)
         allocate(cpu_list(1:ncpu_read))
         do j=1,ncpu_read
