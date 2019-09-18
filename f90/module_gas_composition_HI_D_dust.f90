@@ -47,7 +47,11 @@ module module_gas_composition
   real(kind=8)             :: fix_vth             = 1.0d5   ! ad-hoc thermal velocity (cm/s)
   real(kind=8)             :: fix_ndust           = 0.0d0   ! ad-hoc dust number density (/cm3)
   real(kind=8)             :: fix_vel             = 0.0d0   ! ad-hoc cell velocity (cm/s) -> NEED BETTER PARAMETERIZATION for more than static... 
-  real(kind=8)             :: fix_box_size_cm     = 1.0d8   ! ad-hoc box size in cm. 
+  real(kind=8)             :: fix_box_size_cm     = 1.0d8   ! ad-hoc box size in cm.
+  ! TIBO
+  real(kind=8)             :: redshift_snapshot   = -99.0   ! redshift of the snapshot of the simulation
+  !OBIT
+    
   ! --------------------------------------------------------------------------
 
   ! public functions:
@@ -397,6 +401,10 @@ contains
              read(value,*) f_ion
           case ('Zref')
              read(value,*) Zref
+          !TIBO
+          case ('redshift_snapshot')
+             read(value,*) redshift_snapshot
+          !OBIT   
           case ('gas_overwrite')
              read(value,*) gas_overwrite
           case ('fix_nhi')
@@ -439,7 +447,8 @@ contains
        write(unit,'(a)')        '# mixture parameters'
        write(unit,'(a,ES10.3)') '  deut2H_nb_ratio = ',deut2H_nb_ratio
        write(unit,'(a,ES10.3)') '  f_ion           = ',f_ion
-       write(unit,'(a,ES10.3)') '  Zref            = ',Zref
+       write(unit,'(a,ES10.3)') '  Zref            = ',Zref 
+       write(unit,'(a,ES10.3)') '  redshift_snapshot= ',redshift_snapshot
        write(unit,'(a)')        '# overwrite parameters'
        write(unit,'(a,L1)')     '  gas_overwrite   = ',gas_overwrite
        if(gas_overwrite)then
@@ -462,6 +471,7 @@ contains
        write(*,'(a,ES10.3)') '  deut2H_nb_ratio = ',deut2H_nb_ratio
        write(*,'(a,ES10.3)') '  f_ion           = ',f_ion
        write(*,'(a,ES10.3)') '  Zref            = ',Zref
+       write(*,'(a,ES10.3)') '  redshift_snapshot= ',redshift_snapshot
        write(*,'(a)')        '# overwrite parameters'
        write(*,'(a,L1)')     '  gas_overwrite   = ',gas_overwrite
        if(gas_overwrite)then

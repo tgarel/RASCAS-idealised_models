@@ -100,14 +100,24 @@ contains
     ! HUBBLE-FLOW                                                                                                                      
     real(kind=8),dimension(3)            :: v_hubble, r_xlast_ppos,r_xlast_ppos_cm, v_hub_in_cell,v_cell_ext
     real(kind=8)                         :: Hub_kms_cm, Hub_cms_cm, dmax_hub1, dmax_hub2, scalar_hub, voigt_over_dvoigt,nu_cell_temp,rel_err,nu_cell_save,nu_cell_save2
-    real(kind=8)                         :: x_cell, true_distance_to_border_cm, sum_substeps_distance_cm, substep_distance_cm,remaining_distance_to_border_cm
-    ! H = (1 + z) * sqrt(1 + Omega_M*z + Omega_L*(1/(1 + z)**2 - 1)) * H_0 / kpc ! in cm/s/cm
-    real(kind=8),parameter               :: Hub_kms_Mpc = 20.0d0 ! 660.0d0 ! at z=6 [km/s/Mpc]                                
+    real(kind=8)                         :: x_cell, true_distance_to_border_cm, sum_substeps_distance_cm, substep_distance_cm,remaining_distance_to_border_cm                              
     integer(kind=4)                      :: nsubsteps
     !real(kind=8)                         :: a, delta_nu_doppler,xcw,nu_0
+    ! H = (1 + z) * sqrt(1 + Omega_M*z + Omega_L*(1/(1 + z)**2 - 1)) * H_0 / kpc ! in cm/s/cm
+    !real(kind=8),parameter               :: Hub_kms_Mpc = 20.0d0 ! 660.0d0 ! at z=6 [km/s/Mpc]
+    !------ if redshift defined as param:
+    ! H = (1 + z) * sqrt(1 + Omega_M*z + Omega_L*(1/(1 + z)**2 - 1)) * H_0 / kpc ! in cm/s/cm
+    real(kind=8)                         :: Hub_kms_Mpc ! [km/s/Mpc]
+    real(kind=8),parameter               :: Omega_M = 0.3175
+    real(kind=8),parameter               :: Omega_L = 0.6825
+    real(kind=8),parameter               :: H_0 = 67.11  ! [km/s/Mpc]
+    !------
     ! WOLF-HUBBLE 
 
-
+    !------ if redshift defined as param:
+    Hub_kms_Mpc = (1.0 + redshift_snapshot) * sqrt(1.0 + Omega_M*redshift_snapshot + Omega_L*(1.0/(1.0 + redshift_snapshot)**2.0 - 1.0)) * H_0
+    !------
+    
     ! initialise working props of photon
     ppos    = p%xcurr        ! position within full simulation box, in box units.
     time    = p%time
