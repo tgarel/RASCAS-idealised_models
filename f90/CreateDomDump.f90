@@ -99,7 +99,7 @@ program CreateDomDump
      do i=1,ncpu_read
         cpu_list(i)=i
      end do
-     call read_leaf_cells(repository, snapnum, ncpu_read, cpu_list, nleaftot, nvar, x_leaf, ramses_var, leaf_level)
+     call read_leaf_cells(repository, snapnum, nleaftot, nvar, x_leaf, ramses_var, leaf_level)
      ! Extract and convert properties of cells into gas mix properties
      call gas_from_ramses_leaves(repository,snapnum,nleaftot,nvar,ramses_var, gas_leaves)
      call cpu_time(finish)
