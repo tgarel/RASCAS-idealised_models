@@ -210,7 +210,6 @@ program CreateDomDump
 
         ! clean up arrays before reading again 
         if (i > 1) deallocate(cpu_list,ramses_var,leaf_level,leaflevel_sel,x_leaf,xleaf_sel,gas_leaves,selected_leaves,ind_sel)
-        print*,xmin,xmax,ymin,ymax,zmin,zmax
         call get_cpu_list_periodic(repository, snapnum, xmin,xmax,ymin,ymax,zmin,zmax, ncpu_read, cpu_list)
         call read_leaf_cells_omp(repository, snapnum, ncpu_read, cpu_list, nleaftot, nvar, x_leaf, ramses_var, leaf_level)
 
