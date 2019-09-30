@@ -170,6 +170,7 @@ contains
   end subroutine select_in_domain
 
 
+
   subroutine select_cells_in_domain(dom,n,xp,level,indsel)
     
     implicit none
@@ -354,21 +355,19 @@ contains
        else if (dx < -0.5d0) then 
           dx = dx + 1.0d0
        end if
-
        dy = x(2)-dom%sp%center(2)
        if (dy > 0.5d0) then 
           dy = dy -1.0d0 
        else if (dy < -0.5d0) then 
           dy = dy + 1.0d0
        end if
-
        dz = x(3)-dom%sp%center(3)
        if (dz > 0.5d0) then 
           dz = dz -1.0d0 
        else if (dz < -0.5d0) then 
           dz = dz + 1.0d0
        end if
-
+       !rr = (x(1)-dom%sp%center(1))**2 + (x(2)-dom%sp%center(2))**2 + (x(3)-dom%sp%center(3))**2
        rr = dx**2 + dy**2 + dz**2
        if(rr<dom%sp%radius*dom%sp%radius)domain_contains_point=.true.
 
@@ -393,6 +392,7 @@ contains
           dz = dz + 1.0d0
        end if
        rr = dx*dx + dy*dy + dz*dz
+       !!rr = (x(1)-dom%sh%center(1))**2 + (x(2)-dom%sh%center(2))**2 + (x(3)-dom%sh%center(3))**2
        if((rr>dom%sh%r_inbound*dom%sh%r_inbound).and.(rr<dom%sh%r_outbound*dom%sh%r_outbound))domain_contains_point=.true.
 
     case('cube')
@@ -458,14 +458,12 @@ contains
        else if (ddx < -0.5d0) then 
           ddx = ddx + 1.0d0
        end if
-
        ddy = x(2)-dom%sp%center(2)
        if (ddy > 0.5d0) then 
           ddy = ddy -1.0d0 
        else if (ddy < -0.5d0) then 
           ddy = ddy + 1.0d0
        end if
-
        ddz = x(3)-dom%sp%center(3)
        if (ddz > 0.5d0) then 
           ddz = ddz -1.0d0 
@@ -497,6 +495,7 @@ contains
           ddz = ddz + 1.0d0
        end if
        rr = sqrt(ddx*ddx + ddy*ddy + ddz*ddz)
+       !!!rr = sqrt((x(1)-dom%sh%center(1))**2 + (x(2)-dom%sh%center(2))**2 + (x(3)-dom%sh%center(3))**2)
        if(( (rr-dx*sqrt3over2)>dom%sh%r_inbound) .and. ((rr+dx*sqrt3over2)<dom%sh%r_outbound) ) then
           domain_fully_contains_cell=.true.
        end if
@@ -723,6 +722,7 @@ contains
        else if (ddz < -0.5d0) then 
           ddz = ddz + 1.0d0
        end if
+       !rr = sqrt((x(1)-dom%sp%center(1))**2 + (x(2)-dom%sp%center(2))**2 + (x(3)-dom%sp%center(3))**2)
        rr = sqrt(ddx**2 + ddy**2 + ddz**2)
        domain_distance_to_border = dom%sp%radius - rr
        
@@ -747,6 +747,7 @@ contains
           ddz = ddz + 1.0d0
        end if
        rr = sqrt(ddx*ddx + ddy*ddy + ddz*ddz)
+       !!!rr = sqrt((x(1)-dom%sh%center(1))**2 + (x(2)-dom%sh%center(2))**2 + (x(3)-dom%sh%center(3))**2)
        domain_distance_to_border = min((rr-dom%sh%r_inbound),(dom%sh%r_outbound-rr))
        
     case('cube')
@@ -780,7 +781,7 @@ contains
           domain_distance_to_border = min(ddx,ddy,ddz)
        else
           ! outside domain
-          domain_distance_to_border = sqrt((min(0.0d0,ddx))**2 + (min(0.0d0,ddy))**2 + (min(0.0d0,ddz))**2)  
+          domain_distance_to_border = -sqrt((min(0.0d0,ddx))**2 + (min(0.0d0,ddy))**2 + (min(0.0d0,ddz))**2)  
        endif
 
     case('slab')
@@ -848,6 +849,9 @@ contains
        else if (dz < -0.5d0) then 
           dz = dz + 1.0d0
        end if
+       !dx = x(1) - dom%sp%center(1)
+       !dy = x(2) - dom%sp%center(2)
+       !dz = x(3) - dom%sp%center(3)
        b = 2.d0 * ( k(1)*dx + k(2)*dy +  k(3)*dz )
        c = dx*dx + dy*dy + dz*dz - dom%sp%radius*dom%sp%radius
        delta = b*b - 4.0d0*c
@@ -877,6 +881,9 @@ contains
        else if (dz < -0.5d0) then 
           dz = dz + 1.0d0
        end if
+       !dx = x(1) - dom%sh%center(1)
+       !dy = x(2) - dom%sh%center(2)
+       !dz = x(3) - dom%sh%center(3)
        ! inner shell intersection
        b = 2.0d0 * ( k(1)*dx + k(2)*dy +  k(3)*dz )
        c = dx*dx + dy*dy + dz*dz - dom%sh%r_inbound*dom%sh%r_inbound
@@ -955,6 +962,7 @@ contains
   end function domain_distance_to_border_along_k
 
 
+
   subroutine domain_get_bounding_box(dom,xmin,xmax,ymin,ymax,zmin,zmax)
     implicit none
     type(domain),intent(in)     :: dom
@@ -993,6 +1001,8 @@ contains
     
     return
   end subroutine domain_get_bounding_box
+
+
 
 end module module_domain
 
