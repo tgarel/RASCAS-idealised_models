@@ -120,7 +120,11 @@ contains
        print*,'ERROR: core skipping is on but xcrit is not zero ... '
        stop
     end if
-    if (HI_core_skip) xc = min(xcrit,xcritmax)
+    if (HI_core_skip)  then
+       xc = min(xcrit,xcritmax)
+    else
+       xc=0
+    endif
     !--PIKSEROC--
     
     ! define x_cell & a
