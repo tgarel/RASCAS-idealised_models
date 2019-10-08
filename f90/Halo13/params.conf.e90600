@@ -1,0 +1,63 @@
+
+------------------------ /usr/share/modules/modulefiles ------------------------
+dot         module-info null        perfcatcher
+module-cvs  modules     perfboost   use.own
+
+---------------------------- /opt/apps/modulefiles -----------------------------
+MPInside/3.6.4           intel-icc-14/14.0.3.174  mpt/2.09
+collectl                 intel-idbe-14/14.0.1.106 mpt/2.10
+gnu/7.3.0                intel-idbe-14/14.0.3.174 paraview/4.4.0
+gnuplot/5.0.1            intel-ifc-14/14.0.1.106  perfsuite/1a5.3
+hdf5/1.8.14              intel-ifc-14/14.0.3.174
+intel-icc-14/14.0.1.106  intel-mkl-11/11.1.3
+Currently Loaded Modulefiles:
+  1) intel-icc-14/14.0.3.174   3) intel-mkl-11/11.1.3
+  2) intel-ifc-14/14.0.3.174   4) mpt/2.10
+/var/spool/PBS/mom_priv/jobs/90600.service0.SC: line 1: [CreateDomDump]: command not found
+/var/spool/PBS/mom_priv/jobs/90600.service0.SC: line 2: DomDumpDir: command not found
+/var/spool/PBS/mom_priv/jobs/90600.service0.SC: line 3: repository: command not found
+/var/spool/PBS/mom_priv/jobs/90600.service0.SC: line 4: snapnum: command not found
+/var/spool/PBS/mom_priv/jobs/90600.service0.SC: line 5: comput_dom_type: command not found
+/var/spool/PBS/mom_priv/jobs/90600.service0.SC: line 6: comput_dom_pos: command not found
+/var/spool/PBS/mom_priv/jobs/90600.service0.SC: line 7: comput_dom_rsp: command not found
+/var/spool/PBS/mom_priv/jobs/90600.service0.SC: line 8: decomp_dom_type: command not found
+/var/spool/PBS/mom_priv/jobs/90600.service0.SC: line 9: decomp_dom_ndomain: command not found
+/var/spool/PBS/mom_priv/jobs/90600.service0.SC: line 10: decomp_dom_xc: command not found
+/var/spool/PBS/mom_priv/jobs/90600.service0.SC: line 11: decomp_dom_yc: command not found
+/var/spool/PBS/mom_priv/jobs/90600.service0.SC: line 12: decomp_dom_zc: command not found
+/var/spool/PBS/mom_priv/jobs/90600.service0.SC: line 13: decomp_dom_rsp: command not found
+/var/spool/PBS/mom_priv/jobs/90600.service0.SC: line 14: verbose: command not found
+/var/spool/PBS/mom_priv/jobs/90600.service0.SC: line 15: reading_method: command not found
+/var/spool/PBS/mom_priv/jobs/90600.service0.SC: line 16: [FescFromStars]: command not found
+/var/spool/PBS/mom_priv/jobs/90600.service0.SC: line 17: DomDumpDir: command not found
+/var/spool/PBS/mom_priv/jobs/90600.service0.SC: line 18: repository: command not found
+/var/spool/PBS/mom_priv/jobs/90600.service0.SC: line 19: snapnum: command not found
+/var/spool/PBS/mom_priv/jobs/90600.service0.SC: line 20: reading_method: command not found
+/var/spool/PBS/mom_priv/jobs/90600.service0.SC: line 21: DataDir: command not found
+/var/spool/PBS/mom_priv/jobs/90600.service0.SC: line 22: [gas_composition]: command not found
+/var/spool/PBS/mom_priv/jobs/90600.service0.SC: line 23: sigma_HI: command not found
+/var/spool/PBS/mom_priv/jobs/90600.service0.SC: line 24: sigma_HeI: command not found
+/var/spool/PBS/mom_priv/jobs/90600.service0.SC: line 25: sigma_HeII: command not found
+/var/spool/PBS/mom_priv/jobs/90600.service0.SC: line 26: sigma2_HI: command not found
+/var/spool/PBS/mom_priv/jobs/90600.service0.SC: line 27: sigma2_HeI: command not found
+/var/spool/PBS/mom_priv/jobs/90600.service0.SC: line 28: sigma2_HeII: command not found
+/var/spool/PBS/mom_priv/jobs/90600.service0.SC: line 29: sigma3_HI: command not found
+/var/spool/PBS/mom_priv/jobs/90600.service0.SC: line 30: sigma3_HeI: command not found
+/var/spool/PBS/mom_priv/jobs/90600.service0.SC: line 31: sigma3_HeII: command not found
+/var/spool/PBS/mom_priv/jobs/90600.service0.SC: line 32: gas_overwrite: command not found
+/var/spool/PBS/mom_priv/jobs/90600.service0.SC: line 33: verbose: command not found
+/var/spool/PBS/mom_priv/jobs/90600.service0.SC: line 34: [ramses]: command not found
+/var/spool/PBS/mom_priv/jobs/90600.service0.SC: line 35: self_shielding: command not found
+/var/spool/PBS/mom_priv/jobs/90600.service0.SC: line 36: ramses_rt: command not found
+/var/spool/PBS/mom_priv/jobs/90600.service0.SC: line 37: verbose: command not found
+/var/spool/PBS/mom_priv/jobs/90600.service0.SC: line 38: use_initial_mass: command not found
+/var/spool/PBS/mom_priv/jobs/90600.service0.SC: line 39: cosmo: command not found
+/var/spool/PBS/mom_priv/jobs/90600.service0.SC: line 40: use_proper_time: command not found
+/var/spool/PBS/mom_priv/jobs/90600.service0.SC: line 41: read_rt_variables: command not found
+/var/spool/PBS/mom_priv/jobs/90600.service0.SC: line 42: itemp: command not found
+/var/spool/PBS/mom_priv/jobs/90600.service0.SC: line 43: imetal: command not found
+/var/spool/PBS/mom_priv/jobs/90600.service0.SC: line 44: ihii: command not found
+/var/spool/PBS/mom_priv/jobs/90600.service0.SC: line 45: iheii: command not found
+/var/spool/PBS/mom_priv/jobs/90600.service0.SC: line 46: iheiii: command not found
+/var/spool/PBS/mom_priv/jobs/90600.service0.SC: line 47: [mesh]: command not found
+/var/spool/PBS/mom_priv/jobs/90600.service0.SC: line 48: verbose: command not found

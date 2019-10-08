@@ -55,17 +55,19 @@ module module_photon
   
 contains
 
-  subroutine MCRT(nbuffer,photpacket,mesh_dom,compute_dom)    
+
+  subroutine MCRT(npp,photpacket,mesh_dom,compute_dom)
 
     ! this is the Monte Carlo Radiative transfer routine... but also a single loop over photons...
 
-    integer(kind=4),intent(in)                            :: nbuffer
-    type(photon_current),dimension(nbuffer),intent(inout) :: photpacket
-    type(mesh),intent(in)                                 :: mesh_dom
-    type(domain),intent(in)                               :: compute_dom
-    integer(kind=4)                                       :: i
-    
-    do i=1,nbuffer
+    integer(kind=4),intent(in)                        :: npp
+    type(photon_current),dimension(npp),intent(inout) :: photpacket
+    type(mesh),intent(in)                             :: mesh_dom
+    type(domain),intent(in)                           :: compute_dom
+    integer(kind=4)                                   :: i
+
+    do i=1,npp
+
        ! case of photpacket not fully filled...
        if (photpacket(i)%ID>0) then
           call propagate(photpacket(i),mesh_dom,compute_dom)
@@ -165,16 +167,7 @@ contains
 
        ! define/update flag_cell_fully_in_comp_dom to avoid various tests in the following
        pcell = cell_corner + 0.5d0*cell_size
-       cell_fully_in_domain = domain_contains_cell(pcell,cell_size,domaine_calcul)
-
-       !--CORESKIP--
-       if (HI_core_skip) then 
-          delta_nu_doppler = cell_gas%dopwidth/(1215.67d0/cmtoA)
-          a    = 6.265d8/fourpi/delta_nu_doppler
-          xcw  = 6.9184721d0 + 81.766279d0 / (log10(a)-14.651253d0)  ! Smith+15, Eq. 21
-          nu_0 = clight /(1215.67d0/cmtoA)
-       end if
-       !--PIKSEROC--
+       cell_fully_in_domain = domain_fully_contains_cell(pcell,cell_size,domaine_calcul)
 
        
        propag_in_cell : do
@@ -262,6 +255,11 @@ contains
                    ppos(1) = ppos(1) + merge(-1.0d0,1.0d0,p%k(1)<0.0d0) * epsilon(ppos(1))
                    ppos(2) = ppos(2) + merge(-1.0d0,1.0d0,p%k(2)<0.0d0) * epsilon(ppos(2))
                    ppos(3) = ppos(3) + merge(-1.0d0,1.0d0,p%k(3)<0.0d0) * epsilon(ppos(3))
+                   ! correct for periodicity
+                   do i=1,3
+                      if (ppos(i) < 0.0d0) ppos(i)=ppos(i)+1.0d0
+                      if (ppos(i) > 1.0d0) ppos(i)=ppos(i)-1.0d0
+                   enddo
                    call whereIsPhotonGoing(domesh,icell,ppos,icellnew,flagoutvol)
                 end do
                 if (npush > 1) print*,'WARNING : npush > 1 needed in module_photon:propagate.'

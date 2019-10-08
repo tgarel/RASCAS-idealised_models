@@ -1,0 +1,60 @@
+[FescFromStars]
+
+
+
+!--------------------------------------------------------------------------------
+[CreateDomDump]
+# input outputs:
+  DomDumpDir = /scratch/chuniaud/test_fesc/Halo2
+  repository = /home/chuniaud/outputs_test_rosdahl2/
+  snapnum    = 179
+  reading_method = hilbert
+
+# computational domain parameters
+  comput_dom_type      = sphere
+  comput_dom_pos       =  0.20957687,0.37277114,0.7544055 
+  comput_dom_rsp       = 0.01315235
+
+# domain decomposition parameters
+  decomp_dom_type      = sphere
+  decomp_dom_ndomain   = 1
+  decomp_dom_xc        =  0.20957687
+  decomp_dom_yc        =  0.37277114
+  decomp_dom_zc        =  0.7544055
+  decomp_dom_rsp       =  0.016
+
+# miscelaneous :
+  verbose    = T
+!--------------------------------------------------------------------------------
+
+!--------------------------------------------------------------------------------
+[mesh]
+  verbose = T
+!--------------------------------------------------------------------------------
+
+!--------------------------------------------------------------------------------
+[ramses]
+  self_shielding   = F
+  ramses_rt        = T
+  verbose          = T
+  cosmo            = T
+  use_initial_mass = T
+  use_proper_time  = T
+  itemp  = 5
+  imetal = 6
+  ihii   = 7
+  iheii  = 8
+  iheiii = 9
+!--------------------------------------------------------------------------------
+
+!--------------------------------------------------------------------------------
+[gas_composition] 
+# mixture parameters
+  sigma_HI            = 1.1E-20
+  sigma_HeI           = 2.3E-19
+  sigma_HeII          = 1.7E-19
+# overwrite parameters
+  gas_overwrite       = F
+# miscelaneous parameters
+  verbose             = T
+!--------------------------------------------------------------------------------

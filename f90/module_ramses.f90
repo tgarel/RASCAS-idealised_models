@@ -1,8 +1,10 @@
 module module_ramses
 
-  use module_constants, only : kB, mp, XH, mSi, mMg, planck, clight,cmtoA
+
+  use module_constants, only : kB, mp, XH, planck, clight, cmtoA
   use module_domain
   use coolrates_module
+  
 
   implicit none
 
@@ -101,17 +103,20 @@ module module_ramses
   ! Mg
   ! abundance_Mg_mass == abundance_Mg_number * 24.305
   real(kind=8),parameter    :: abundance_Mg_number = 3.39d-5 ! From Scarlata (private comm.)
+  ! Fe
+  ! abundance_Fe_mass == abundance_Fe_number * 55.845
+  real(kind=8),parameter    :: abundance_Fe_number = 2.82d-5 ! From Scarlata (private comm.)
   ! --------------------------------------------------------------------------
   
   
   public :: read_leaf_cells, read_leaf_cells_omp, read_leaf_cells_in_domain
   public :: get_ngridtot, ramses_get_box_size_cm, get_cpu_list, get_cpu_list_periodic, get_ncpu
-  public :: ramses_get_velocity_cgs, ramses_get_T_nhi_cgs, ramses_get_metallicity,  ramses_get_nh_cgs, ramses_get_T_nSiII_cgs, ramses_get_T_nMgII_cgs
+  public :: ramses_get_velocity_cgs, ramses_get_T_nhi_cgs, ramses_get_metallicity,  ramses_get_nh_cgs
+  public :: ramses_get_T_nSiII_cgs, ramses_get_T_nMgII_cgs, ramses_get_T_nFeII_cgs
   public :: ramses_read_stars_in_domain
   public :: read_ramses_params, print_ramses_params, dump_ramses_info
   public :: ramses_get_LyaEmiss_HIDopwidth,ramses_get_cooling_time
-  public :: ramses_get_nhi_nhei_nheii_cgs
-  
+
   !==================================================================================
 contains
 
@@ -138,18 +143,14 @@ contains
     logical                                   :: do_allocs
     integer(kind=4)                           :: icpu, ileaf, icell, ivar
 
-    if(verbose)then
-       print *,' '
-       print *,'...reading RAMSES cells...'
-       print *,' '
-    endif
+    if(verbose)print *,'Reading RAMSES cells...'
 
     nleaftot = get_nleaf(repository,snapnum)  ! sets ncpu too 
     nvar     = get_nvar(repository,snapnum)
     allocate(ramses_var(nvar,nleaftot), xleaf(nleaftot,3), leaf_level(nleaftot))
     ncpu = get_ncpu(repository,snapnum)
 
-    if(verbose)print *,'-- read_leaf_cells --> nleaftot, nvar, ncpu =',nleaftot,nvar,ncpu
+    if(verbose)print *,'-- read_leaf_cells: nleaftot, nvar, ncpu =',nleaftot,nvar,ncpu
 
     do_allocs = .true.
     ileaf = 0
@@ -198,17 +199,16 @@ contains
     integer(kind=4)                           :: k, icpu, ileaf, icell, ivar, ilast, iloop
     logical                                   :: do_allocs
     
-    if(verbose)then
-       print *,' '
-       print *,'...reading RAMSES cells...'
-       print *,' '
-    endif
+    if(verbose) print *,'Reading RAMSES cells...'
 
-    nleaftot = get_nleaf(repository,snapnum)  ! sets ncpu too 
+    nleaftot = get_nleaf_omp(repository,snapnum,ncpu_read,cpu_list)
     nvar     = get_nvar(repository,snapnum)
     allocate(ramses_var_all(nvar,nleaftot), xleaf_all(nleaftot,3), leaf_level_all(nleaftot))
 
-    if(verbose) print *,'-- read_leaf_cells_omp --> nleaftot, nvar, ncpu =',nleaftot,nvar,ncpu_read
+    ncpu = get_ncpu(repository,snapnum) !!! ncpu should be known before calling read_amr_hydro!!!
+
+
+    if(verbose) print *,'-- read_leaf_cells_omp: nleaftot(_read), nvar, ncpu(_read) =',nleaftot,nvar,ncpu_read
 
     ileaf = 0
     iloop = 0
@@ -259,11 +259,7 @@ contains
 !$OMP END DO
     if(.not. do_allocs) deallocate(ramses_var,xleaf,leaf_level)
 !$OMP END PARALLEL
-    if(verbose)then
-       print*,' '
-       print*,'--> Nleaves read =',ilast-1
-       print*,' '
-    end if
+    if(verbose)print*,'--> Nleaves read =',ilast-1
 
     return
 
@@ -302,12 +298,9 @@ contains
     integer(kind=4)                           :: icpu, ileaf, icell, ivar, nleaf_in_domain, k
     integer(kind=4)                           :: ilast
     real(kind=8),dimension(3)                 :: temp
+    real(kind=8)                              :: dx
     
-    if(verbose)then
-       print *,' '
-       print *,'...reading RAMSES cells...'
-       print *,' '
-    endif
+    if(verbose) print *,'Reading RAMSES cells...'
 
     nvar = get_nvar(repository,snapnum)
     ncpu = get_ncpu(repository,snapnum)
@@ -329,8 +322,9 @@ contains
        do icell = 1,ncell
           if (son(icell)==0 .and. cpu_map(icell) == icpu) then
              temp(:) = (/cell_x(icell), cell_y(icell), cell_z(icell)/)
+             dx = 0.5d0**(cell_level(icell))
              nleaftot = nleaftot+1
-             if (domain_contains_point(temp,selection_domain)) then
+             if (domain_contains_cell(temp,dx,selection_domain)) then
                 nleaf_in_domain = nleaf_in_domain + 1
              end if
           end if
@@ -339,7 +333,7 @@ contains
 !$OMP END DO
 !$OMP END PARALLEL
 
-    if(verbose)print *,'-- read_leaf_cells_in_domain --> nleaftot, nleaf_in_domain, nvar, ncpu =',nleaftot, nleaf_in_domain, nvar, ncpu_read
+    if(verbose)print *,'-- read_leaf_cells_in_domain: nleaftot, nleaf_in_domain, nvar, ncpu =',nleaftot, nleaf_in_domain, nvar, ncpu_read
     
     allocate(ramses_var_all(nvar,nleaf_in_domain), xleaf_all(nleaf_in_domain,3), leaf_level_all(nleaf_in_domain))
     ilast = 1
@@ -359,7 +353,8 @@ contains
        do icell = 1,ncell
           if (son(icell)==0 .and. cpu_map(icell) == icpu) then
              temp(:) = (/cell_x(icell), cell_y(icell), cell_z(icell)/)
-             if (domain_contains_point(temp,selection_domain)) then
+             dx = 0.5d0**(cell_level(icell))
+             if (domain_contains_cell(temp,dx,selection_domain)) then
                 ileaf = ileaf + 1
                 do ivar = 1,nvar
                    ramses_var(ivar,ileaf) = var(icell,ivar)
@@ -513,7 +508,7 @@ contains
     
     deallocate(bound_key,cpu_read)
     
-    print*,'--> Ncpu to read = ',ncpu_read
+    print*,'--> nCPU to read = ',ncpu_read
     
     return
     
@@ -566,7 +561,7 @@ contains
     cpu_read=.false.
     cpu_list=0
     
-    print*,'...getting CPU list...'
+    print*,'Getting CPU list...'
     
     call read_hilbert_keys(repository,snapnum,ncpu,bound_key)
     
@@ -686,7 +681,7 @@ contains
     
     deallocate(bound_key,cpu_read)
     
-    print*,'--> Ncpu to read = ',ncpu_read
+    print*,'--> nCPU to read = ',ncpu_read
     
     return
     
@@ -1066,7 +1061,7 @@ contains
     real(kind=8),parameter,dimension(4)::ion_egy = (/13.60d0, 15.20d0, 24.59d0, 54.42d0/)*eV_to_erg
     !! -JB
     character(1000)            :: filename
-    integer(kind=4)            :: levelmin,levelmax,ilun=33,nRTvar,nIons,nGroups,igroup,indexgroup,nvarH
+    integer(kind=4)            :: ilun=33,nRTvar,nIons,nGroups,igroup,indexgroup,nvarH
     real(kind=8),allocatable   :: group_egy(:),group_csn(:,:),group_cse(:,:)
     real(kind=8)               :: hrate,unit_fp
     
@@ -1582,7 +1577,9 @@ contains
   end subroutine ramses_get_T_nMgII_cgs
 
   ! Return, nHI, nHeI, nHeII in cells ------------------------------------
-  subroutine ramses_get_nhi_nhei_nheii_cgs(repository,snapnum,nleaf,nvar  &
+
+  subroutine ramses_get_nhi_nhei_nehii_cgs(repository,snapnum,nleaf,nvar  &
+
                                                ,ramses_var,nhi,nhei,nheii)
 
     implicit none 
@@ -1616,7 +1613,161 @@ contains
     
     return
 
-  end subroutine ramses_get_nhi_nhei_nheii_cgs
+  end subroutine ramses_get_nhi_nhei_nehii_cgs
+
+  ! Return, nHI, nHeI, nHeII in cells ------------------------------------
+  subroutine ramses_get_nh_nhi_nhei_nehii_cgs(repository,snapnum,nleaf,nvar  &
+                                               ,ramses_var,nh,nhi,nhei,nheii)
+
+    implicit none 
+
+    character(1000),intent(in)  :: repository
+    integer(kind=4),intent(in)  :: snapnum
+    integer(kind=4),intent(in)  :: nleaf, nvar
+    real(kind=8),intent(in)     :: ramses_var(nvar,nleaf) ! one cell only
+    real(kind=8),intent(inout)  :: nh(nleaf), nhi(nleaf), nhei(nleaf), nheii(nleaf)
+    real(kind=8),allocatable    :: nHe(:)
+
+    ! get conversion factors if necessary
+    if (.not. conversion_scales_are_known) then 
+       call read_conversion_scales(repository,snapnum)
+       conversion_scales_are_known = .True.
+    end if
+
+    if(ramses_rt)then
+       ! ramses RT
+       allocate(nHe(nleaf))
+       nHe  = ramses_var(1,:) * dp_scale_nhe
+       nh   = ramses_var(1,:) * dp_scale_nh         ! nb of H atoms per cm^3
+       nhi  = ramses_var(1,:) * dp_scale_nh  &      ! nb of HI atoms per cm^3
+                              * max(0.d0,(1.d0 - ramses_var(ihii,:)))
+       nhei = nHe * max(0.0d0,(1.d0 - ramses_var(iheii,:)  &
+                          - ramses_var(iheiii,:)))   ! nb of HeI atoms per cm^3
+       nheii  = nHe * (ramses_var(iheii,:))         ! nb of HeII atoms per cm^3
+       deallocate(nHe)
+    else
+       ! ramses standard...nothing to do for now
+    endif
+    
+    return
+
+  end subroutine ramses_get_nh_nhi_nhei_nehii_cgs
+
+
+  subroutine ramses_get_T_nFeII_cgs(repository,snapnum,nleaf,nvar,ramses_var,temp,nFeII)
+
+    implicit none 
+
+    character(1000),intent(in)            :: repository
+    integer(kind=4),intent(in)            :: snapnum
+    integer(kind=4),intent(in)            :: nleaf, nvar
+    real(kind=8),intent(in)               :: ramses_var(nvar,nleaf) ! one cell only
+    real(kind=8),intent(inout)            :: nFeII(nleaf), temp(nleaf)
+    real(kind=8),allocatable              :: boost(:)
+    integer(kind=4)                       :: ihx,ihy,i
+    real(kind=8)                          :: xx,yy,dxx1,dxx2,dyy1,dyy2,f
+    integer(kind=4)                       :: if1,if2,jf1,jf2
+    real(kind=8),allocatable,dimension(:) :: mu, nh
+
+    ! get conversion factors if necessary
+    if (.not. conversion_scales_are_known) then 
+       call read_conversion_scales(repository,snapnum)
+       conversion_scales_are_known = .True.
+    end if
+
+    if(ramses_rt)then
+       ! ramses RT
+       allocate(mu(1:nleaf))
+       mu   = XH * (1.d0+ramses_var(ihii,:)) + 0.25d0*(1.d0-XH)*(1.d0 + ramses_var(iheii,:) + 2.d0*ramses_var(iheiii,:)) ! assumes no metals
+       mu   = 1.0d0 / mu
+       temp = ramses_var(itemp,:) / ramses_var(1,:) * dp_scale_T2                ! T/mu [ K ]
+       temp = temp * mu                                                      ! This is now T (in K) with no bloody mu ... 
+       deallocate(mu)
+    else
+       ! ramses standard
+       if (.not. cooling_is_read) then
+          call read_cooling(repository,snapnum)
+          cooling_is_read = .True.
+       end if
+       allocate(nh(nleaf))
+       nh   = ramses_var(1,:) * dp_scale_nh  ! nb of H atoms per cm^3
+       temp = ramses_var(itemp,:) / ramses_var(1,:) * dp_scale_T2  ! T/mu [ K ]
+       allocate(boost(nleaf))
+       if (self_shielding) then
+          do i=1,nleaf
+             boost(i)=MAX(exp(-nh(i)/0.01),1.0D-20) ! same as hard-coded in RAMSES. 
+          end do
+       else
+          boost = 1.0d0
+       end if
+       ! compute the ionization state and temperature using the 'cooling' tables
+       do i = 1, nleaf
+          xx  = min(max(log10(nh(i)/boost(i)),cooling%nh(1)),cooling%nh(cooling%n11))
+          ihx = int((xx - cool_int%nh_start)/cool_int%nh_step) + 1
+          if (ihx < 1) then 
+             ihx = 1 
+          else if (ihx > cool_int%n_nh) then
+             ihx = cool_int%n_nh
+          end if
+          yy  = log10(temp(i))
+          ihy = int((yy - cool_int%t2_start)/cool_int%t2_step) + 1
+          if (ihy < 1) then 
+             ihy = 1 
+          else if (ihy > cool_int%n_t2) then
+             ihy = cool_int%n_t2
+          end if
+          ! 2D linear interpolation:
+          if (ihx < cool_int%n_nh) then 
+             dxx1  = max(xx - cooling%nh(ihx),0.0d0) / cool_int%nh_step 
+             dxx2  = min(cooling%nh(ihx+1) - xx,cool_int%nh_step) / cool_int%nh_step
+             if1  = ihx
+             if2  = ihx+1
+          else
+             dxx1  = 0.0d0
+             dxx2  = 1.0d0
+             if1  = ihx
+             if2  = ihx
+          end if
+          if (ihy < cool_int%n_t2) then 
+             dyy1  = max(yy - cooling%t2(ihy),0.0d0) / cool_int%t2_step
+             dyy2  = min(cooling%t2(ihy+1) - yy,cool_int%t2_step) / cool_int%t2_step
+             jf1  = ihy
+             jf2  = ihy + 1
+          else
+             dyy1  = 0.0d0
+             dyy2  = 1.0d0
+             jf1  = ihy
+             jf2  = ihy
+          end if
+          if (abs(dxx1+dxx2-1.0d0) > 1.0d-6 .or. abs(dyy1+dyy2-1.0d0) > 1.0d-6) then 
+             write(*,*) 'Fucked up the interpolation ... '
+             print*,dxx1+dxx2,dyy1+dyy2
+             stop
+          end if
+          ! GET MU to convert T/MU into T ... 
+          f = dxx1 * dyy1 * cooling%mu(if2,jf2) + dxx2 * dyy1 * cooling%mu(if1,jf2) &
+               & + dxx1 * dyy2 * cooling%mu(if2,jf1) + dxx2 * dyy2 * cooling%mu(if1,jf1)
+          temp(i) = temp(i) * f   ! This is now T (in K) with no bloody mu ... 
+       end do
+       deallocate(boost,nh)
+    endif       
+    
+    ! from T, we can compute the FeII fraction as 100% between 9.1704362 d+4 K and 1.87983 d+5 K, and 0% elsewhere.
+    ! (These limits correspond to the following ionisation energies:
+    ! - Fe - Fe+   : 7.9024678 ev = 1,1215236d-18 J  (NIST data)
+    ! - Fe+ - Fe++ : 16.19920 eV = 2,56348d-18 J (NIST data)
+    do i = 1,nleaf
+       if (temp(i) >= 9.1704362d4 .and. temp(i) <= 1.87983d5) then
+          nFeII(i) = ramses_var(1,i) * dp_scale_d * ramses_var(imetal,i) * dp_scale_zsun * abundance_Fe_number   ! [#/cm3]
+       else
+          nFeII(i) = 0.0d0
+       end if
+    end do
+    
+    return
+
+  end subroutine ramses_get_T_nFeII_cgs
+
 
 
   function ramses_get_box_size_cm(repository,snapnum)
@@ -2364,7 +2515,6 @@ contains
                 ncache=numbb(ibound-ncpu,ilevel)
              end if
              if(ncache>0)then
-!!!if (ilevel < fg_levelmin) print*,'lev < levmin',ilevel
                 allocate(ind_grid(1:ncache))
                 allocate(iig(1:ncache))
                 read(iunit)ind_grid ! Read grid index
@@ -2422,6 +2572,163 @@ contains
   end function get_nleaf
 
 
+  function get_nleaf_omp(repository,snapnum,ncpu_read,cpu_list)
+    
+    implicit none
+    integer(kind=4),intent(in)                          :: snapnum
+    character(1000),intent(in)                          :: repository
+    integer(kind=4),intent(in)                          :: ncpu_read
+    integer(kind=4),dimension(:),allocatable,intent(in) :: cpu_list
+    integer(kind=4)             :: get_nleaf_omp
+    integer(kind=4)             :: icpu,icell,ncpu
+    logical                     :: do_allocs
+    character(1000)             :: nomfich 
+    integer,allocatable         :: ind_grid(:),iig(:)
+    integer,allocatable         :: son(:)
+    integer,allocatable         :: cpu_map(:)
+    integer,allocatable         :: numbl(:,:)
+    integer,allocatable         :: numbb(:,:)
+    logical                     :: ok
+    integer(kind=4)             :: i,nx,ny,nz,nlevelmax,nboundary,ncell,ncoarse,ngridmax
+    integer(kind=4)             :: ilevel,ncache,ibound,idim,ind,iskip
+    integer(kind=4)             :: ndim,twondim,twotondim,k
+    integer(kind=4)             :: nleaf, nleaftot, iloop, iunit
+
+    ncpu = get_ncpu(repository,snapnum)
+    get_nleaf_omp = 0
+    ndim = 3
+    twondim = 2*ndim
+    twotondim = 2**ndim
+    nleaftot = 0
+    iloop = 0
+    
+!$OMP PARALLEL &
+!$OMP DEFAULT(private) &
+!$OMP SHARED(iloop, nleaftot, ncpu_read, cpu_list, repository, snapnum, ndim, twondim, twotondim, ncpu)
+    do_allocs = .true. 
+!$OMP DO SCHEDULE(DYNAMIC, 10) 
+    do k=1,ncpu_read
+       icpu=cpu_list(k)
+       iunit = icpu+10
+       write(nomfich,'(a,a,i5.5,a,i5.5,a,i5.5)') trim(repository),'/output_',snapnum,'/amr_',snapnum,'.out',icpu
+       inquire(file=nomfich, exist=ok)
+       if(.not. ok)then
+          write(*,*)'File '//TRIM(nomfich)//' not found'    
+          stop
+       end if
+       open(unit=iunit,file=nomfich,form='unformatted',status='old',action='read')
+       read(iunit)
+       read(iunit)
+       read(iunit)nx,ny,nz
+       ncoarse=nx*ny*nz ! Critical parameter: define the root level of the tree
+       read(iunit)nlevelmax
+       read(iunit)ngridmax
+       read(iunit)nboundary
+       read(iunit)
+       read(iunit)
+       read(iunit)
+       read(iunit)
+       read(iunit)
+       read(iunit)
+       read(iunit)
+       read(iunit)
+       read(iunit)
+       read(iunit)
+       read(iunit)
+       read(iunit)
+       read(iunit)
+       if (do_allocs) allocate(numbl(1:ncpu,1:nlevelmax),numbb(1:nboundary,1:nlevelmax))
+       numbl=0;numbb=0
+       ! Read levels variables
+       read(iunit)!headl(1:ncpu,1:nlevelmax)
+       read(iunit)!taill(1:ncpu,1:nlevelmax)
+       read(iunit)numbl(1:ncpu,1:nlevelmax)
+       read(iunit)!numbtot(1:10,1:nlevelmax)
+       ! Read boundary linked list
+       if(nboundary>0)then
+          read(iunit)!headb(1:nboundary,1:nlevelmax)
+          read(iunit)!tailb(1:nboundary,1:nlevelmax)
+          read(iunit)numbb(1:nboundary,1:nlevelmax)
+       end if
+       read(iunit) ! Read free memory
+       read(iunit) ! Read cpu boundaries
+       read(iunit)
+       ncell=ncoarse+twotondim*ngridmax
+       if (do_allocs) then
+          allocate(son(1:ncell),cpu_map(1:ncell))
+          do_allocs = .false. 
+       end if
+       son=0; cpu_map=0
+       ! Read coarse level
+       read(iunit)son(1:ncoarse)       
+       read(iunit)
+       read(iunit)cpu_map(1:ncoarse)
+       do ilevel=1,nlevelmax
+          do ibound=1,nboundary+ncpu
+             if(ibound<=ncpu)then
+                ncache=numbl(ibound,ilevel)
+             else
+                ncache=numbb(ibound-ncpu,ilevel)
+             end if
+             if(ncache>0)then
+                allocate(ind_grid(1:ncache))
+                allocate(iig(1:ncache))
+                read(iunit)ind_grid ! Read grid index
+                read(iunit) ! Read next index
+                read(iunit) ! Read prev index
+                do idim=1,ndim
+                   read(iunit) ! Read grid center
+                end do
+                read(iunit) ! Read father index
+                do ind=1,twondim
+                   read(iunit) ! Read nbor index
+                end do
+                do ind=1,twotondim
+                   iskip=ncoarse+(ind-1)*ngridmax
+                   read(iunit)iig  ! Read son index 
+                   do i=1,ncache
+                      son(ind_grid(i)+iskip)=iig(i) 
+                   end do
+                end do
+                do ind=1,twotondim
+                   iskip=ncoarse+(ind-1)*ngridmax
+                   read(iunit)iig ! Read cpu map
+                   do i=1,ncache
+                      cpu_map(ind_grid(i)+iskip)=iig(i)
+                   end do
+                end do
+
+                do ind=1,twotondim
+                   read(iunit) ! Read refinement map (skip)
+                end do
+                deallocate(iig,ind_grid)
+             end if
+          end do
+       end do
+       close(iunit)
+       ! count leaf cells
+       nleaf = 0
+       do icell = 1,ncell
+          if (son(icell)==0 .and. cpu_map(icell) == icpu) then
+             nleaf = nleaf + 1
+          end if
+       end do
+
+       ! nleaf is now the number of leaves on local cpu
+!$OMP ATOMIC
+       nleaftot = nleaftot + nleaf
+    end do
+!$OMP END DO
+    if(.not. do_allocs) deallocate(son,cpu_map,numbl,numbb)
+!$OMP END PARALLEL
+
+    get_nleaf_omp = nleaftot
+    
+    return
+  end function get_nleaf_omp
+
+
+  
   function get_nvar(repository,snapnum)
     implicit none 
     integer(kind=4),intent(in)  :: snapnum
@@ -2670,23 +2977,28 @@ contains
   !==================================================================================
   ! STARS utilities 
 
-  subroutine ramses_read_stars_in_domain(repository,snapnum,selection_domain,star_pos,star_age,star_mass,star_vel,star_met)
+
+  subroutine ramses_read_stars_in_domain(repository,snapnum,selection_domain,star_pos_all,star_age_all,star_mass_all,star_vel_all,star_met_all)
+
+    !$ use OMP_LIB
 
     implicit none
 
     character(1000),intent(in)             :: repository
     integer(kind=4),intent(in)             :: snapnum
     type(domain),intent(in)                :: selection_domain
-    real(kind=8),allocatable,intent(inout) :: star_pos(:,:),star_age(:),star_mass(:),star_vel(:,:),star_met(:)
+    real(kind=8),allocatable               :: star_pos(:,:),star_age(:),star_mass(:),star_vel(:,:),star_met(:)
+    real(kind=8),allocatable,intent(inout) :: star_pos_all(:,:),star_age_all(:),star_mass_all(:),star_vel_all(:,:),star_met_all(:)
     integer(kind=4)                        :: nstars
     real(kind=8)                           :: omega_0,lambda_0,little_h,omega_k,H0
     real(kind=8)                           :: aexp,stime,time_cu,boxsize
     integer(kind=4)                        :: ncpu,ilast,icpu,npart,i,ifield,nfields
     character(1000)                        :: filename
     integer(kind=4),allocatable            :: id(:)
-    real(kind=8),allocatable               :: age(:),m(:),x(:,:),v(:,:),mets(:),skipy(:),imass(:)
+    real(kind=8),allocatable               :: age(:),m(:),x(:,:),v(:,:),mets(:),imass(:)
     real(kind=8)                           :: temp(3)
-        
+    integer(kind=4)                        :: rank, iunit, ilast_all
+    
     ! get cosmological parameters to convert conformal time into ages
     call read_cosmo_params(repository,snapnum,omega_0,lambda_0,little_h)
     omega_k = 0.0d0
@@ -2695,13 +3007,13 @@ contains
     ! compute cosmic time of simulation output (Myr)
     aexp  = get_param_real(repository,snapnum,'aexp') ! exp. factor of output
     stime = ct_aexp2time(aexp) ! cosmic time
- 
+
     ! read units
     if (.not. conversion_scales_are_known) then 
        call read_conversion_scales(repository,snapnum)
        conversion_scales_are_known = .True.
     end if
-
+    
     if(.not.cosmo)then
        ! read time
        time_cu = get_param_real(repository,snapnum,'time') ! code unit
@@ -2709,74 +3021,86 @@ contains
        boxsize = get_param_real(repository,snapnum,'boxlen') !!!* dp_scale_l  ! [ cm ]
        write(*,*)'boxlen =',boxsize
     endif
-
+    
     ! read stars 
     nstars = get_tot_nstars(repository,snapnum)
     if (nstars == 0) then
        write(*,*) 'ERROR : no star particles in output '
        stop
     end if
-    allocate(star_pos(3,nstars),star_age(nstars),star_mass(nstars),star_vel(3,nstars),star_met(nstars))
+    allocate(star_pos_all(3,nstars),star_age_all(nstars),star_mass_all(nstars),star_vel_all(3,nstars),star_met_all(nstars))
     ! get list of particle fields in outputs 
     call get_fields_from_header(repository,snapnum,nfields)
     ncpu  = get_ncpu(repository,snapnum)
-    ilast = 1
+    ilast_all = 1
+
+!$OMP PARALLEL &
+!$OMP DEFAULT(private) &
+!$OMP SHARED(ncpu, repository, snapnum, ParticleFields, nfields, selection_domain) &
+!$OMP SHARED(h0, stime, dp_scale_t, dp_scale_m, dp_scale_v, boxsize, time_cu, aexp) &
+!$OMP SHARED(cosmo, use_initial_mass, use_proper_time) &
+!$OMP SHARED(ilast_all, star_pos_all, star_age_all, star_vel_all, star_mass_all, star_met_all)
+!$OMP DO
     do icpu = 1, ncpu
+       rank = 1
+       !$ rank = OMP_GET_THREAD_NUM()
+       iunit=10+rank*2
        write(filename,'(a,a,i5.5,a,i5.5,a,i5.5)') trim(repository), '/output_', snapnum, '/part_', snapnum, '.out', icpu
-       open(unit=11,file=filename,status='old',form='unformatted')
-       read(11)
-       read(11)
-       read(11)npart
-       read(11)
-       read(11)
-       read(11)
-       read(11)
-       read(11)
+       open(unit=iunit,file=filename,status='old',form='unformatted')
+       read(iunit)
+       read(iunit)
+       read(iunit)npart
+       read(iunit)
+       read(iunit)
+       read(iunit)
+       read(iunit)
+       read(iunit)
        allocate(age(1:npart))
        allocate(x(1:npart,1:ndim),m(npart),imass(npart))
        allocate(id(1:npart))
        allocate(mets(1:npart))
        allocate(v(1:npart,1:ndim))
-       allocate(skipy(1:npart))
        do ifield = 1,nfields
           select case(trim(ParticleFields(ifield)))
           case('pos')
              do i = 1,ndim
-                read(11) x(1:npart,i)
+                read(iunit) x(1:npart,i)
              end do
           case('vel')
              do i = 1,ndim 
-                read(11) v(1:npart,i)
+                read(iunit) v(1:npart,i)
              end do
           case('mass')
-             read(11) m(1:npart)
+             read(iunit) m(1:npart)
           case('iord') 
-             read(11) id(1:npart)
+             read(iunit) id(1:npart)
           case('level')
-             read(11)
+             read(iunit)
           case('tform')
-             read(11) age(1:npart)
+             read(iunit) age(1:npart)
           case('metal')
-             read(11) mets(1:npart)
+             read(iunit) mets(1:npart)
           case('imass')
-             read(11) imass(1:npart)
+             read(iunit) imass(1:npart)
           case default
-             ! Note: we presume here that the unknown field is an 1d array of size 1:npart
-             read(11) skipy(1:npart)
+             read(iunit)
              print*,'Error, Field unknown: ',trim(ParticleFields(ifield))
           end select
        end do
-       close(11)
+       close(iunit)
 
        if(.not.cosmo)then
           x=x/boxsize
        endif
 
+       allocate(star_pos(3,npart),star_age(npart),star_mass(npart),star_vel(3,npart),star_met(npart))
        ! save star particles within selection region
+       ilast = 0
        do i = 1,npart
           if (age(i).ne.0.0d0) then ! This is a star
              temp(:) = x(i,:)
              if (domain_contains_point(temp,selection_domain)) then ! it is inside the domain
+                ilast = ilast + 1
                 if(cosmo)then
                    if (use_proper_time) then
                       star_age(ilast) = (stime - ct_proptime2time(age(i),h0))*1.d-6 ! Myr
@@ -2796,56 +3120,72 @@ contains
                 star_pos(:,ilast) = x(i,:)              ! [code units]
                 star_vel(:,ilast) = v(i,:) * dp_scale_v ! [cm/s]
                 star_met(ilast) = mets(i) 
-                ilast = ilast + 1
              end if
           end if
        end do
-          
-       deallocate(age,m,x,id,mets,v,skipy,imass)
 
-    end do
+       deallocate(age,m,x,id,mets,v,imass)
+
+!$OMP CRITICAL
+       if(ilast .gt. 0) then
+          star_age_all(ilast_all:ilast_all+ilast-1) = star_age(1:ilast)
+          star_mass_all(ilast_all:ilast_all+ilast-1) = star_mass(1:ilast)
+          star_pos_all(1:3,ilast_all:ilast_all+ilast-1) = star_pos(1:3,1:ilast)
+          star_vel_all(1:3,ilast_all:ilast_all+ilast-1) = star_vel(1:3,1:ilast)
+          star_met_all(ilast_all:ilast_all+ilast-1) = star_met(1:ilast)
+       endif
+       ilast_all = ilast_all + ilast
+!$OMP END CRITICAL
+
+    deallocate(star_age,star_pos,star_vel,star_met,star_mass)
+
+    enddo
+!$OMP END DO
+!$OMP END PARALLEL
+
 
     ! resize star arrays
-    nstars = ilast-1
+    nstars = ilast_all-1
+    print*,'-- ramses_read_stars_in_domain: Nstars in domain =',nstars
     ! ages
-    allocate(age(nstars))
-    age = star_age(1:nstars)
-    deallocate(star_age)
     allocate(star_age(nstars))
-    star_age = age
-    deallocate(age)
+    star_age(:) = star_age_all(1:nstars)
+    deallocate(star_age_all)
+    allocate(star_age_all(nstars))
+    star_age_all(:) = star_age(:)
+    deallocate(star_age)
     ! masses
-    allocate(m(nstars))
-    m = star_mass(1:nstars)
-    deallocate(star_mass)
     allocate(star_mass(nstars))
-    star_mass = m
-    deallocate(m)
+    star_mass(:) = star_mass_all(1:nstars)
+    deallocate(star_mass_all)
+    allocate(star_mass_all(nstars))
+    star_mass_all(:) = star_mass(:)
+    deallocate(star_mass)
     ! positions
-    allocate(x(3,nstars))
-    do i = 1,nstars 
-       x(:,i) = star_pos(:,i)
-    end do
-    deallocate(star_pos)
     allocate(star_pos(3,nstars))
-    star_pos = x
-    deallocate(x)
-    ! velocities
-    allocate(v(3,nstars))
     do i = 1,nstars 
-       v(:,i) = star_vel(:,i)
+       star_pos(:,i) = star_pos_all(:,i)
     end do
-    deallocate(star_vel)
+    deallocate(star_pos_all)
+    allocate(star_pos_all(3,nstars))
+    star_pos_all(:,:) = star_pos(:,:)
+    deallocate(star_pos)
+    ! velocities
     allocate(star_vel(3,nstars))
-    star_vel = v
-    deallocate(v)
+    do i = 1,nstars 
+       star_vel(:,i) = star_vel_all(:,i)
+    end do
+    deallocate(star_vel_all)
+    allocate(star_vel_all(3,nstars))
+    star_vel_all(:,:) = star_vel(:,:)
+    deallocate(star_vel)
     ! metals
-    allocate(mets(nstars))
-    mets = star_met(1:nstars)
-    deallocate(star_met)
     allocate(star_met(nstars))
-    star_met = mets
-    deallocate(mets)
+    star_met(:) = star_met_all(1:nstars)
+    deallocate(star_met_all)
+    allocate(star_met_all(nstars))
+    star_met_all(:) = star_met(:)
+    deallocate(star_met)
     
     return
   end subroutine ramses_read_stars_in_domain

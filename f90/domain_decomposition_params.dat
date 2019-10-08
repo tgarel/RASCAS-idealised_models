@@ -1,0 +1,4 @@
+ computational_domain_file = compute_domain.dom
+ Ndomain =            1
+ domain_file = domain_1.dom
+ mesh_file   = domain_1.mesh

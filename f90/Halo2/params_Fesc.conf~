@@ -1,0 +1,69 @@
+[FescFromStars]
+DataDir = /scratch/chuniaud/test_fesc/Halo2
+repository = /home/chuniaud/outputs_test_rosdahl2/
+snapnum    = 179
+reading_method = hilbert
+
+!--------------------------------------------------------------------------------
+[CreateDomDump]
+# input outputs:
+  DomDumpDir = /scratch/chuniaud/test_fesc/
+  repository = /home/chuniaud/outputs_test_rosdahl2/
+  snapnum    = 179
+  reading_method = hilbert
+
+# computational domain parameters
+  comput_dom_type      = sphere
+  comput_dom_pos       = 0.45058283, 0.5680661, 0.5096377  
+  comput_dom_rsp       = 0.01426473
+
+# domain decomposition parameters
+  decomp_dom_type      = sphere
+  decomp_dom_ndomain   = 1
+  decomp_dom_xc        =  0.45058283
+  decomp_dom_yc        =  0.5680661
+  decomp_dom_zc        =  0.5096377
+  decomp_dom_rsp       =  0.016
+
+# miscelaneous :
+  verbose    = T
+!--------------------------------------------------------------------------------
+
+!--------------------------------------------------------------------------------
+[mesh]
+  verbose = T
+!--------------------------------------------------------------------------------
+
+!--------------------------------------------------------------------------------
+[ramses]
+  self_shielding   = F
+  ramses_rt        = T
+  verbose          = T
+  cosmo            = T
+  use_initial_mass = T
+  use_proper_time  = T
+  itemp  = 5
+  imetal = 6
+  ihii   = 7
+  iheii  = 8
+  iheiii = 9
+!--------------------------------------------------------------------------------
+
+!--------------------------------------------------------------------------------
+[gas_composition] 
+# mixture parameters
+  sigma_HI            = 3.386E-18
+  sigma_HeI           = 0.000E+00   
+  sigma_HeII          = 0.000E+00
+  sigma2_HI           = 6.751E-19
+  sigma2_HeI          = 5.034E-18
+  sigma2_HeII         = 0.000E+00
+  sigma3_HI           = 7.681E-20
+  sigma3_HeI          = 1.165E-18
+  sigma3_HeII         = 1.028E-18
+# overwrite parameters
+  gas_overwrite       = F
+# miscelaneous parameters
+  verbose             = T
+!--------------------------------------------------------------------------------
+

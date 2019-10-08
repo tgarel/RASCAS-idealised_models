@@ -1,4 +1,6 @@
 MODULE coolrates_module
+  
+
   ! Module for returning cooling and thermochemistry interaction rates.
   ! The temperature dependence is tabulated in rate (nonlog) versus the
   ! log of T, because it is expensive to calculate on the fly.
@@ -68,8 +70,9 @@ SUBROUTINE init_coolrates_tables(aexp)
 ! Initialise the cooling rates tables.
 !-------------------------------------------------------------------------
   implicit none
-  real(dp) :: aexp, T
-  integer  :: ierr, iT
+  real(dp) :: aexp
+  integer  :: iT
+
 !-------------------------------------------------------------------------
 
   ! Initialise the table lookup temperatures -----------------------------
