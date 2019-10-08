@@ -200,9 +200,9 @@ contains
     !!!!!!!! on rentre la formule de sigma_HeII!!!!!!!!!!!!!!                                                                                                                                                                                   
 
     sigma0_HeII = 1.369E-14
-    x_HI = nu /1.720           ! nu0_HeII = 1.720                                                                                                                                                                                           
-    p_HI = 2.963
-    ya_HI = 32.88
+    x_HeII = nu /1.720           ! nu0_HeII = 1.720                                                                                                                                                                                        
+    p_HeII = 2.963
+    ya_HeII = 32.88
    
     sigma_HeII_verner  = sigma0_HeII * ((x_HeII - 1.0d0)**2.0d0) * x_HeII ** (0.5d0 * p_HeII - 5.5d0) / (1+sqrt(x_HeII/ya_HeII))**p_HeII
 

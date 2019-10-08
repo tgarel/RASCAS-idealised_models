@@ -1,4 +1,5 @@
 module module_gray_ray
+  
 
   ! This is a trimmed and slightly modified version of module_photon.
   !
@@ -49,23 +50,25 @@ contains
     integer(kind=4), intent(in)                     :: nrays
     type(ray_type), dimension(nrays), intent(inout) :: rays
     real(kind=8), dimension(nrays), intent(inout)   :: lum1,lum2, lum3
+    real(kind=8), dimension(nrays)                  :: sumlum
     type(mesh), intent(in)                          :: mesh_dom
     type(domain), intent(in)                        :: compute_dom
     real(kind=8),intent(in)                         :: maxdist,maxtau,minnH
     integer(kind=4)                                 :: ndirections ! Number of directions from each source
-    integer(kind=4)                                 :: i,j,idir,iloop, m,n,l, mmax, nmax, lmax
+    integer(kind=4)                                 :: i,j,idir,iloop, m,n,l, mmax, nmax, lmax,imax, nfesc
   !  real(kind=8)                                    :: fesc  on va plutôt faire une liste des fesc
     character(2000),intent(in)                      :: file,datadir
     character(2000) :: fichier
 
-    real(kind=8)             :: nhtot, e1, e2, e3, nu10,nu11,nu20,nu21,nu30,nu31,deps           ! average energy of each photons group (in J)
+    real(kind=8)             :: nhtot, nhetot,nheIItot,e1, e2, e3, nu10,nu11,nu20,nu21,nu30,nu31,deps1,deps2,deps3           ! average energy of each photons group (in J)
+    real(kind=8)             :: sigma0_HI, sigma0_HeI, sigma0_HeII, x_HI, x_HeI, x_HeII, p_HI, p_HeI, p_HeII, ya_HI, ya_HeI, ya_HeII, y1, yw, y_HeI, nu , sigma_HI_verner, sigma_HeI_verner, sigma_HeII_verner 
     real(kind=8),allocatable :: directions(:,:)
     real(kind=8),allocatable :: fesc(:)
     real(kind=8),allocatable :: Npho(:)
-    real(kind=8),allocatable :: densh(:)
+    real(kind=8),allocatable :: densh(:),denshe(:),densheII(:),sigmaH(:), sigmaHe(:), sigmaHeII(:)
     real(kind=8),allocatable :: distance(:)
 
-    real(kind=8) :: x_em(3),k_em(3), tau, tau2,tau3, dist, lumi1,lumi2,lumi3,lumtot
+    real(kind=8) :: x_em(3),k_em(3), tau, tau2,tau3,tauV, tauV2, tauV3, dist, lumi1,lumi2,lumi3,lumtot
     logical      :: verner     ! pour savoir si on calcule tau en intégrant la formule de Verner ou non
  
    !!!! variable pour stocker les resultats (fesc (ndir))
@@ -83,12 +86,96 @@ contains
     nu21 = 54.420
     nu30 = 54.420
     nu31 = 90.00
-    deps = 0.4
-    mmax = int((nu11-nu10)/deps)
-    nmax = int((nu21-nu20)/deps)
-    lmax = int((nu31-nu30)/deps)
+    nmax = 1000
+    deps1 = ((nu31-nu10)/real(nmax,8))
+    deps2 = ((nu31-nu20)/real(nmax,8))
+    deps3 = ((nu31-nu30)/real(nmax,8))
+!   mmax = int((nu11-nu10)/deps)
+!    nmax = 50
+!   lmax = int((nu31-nu30)/deps)
 
-    !! Ici on lit les directions choisies (et leur nombre) dans un fichier.
+
+
+!!!!!! valeurs nécessaires au calcul de verner !!!!!!!!
+
+    sigma0_HI = 5.475E-14
+    x_HI = nu /0.4298           ! nu0_HI = 0.4298                                                                                                                                                                                           
+    p_HI = 2.963
+    ya_HI = 32.88
+
+    sigma0_HeI = 9.492E-16
+    x_HeI = nu /0.1361 - 0.4434           ! nu0_HI = 0.1362, y1 = 0.4434
+    p_HeI = 3.188
+    ya_HeI = 1.469
+    y1   = 2.136
+    yw   = 2.039
+    y_HeI = sqrt(x_HeI**2.0d0 + y1**2.0d0)
+
+    sigma0_HeII = 1.369E-14
+    x_HI = nu /1.720           ! nu0_HeII = 1.720                                                                                                                                                                                         
+    p_HeII = 2.963
+    ya_HeII = 32.88
+
+!!!!!!!!!!!boucle pour calculer sigma verner!!!!!!!!!!!!!!!!!!
+
+
+   allocate(sigmaH(nmax))
+   allocate(sigmaHe(nmax))
+   allocate(sigmaHeII(nmax))
+
+
+    
+    do i = 1,nmax 
+
+       x_HI = nu10/0.4298
+       x_HeI = nu10/0.1361 - 0.4434
+       x_HeII = nu10/1.720
+       y_HeI = sqrt(x_HeI**2.0d0 + y1**2.0d0)
+       
+       sigmaH(i)    = sigma0_HI * ((x_HI - 1.0d0)**2.0d0) * x_HI ** (0.5d0 * p_HI - 5.5d0) / (1+sqrt(x_HI/ya_HI))**p_HI  
+     
+       if (nu10 > nu20) then 
+ 
+          sigmaHe(i)   = sigma0_HeI * ((x_HeI - 1.0d0)**2.0d0 + yw**2.0d0) * y_HeI ** (0.5d0 * p_HeI - 5.5d0) / (1+sqrt(y_HeI/ya_HeI))**p_HeI
+       else 
+          sigmaHe(i)   = 0.0d0
+       endif
+
+       if (nu10 > nu30) then
+
+           sigmaHeII(i) = sigma0_HeII * ((x_HeII - 1.0d0)**2.0d0) * x_HeII ** (0.5d0 * p_HeII - 5.5d0) / (1+sqrt(x_HeII/ya_HeII))**p_HeII
+
+       else
+           sigmaHeII(i) = 0.0d0
+       endif 
+
+     !  print*, deps1, x_HI, ya_HI, p_HI
+
+       nu10 = nu10 + deps1
+      ! nu20 = nu20 + deps2
+      ! nu30 = nu30 + deps3
+     
+
+    enddo
+
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+    nu10 = 13.600       ! on réinitialise nu10
+
+!!!!!!!!!!!!!!!! Calcule de Lumtot!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+    lumtot = 0.0d0
+
+    do i=1,nrays 
+       lumtot = lumtot + lum1(i) + lum2(i) + lum3(i)
+    enddo
+
+
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+
+
+
+    ! Ici on lit les directions choisies (et leur nombre) dans un fichier.
     open(unit=14, file=trim(file), status='unknown', form='formatted', action='read')
     read(14,*) ndirections
     allocate(directions(3,ndirections))
@@ -96,112 +183,191 @@ contains
        read(14,*) directions(1,i),directions(2,i),directions(3,i)
     end do
     close(14)
-   
+   ! nfesc = ndirections * nrays
+   ! print*,nfesc, ndirections, nrays
     allocate(fesc(ndirections))
     allocate(Npho(ndirections))
     allocate(densh(ndirections))
+    allocate(denshe(ndirections))
+    allocate(densheII(ndirections))
     allocate(distance(ndirections))
+
+
    ! open(unit=14, file='result_nside16.txt',Access= 'append', status='old', form='formatted', action='write') ! fichier de résultats avec fesc par directions, moyenne sur toutes étoiles
    
-    verner = .TRUE.  
+    verner = .FALSE.  
 
     iloop=0
-!$OMP PARALLEL &
-!$OMP DEFAULT(shared) &
-!$OMP PRIVATE(i,m,n,l,nhtot,tau,tau2,tau3, dist,k_em,x_em,lumi1,lumi2,lumi3,lumtot)               
-!$OMP DO SCHEDULE(DYNAMIC, 100) 
  
-   
+    l = 1
+    fesc = 0.0d0
+    densh = 0.0d0
+
+!$OMP PARALLEL &                                                                                                                                                                                                                            
+!$OMP DEFAULT(shared) &                                                                                                                                                                                                                     
+!$OMP PRIVATE(i,m,n,l,nhtot,nhetot,nheIItot,tau,tau2,tau3,tauV,tauV2,tauV3, dist,k_em,x_em,lumi1,lumi2,lumi3)                                                                                                                        
+!$OMP DO SCHEDULE(DYNAMIC, 100)
+
+
     do j=1,ndirections
-       fesc(j) = 0.0d0
-       Npho(j) = 0.0d0
-       distance(j) = 0.0d0
-       lumtot =0.0d0
+  !      fesc(j) = 0.0d0
+  !      densh(j)= 0.0d0
+  !      denshe(j)= 0.0d0
+  !      densheII(j)= 0.0d0
+    !   Npho(j) = 0.0d0
+    !   distance(j) = 0.0d0
+    
        k_em(:) = directions(:,j) 
        do i=1,nrays  ! these are actually star particle positions
-          x_em(:) = rays(i)%x_em(:)
+
+           x_em(:) = rays(i)%x_em(:)
+     !      x_em(1) =  6.127993280067356E-01
+     !      x_em(2) =  0.037590621244316313E-01
+     !      x_em(3) =  7.91435361310226E-01
+
           lumi1 = lum1(i)
           lumi2 = lum2(i)
           lumi3 = lum3(i)
           tau   = 0.0d0
           tau2  = 0.0d0
           tau3  = 0.0d0
-          dist  = 0.0d0
+       !   tauV  = 0.0d0
+       !   tauV2  = 0.0d0
+       !   tauV3  = 0.0d0
+     !     dist  = 0.0d0
           nhtot = 0.0d0
-  !        call ray_advance(x_em,k_em,tau,tau2,tau3,dist,nhtot,mesh_dom,compute_dom,maxdist,maxtau,minnH,verner,nu10,nu20,nu30)
+          nhetot = 0.0d0
+          nheIItot = 0.0d0
           
-          if (verner == .FALSE.) then
-              call ray_advance(x_em,k_em,tau,tau2,tau3,dist,nhtot,mesh_dom,compute_dom,maxdist,maxtau,minnH,verner,nu10,nu20,nu30)
-              fesc(j) = fesc(j) + exp(-tau)*lumi1 + exp(-tau2)*lumi2 + exp(-tau3)*lumi3       
+        
+          call ray_advance(x_em,k_em,tau,tau2,tau3,dist,nhtot,nhetot,nheIItot,mesh_dom,compute_dom,maxdist,maxtau,minnH,verner)
+
       !     Npho(j) = Npho(j) + exp(-tau)*lumi1/e1 + exp(-tau2)*lumi2/e2 + exp(-tau3)*lumi3/e3
+          if (verner == .FALSE.) then  
+
+              fesc(j) = fesc(j) + exp(-tau)*lumi1 + exp(-tau2)*lumi2 + exp(-tau3)*lumi3
+              distance(j) = distance(j) + dist * lumi1  
+
+          !  fesc(l)  = (exp(-tau)*lumi1 + exp(-tau2)*lumi2 + exp(-tau3)*lumi3)/(lumi1+lumi2+lumi3) 
+            ! print*,(lumi1+lumi2+lumi3)  
+           !  densh(l) = nhtot
+           !  l = l + 1   
+
           else 
-            do m = 1,lmax
-             
-               if (m <= mmax) then
+            do m = 1,nmax                  
+                                      
+                  if (nu10<nu20) then
+                  
+                     tauV    = nhtot * sigmaH(m)
+                     fesc(j) = fesc(j) + real(1,8)/real(nmax,8) * (lumi1 * exp(-tauV))
 
-                 call ray_advance(x_em,k_em,tau,tau2,tau3,dist,nhtot,mesh_dom,compute_dom,maxdist,maxtau,minnH,verner,nu10,nu20,nu30)   !TRES LOURD faire une seul boucle avec max(lmax,nmax,mmax)
-                 fesc(j) = fesc(j) + lumi1 * 1/mmax * exp(-tau) + 1/nmax * exp(-tau2) + 1/lmax * exp(-tau3)
-               
-               else if (m <= nmax) then
-            
-                 call ray_advance(x_em,k_em,tau,tau2,tau3,dist,nhtot,mesh_dom,compute_dom,maxdist,maxtau,minnH,verner,nu10,nu20,nu30)
-                 fesc(j) = fesc(j) + lumi2/nmax * exp(-tau2) + lumi3/lmax * exp(-tau3)
- 
-               else
+                  else if (nu<30) then
+                  
+                     tauV = nhtot * sigmaH(m) + nhetot * sigmaHe(m)
+                     fesc(j) = fesc(j) + real(1,8)/real(nmax,8) * (lumi2 * exp(-tauV))
 
-                 call ray_advance(x_em,k_em,tau,tau2,tau3,dist,nhtot,mesh_dom,compute_dom,maxdist,maxtau,minnH,verner,nu10,nu20,nu30)
-                 fesc(j) = fesc(j) + lumi3/lmax * exp(-tau3)
+                  else
 
-               endif
+                     tauV = nhtot * sigmaH(m) + nhetot * sigmaHe(m) + nheIItot * sigmaHeII(m)
+                     fesc(j) = fesc(j) + real(1,8)/real(nmax,8) * (lumi3 * exp(-tauV))
+                   
 
-               nu10 = nu10 + deps
-               nu20 = nu20 + deps
-               nu30 = nu30 + deps
+                  endif
+
+
+                  nu10 = nu10 + deps1
+
+            !   if (m <= mmax) then 
+      
+            !      fesc(j) = fesc(j) + lumi1 * 1/mmax * exp(-tauV) + 1/nmax * exp(-tauV2) + 1/lmax * exp(-tauV3)
+            !      print*,lumi1 * 1/mmax * exp(-tauV)
+            !    else if (m <= nmax) then     
+
+            !      fesc(j) = fesc(j) + lumi2/nmax * exp(-tauV2) + lumi3/lmax * exp(-tauV3)
+
+             !   else
+
+             !     fesc(j) = fesc(j) + lumi3/lmax * exp(-tauV3)
+
+             !  endif
 
             enddo
+
+           
+          
          
-           endif
-          lumtot = lumtot +lumi1+lumi2+lumi3   
+         endif
+         
           densh(j) =densh(j) + nhtot
-          distance(j)=distance(j) + dist
-       enddo
-       print*,j,lumtot, fesc(j), tau
-!       print*,j, fesc(j), lumtot
-       fesc(j) = fesc(j)/(lumtot) 
+          denshe(j) =denshe(j) + nhetot
+          densheII(j) =densheII(j) + nheIItot
+
+      !    distance(j)=distance(j) + dist
+        enddo
+       print*,j,lumtot, fesc(j)
+
+!       fesc(j) = fesc(j)/(lumi1 + lumi2 + lumi3) 
+       fesc(j)  = fesc(j)/lumtot
+       distance(j) = distance(j)/lumtot
        densh(j)= densh(j)/(real(nrays,8))
-       distance(j)=distance(j)/(real(nrays,8))
+       denshe(j)= denshe(j)/(real(nrays,8))
+       densheII(j)= densheII(j)/(real(nrays,8))
+     !  distance(j)=distance(j)/(real(nrays,8))
     enddo
     
-!$OMP END DO
+!$OMP END DO                                                                                                                                                                                                                               
 !$OMP END PARALLEL
+    
 
     !new loop to write the file
-    write(fichier,'(a,a)') trim(datadir),'/result_verner_nside24_lum_group.txt'
-    open(unit=14, file=fichier, status='replace', form='formatted', action='write')
-    do j=1,ndirections
-       write(14,*) fesc(j)
-    enddo 
-    close(14)
-    write(fichier,'(a,a)') trim(datadir),'/nH_verner_nside24.txt'
-    open(unit=14, file=fichier, status='replace', form='formatted', action='write')
-    do j=1,ndirections
-       write(14,*) densh(j)
-    enddo
-    close(14)    
-    write(fichier,'(a,a)') trim(datadir),'/dist_verner_nside24.txt'
+!!    write(fichier,'(a,a)') trim(datadir),'/result_nside12_stack_02Rvir_183.txt'
+!!    open(unit=14, file=fichier, status='replace', form='formatted', action='write')
+!!    do j=1,ndirections
+!!       write(14,*) fesc(j)
+!!    enddo 
+!!    close(14)
+
+!!    write(fichier,'(a,a)') trim(datadir),'/nH_nside12_stack_02Rvir_183.txt'
+!!    open(unit=14, file=fichier, status='replace', form='formatted', action='write')
+!!    do j=1,ndirections
+!!       write(14,*) densh(j)
+!!    enddo
+!!    close(14)    
+
+        
+ 
+    if (Verner == .TRUE.) then
+
+        write(fichier,'(a,a)') trim(datadir),'/nHe_verner_nside24.txt'
+        open(unit=14, file=fichier, status='replace', form='formatted', action='write')
+        do j=1,ndirections
+           write(14,*) denshe(j)
+        enddo
+        close(14)
+
+        write(fichier,'(a,a)') trim(datadir),'/nHeII_verner_nside24.txt'
+        open(unit=14, file=fichier, status='replace', form='formatted', action='write')
+        do j=1,ndirections
+           write(14,*) densheII(j)
+        enddo
+        close(14)
+
+    endif
+
+    write(fichier,'(a,a)') trim(datadir),'/dist_nside12.txt'
     open(unit=14, file=fichier, status='replace', form='formatted', action='write')
     do j=1,ndirections
        write(14,*) distance(j)
     enddo
     close(14)
   
-  deallocate(directions)
-  deallocate(fesc)
-  deallocate(densh)
-  end subroutine ComputeFesc
+    deallocate(directions)
+    deallocate(fesc)
+    deallocate(densh)
+    end subroutine ComputeFesc
 
 
-  subroutine ray_advance(x_em,k_em,tau,tau2,tau3,dist,nhtot,domesh,domaine_calcul,maxdist,maxtau,minnH,verner,nu1,nu2,nu3)
+  subroutine ray_advance(x_em,k_em,tau,tau2,tau3,dist,nhtot,nhetot,nheIItot,domesh,domaine_calcul,maxdist,maxtau,minnH,verner)
 
 !    type(ray_type),intent(inout)   :: ray            ! a ray 
     real(kind=8),intent(in) :: x_em(3),k_em(3)
@@ -210,7 +376,7 @@ contains
     type(domain),intent(in)        :: domaine_calcul ! domaine dans lequel on propage les photons...
     real(kind=8),intent(in)        :: maxdist,maxtau ! stop propagation at either maxdist or maxtau (the one which is positive). 
     real(kind=8),intent(in)        :: minnH          ! stop propagation when reaching hydrogen density below this value
-    real(kind=8),intent(out)       :: nhtot             ! projection of H and He density along the ray
+    real(kind=8),intent(out)       :: nhtot,nhetot,nheIItot             ! projection of H and He density along the ray
     type(gas)                      :: cell_gas       ! gas in the current cell 
     integer(kind=4)                :: icell, ioct, ind, ileaf, cell_level  ! current cell indices and level
     real(kind=8)                   :: cell_size, cell_size_cm, scalar, nu_cell, maxdist_cm
@@ -222,8 +388,8 @@ contains
     logical                        :: flagoutvol, in_domain
     real(kind=8)                   :: excess, tmp
     logical,intent(in)             :: verner
-    real(kind=8)                   :: eps01,eps11,eps02,eps12,eps03,eps13, deps    ! energies des différents groupes de photon + interval intégration pour verner    
-    real(kind=8)                   :: nu1,nu2, nu3
+!    real(kind=8)                   :: eps01,eps11,eps02,eps12,eps03,eps13, deps    ! energies des différents groupes de photon + interval intégration pour verner    
+!    real(kind=8)                   :: nu1,nu2, nu3
 
     ! initialise ray tracing 
 !!$    ppos  = ray%x_em   ! emission position 
@@ -235,20 +401,14 @@ contains
     tau2  = 0.0d0
     tau3  = 0.0d0
     nhtot = 0.0d0    !initialise nhtot density along the ray
+    nhetot = 0.0d0
+    nheIItot = 0.0d0
     maxdist_cm = maxdist ! maxdist is now provided in cm ... 
 
-  !  tau_cell = 0.0d0
-  !  tau2_cell = 0.0d0
-  !  tau3_cell = 0.0d0
+    tau_cell = 0.0d0
+    tau2_cell = 0.0d0
+    tau3_cell = 0.0d0
 
-    ! initalise les énergies des groupes de photons pour intégrla verner (en ev)
-    
-    eps01 = 13.600
-    eps11 = 24.590
-    eps02 = 24.590
-    eps12 = 54.420  
-    eps03 = 54.420
-    eps13 = 90.00  ! ATTENTION valeure rajoutée pour pouvoir intégrer, pas dans les tables
 
   !  deps  = 0.4
 
@@ -320,22 +480,27 @@ contains
           tau_cell  = gas_get_tau(cell_gas, distance_to_border_cm)
           tau2_cell = gas_get_tau2(cell_gas, distance_to_border_cm)
           tau3_cell = gas_get_tau3(cell_gas, distance_to_border_cm)
-          nhtot = nhtot + distance_to_border_cm*cell_gas%nHI            !column density
-       else 
-            
-           tau_cell = gas_get_tau_verner(cell_gas,distance_to_border_cm,nu1,1)
-           tau2_cell = gas_get_tau_verner(cell_gas,distance_to_border_cm,nu2,2)
-           tau3_cell = gas_get_tau_verner(cell_gas,distance_to_border_cm,nu3,3)
-  
-       endif
 
        ! update traveled distance and optical depth
-       tau  = tau + tau_cell 
-       tau2 = tau2 + tau2_cell
-       tau3 = tau3 + tau3_cell
-       if (tau < 1) then
+
+
+          nhtot = nhtot + distance_to_border_cm*cell_gas%nHI            !column density
+          nheIItot = nheIItot + distance_to_border_cm*cell_gas%nHeII
+          nhetot = nhetot + distance_to_border_cm*cell_gas%nHeI
+          tau  = tau + tau_cell
+          tau2 = tau2 + tau2_cell
+          tau3 = tau3 + tau3_cell
+          if (tau < 1) then
              dist = dist + distance_to_border_cm
-       endif 
+          endif
+
+       else 
+           nheIItot = nheIItot + distance_to_border_cm*cell_gas%nHeII 
+           nhetot = nhetot + distance_to_border_cm*cell_gas%nHeI
+           nhtot = nhtot + distance_to_border_cm*cell_gas%nHI
+       endif
+
+
        ! check if we reached tau or distance limits!       if (dist > maxdist_cm .and. tau > maxtau) then
           ! dist or tau exceeding boundary -> correct excess and exit. 
 !          if (maxdist_cm > 0) then
@@ -438,8 +603,8 @@ contains
    
     end do ray_propagation
  
-    ! nhtot = nhtot /real(k,8)                ! average of nhtot on all the cells of the ray
-     
+
+
    
   end subroutine ray_advance
   
