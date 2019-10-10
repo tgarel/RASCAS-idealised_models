@@ -223,7 +223,7 @@ program CreateDomDump
      ! this would be for zoom-in simulations with -Dquadhilbert
      if (reading_method == 'select_onthefly') then
         if (verbose) print*,'Reading leaf cells...'
-
+        call cpu_time(intermed)
         ! clean up arrays before reading again 
         if (i > 1) deallocate(cpu_list,ramses_var,leaf_level,x_leaf,gas_leaves)
         ncpu_read = get_ncpu(repository,snapnum)
@@ -242,6 +242,55 @@ program CreateDomDump
         ! and then no need for selection, but to adapt the call to mesh_from_leaves
         call mesh_from_leaves(nOctSnap,domain_list(i),nleaftot, &
              gas_leaves,x_leaf,leaf_level,domain_mesh)
+     ! JB-- 
+     else if (reading_method == 'select_onthefly_h') then
+        if (verbose) print*,'Reading leaf cells...'
+        call cpu_time(intermed)
+        select case(decomp_dom_type)
+        case('sphere')
+           xmax = decomp_dom_xc(i) + decomp_dom_rsp(i)
+           xmin = decomp_dom_xc(i) - decomp_dom_rsp(i)
+           ymax = decomp_dom_yc(i) + decomp_dom_rsp(i)
+           ymin = decomp_dom_yc(i) - decomp_dom_rsp(i)
+           zmax = decomp_dom_zc(i) + decomp_dom_rsp(i)
+           zmin = decomp_dom_zc(i) - decomp_dom_rsp(i)
+        case('shell')
+           xmax = decomp_dom_xc(i) + decomp_dom_rout(i)
+           xmin = decomp_dom_xc(i) - decomp_dom_rout(i)
+           ymax = decomp_dom_yc(i) + decomp_dom_rout(i)
+           ymin = decomp_dom_yc(i) - decomp_dom_rout(i)
+           zmax = decomp_dom_zc(i) + decomp_dom_rout(i)
+           zmin = decomp_dom_zc(i) - decomp_dom_rout(i)
+        case('cube')
+           xmax = decomp_dom_xc(i) + decomp_dom_size(i)*0.5d0
+           xmin = decomp_dom_xc(i) - decomp_dom_size(i)*0.5d0
+           ymax = decomp_dom_yc(i) + decomp_dom_size(i)*0.5d0
+           ymin = decomp_dom_yc(i) - decomp_dom_size(i)*0.5d0
+           zmax = decomp_dom_zc(i) + decomp_dom_size(i)*0.5d0
+           zmin = decomp_dom_zc(i) - decomp_dom_size(i)*0.5d0
+        case('slab')
+           xmax = 1.0d0
+           xmin = 0.0d0
+           ymax = 1.0d0
+           ymin = 0.0d0
+           zmax = decomp_dom_zc(i) + decomp_dom_thickness(i)*0.5d0
+           zmin = decomp_dom_zc(i) - decomp_dom_thickness(i)*0.5d0
+        end select
+        ! clean up arrays before reading again 
+        if (i > 1) deallocate(cpu_list,ramses_var,leaf_level,x_leaf,gas_leaves)
+        call get_cpu_list_periodic(repository, snapnum, xmin,xmax,ymin,ymax,zmin,zmax, ncpu_read, cpu_list)
+        call read_leaf_cells_in_domain(repository, snapnum, domain_list(i), ncpu_read, cpu_list, &
+             & nleaftot, nvar, x_leaf, ramses_var, leaf_level)
+        print*,'in CreateDomDump: nleaf_sel = ',nleaftot, size(leaf_level)
+        ! Extract and convert properties of cells into gas mix properties
+        call gas_from_ramses_leaves(repository,snapnum,nleaftot,nvar,ramses_var, gas_leaves)
+        call cpu_time(finish)
+        print '(" --> Time to read leaves in domain = ",f12.3," seconds.")',finish-intermed
+        if (verbose) write(*,*)'Building the mesh from the collection of leaves...'
+        ! and then no need for selection, but to adapt the call to mesh_from_leaves
+        call mesh_from_leaves(nOctSnap,domain_list(i),nleaftot, &
+             gas_leaves,x_leaf,leaf_level,domain_mesh)
+     ! --JB
      else
         call select_cells_in_domain(domain_list(i), nleaftot, x_leaf, leaf_level, ind_sel)
         print*,'in CreateDomDump: ind_sel = ',size(ind_sel)
