@@ -211,6 +211,9 @@ contains
        endif
        ilast=ilast+ileaf
 !$OMP END CRITICAL
+       ! JB-- arrays allocated in read_amr_hydro should be deallocated
+       deallocate(son,cpu_map,var,cell_x,cell_y,cell_z,cell_level)
+       ! --JB       
     end do
 !$OMP END DO
     if(.not. do_allocs) deallocate(ramses_var,xleaf,leaf_level)
@@ -255,11 +258,23 @@ contains
     integer(kind=4)                           :: ileaf, icell, ilast, iloop=0
     real(kind=8),dimension(3)                 :: temp
     real(kind=8)                              :: dx
+
+    ! JB--
+    integer(kind=4)              :: ncell_l
+    integer,allocatable          :: son_l(:)       ! sons grids
+    integer,allocatable          :: cpu_map_l(:)   ! domain decomposition
+    real(kind=8),allocatable     :: var_l(:,:)
+    real(kind=8),allocatable     :: cell_x_l(:),cell_y_l(:),cell_z_l(:)
+    integer(kind=4),allocatable  :: cell_level_l(:)
+    integer(kind=4) :: nLeafInCpu
+    logical,allocatable :: cpu_is_useful(:)
+    ! --JB
     
     if(verbose) print *,'Reading RAMSES cells...'
 
     nvar = get_nvar(repository,snapnum)
     ncpu = get_ncpu(repository,snapnum)
+
     ! Check whether the ramses output is in single or double precision
     U_precision = nint(get_param_real(repository,snapnum,'U_precision',default_value=8d0))
     print*,'The hydro precision is ',U_precision  !JOKI
@@ -269,63 +284,98 @@ contains
     endif
     print*,'The RT precision is ',RT_precision  !JOKI
 
+    ! JB--
+    !    ncell_l = get_ncell(repository,snapnum)
+    allocate(cpu_is_useful(ncpu_read))
+    cpu_is_useful = .false.
+    ! --JB
+
     ! first count leaf cells in domain...
     nleaftot = 0 ; nleaf_in_domain = 0
 !$OMP PARALLEL &
 !$OMP REDUCTION(+:nleaftot,nleaf_in_domain) &
 !$OMP DEFAULT(private) &
-!$OMP SHARED(repository, snapnum, ncpu_read, cpu_list, selection_domain)
+!$OMP SHARED(repository, snapnum, ncpu_read, cpu_list, selection_domain, cpu_is_useful)
 !$OMP DO
     do k=1,ncpu_read
        icpu=cpu_list(k)
+       ! JB--
+       nLeafInCpu = 0
+       ! --JB
+       
+       ! JB-- : added _l
        call read_amr_hydro(repository,snapnum,icpu,&
-            & son,cpu_map,var,cell_x,cell_y,cell_z,cell_level,ncell)
-       ! collect leaf cells
-       do icell = 1,ncell
-          if (son(icell)==0 .and. cpu_map(icell) == icpu) then
-             temp(:) = (/cell_x(icell), cell_y(icell), cell_z(icell)/)
-             dx = 0.5d0**(cell_level(icell))
+            & son_l,cpu_map_l,var_l,cell_x_l,cell_y_l,cell_z_l,cell_level_l,ncell_l)
+       ! --JB
+       
+       ! count leaf cells in domain
+       do icell = 1,ncell_l
+          if (son_l(icell)==0 .and. cpu_map_l(icell) == icpu) then
+             temp(:) = (/cell_x_l(icell), cell_y_l(icell), cell_z_l(icell)/)
+             dx = 0.5d0**(cell_level_l(icell))
              nleaftot = nleaftot+1
              if (domain_contains_cell(temp,dx,selection_domain)) then
                 nleaf_in_domain = nleaf_in_domain + 1
+                !JB--
+                nLeafInCpu = nLeafInCpu + 1
+                !--JB
              end if
           end if
        end do
+       ! JB--
+!$OMP CRITICAL
+       cpu_is_useful(k) = (nLeafInCpu > 0)
+!$OMP END CRITICAL 
+       deallocate(son_l,cpu_map_l,var_l,cell_x_l,cell_y_l,cell_z_l,cell_level_l)
+       ! --JB
     end do
 !$OMP END DO
 !$OMP END PARALLEL
 
+    ! JB--
+    nLeafInCpu = 0
+    do k = 1,ncpu_read
+       if (cpu_is_useful(k)) nLeafInCpu = nLeafInCpu + 1
+    end do
+    print*,'---> ncpu to really read : ',nLeafInCpu
+    ! --JB
+    
     if(verbose)print *,'-- read_leaf_cells_in_domain: nleaftot, nleaf_in_domain, nvar, ncpu =',nleaftot, nleaf_in_domain, nvar, ncpu_read
     
     allocate(ramses_var_all(nvar,nleaf_in_domain), xleaf_all(nleaf_in_domain,3), leaf_level_all(nleaf_in_domain))
     ilast = 1
 !$OMP PARALLEL &
 !$OMP DEFAULT(private) &
-!$OMP SHARED(ilast, xleaf_all, leaf_level_all, ramses_var_all, repository, snapnum, nvar, nleaftot, ncpu_read, cpu_list, selection_domain)
+!$OMP SHARED(ilast, xleaf_all, leaf_level_all, ramses_var_all, repository, snapnum, nvar, nleaftot, ncpu_read, cpu_list, selection_domain, cpu_is_useful)
     do_allocs=.true.
     iloop=0
 !$OMP DO
     do k=1,ncpu_read
+       ! JB--
+       if (.not. cpu_is_useful(k)) cycle
+       !--JB
        icpu=cpu_list(k)
+       ! JB-- : added _l
        call read_amr_hydro(repository,snapnum,icpu,&
-            & son,cpu_map,var,cell_x,cell_y,cell_z,cell_level,ncell)
-       if (do_allocs) allocate(ramses_var(nvar,ncell), xleaf(ncell,3), leaf_level(ncell))
+            & son_l,cpu_map_l,var_l,cell_x_l,cell_y_l,cell_z_l,cell_level_l,ncell_l)
+       if (do_allocs) allocate(ramses_var(nvar,ncell_l), xleaf(ncell_l,3), leaf_level(ncell_l))
+       ! --JB
        do_allocs=.false.
        ! collect leaf cells
        ileaf = 0
-       do icell = 1,ncell
-          if (son(icell)==0 .and. cpu_map(icell) == icpu) then
-             temp(:) = (/cell_x(icell), cell_y(icell), cell_z(icell)/)
-             dx = 0.5d0**(cell_level(icell))
+       do icell = 1,ncell_l  ! JB: _l
+          if (son_l(icell)==0 .and. cpu_map_l(icell) == icpu) then  ! JB: _l
+             temp(:) = (/cell_x_l(icell), cell_y_l(icell), cell_z_l(icell)/)  ! JB: _l
+             dx = 0.5d0**(cell_level_l(icell))  ! JB: _l
              if (domain_contains_cell(temp,dx,selection_domain)) then
                 ileaf = ileaf + 1
                 do ivar = 1,nvar
-                   ramses_var(ivar,ileaf) = var(icell,ivar)
+                   ramses_var(ivar,ileaf) = var_l(icell,ivar)  ! JB: _l
                 end do
-                xleaf(ileaf,1)    = cell_x(icell)
-                xleaf(ileaf,2)    = cell_y(icell)
-                xleaf(ileaf,3)    = cell_z(icell)
-                leaf_level(ileaf) = cell_level(icell)
+                xleaf(ileaf,1)    = cell_x_l(icell)  ! JB: _l
+                xleaf(ileaf,2)    = cell_y_l(icell)  ! JB: _l
+                xleaf(ileaf,3)    = cell_z_l(icell)  ! JB: _l
+                leaf_level(ileaf) = cell_level_l(icell)  ! JB: _l
              end if
           end if
        end do
@@ -347,6 +397,9 @@ contains
        endif
        ilast=ilast+ileaf
 !$OMP END CRITICAL
+       ! JB--
+       deallocate(son_l,cpu_map_l,var_l,cell_x_l,cell_y_l,cell_z_l,cell_level_l)
+       ! --JB
     end do
 !$OMP END DO
     if(allocated(ramses_var)) deallocate(ramses_var,xleaf,leaf_level)
@@ -1851,7 +1904,7 @@ contains
 
   end subroutine clear_amr
 
-
+  
   subroutine read_amr_hydro(repository,snapnum,icpu,&
        & son_l,cpu_map_l,var_l,cell_x_l,cell_y_l,cell_z_l,cell_level_l,ncell_l)
     ! purpose: use only local variables for OMP
@@ -2055,6 +2108,11 @@ contains
     
     allocate(var_l(1:ncell_l,1:nvarH+nvarRT))
     allocate(cell_x_l(1:ncell_l),cell_y_l(1:ncell_l),cell_z_l(1:ncell_l))
+    ! JB--
+    cell_x_l = 0.0d0
+    cell_y_l = 0.0d0
+    cell_z_l = 0.0d0
+    ! --JB 
     allocate(cell_level_l(1:ncell_l))
     allocate(xc(1:twotondim,1:ndim))
 
@@ -2142,11 +2200,10 @@ contains
     deallocate(xc)
     close(iunit)
     if (read_rt_variables) close(iu2)
-    ! => can return var_l, cell_x_l, cell_y_l, cell_z_l, cell_level_l
 
     deallocate(headl_l, taill_l, numbl_l, numbtot_l, headb_l, tailb_l, numbb_l)
     deallocate(next_l, nbor_l, xg_l) 
-    
+
     return
     
   end subroutine read_amr_hydro
@@ -2306,6 +2363,35 @@ contains
     return
   end function get_nleaf
 
+  ! JB--
+  function get_ncell(repository,snapnum)
+    !$ use OMP_LIB
+    implicit none
+    integer(kind=4),intent(in)  :: snapnum
+    character(1000),intent(in)  :: repository
+    character(1000)             :: nomfich
+    integer(kind=4)             :: get_ncell
+    integer(kind=4)             :: icpu,iunit,rank,nx,ny,nz,ngridmax_l
+
+    ! OMP-safe read ... 
+    rank = 1
+    !$ rank = OMP_GET_THREAD_NUM()
+    iunit = 100 + rank
+    
+    icpu = 1
+    write(nomfich,'(a,a,i5.5,a,i5.5,a,i5.5)') trim(repository),'/output_',snapnum,'/amr_',snapnum,'.out',icpu
+    open(unit=iunit,file=nomfich,form='unformatted',status='old',action='read')
+    read(iunit)
+    read(iunit)
+    read(iunit) nx,ny,nz
+    read(iunit)
+    read(iunit) ngridmax_l
+    close(iunit)
+    get_ncell = nx*ny*nz + twotondim*ngridmax_l
+    
+    return
+  end function get_ncell
+  ! --JB
 
   function get_nvar(repository,snapnum)
     implicit none 
