@@ -8,37 +8,18 @@ module module_ramses
 
   private 
 
-  ! stuff read from AMR files
-  integer(kind=4)                  :: ncell,ncoarse,ngridmax
-  real(kind=8),allocatable         :: xg(:,:)      ! grids position
-  integer,allocatable              :: nbor(:,:)    ! neighboring father cells
-  integer,allocatable              :: next(:)      ! next grid in list
-  integer,allocatable              :: son(:)       ! sons grids
-  integer,allocatable              :: cpu_map(:)  ! domain decomposition
-  integer,allocatable              :: headl(:,:),taill(:,:),numbl(:,:),numbtot(:,:)
-  integer,allocatable              :: headb(:,:),tailb(:,:),numbb(:,:)
-  real(KIND=8),dimension(1:3)      :: xbound=(/0d0,0d0,0d0/)  
-
   ! Stop pretending this would work in 2D 
   integer(kind=4),parameter :: ndim = 3
   integer(kind=4),parameter :: twondim = 6
   integer(kind=4),parameter :: twotondim= 8 
-
-  ! stuff read from the HYDRO files
-  real(kind=8),allocatable         :: var(:,:)
-  real(kind=8),allocatable         :: cell_x(:),cell_y(:),cell_z(:)
-  integer(kind=4),allocatable      :: cell_level(:)
-
-  integer(kind=4)                  :: ncpu
-  integer(kind=4)                  :: U_precision=8 ! hydro-precision in RAMSES output
-  integer(kind=4)                  :: RT_precision=8 ! RT-precision in RAMSES output
-
+  ! precision in RAMSES output
+  integer(kind=4)           :: U_precision=8 ! hydro-precision in RAMSES output
+  integer(kind=4)           :: RT_precision=8 ! RT-precision in RAMSES output
   ! conversion factors (units)
-  logical                        :: conversion_scales_are_known = .False. 
-  real(kind=8)                   :: dp_scale_l,dp_scale_d,dp_scale_t
-  real(kind=8)                   :: dp_scale_T2,dp_scale_zsun,dp_scale_nH
-  real(kind=8)                   :: dp_scale_nHe,dp_scale_v,dp_scale_m
-
+  logical                   :: conversion_scales_are_known = .False. 
+  real(kind=8)              :: dp_scale_l,dp_scale_d,dp_scale_t
+  real(kind=8)              :: dp_scale_T2,dp_scale_zsun,dp_scale_nH
+  real(kind=8)              :: dp_scale_nHe,dp_scale_v,dp_scale_m
   ! cooling-related stuff -------------------------------------------------------------
   type cooling_table
      integer(kind=4)          :: n11
@@ -147,11 +128,23 @@ contains
     integer(kind=4),allocatable               :: leaf_level(:)
     integer(kind=4)                           :: k, icpu, ileaf, icell, ivar, ilast, iloop
     logical                                   :: do_allocs
+
+    integer(kind=4)              :: ncpu
+
+    integer(kind=4)              :: ncell
+    integer,allocatable          :: son(:)       ! sons grids
+    integer,allocatable          :: cpu_map(:)   ! domain decomposition
+    real(kind=8),allocatable     :: var(:,:)
+    real(kind=8),allocatable     :: cell_x(:),cell_y(:),cell_z(:)
+    integer(kind=4),allocatable  :: cell_level(:)
+
     
     if(verbose) print *,'Reading RAMSES cells...'
 
     nleaftot = get_nleaf(repository,snapnum,ncpu_read,cpu_list)
     nvar     = get_nvar(repository,snapnum)
+    ncpu     = get_ncpu(repository,snapnum)
+
     allocate(ramses_var_all(nvar,nleaftot), xleaf_all(nleaftot,3), leaf_level_all(nleaftot))
     ! Check whether the ramses output is in single or double precision
     U_precision = nint(get_param_real(repository,snapnum,'U_precision',default_value=8d0))
@@ -162,7 +155,7 @@ contains
     endif
     print*,'The RT precision is ',RT_precision  !JOKI
 
-    if(verbose) print *,'-- read_leaf_cells_omp: nleaftot(_read), nvar, ncpu(_read) =',nleaftot,nvar,ncpu_read
+    if(verbose) print *,'-- read_leaf_cells: nleaftot(_read), nvar, ncpu(_read) =',nleaftot,nvar,ncpu_read
 
     ileaf = 0
     iloop = 0
@@ -174,7 +167,7 @@ contains
 !$OMP DO
     do k=1,ncpu_read
        icpu=cpu_list(k)
-       call read_amr_hydro(repository,snapnum,icpu,&
+       call read_amr_hydro(repository,snapnum,icpu,ncpu,&
             & son,cpu_map,var,cell_x,cell_y,cell_z,cell_level,ncell)
        
        if (do_allocs) allocate(ramses_var(nvar,ncell), xleaf(ncell,3), leaf_level(ncell))
@@ -259,6 +252,8 @@ contains
     real(kind=8),dimension(3)                 :: temp
     real(kind=8)                              :: dx
 
+    integer(kind=4)              :: ncpu
+
     ! JB--
     integer(kind=4)              :: ncell_l
     integer,allocatable          :: son_l(:)       ! sons grids
@@ -304,7 +299,7 @@ contains
        ! --JB
        
        ! JB-- : added _l
-       call read_amr_hydro(repository,snapnum,icpu,&
+       call read_amr_hydro(repository,snapnum,icpu,ncpu,&
             & son_l,cpu_map_l,var_l,cell_x_l,cell_y_l,cell_z_l,cell_level_l,ncell_l)
        ! --JB
        
@@ -356,7 +351,7 @@ contains
        !--JB
        icpu=cpu_list(k)
        ! JB-- : added _l
-       call read_amr_hydro(repository,snapnum,icpu,&
+       call read_amr_hydro(repository,snapnum,icpu,ncpu,&
             & son_l,cpu_map_l,var_l,cell_x_l,cell_y_l,cell_z_l,cell_level_l,ncell_l)
        if (do_allocs) allocate(ramses_var(nvar,ncell_l), xleaf(ncell_l,3), leaf_level(ncell_l))
        ! --JB
@@ -849,7 +844,7 @@ contains
     integer(kind=4)             :: get_nGridTot
     character(1000)             :: filename
     logical                     :: ok
-    integer(kind=4)             :: icpu,ngrid_current
+    integer(kind=4)             :: icpu,ngrid_current,ncpu
 
     ncpu = get_ncpu(repository,snapnum)
     get_nGridTot = 0
@@ -1891,13 +1886,13 @@ contains
   ! ----------------
 
   
-  subroutine read_amr_hydro(repository,snapnum,icpu,&
+  subroutine read_amr_hydro(repository,snapnum,icpu,ncpu,&
        & son_l,cpu_map_l,var_l,cell_x_l,cell_y_l,cell_z_l,cell_level_l,ncell_l)
     ! purpose: use only local variables for OMP
     !$ use OMP_LIB
     implicit none 
 
-    integer(kind=4),intent(in)  :: snapnum,icpu
+    integer(kind=4),intent(in)  :: snapnum,icpu,ncpu
     character(1000),intent(in)  :: repository
 
     character(1000)             :: filename 
