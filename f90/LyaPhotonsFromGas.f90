@@ -92,8 +92,7 @@ program LyaPhotonsFromGas
   ! define max extent of emission domain 
   call domain_get_bounding_box(emission_domain,xmin,xmax,ymin,ymax,zmin,zmax)
   call get_cpu_list_periodic(repository, snapnum, xmin,xmax,ymin,ymax,zmin,zmax, ncpu_read, cpu_list)
-  call read_leaf_cells_omp(repository, snapnum, ncpu_read, cpu_list, nleaftot, nvar, x_leaf, ramses_var, leaf_level)
-  !call read_leaf_cells(repository, snapnum, nleaftot, nvar, x_leaf, ramses_var, leaf_level)
+  call read_leaf_cells(repository, snapnum, ncpu_read, cpu_list, nleaftot, nvar, x_leaf, ramses_var, leaf_level)
   if (verbose) print*,'done reading'
   call select_cells_in_domain(emission_domain,nleaftot,x_leaf,leaf_level,emitting_cells)
   nsel = size(emitting_cells)
