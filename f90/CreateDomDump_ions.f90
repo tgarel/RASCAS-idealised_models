@@ -466,12 +466,12 @@ contains
     integer(kind=4) :: i
     
 
-    if(mix_H_metals .and. ion_number < 2) then
+    if(mix_HI_metals .and. ion_number < 2) then
        print*, 'Problem, when mix_H_metals is true, ion_number should be at least 2'
        stop
     end if
 
-    if(reading_method == 'hilbert' .and. mix_H_metals) then
+    if(reading_method == 'hilbert' .and. mix_HI_metals) then
        print*, 'Problem, mix_H_metals cannot be True when the Hilbert method is used. This method is for when hydrogen is the only element.'
        stop
     end if
@@ -482,8 +482,8 @@ contains
     end if
     
 
-    if(reading_method /= 'hilbert') then
-       if(mix_H_metals) then
+    if(reading_method == 'hilbert_ion') then
+       if(mix_HI_metals) then
           metal_number = ion_number - 1
        else
           metal_number = ion_number

@@ -22,6 +22,9 @@ program PhotonsFromSourceModel
   character(2000)           :: outputfile = 'ICs_photons_n5e6.dat'   ! file to which outputs will be written
   ! --- source type 
   character(10)             :: source_type = 'pointlike'             ! type of source model
+  real(kind=8)              :: cone_angle  = pi                      ! Opening of cone, in radians
+  logical                   :: bi_cone     = .false.
+  real(kind=8),dimension(3) :: k_cone        = (/0d0, 0d0, 1d0/)       ! direction of the cone [code units]
   real(kind=8),dimension(3) :: source_pos  = (/0.5d0,0.5d0,0.5d0/)   ! position of the source [code units]
   integer(kind=4)           :: nphot       = 5000000                 ! number of photons to generate
   ! --- how source shines
@@ -47,6 +50,9 @@ program PhotonsFromSourceModel
   character(2000)           :: spec_table_file  = 'F1600.txt' ! file containing tabulated data from SEDs
   real(kind=8)              :: spec_table_age   = 10.0        ! age of the stellar population to use [Myr]
   real(kind=8)              :: spec_table_met   = 0.02        ! metallicity of the stellar population to use [Myr]
+  ! parameters for spec_type == 'Flat'
+  real(kind=8)              :: spec_flat_lmin_Ang = 1120.  ! min wavelength to sample (should be in the range where fit was made ...)
+  real(kind=8)              :: spec_flat_lmax_Ang = 1320.  ! max ...
   ! --- miscelaneous
   integer(kind=4)           :: ranseed = 1234                 ! seed for random generator
   logical                   :: verbose = .true.
@@ -144,6 +150,10 @@ program PhotonsFromSourceModel
         lambda = spec_table_lofx(ix,iage,imet)*dx2 + spec_table_lofx(ix+1,iage,imet)*dx1
         lambda = lambda / dx
         nu = clight/(lambda * 1e-8)  ! [Hz]
+     case('Flat')
+        x = ran3(iran)
+        nu =spec_flat_lmin_Ang + (spec_flat_lmax_Ang - spec_flat_lmin_Ang)*x
+        nu = clight / (nu*1e-8)
      case default
         print*,'ERROR: unknown spec_type :',trim(spec_type)
      end select
@@ -154,8 +164,38 @@ program PhotonsFromSourceModel
      case default
         print*,'ERROR: unknown source_type :',trim(source_type)
      end select
-     photgrid(i)%iran  = -i 
+     photgrid(i)%iran  = -i
+
      call isotropic_direction(photgrid(i)%k_em,iran)
+
+     ! if(bi_cone) then
+     !    if(cone_angle > pi) then
+     !       call isotropic_direction(photgrid(i)%k_em,iran)
+           
+     !    else if(cone_angle <= 0d0) then
+     !       photgrid(i)%k_em(:) = (-1)**i*k_cone(:)
+           
+     !    else
+     !       call isotropic_direction(photgrid(i)%k_em,iran)
+     !       do while( abs(dot_product(photgrid(i)%k_em,k_cone)) < cos(cone_angle) )
+     !          call isotropic_direction(photgrid(i)%k_em,iran)
+     !       end do
+           
+     !    end if
+     ! else
+     !    if(cone_angle > 2d0*pi) then
+     !       call isotropic_direction(photgrid(i)%k_em,iran)
+           
+     !    else if(cone_angle <= 0d0) then
+     !       photgrid(i)%k_em(:) = k_cone(:)
+           
+     !    else
+     !       call isotropic_direction(photgrid(i)%k_em,iran)
+     !       do while(dot_product(photgrid(i)%k_em,k_cone) < cos(cone_angle))
+     !          call isotropic_direction(photgrid(i)%k_em,iran)
+     !       end do
+           
+     !    end if
   enddo
 
   if (trim(spec_type) == 'Table') then ! deallocate stuff
@@ -257,8 +297,18 @@ contains
              read(value,*) spec_table_age
           case ('spec_table_met')
              read(value,*) spec_table_met
+          case ('spec_flat_lmin_Ang')
+             read(value,*) spec_flat_lmin_Ang
+          case ('spec_flat_lmax_Ang')
+             read(value,*) spec_flat_lmax_Ang
           case ('nphot')
              read(value,*) nphot
+          ! case ('cone_angle')
+          !    read(value,*) cone_angle
+          ! case ('bi_cone')
+          !    read(value,*) bi_cone
+          ! case ('k_cone')
+          !    read(value,*) k_cone(1),k_cone(2),k_cone(3)
           end select
        end do
     end if
@@ -285,6 +335,9 @@ contains
        write(unit,'(a)')              '# source type parameters'
        write(unit,'(a,a)')            '  source_type     = ',trim(source_type)
        write(unit,'(a,3(ES10.3,1x))') '  source_pos      = ',source_pos(1),source_pos(2),source_pos(3)
+       write(unit,'(a,ES10.3,1x)')    '  cone_angle      = ',cone_angle
+       write(unit,'(a,L1)')           '  bi_cone         = ',bi_cone
+       write(unit,'(a,3(ES10.3,1x))') '  k_cone            = ',k_cone(1),k_cone(2),k_cone(3)
        write(unit,'(a)')              '# how source shines'
        write(unit,'(a,i8)')           '  nphot           = ',nphot
        write(unit,'(a,a)')            '  spec_type       = ',trim(spec_type)
@@ -303,6 +356,9 @@ contains
           write(unit,'(a,a)')            '  spec_table_file      = ',trim(spec_table_file)
           write(unit,'(a,es10.3,a)')     '  spec_table_age       = ',spec_table_age, ' ! [Myr]'
           write(unit,'(a,es10.3)')       '  spec_table_met       = ',spec_table_met
+       case('Flat')
+          write(unit,'(a,es10.3,a)')     '  spec_flat_lmin_Ang = ',spec_flat_lmin_Ang, ' ! [A]'
+          write(unit,'(a,es10.3,a)')     '  spec_flat_lmax_Ang = ',spec_flat_lmax_Ang, ' ! [A]'
        case default
           print*,'ERROR: unknown spec_type :',trim(spec_type)
        end select
@@ -319,6 +375,9 @@ contains
        write(*,'(a)')              '# source type parameters'
        write(*,'(a,a)')            '  source_type   = ',trim(source_type)
        write(*,'(a,3(ES10.3,1x))') '  source_pos    = ',source_pos(1),source_pos(2),source_pos(3)
+       write(*,'(a,ES10.3,1x)')    '  cone_angle      = ',cone_angle
+       write(*,'(a,L1)')           '  bi_cone         = ',bi_cone
+       write(*,'(a,3(ES10.3,1x))') '  k_cone            = ',k_cone(1),k_cone(2),k_cone(3)
        write(*,'(a)')              '# how source shines'
        write(*,'(a,i8)')           '  nphot         = ',nphot
        write(*,'(a,a)')            '  spec_type     = ',trim(spec_type)
@@ -337,6 +396,9 @@ contains
           write(*,'(a,a)')            '  spec_table_file      = ',trim(spec_table_file)
           write(*,'(a,es10.3,a)')     '  spec_table_age       = ',spec_table_age, ' ! [Myr]'
           write(*,'(a,es10.3)')       '  spec_table_met       = ',spec_table_met
+       case('Flat')
+          write(*,'(a,es10.3,a)')     '  spec_flat_lmin_Ang = ',spec_flat_lmin_Ang, ' ! [A]'
+          write(*,'(a,es10.3,a)')     '  spec_flat_lmax_Ang = ',spec_flat_lmax_Ang, ' ! [A]'
        case default
           print*,'ERROR: unknown spec_type :',trim(spec_type)
        end select

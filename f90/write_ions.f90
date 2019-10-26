@@ -23,7 +23,7 @@ program write_ions
   ! --- input / outputs
   character(2000)             :: repository = './'          ! ramses run directory (where all output_xxxxx dirs are).
   character(2000)             :: ion_parameter_file = './ions.dat' 
-  integer(kind=4)             :: ion_number = 1             ! number of ions we want to read
+  !integer(kind=4)             :: ion_number = 1             ! number of ions we want to read
   integer(kind=4)             :: snapnum = 1                ! ramses output number to use
   character(2000)             :: write_path = './cells'
   integer(kind=4)             :: max_cells = 1000000
@@ -33,6 +33,7 @@ program write_ions
 
   ! --- miscelaneous
   logical                     :: verbose = .false.
+  logical                     :: read_excited_state = .false.
   ! --------------------------------------------------------------------------
 
   call cpu_time(start)
@@ -118,18 +119,19 @@ contains
              write(ion_parameter_file,'(a)') trim(value)
           case ('write_path')
              write(write_path,'(a)') trim(value)
-          case ('ion_number')
-             read(value,*) ion_number
           case ('snapnum')
              read(value,*) snapnum
           case ('max_cells')
              read(value,*) max_cells
+          case ('read_excited_state')
+             read(value,*) read_excited_state
           end select
        end do
     end if
     close(10)
 
     call read_ramses_params(pfile)
+    call read_gas_composition_params(pfile)
     call read_ion_params_file
     
     return

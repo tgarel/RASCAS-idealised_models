@@ -129,6 +129,7 @@ contains
           i = min( max( floor( ( dot_product( -1d-5*cell_gas%v(:),kray(:) ) - histo%vmin )*histo%nBins/(histo%vmax-histo%vmin) ) + 2, 1 ), histo%nBins+2 )  !computes which index of the list should be incremented
           histo%list(:,idir,ID,i) = histo%list(:,idir,ID,i) + gas_get_CD(cell_gas, distance_to_border_cm)  !increment the corresponding entry
        end if
+       !print*,dot_product( -1d-5*cell_gas%v(:),kray(:) ), log10(gas_get_CD(cell_gas, distance_to_border_cm))
        !print*, gas_get_CD(cell_gas, distance_to_border_cm), cell_gas%dopwidth**2 * 15.999 * amu / 2 / kb
 
        ! update head of ray position
@@ -232,7 +233,7 @@ contains
 
     np = size(rays)
 
-    do i=1,histo%nGas
+    do i=1,max(1,histo%nGas)
        write(nomfich,'(a,a,i1)') trim(file),'_',i
        open(unit=14, file=nomfich, status='unknown', form='unformatted', action='write')
        write(14) np
@@ -247,24 +248,6 @@ contains
        end if
        close(14)
     end do
-
-    
-    ! open(unit=14, file=trim(file), status='unknown', form='unformatted', action='write')
-    ! write(14) np
-    ! write(14) histo%nDirections
-    ! write(14) histo%nGas
-    ! if(do_histo) then
-    !    write(14) histo%vmin, histo%vmax
-    !    write(14) histo%nBins
-    !    do l=1,histo%nGas
-    !       do k=1,histo%nDirections
-    !          write(14) ((histo%list(l,k,i,j), i=1,histo%nrays), j=1,histo%nBins+2)
-    !       end do
-    !    end do
-    ! end if
-    ! !print*, (histo%list(1,1,1,j), j=1,histo%nBins+2)
-
-    ! close(14)
 
   end subroutine dump
 
@@ -283,7 +266,6 @@ contains
     nGas = gas_get_n_CD()
     histo%nGas = nGas
     allocate(histo%list(nGas,nDirections,nrays,nBins+2))
-    print*, 'test size ', nGas, nDirections, nrays, nBins+2
     histo%list = 0d0
 
     do_histo = .true.

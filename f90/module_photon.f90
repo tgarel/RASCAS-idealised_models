@@ -5,7 +5,7 @@ module module_photon
   use module_constants
   use module_random
   use module_domain
-  use module_utils, only: path
+  use module_utils
   use module_mock
 
   implicit none
@@ -57,8 +57,11 @@ module module_photon
   logical            :: no_scatter    = .false.
   logical            :: fix_phot_pos  = .false.
   real(kind=8)       :: phot_pos(3)   = (/ 0.5, 0.5, 0.5 /)
-  logical            :: fix_phot_k    = .false.
-  real(kind=8)       :: phot_k(3)     = (/ 0.5, 0.5, 0.5 /)
+  logical            :: change_phot_k    = .false.
+  real(kind=8)              :: cone_angle  = 10                        ! Opening of cone, in degrees
+  logical                   :: bi_cone     = .false.
+  real(kind=8),dimension(3) :: k_cone        = (/0d0, 0d0, 1d0/)       ! direction of the cone [code units]
+  real(kind=8)              :: skip  = 1d-3                            ! Shift photons of certain distance,  in code units
   ! --------------------------------------------------------------------------
 
 
@@ -642,7 +645,7 @@ contains
     character(2000),intent(in)                                 :: file
     type(photon_current),dimension(:),allocatable, intent(out) :: pgrid
     type(photon_init),dimension(:),allocatable                 :: pgridinit
-    integer(kind=4)                                            :: i, n_photon, iseed
+    integer(kind=4)                                            :: i, n_photon, iseed, iran
     real(kind=8)                                               :: total_flux,knorm
 
     ! read ICs
@@ -658,24 +661,60 @@ contains
     read(14) (pgridinit(i)%iran,i=1,n_photon)
     close(14)
 
-    if(fix_phot_k) then
-       do i=1,n_photon
-          pgridinit(i)%k_em(:) = phot_k(:)
-       end do
-    end if
+    
     if(fix_phot_pos) then
        do i=1,n_photon
           pgridinit(i)%x_em(:) = phot_pos(:)
        end do
     end if
 
+    if(change_phot_k) then
+       iran = -abs(iseed)
+       do i=1,n_photon
+          if(bi_cone) then
+             if(cone_angle >= 180d0) then
+                call isotropic_direction(pgridinit(i)%k_em,iran)
+
+             else if(cone_angle <= 0d0) then
+                pgridinit(i)%k_em(:) = (-1)**i*k_cone(:)
+
+             else
+                call isotropic_direction(pgridinit(i)%k_em,iran)
+                do while( abs(dot_product(pgridinit(i)%k_em,k_cone)) < cos(cone_angle*3.14159d0/180) )
+                   call isotropic_direction(pgridinit(i)%k_em,iran)
+                end do
+
+             end if
+          else
+             if(cone_angle >= 360d0) then
+                call isotropic_direction(pgridinit(i)%k_em,iran)
+
+             else if(cone_angle <= 0d0) then
+                pgridinit(i)%k_em(:) = k_cone(:)
+
+             else
+                call isotropic_direction(pgridinit(i)%k_em,iran)
+                do while(dot_product(pgridinit(i)%k_em,k_cone) < cos(cone_angle*3.14159d0/180))
+                   call isotropic_direction(pgridinit(i)%k_em,iran)
+                end do
+             end if
+          end if
+       end do
+
+       if(skip > 0d0) then
+          do i=1,n_photon
+             pgridinit(i)%x_em(:) = pgridinit(i)%x_em(:) + pgridinit(i)%k_em(:)*skip
+          end do
+       end if
+    end if
+
     ! build photgrid current
     allocate(pgrid(n_photon))
     do i=1,n_photon
        pgrid(i)%ID           = pgridinit(i)%ID
-       pgrid(i)%status       = 0
-       pgrid(i)%xlast        = pgridinit(i)%x_em
-       pgrid(i)%xcurr        = pgridinit(i)%x_em
+    pgrid(i)%status       = 0
+    pgrid(i)%xlast        = pgridinit(i)%x_em
+          pgrid(i)%xcurr        = pgridinit(i)%x_em
        pgrid(i)%nu_ext       = pgridinit(i)%nu_em
        ! make sure k is normalised
        knorm                 = sqrt(pgridinit(i)%k_em(1)**2 + pgridinit(i)%k_em(2)**2 + pgridinit(i)%k_em(3)**2)
@@ -811,10 +850,20 @@ contains
              read(value,*) fix_phot_pos
           case ('phot_pos')
              read(value,*) phot_pos(1),phot_pos(2),phot_pos(3)
-          case ('fix_phot_k')
-             read(value,*) fix_phot_k
-          case ('phot_k')
-             read(value,*) phot_k(1),phot_k(2),phot_k(3)
+          case ('change_phot_k')
+             read(value,*) change_phot_k
+          !case ('phot_k')
+             !read(value,*) phot_k(1),phot_k(2),phot_k(3)
+            ! phot_k(:) = phot_k(:) / sqrt(phot_k(1)*phot_k(1) + phot_k(2)*phot_k(2) + phot_k(3)*phot_k(3))
+          case ('cone_angle')
+             read(value,*) cone_angle
+          case ('bi_cone')
+             read(value,*) bi_cone
+          case ('k_cone')
+             read(value,*) k_cone(1),k_cone(2),k_cone(3)
+             k_cone(:) = k_cone(:) / sqrt(k_cone(1)*k_cone(1) + k_cone(2)*k_cone(2) + k_cone(3)*k_cone(3))
+          case ('skip')
+             read(value,*) skip
           end select
        end do
     end if
@@ -840,16 +889,28 @@ contains
        write(unit,'(a,L1)')     '  no_scatter          = ', no_scatter
        write(unit,'(a,L1)')     '  fix_phot_pos        = ', fix_phot_pos
        if(fix_phot_pos) write(unit,'(a,3(ES10.3,1x))')'  phot_pos       = ',phot_pos(1),phot_pos(2),phot_pos(3)
-       write(unit,'(a,L1)')     '  fix_phot_k          = ', fix_phot_k
-       if(fix_phot_k) write(unit,'(a,3(ES10.3,1x))')'  phot_k           = ',phot_k(1),phot_k(2),phot_k(3)
+       write(unit,'(a,L1)')     '  change_phot_k          = ', change_phot_k
+       !if(change_phot_k) write(unit,'(a,3(ES10.3,1x))')'  phot_k           = ',phot_k(1),phot_k(2),phot_k(3)
+       if(change_phot_k) then
+          write(unit,'(a,ES10.3,1x)')    '  cone_angle      = ',cone_angle
+          write(unit,'(a,L1)')           '  bi_cone         = ',bi_cone
+          write(unit,'(a,3(ES10.3,1x))') '  k_cone          = ',k_cone(1),k_cone(2),k_cone(3)
+       end if
+       write(unit,'(a,ES10.3,1x)')    '  skip          = ',skip
        write(unit,'(a)')             ' '
     else
        write(*,'(a,a,a)') '[photon]'
        write(*,'(a,L1)')     '  no_scatter          = ', no_scatter
        write(*,'(a,L1)')     '  fix_phot_pos        = ', fix_phot_pos
        if(fix_phot_pos) write(*,'(a,3(ES10.3,1x))')'  phot_pos       = ',phot_pos(1),phot_pos(2),phot_pos(3)
-       write(*,'(a,L1)')     '  fix_phot_k          = ', fix_phot_k
-       if(fix_phot_k) write(*,'(a,3(ES10.3,1x))')'  phot_k           = ',phot_k(1),phot_k(2),phot_k(3)
+       write(*,'(a,L1)')     '  change_phot_k          = ', change_phot_k
+       !if(change_phot_k) write(*,'(a,3(ES10.3,1x))')'  phot_k           = ',phot_k(1),phot_k(2),phot_k(3)
+       if(change_phot_k) then
+          write(*,'(a,ES10.3,1x)')    '  cone_angle      = ',cone_angle
+          write(*,'(a,L1)')           '  bi_cone         = ',bi_cone
+          write(*,'(a,3(ES10.3,1x))') '  k_cone          = ',k_cone(1),k_cone(2),k_cone(3)
+       end if
+       write(*,'(a,ES10.3,1x)')    '  skip          = ',skip
        write(*,'(a)')             ' '
     end if
 

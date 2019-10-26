@@ -22,7 +22,7 @@ program main
   real(kind=8), allocatable :: x_em(:,:), k_em(:,:), weight(:)
 
   ! --------------------------------------------------------------------------
-  ! user-defined parameters - read from section [PhotonsFromStars] of the parameter file
+  ! user-defined parameters - read from section [IC_ColumnDensity] of the parameter file
   ! --------------------------------------------------------------------------
   ! --- input / outputs
   character(2000)           :: outputfile = 'PhotICs.dat' ! file to which outputs will be written

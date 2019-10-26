@@ -43,6 +43,8 @@ module module_gas_composition
   real(kind=8)             :: fix_box_size_cm     = 1.0d8   ! ad-hoc box size in cm.
   logical                  :: no_v                = .false.
   logical                  :: no_dust             = .false.
+
+  real(kind=8)             :: v_turb          = 0d0    ! Constant turbulent velocity accross the simulation,  in km/s
   ! miscelaneous
   logical                  :: verbose             = .true. ! display some run-time info on this module
   logical                  :: HI_core_skip        = .false.
@@ -389,6 +391,7 @@ contains
     ! --------------------------------------------------------------------------
 
   !--LEEP--
+
   
     !--PEEL--
   function gas_peeloff_weight(flag,cell_gas,nu_ext,kin,kout,iran)
@@ -475,7 +478,17 @@ subroutine read_gas(unit,n,g)
        end if
 
        read(unit) (g(i)%nSiII,i=1,n)
+
+       !-----------------------Doppler width-----------------------
        read(unit) (g(i)%dopwidth,i=1,n)
+
+       ! Application of v_turb to the Doppler width
+       if(v_turb > 0d0) then
+          do i=1,n
+             g(i)%dopwidth = sqrt(g(i)%dopwidth**2 + (1d5*v_turb)**2)   !In the parameters, v_turb is given in km/s,  do multiply by 1d5 to get cm/s
+          end do
+       end if
+       !-----------------------------------------------------------
 
        if(no_dust) then
           do i=1,n
@@ -565,6 +578,8 @@ subroutine read_gas(unit,n,g)
              read(value,*) no_v
           case ('no_dust')
              read(value,*) no_dust
+          case ('v_turb')
+             read(value,*) v_turb
           case ('fix_box_size_cm')
              read(value,*) fix_box_size_cm
           end select
@@ -605,6 +620,9 @@ subroutine read_gas(unit,n,g)
        write(unit,'(a,ES10.3)') '  fix_vth              = ',fix_vth
        write(unit,'(a,ES10.3)') '  fix_vel              = ',fix_vel
        write(unit,'(a,ES10.3)') '  fix_box_size_cm      = ',fix_box_size_cm
+       write(unit,'(a,ES10.3)') '  v_turb          = ',v_turb
+       write(unit,'(a,L1)')     '  no_v            = ',no_v
+       write(unit,'(a,L1)')     '  no_dust         = ',no_dust
        write(unit,'(a)')             ' '
        call print_SiII_1260_params(unit)
        call print_dust_params
@@ -622,6 +640,9 @@ subroutine read_gas(unit,n,g)
        write(*,'(a,ES10.3)') '  fix_vth              = ',fix_vth
        write(*,'(a,ES10.3)') '  fix_vel              = ',fix_vel
        write(*,'(a,ES10.3)') '  fix_box_size_cm      = ',fix_box_size_cm
+       write(*,'(a,ES10.3)') '  v_turb          = ',v_turb
+       write(*,'(a,L1)')     '  no_v            = ',no_v
+       write(*,'(a,L1)')     '  no_dust         = ',no_dust
        write(*,'(a)')             ' '
        call print_SiII_1260_params()
        call print_dust_params	   

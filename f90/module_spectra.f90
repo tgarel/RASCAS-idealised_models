@@ -176,54 +176,102 @@ CONTAINS
     case(7)  !CIV
        E0 = 3.506e+00 ; cs0 = 1.068e-16 ; P = 7.457e+00
        ya = 1.436e+01 ; yw = 0.000e+00 ; y0 = 0.000e+00 ; y1 = 0.000e+00
-    case(8)  !OI
+    case(8)  !NI
+       E0 = 4.034e+00 ; cs0 = 8.235e-16 ; P = 3.928e+00
+       ya = 8.033e+01 ; yw = 9.097e-02 ; y0 = 8.598e-01 ; y1 = 2.325e+00
+    case(9)  !NII
+       E0 = 6.128e-02 ; cs0 = 1.944e-18 ; P = 8.773e+00
+       ya = 8.163e+02 ; yw = 1.043e+01 ; y0 = 4.280e+02 ; y1 = 2.030e+01
+    case(10)  !NIII
+       E0 = 2.420e-01 ; cs0 = 9.375e-19 ; P = 9.156e+00
+       ya = 2.788e+02 ; yw = 1.850e+00 ; y0 = 1.877e+02 ; y1 = 3.999e+00
+    case(11)  !NIV
+       E0 = 5.494e+00 ; cs0 = 1.690e-14 ; P = 1.706e+01
+       ya = 1.714e+00 ; yw = 7.904e+00 ; y0 = 6.415e-03 ; y1 = 1.937e-02
+    case(12)  !OI
        E0 = 1.240e+00 ; cs0 = 1.745e-15 ; P = 1.764e+01
        ya = 3.784e+00 ; yw = 7.589e-02 ; y0 = 8.698e+00 ; y1 = 1.271e-01
-    case(9)  !OII
+    case(13)  !OII
        E0 = 1.386e+00 ; cs0 = 5.967e-17 ; P = 8.943e+00
        ya = 3.175e+01 ; yw = 1.934e-02 ; y0 = 2.131e+01 ; y1 = 1.503e-02
-    case(10)  !OIII
+    case(14)  !OIII
        E0 = 1.723e-01 ; cs0 = 6.753e-16 ; P = 6.822e+00
        ya = 3.852e+02 ; yw = 1.191e-01 ; y0 = 3.839e-03 ; y1 = 4.569e-01
-    case(11)  !OIV
+    case(15)  !OIV
        E0 = 2.044e-01 ; cs0 = 8.659e-19 ; P = 8.785e+00
        ya = 4.931e+02 ; yw = 3.143e+00 ; y0 = 3.328e+02 ; y1 = 4.285e+01
-    case(12)  !MgI
+    case(16)  !NeI
+       E0 = 4.870e+00 ; cs0 = 4.287e-15 ; P = 8.355e+00
+       ya = 5.798e+00 ; yw = 2.434e-01 ; y0 = 4.236e-02 ; y1 = 5.873e+00
+    case(17)  !NeII
+       E0 = 1.247e+01 ; cs0 = 1.583e-15 ; P = 7.810e+00
+       ya = 3.935e+00 ; yw = 6.558e-02 ; y0 = 1.520e+00 ; y1 = 1.084e-01
+    case(18)  !NeIII
+       E0 = 7.753e-01 ; cs0 = 5.708e-18 ; P = 1.005e+01
+       ya = 6.725e+01 ; yw = 4.633e-01 ; y0 = 7.654e+01 ; y1 = 2.023e+00
+    case(19)  !NeIV
+       E0 = 5.566e+00 ; cs0 = 1.685e-15 ; P = 3.056e+00
+       ya = 6.409e+02 ; yw = 8.290e-03 ; y0 = 5.149e+00 ; y1 = 6.687e+00
+    case(20)  !MgI
        E0 = 1.197e+01 ; cs0 = 1.372e-10 ; P = 1.574e+01
        ya = 2.228e-01 ; yw = 2.805e-01 ; y0 = 0.000e+00 ; y1 = 0.000e+00
-    case(13)  !MgII
+    case(21)  !MgII
        E0 = 8.139e+00 ; cs0 = 3.278e-18 ; P = 3.610e+00
        ya = 4.341e+07 ; yw = 0.000e+00 ; y0 = 0.000e+00 ; y1 = 0.000e+00
-    case(14)  !MgIII
+    case(22)  !MgIII
        E0 = 1.086e+01 ; cs0 = 5.377e-16 ; P = 7.117e+00
        ya = 9.779e+00 ; yw = 2.604e+00 ; y0 = 4.860e+00 ; y1 = 3.722e+00
-    case(15)  !MgIV
+    case(23)  !MgIV
        E0 = 2.912e+01 ; cs0 = 1.394e-15 ; P = 6.487e+00
        ya = 2.895e+00 ; yw = 4.326e-02 ; y0 = 9.402e-01 ; y1 = 1.135e-01
-    case(16)  !AlI
+    case(24)  !AlI
        E0 = 1.381e+01 ; cs0 = 7.195e-18 ; P = 3.642e+00
        ya = 1.621e+03 ; yw = 3.166e-01 ; y0 = 2.041e-01 ; y1 = 4.753e-01
-    case(17)  !AlII
+    case(25)  !AlII
        E0 = 2.048e-01 ; cs0 = 6.948e-20 ; P = 9.049e+00
        ya = 5.675e+02 ; yw = 4.615e-01 ; y0 = 9.149e+01 ; y1 = 6.565e-01
-    case(18)  !AlIII
+    case(26)  !AlIII
        E0 = 1.027e+01 ; cs0 = 4.915e-18 ; P = 3.477e+00
        ya = 1.990e+06 ; yw = 0.000e+00 ; y0 = 0.000e+00 ; y1 = 0.000e+00
-    case(19)  !AlIV
+    case(27)  !AlIV
        E0 = 3.130e+00 ; cs0 = 1.513e-17 ; P = 1.180e+01
        ya = 1.674e+01 ; yw = 5.342e+00 ; y0 = 3.994e+01 ; y1 = 4.803e+00
-    case(20)  !SiI
+    case(28)  !SiI
        E0 = 2.317e+01 ; cs0 = 2.506e-17 ; P = 3.546e+00
        ya = 2.057e+01 ; yw = 2.837e-01 ; y0 = 1.672e-05 ; y1 = 4.207e-01
-    case(21)  !SiII
+    case(29)  !SiII
        E0 = 2.556e+00 ; cs0 = 4.140e-18 ; P = 1.191e+01
        ya = 1.337e+01 ; yw = 1.570e+00 ; y0 = 6.634e+00 ; y1 = 1.272e-01
-    case(22)  !SiIII
+    case(30)  !SiIII
        E0 = 1.659e-01 ; cs0 = 5.790e-22 ; P = 1.336e+01
        ya = 1.474e+02 ; yw = 8.626e-01 ; y0 = 9.613e+01 ; y1 = 6.442e-01
-    case(23)  !SiIV
+    case(31)  !SiIV
        E0 = 1.288e+01 ; cs0 = 6.083e-18 ; P = 3.353e+00
        ya = 1.356e+06 ; yw = 0.000e+00 ; y0 = 0.000e+00 ; y1 = 0.000e+00
+    case(32)  !S I
+       E0 = 1.808e+01 ; cs0 = 4.564e-14 ; P = 1.361e+01
+       ya = 1.000e+00 ; yw = 6.385e-01 ; y0 = 9.935e-01 ; y1 = 2.486e-01
+    case(33)  !S II
+       E0 = 8.787e+00 ; cs0 = 3.136e-16 ; P = 1.281e+01
+       ya = 3.442e+00 ; yw = 7.354e-01 ; y0 = 2.782e+00 ; y1 = 1.788e-01
+    case(34)  !S III
+       E0 = 2.027e+00 ; cs0 = 6.666e-18 ; P = 8.611e+00
+       ya = 5.454e+01 ; yw = 4.109e+00 ; y0 = 1.568e+01 ; y1 = 9.421e+00
+    case(35)  !S IV
+       E0 = 2.173e+00 ; cs0 = 2.606e-18 ; P = 8.655e+00
+       ya = 6.641e+01 ; yw = 1.863e+00 ; y0 = 1.975e+01 ; y1 = 3.361e+00
+    case(36)  !FeI
+       E0 = 5.461e-02 ; cs0 = 3.062e-19 ; P = 7.923e+00
+       ya = 2.671e+07 ; yw = 2.069e+01 ; y0 = 1.382e+02 ; y1 = 2.481e-01
+    case(37)  !FeII
+       E0 = 1.761e-01 ; cs0 = 4.365e-15 ; P = 5.204e+00
+       ya = 6.298e+03 ; yw = 1.141e+01 ; y0 = 9.272e+01 ; y1 = 1.075e+02
+    case(38)  !FeIII
+       E0 = 1.698e-01 ; cs0 = 6.107e-18 ; P = 8.055e+00
+       ya = 1.555e+03 ; yw = 8.698e+00 ; y0 = 1.760e+02 ; y1 = 1.847e+01
+    case(39)  !FeIV
+       E0 = 2.544e+01 ; cs0 = 3.653e-16 ; P = 6.538e+00
+       ya = 8.913e+00 ; yw = 5.602e-01 ; y0 = 0.000e+00 ; y1 = 0.000e+00
 
     end select
 
@@ -244,8 +292,8 @@ CONTAINS
     integer(kind=4)             :: nProp, i, j, k
 
     do i=1,n_elements
-       if(elements(i) /= 6 .and. elements(i) /= 8 .and. elements(i) /= 12 .and. elements(i) /= 13 .and. elements(i) /= 14) then
-          print*, 'The photoionization is not yet implemented for elements other than Carbon(6), Oxygen(8), Magnesium(12), Aluminium(13) and Silicone(14), please use those ones, sorry'
+       if(elements(i) /= 6 .and. elements(i) /= 7 .and. elements(i) /= 8 .and. elements(i) /= 10 .and. elements(i) /= 12 .and. elements(i) /= 13 .and. elements(i) /= 14 .and. elements(i) /= 16 .and. elements(i) /= 26) then
+          print*, 'The photoionization is not yet implemented for elements other than Carbon(6), Nitrogen(7), Oxygen(8), Neon(10, Magnesium(12), Aluminium(13) and Silicone(14), Sulfur(16) and Iron(26), please use those ones, sorry'
           stop
        end if
        if(nIons(i) > 4) then
@@ -261,14 +309,22 @@ CONTAINS
     do i=1,n_elements
        if(elements(i) == 6) then
           get_prop(j) = 4
-       else if(elements(i) == 8) then
+       else if(elements(i) == 7) then
           get_prop(j) = 8
-       else if(elements(i) == 12) then
+       else if(elements(i) == 8) then
           get_prop(j) = 12
-       else if(elements(i) == 13) then
+       else if(elements(i) == 10) then
           get_prop(j) = 16
-       else
+       else if(elements(i) == 12) then
           get_prop(j) = 20
+       else if(elements(i) == 13) then
+          get_prop(j) = 24
+       else if(elements(i) == 14) then
+          get_prop(j) = 28
+       else if(elements(i) == 16) then
+          get_prop(j) = 32
+       else
+          get_prop(j) = 36
        end if
 
        do k=1,Nions(i)-1
@@ -338,7 +394,7 @@ contains
     use spectrum_integrator_module
 
     integer:: nAges, nzs, nLs              ! # of bins of age, z, wavelength
-    integer,parameter::nIons=19             !BAD !!! This is hardcoded,   should think about that
+    integer,parameter::nIons=39             !BAD !!! This is hardcoded,   should think about that
     real(kind=8),allocatable::ages(:), Zs(:), Ls(:), rebAges(:)
     real(kind=8),allocatable::SEDs(:,:,:)           ! SEDs f(lambda,age,met)
     real(kind=8),allocatable::tbl(:,:,:), tbl2(:,:,:), reb_tbl(:,:,:)

@@ -25,7 +25,7 @@ module module_constants
   real(kind=8),parameter :: mSi = 28.085d0 * amu              ![g] mass of Silicon
   real(kind=8),parameter :: mMg = 24.305d0 * amu              ![g] mass of Magnesium
   real(kind=8),parameter :: hp=6.6262d-27                     !Planck const   [erg sec ]
-  real(kind=8),parameter,dimension(19) :: ionEvs = (/ 13.598, 24.587, 54.418, 11.26, 24.3845, 47.888, 64.4935, 13.618, 35.121, 54.936, 77.414, 7.646, 15.035, 80.144, 109.2654, 8.152, 16.346, 33.493, 45.142 /)
+  real(kind=8),parameter,dimension(39) :: ionEvs = (/ 13.598, 24.587, 54.418, 11.26, 24.3845, 47.888, 64.4935, 14.53, 29.6, 47.45, 77.47, 13.618, 35.121, 54.936, 77.414, 21.56, 40.96, 63.42, 97.19, 7.646, 15.035, 80.144, 109.2654, 5.986, 18.83, 28.45, 119.99, 8.152, 16.346, 33.493, 45.142, 10.36, 23.34, 34.86, 47.22, 7.9, 16.2, 30.65, 54.91 /)
   real(kind=8),parameter :: mFe = 55.845d0 * amu              ![g] mass of Fer
   real(kind=8),parameter :: mAl = 26.982d0 * amu              ![g] mass of Aluminium
 

@@ -15,7 +15,7 @@ module module_lines_model
   ! --------------------------------------------------------------------------
   ! user-defined parameters - read from section [CreateDomDump] of the parameter file
   ! --------------------------------------------------------------------------
-  integer(kind=4)               :: ion_number                   ! Number of elements constituting the gas (including dust ?)
+  integer(kind=4)               :: ion_number = 1               ! Number of elements constituting the gas (including dust ?)
   real(kind=8),allocatable      :: m_ion(:)
   ! absorption
   integer(kind=4),allocatable   :: n_line(:)
@@ -36,6 +36,9 @@ module module_lines_model
   logical                       :: HI_core_skip    = .false.    ! if true, skip scatterings in the core of the line (as in Smith+15).
   real(kind=8)                  :: xcritmax        = 1d10       ! core-skipping will truncate at min(xcrit, xcritmax) -> set to a low value to activate. 
   !--PIKSEROC--
+
+  !Should be in gas_composition, but impossible
+  !real(kind=8)                  :: vturb           = 0d0
   ! --------------------------------------------------------------------------
 
   integer(kind=4)               :: n_line_tot
@@ -86,7 +89,6 @@ contains
         print*, 'Problem with the line number in function get_tau_single_line in module_lines_model, stopping'
         stop
      end if
-
 
      ! compute Doppler width and a-parameter
      delta_nu_doppler = (vth / sqrt(m_ion(ion_index(line_number)))) / lambda_cm(line_number)
@@ -385,6 +387,7 @@ contains
        ion_index(k:k+n_line(i)-1) = i
        k = k + n_line(i)
     end do
+    !print*, 'set_ion_index : ', ion_index
 
   end subroutine set_ion_index
  
@@ -508,9 +511,11 @@ contains
        write(unit,fmt3)            '  f               = ',f(:)
        write(unit,fmt3)            '  A_line          = ',A_line(:)
        write(unit,fmt4)            '  n_fluo          = ',n_fluo(:)
-       write(fmt5,'(a,i3,a)')   '(a,',sum(n_fluo(:)),'(ES12.5,1x))'
-       write(unit,fmt5)            '  lambda_fluo     = ',lambda_fluo(:)
-       write(unit,fmt5)            '  A_fluo          = ',A_fluo(:)
+       if(sum(n_fluo(:)) > 0) then
+          write(fmt5,'(a,i3,a)')   '(a,',sum(n_fluo(:)),'(ES12.5,1x))'
+          write(unit,fmt5)            '  lambda_fluo     = ',lambda_fluo(:)
+          write(unit,fmt5)            '  A_fluo          = ',A_fluo(:)
+       end if
        write(unit,'(a,L1)')        '  recoil          = ',recoil
        write(unit,'(a,L1)')        '  isotropic       = ',isotropic
        write(unit,'(a,L1)')        '  HI_core_skip    = ',HI_core_skip
@@ -531,9 +536,11 @@ contains
        write(*,fmt3)            '  f               = ',f(:)
        write(*,fmt3)            '  A_line          = ',A_line(:)
        write(*,fmt4)            '  n_fluo          = ',n_fluo(:)
-       write(fmt5,'(a,i3,a)')   '(a,',sum(n_fluo(:)),'(ES12.5,1x))'
-       write(*,fmt5)            '  lambda_fluo     = ',lambda_fluo(:)
-       write(*,fmt5)            '  A_fluo          = ',A_fluo(:)
+       if(sum(n_fluo(:)) > 0) then
+          write(fmt5,'(a,i3,a)')   '(a,',sum(n_fluo(:)),'(ES12.5,1x))'
+          write(*,fmt5)            '  lambda_fluo     = ',lambda_fluo(:)
+          write(*,fmt5)            '  A_fluo          = ',A_fluo(:)
+       end if
        write(*,'(a,L1)')        '  recoil          = ',recoil
        write(*,'(a,L1)')        '  isotropic       = ',isotropic
        write(*,'(a,L1)')        '  HI_core_skip    = ',HI_core_skip

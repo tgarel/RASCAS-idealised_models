@@ -12,7 +12,7 @@ class mockobs(object):
         self.nPhotons     = p.get_nphoton()
         self.nPhotPerPacket = nRealPhotons / self.nPhotons
         self.LumPerPacket = self.nPhotPerPacket * ly.h_cgs * ly.nu0 
-
+        
         if load_image:
             self.imsize_cu, self.image_npix, self.imtot = self.__read_image(index=idirection)
             self.imtot = self.imtot * self.LumPerPacket # [erg/s]
@@ -20,7 +20,7 @@ class mockobs(object):
         if load_spectrum:  # restframe spectrum
             self.spec_lmin,self.spec_lmax,self.spec_npix,self.spec = self.__read_spectrum(index=idirection)
             dl = (self.spec_lmax - self.spec_lmin) / self.spec_npix  # [A] 
-            l = np.arange(self.spec_lmin,self.spec_lmax,dl) + 0.5*dl # [A]
+            l = np.arange(self.spec_lmin,self.spec_lmax-0.0001,dl) + 0.5*dl # [A]
             self.spec_lbda_Angstrom  = l
             self.spec_dlbda_Angstrom = dl
             l = l * 1e-8  # [cm]
