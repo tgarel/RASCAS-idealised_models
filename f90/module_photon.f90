@@ -98,13 +98,13 @@ contains
     real(kind=8) :: xcrit,tau_cell,delta_nu_doppler,a,xcw,nu_0
     !--PIKSEROC--
     ! HUBBLE-FLOW                                                                                                                      
-    real(kind=8),dimension(3)            :: v_hubble, r_xlast_ppos,r_xlast_ppos_cm, v_hub_in_cell,v_cell_ext
-    real(kind=8)                         :: Hub_kms_cm, Hub_cms_cm, dmax_hub1, dmax_hub2, scalar_hub, voigt_over_dvoigt,nu_cell_temp,v_hub_norm,dist_last_scat_cm
+    real(kind=8),dimension(3)            :: v_hubble, v_hub_in_cell,v_cell_ext
+    real(kind=8)                         :: Hub_cms_cm, dmax_hub1, dmax_hub2, voigt_over_dvoigt,nu_cell_temp,v_hub_norm,dist_last_scat_cm
     real(kind=8)                         :: x_cell, true_distance_to_border_cm, sum_substeps_distance_cm, substep_distance_cm,remaining_distance_to_border_cm,remaining_distance_to_border,should_be_zero
-    real(kind=8)                         :: time_to_core, time_to_igm_transparence
     integer(kind=4)                      :: nsubsteps
-    real(kind=8)                         :: time_to_core  ! time for blue photons to reach core (x=0) in Hubble flow
-    
+    real(kind=8)                         :: time_to_core               ! time for blue photons to reach core (x=0) in Hubble flow
+    real(kind=8)                         :: time_to_igm_transparence   ! max time for red photons to reach optically thin IGM in Hubble flow
+
     !real(kind=8),parameter               :: Hub_kms_Mpc = 20.0d0 ! 660.0d0 ! at z=6 [km/s/Mpc]
     !------ if redshift defined as param:
     ! H =  H_0 * sqrt(Omega_M*(1.0 + redshift_snapshot)**3.0 + Omega_L) in km/s/Mpc
