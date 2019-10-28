@@ -101,19 +101,24 @@ contains
     real(kind=8),dimension(3)            :: v_hubble, r_xlast_ppos,r_xlast_ppos_cm, v_hub_in_cell,v_cell_ext
     real(kind=8)                         :: Hub_kms_cm, Hub_cms_cm, dmax_hub1, dmax_hub2, scalar_hub, voigt_over_dvoigt,nu_cell_temp,v_hub_norm,dist_last_scat_cm
     real(kind=8)                         :: x_cell, true_distance_to_border_cm, sum_substeps_distance_cm, substep_distance_cm,remaining_distance_to_border_cm,remaining_distance_to_border,should_be_zero
+    real(kind=8)                         :: time_to_core, time_to_igm_transparence
     integer(kind=4)                      :: nsubsteps
+    real(kind=8)                         :: time_to_core  ! time for blue photons to reach core (x=0) in Hubble flow
+    
     !real(kind=8),parameter               :: Hub_kms_Mpc = 20.0d0 ! 660.0d0 ! at z=6 [km/s/Mpc]
     !------ if redshift defined as param:
-    ! H = (1 + z) * sqrt(1 + Omega_M*z + Omega_L*(1/(1 + z)**2 - 1)) * H_0 / kpc ! in cm/s/cm
+    ! H =  H_0 * sqrt(Omega_M*(1.0 + redshift_snapshot)**3.0 + Omega_L) in km/s/Mpc
     real(kind=8)                         :: Hub_kms_Mpc ! [km/s/Mpc]
     real(kind=8),parameter               :: Omega_M = 0.3175
     real(kind=8),parameter               :: Omega_L = 0.6825
-    real(kind=8),parameter               :: H_0 = 67.11  ! [km/s/Mpc]
+    real(kind=8),parameter               :: Omega_b = 0.049
+    real(kind=8),parameter               :: H_0     = 67.11  ! [km/s/Mpc]
     !------
     ! WOLF-HUBBLE 
 
     !------ if redshift defined as param:
-    Hub_kms_Mpc = (1.0 + redshift_snapshot) * sqrt(1.0 + Omega_M*redshift_snapshot + Omega_L*(1.0/(1.0 + redshift_snapshot)**2.0 - 1.0)) * H_0
+    Hub_kms_Mpc = H_0 * sqrt(Omega_M*(1.0 + redshift_snapshot)**3.0 + Omega_L)
+    Hub_cms_cm  = Hub_kms_Mpc * 1.0d5 / mpc                             ! [cm/s/cm]       
     !------
     
     ! initialise working props of photon
@@ -122,6 +127,17 @@ contains
     tau_abs = p%tau_abs_curr
     iran    = p%iran
 
+    ! Setup criterion for stopping IGM RT
+    nu_0 = clight /(1215.67d0/cmtoA)
+    if (p%nu_ext < nu_0) then
+       time_to_core = 1.0d0 / Hub_cms_cm * (1.0d0 - nu_0/p%nu_ext) ! s
+    else
+       time_to_core = 0.0d0 ! photon already red
+    end if
+    
+    time_to_igm_transparence = 7.01 * Omega_b * (1.0 + redshift_snapshot)**3.0 / (Omega_M * (1.0 + redshift_snapshot)**3.0 + Omega_L)
+    time_to_igm_transparence = time_to_igm_transparence + time_to_core
+    
     ! check that the photon is actually in the computational domain ...
     in_domain = domain_contains_point(ppos,domaine_calcul)
     if (.not. in_domain) then
@@ -178,7 +194,6 @@ contains
        endif
        
        ! HUBBLE-FLOW                                                                                                                   
-       Hub_cms_cm           = Hub_kms_Mpc * 1.0d5 / mpc                             ! [cm/s/cm]       
        dist_last_scat_cm    = clight * time
        v_hub_norm           = Hub_cms_cm * dist_last_scat_cm
        do i=1,3
@@ -205,7 +220,7 @@ contains
        !end if
        !--PIKSEROC--
 
-       if(time .gt. 2.0d14)then
+       if(time .gt. time_to_igm_transparence)then
           p%xcurr        = ppos
           p%time         = time
           p%tau_abs_curr = tau_abs
