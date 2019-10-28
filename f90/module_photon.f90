@@ -135,8 +135,9 @@ contains
        time_to_core = 0.0d0 ! photon already red
     end if
     
-    time_to_igm_transparence = 7.01 * Omega_b * (1.0 + redshift_snapshot)**3.0 / (Omega_M * (1.0 + redshift_snapshot)**3.0 + Omega_L)
-    time_to_igm_transparence = time_to_igm_transparence + time_to_core
+    time_to_igm_transparence = 7.01d14 * Omega_b * (1.0 + redshift_snapshot)**3.0 / (Omega_M * (1.0 + redshift_snapshot)**3.0 + Omega_L) ! [s]
+    time_to_igm_transparence = time_to_igm_transparence + time_to_core                                                                   ! [s]
+    time_to_igm_transparence = time_to_igm_transparence * 1.0d0 ! one may set tmax to N*tmax
     
     ! check that the photon is actually in the computational domain ...
     in_domain = domain_contains_point(ppos,domaine_calcul)
