@@ -102,8 +102,6 @@ contains
     real(kind=8)                         :: Hub_kms_cm, Hub_cms_cm, dmax_hub1, dmax_hub2, scalar_hub, voigt_over_dvoigt,nu_cell_temp,v_hub_norm,dist_last_scat_cm
     real(kind=8)                         :: x_cell, true_distance_to_border_cm, sum_substeps_distance_cm, substep_distance_cm,remaining_distance_to_border_cm,remaining_distance_to_border,should_be_zero
     integer(kind=4)                      :: nsubsteps
-    !real(kind=8)                         :: a, delta_nu_doppler,xcw,nu_0
-    ! H = (1 + z) * sqrt(1 + Omega_M*z + Omega_L*(1/(1 + z)**2 - 1)) * H_0 / kpc ! in cm/s/cm
     !real(kind=8),parameter               :: Hub_kms_Mpc = 20.0d0 ! 660.0d0 ! at z=6 [km/s/Mpc]
     !------ if redshift defined as param:
     ! H = (1 + z) * sqrt(1 + Omega_M*z + Omega_L*(1/(1 + z)**2 - 1)) * H_0 / kpc ! in cm/s/cm
@@ -180,13 +178,6 @@ contains
        endif
        
        ! HUBBLE-FLOW                                                                                                                   
-       ! - Read redshift and compute H(z)
-       ! - define hubble flow (vhub=Hr with r=ppos-xlast)                               
-       !r_xlast_ppos        = ppos - p%xlast 
-       !r_xlast_ppos_cm     = r_xlast_ppos * box_size_cm                             ! from box units to cm              
-       !Hub_cms_cm           = Hub_kms_Mpc * 1.0d5 / mpc                             ! [cm/s/cm]              
-       !v_hubble             = Hub_cms_cm * r_xlast_ppos_cm
-
        Hub_cms_cm           = Hub_kms_Mpc * 1.0d5 / mpc                             ! [cm/s/cm]       
        dist_last_scat_cm    = clight * time
        v_hub_norm           = Hub_cms_cm * dist_last_scat_cm
@@ -296,7 +287,6 @@ contains
              substep_distance_cm = min(remaining_distance_to_border_cm,dmax_hub1,dmax_hub2)
              
              ! Evaluate V_hubble at [distance that can be travelled] / 2
-             ! v_hub_in_cell       = Hub_cms_cm * substep_distance_cm / 2.0
              do i=1,3
                 v_hub_in_cell(i) = p%k(i) * Hub_cms_cm * (sum_substeps_distance_cm + substep_distance_cm / 2.0) !+ vgas(i)
              end do
@@ -322,7 +312,7 @@ contains
              distance_to_border_cm    = sum_substeps_distance_cm ! -sum_substeps_distance_cm             
 
              !! remaining_distance_to_border_cm can be < 0 due to numerical precision
-             !! If so set it to 0 and exit while loop                                                                                                                        
+             !! If so set it to 0, set distance_to_border_cm to true_distance_to_border_cm and exit while loop
              if (remaining_distance_to_border_cm < 0.0d0) then
                 ! Check that it is indeed due to num. prec. 
                 remaining_distance_to_border = remaining_distance_to_border_cm / cell_size_cm ! cell units
