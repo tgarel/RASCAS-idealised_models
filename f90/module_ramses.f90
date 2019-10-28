@@ -367,7 +367,7 @@ contains
     do k = 1,ncpu_read
        if (cpu_is_useful(k)) nLeafInCpu = nLeafInCpu + 1
     end do
-    print*,'---> ncpu to really read : ',nLeafInCpu
+    print*,'--> ncpu to really read : ',nLeafInCpu
     ! --JB
     
     if(verbose)print *,'-- read_leaf_cells_in_domain: nleaftot, nleaf_in_domain, nvar, ncpu =',nleaftot, nleaf_in_domain, nvar, ncpu_read
