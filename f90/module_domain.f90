@@ -472,7 +472,7 @@ contains
        end if
        rr = sqrt(ddx**2 + ddy**2 + ddz**2)
        rr = rr + dx*sqrt3over2
-       if (rr < dom%sp%radius) domain_fully_contains_cell=.true.
+       if (rr <= dom%sp%radius) domain_fully_contains_cell=.true.
 
     case('shell')
        ! correct cell's position for periodic boundaries
@@ -496,7 +496,7 @@ contains
        end if
        rr = sqrt(ddx*ddx + ddy*ddy + ddz*ddz)
        !!!rr = sqrt((x(1)-dom%sh%center(1))**2 + (x(2)-dom%sh%center(2))**2 + (x(3)-dom%sh%center(3))**2)
-       if(( (rr-dx*sqrt3over2)>dom%sh%r_inbound) .and. ((rr+dx*sqrt3over2)<dom%sh%r_outbound) ) then
+       if(( (rr-dx*sqrt3over2)>=dom%sh%r_inbound) .and. ((rr+dx*sqrt3over2)<=dom%sh%r_outbound) ) then
           domain_fully_contains_cell=.true.
        end if
 
@@ -509,8 +509,8 @@ contains
        else if (dd < -0.5d0) then 
           xc = xc + 1.0d0
        end if
-       if ((xc+dx*0.5d0 < dom%cu%center(1)+dom%cu%size*0.5d0).and. &
-            (xc-dx*0.5d0 > dom%cu%center(1)-dom%cu%size*0.5d0)) then
+       if ((xc+dx*0.5d0 <= dom%cu%center(1)+dom%cu%size*0.5d0).and. &
+            (xc-dx*0.5d0 >= dom%cu%center(1)-dom%cu%size*0.5d0)) then
           dd = x(2) - dom%cu%center(2)
           xc = x(2)
           if (dd > 0.5d0) then 
@@ -518,8 +518,8 @@ contains
           else if (dd < -0.5d0) then 
              xc = xc + 1.0d0
           end if
-          if ((xc+dx*0.5d0 < dom%cu%center(2)+dom%cu%size*0.5d0).and. &
-               (xc-dx*0.5d0 > dom%cu%center(2)-dom%cu%size*0.5d0)) then
+          if ((xc+dx*0.5d0 <= dom%cu%center(2)+dom%cu%size*0.5d0).and. &
+               (xc-dx*0.5d0 >= dom%cu%center(2)-dom%cu%size*0.5d0)) then
              dd = x(3) - dom%cu%center(3)
              xc = x(3)
              if (dd > 0.5d0) then 
@@ -527,8 +527,8 @@ contains
              else if (dd < -0.5d0) then 
                 xc = xc + 1.0d0
              end if
-             if ((xc+dx*0.5d0 < dom%cu%center(3)+dom%cu%size*0.5d0).and. &
-                  (xc-dx*0.5d0 > dom%cu%center(3)-dom%cu%size*0.5d0)) then
+             if ((xc+dx*0.5d0 <= dom%cu%center(3)+dom%cu%size*0.5d0).and. &
+                  (xc-dx*0.5d0 >= dom%cu%center(3)-dom%cu%size*0.5d0)) then
                 domain_fully_contains_cell=.true.
              end if
           end if
@@ -542,8 +542,8 @@ contains
        else if (dd < -0.5d0) then 
           xc = xc + 1.0d0
        end if
-       if((xc+dx*0.5d0 < dom%sl%zc+dom%sl%thickness*0.5d0).and. &
-            (xc-dx*0.5d0 > dom%sl%zc-dom%sl%thickness*0.5d0)) domain_fully_contains_cell=.true.
+       if((xc+dx*0.5d0 <= dom%sl%zc+dom%sl%thickness*0.5d0).and. &
+            (xc-dx*0.5d0 >= dom%sl%zc-dom%sl%thickness*0.5d0)) domain_fully_contains_cell=.true.
        
     end select
 
