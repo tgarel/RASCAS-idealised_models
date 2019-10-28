@@ -509,8 +509,10 @@ contains
        else if (dd < -0.5d0) then 
           xc = xc + 1.0d0
        end if
-       if ((xc+dx*0.5d0 < dom%cu%center(1)+dom%cu%size*0.5d0).and. &
-            (xc-dx*0.5d0 > dom%cu%center(1)-dom%cu%size*0.5d0)) then
+       !if ((xc+dx*0.5d0 < dom%cu%center(1)+dom%cu%size*0.5d0).and. &
+       !     (xc-dx*0.5d0 > dom%cu%center(1)-dom%cu%size*0.5d0)) then
+       if ((xc+dx*0.5d0 .le. dom%cu%center(1)+dom%cu%size*0.5d0).and. &
+            (xc-dx*0.5d0 .ge. dom%cu%center(1)-dom%cu%size*0.5d0)) then 
           dd = x(2) - dom%cu%center(2)
           xc = x(2)
           if (dd > 0.5d0) then 
@@ -518,8 +520,10 @@ contains
           else if (dd < -0.5d0) then 
              xc = xc + 1.0d0
           end if
-          if ((xc+dx*0.5d0 < dom%cu%center(2)+dom%cu%size*0.5d0).and. &
-               (xc-dx*0.5d0 > dom%cu%center(2)-dom%cu%size*0.5d0)) then
+          !if ((xc+dx*0.5d0 < dom%cu%center(2)+dom%cu%size*0.5d0).and. &
+          !     (xc-dx*0.5d0 > dom%cu%center(2)-dom%cu%size*0.5d0)) then
+          if ((xc+dx*0.5d0 .le. dom%cu%center(2)+dom%cu%size*0.5d0).and. &
+               (xc-dx*0.5d0 .ge. dom%cu%center(2)-dom%cu%size*0.5d0)) then 
              dd = x(3) - dom%cu%center(3)
              xc = x(3)
              if (dd > 0.5d0) then 
@@ -527,8 +531,10 @@ contains
              else if (dd < -0.5d0) then 
                 xc = xc + 1.0d0
              end if
-             if ((xc+dx*0.5d0 < dom%cu%center(3)+dom%cu%size*0.5d0).and. &
-                  (xc-dx*0.5d0 > dom%cu%center(3)-dom%cu%size*0.5d0)) then
+             !if ((xc+dx*0.5d0 < dom%cu%center(3)+dom%cu%size*0.5d0).and. &
+             !     (xc-dx*0.5d0 > dom%cu%center(3)-dom%cu%size*0.5d0)) then
+             if ((xc+dx*0.5d0 .le. dom%cu%center(3)+dom%cu%size*0.5d0).and. &
+                  (xc-dx*0.5d0 .ge. dom%cu%center(3)-dom%cu%size*0.5d0)) then 
                 domain_fully_contains_cell=.true.
              end if
           end if

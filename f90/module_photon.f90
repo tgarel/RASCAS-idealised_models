@@ -99,8 +99,8 @@ contains
     !--PIKSEROC--
     ! HUBBLE-FLOW                                                                                                                      
     real(kind=8),dimension(3)            :: v_hubble, r_xlast_ppos,r_xlast_ppos_cm, v_hub_in_cell,v_cell_ext
-    real(kind=8)                         :: Hub_kms_cm, Hub_cms_cm, dmax_hub1, dmax_hub2, scalar_hub, voigt_over_dvoigt,nu_cell_temp,rel_err,nu_cell_save,nu_cell_save2
-    real(kind=8)                         :: x_cell, true_distance_to_border_cm, sum_substeps_distance_cm, substep_distance_cm,remaining_distance_to_border_cm                              
+    real(kind=8)                         :: Hub_kms_cm, Hub_cms_cm, dmax_hub1, dmax_hub2, scalar_hub, voigt_over_dvoigt,nu_cell_temp,v_hub_norm,dist_last_scat_cm
+    real(kind=8)                         :: x_cell, true_distance_to_border_cm, sum_substeps_distance_cm, substep_distance_cm,remaining_distance_to_border_cm,remaining_distance_to_border,should_be_zero
     integer(kind=4)                      :: nsubsteps
     !real(kind=8)                         :: a, delta_nu_doppler,xcw,nu_0
     ! H = (1 + z) * sqrt(1 + Omega_M*z + Omega_L*(1/(1 + z)**2 - 1)) * H_0 / kpc ! in cm/s/cm
@@ -172,6 +172,7 @@ contains
        posoct(:)    = domesh%xoct(ioct,:)
        cell_corner  = get_cell_corner(posoct,ind,cell_level)   ! position of cell corner, in box units.
        ppos_cell    = (ppos - cell_corner) / cell_size         ! position of photon in cell units (x,y,z in [0,1] within cell)
+
        if((ppos_cell(1)>1.0d0).or.(ppos_cell(2)>1.0d0).or.(ppos_cell(3)>1.0d0).or. &
             (ppos_cell(1)<0.0d0).or.(ppos_cell(2)<0.0d0).or.(ppos_cell(3)<0.0d0))then
           print*,"ERROR: problem in computing ppos_cell"
@@ -181,10 +182,17 @@ contains
        ! HUBBLE-FLOW                                                                                                                   
        ! - Read redshift and compute H(z)
        ! - define hubble flow (vhub=Hr with r=ppos-xlast)                               
-       r_xlast_ppos        = ppos - p%xlast 
-       r_xlast_ppos_cm     = r_xlast_ppos * box_size_cm                             ! from box units to cm              
-       Hub_cms_cm           = Hub_kms_Mpc * 1.0d5 / mpc                             ! [cm/s/cm]              
-       v_hubble             = Hub_cms_cm * r_xlast_ppos_cm
+       !r_xlast_ppos        = ppos - p%xlast 
+       !r_xlast_ppos_cm     = r_xlast_ppos * box_size_cm                             ! from box units to cm              
+       !Hub_cms_cm           = Hub_kms_Mpc * 1.0d5 / mpc                             ! [cm/s/cm]              
+       !v_hubble             = Hub_cms_cm * r_xlast_ppos_cm
+
+       Hub_cms_cm           = Hub_kms_Mpc * 1.0d5 / mpc                             ! [cm/s/cm]       
+       dist_last_scat_cm    = clight * time
+       v_hub_norm           = Hub_cms_cm * dist_last_scat_cm
+       do i=1,3
+          v_hubble(i) = v_hub_norm * p%k(i)
+       end do
        !! get gas velocity (in cgs units) and add Hubble flow at xcurr (i.e. when entering cell)                        
        vgas                 = get_gas_velocity(cell_gas) + v_hubble
        scalar               = p%k(1) * vgas(1) + p%k(2) * vgas(2) + p%k(3) * vgas(3)
@@ -195,7 +203,7 @@ contains
        ! define/update flag_cell_fully_in_comp_dom to avoid various tests in the following
        pcell = cell_corner + 0.5d0*cell_size
        cell_fully_in_domain = domain_fully_contains_cell(pcell,cell_size,domaine_calcul)
-
+     
        !--CORESKIP--
        !if (HI_core_skip) then
        ! Needed for HUBBLE-FLOW  
@@ -205,7 +213,16 @@ contains
        nu_0 = clight /(1215.67d0/cmtoA)
        !end if
        !--PIKSEROC--
-  
+
+       if(time .gt. 2.0d14)then
+          p%xcurr        = ppos
+          p%time         = time
+          p%tau_abs_curr = tau_abs
+          p%iran         = iran
+          p%status       = 1
+          exit photon_propagation
+       endif
+       
        propag_in_cell : do
 
           ! generate the opt depth where the photon is scattered/absorbed
@@ -231,6 +248,12 @@ contains
                 distance_to_border           = distance_to_border_cm / cell_size_cm
              end if
           endif
+
+
+          if ((distance_to_border < 0.0d0) .or. (distance_to_border > sqrt(3.001d0))) then
+             print*,'Dborder... ',distance_to_border
+             stop
+          end if
 
           !--CORESKIP--
           xcrit = 0.0d0
@@ -297,7 +320,22 @@ contains
              sum_substeps_distance_cm = sum_substeps_distance_cm + substep_distance_cm
              remaining_distance_to_border_cm    = true_distance_to_border_cm-sum_substeps_distance_cm             
              distance_to_border_cm    = sum_substeps_distance_cm ! -sum_substeps_distance_cm             
-             
+
+             !! remaining_distance_to_border_cm can be < 0 due to numerical precision
+             !! If so set it to 0 and exit while loop                                                                                                                        
+             if (remaining_distance_to_border_cm < 0.0d0) then
+                ! Check that it is indeed due to num. prec. 
+                remaining_distance_to_border = remaining_distance_to_border_cm / cell_size_cm ! cell units
+                if (abs(remaining_distance_to_border) > 1.d-14) then
+                   print*,'remaining_distance_to_border < 0 but nut due to num. prec. ... : ',remaining_distance_to_border,remaining_distance_to_border_cm
+                   stop
+                else
+                   remaining_distance_to_border_cm = 0.0d0
+                   distance_to_border_cm = true_distance_to_border_cm
+                   exit
+                end if
+             endif
+                          
              nsubsteps = nsubsteps + 1
              
           end do ! end substepping
@@ -313,14 +351,23 @@ contains
           
           if (scatter_flag == 0) then   ! next scattering event will not occur in the cell or in the domain
 
+             ! Check that true_distance_to_border_cm=distance_to_border_cm if no scattering in this cell
+             !if (distance_to_border_cm .ne. true_distance_to_border_cm) then
+             should_be_zero = abs(true_distance_to_border_cm/distance_to_border_cm) - 1.0d0
+             if (should_be_zero > 1.0d-14) then
+                print*,'Problem with distance_to_border_cm due to substeps...: ',true_distance_to_border_cm,distance_to_border_cm,should_be_zero
+                stop
+             end if
+             
              ! move photon out of cell or domain
              ppos = ppos + p%k * distance_to_border_box_units *(1.0d0 + epsilon(1.0d0))
-
+             
              ! correct for periodicity
              do i=1,3
                 if (ppos(i) < 0.0d0) ppos(i)=ppos(i)+1.0d0
                 if (ppos(i) > 1.0d0) ppos(i)=ppos(i)-1.0d0
              enddo
+             
              ! update travel time
              time = time + distance_to_border_cm/clight
 
