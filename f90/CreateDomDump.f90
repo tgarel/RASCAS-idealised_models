@@ -20,7 +20,11 @@ program CreateDomDump
   integer :: noctsnap,nleaftot,nvar,nleaf_sel,i, narg, j
   character(2000) :: toto,meshroot,parameter_file,fichier, fichier2
   character(2000),dimension(:),allocatable :: domain_file_list, mesh_file_list
-  real(kind=8) :: computdom_max,decompdom_max, start, finish, intermed
+  real(kind=8) :: computdom_max_x, computdom_max_y, computdom_max_z
+  real(kind=8) :: decompdom_max_x, decompdom_max_y, decompdom_max_z
+  real(kind=8) :: computdom_min_x, computdom_min_y, computdom_min_z
+  real(kind=8) :: decompdom_min_x, decompdom_min_y, decompdom_min_z
+  real(kind=8) :: start, finish, intermed
   real(kind=8) :: xmin,xmax,ymin,ymax,zmin,zmax
   integer(kind=4),dimension(:),allocatable :: cpu_list
   integer(kind=4) :: ncpu_read
@@ -77,19 +81,37 @@ program CreateDomDump
   case('sphere')
      call domain_constructor_from_scratch(domaine_de_calcul,comput_dom_type, &
           xc=comput_dom_pos(1),yc=comput_dom_pos(2),zc=comput_dom_pos(3),r=comput_dom_rsp)
-     computdom_max = comput_dom_rsp
+     computdom_max_x = comput_dom_pos(1)+comput_dom_rsp
+     computdom_max_y = comput_dom_pos(2)+comput_dom_rsp
+     computdom_max_z = comput_dom_pos(3)+comput_dom_rsp
+     computdom_min_x = comput_dom_pos(1)-comput_dom_rsp
+     computdom_min_y = comput_dom_pos(2)-comput_dom_rsp
+     computdom_min_z = comput_dom_pos(3)-comput_dom_rsp
   case('shell')
      call domain_constructor_from_scratch(domaine_de_calcul,comput_dom_type, &
           xc=comput_dom_pos(1),yc=comput_dom_pos(2),zc=comput_dom_pos(3),r_inbound=comput_dom_rin,r_outbound=comput_dom_rout)
-     computdom_max = comput_dom_rout
+     computdom_max_x = comput_dom_pos(1)+comput_dom_rout
+     computdom_max_y = comput_dom_pos(2)+comput_dom_rout
+     computdom_max_z = comput_dom_pos(3)+comput_dom_rout
+     computdom_min_x = comput_dom_pos(1)-comput_dom_rout
+     computdom_min_y = comput_dom_pos(2)-comput_dom_rout
+     computdom_min_z = comput_dom_pos(3)-comput_dom_rout
   case('cube')
      call domain_constructor_from_scratch(domaine_de_calcul,comput_dom_type, & 
           xc=comput_dom_pos(1),yc=comput_dom_pos(2),zc=comput_dom_pos(3),size=comput_dom_size)
-     computdom_max = comput_dom_size
+     computdom_max_x = comput_dom_pos(1)+comput_dom_size/2.0d0
+     computdom_max_y = comput_dom_pos(2)+comput_dom_size/2.0d0
+     computdom_max_z = comput_dom_pos(3)+comput_dom_size/2.0d0
+     computdom_min_x = comput_dom_pos(1)-comput_dom_size/2.0d0
+     computdom_min_y = comput_dom_pos(2)-comput_dom_size/2.0d0
+     computdom_min_z = comput_dom_pos(3)-comput_dom_size/2.0d0
   case('slab')
      call domain_constructor_from_scratch(domaine_de_calcul,comput_dom_type, &
           xc=comput_dom_pos(1),yc=comput_dom_pos(2),zc=comput_dom_pos(3),thickness=comput_dom_thickness)
-     computdom_max = comput_dom_thickness
+     computdom_max_x = 1.0d0 ; computdom_max_y = 1.0d0
+     computdom_max_z = comput_dom_pos(3)+comput_dom_thickness/2.0d0
+     computdom_min_x = 0.0d0 ; computdom_min_y = 0.0d0
+     computdom_min_z = comput_dom_pos(3)-comput_dom_thickness/2.0d0
   end select
   
   
@@ -122,25 +144,44 @@ program CreateDomDump
   meshroot = 'domain_'
   allocate(domain_list(decomp_dom_ndomain))
   allocate(domain_file_list(decomp_dom_ndomain),mesh_file_list(decomp_dom_ndomain))
-  decompdom_max = 0.0d0
+  decompdom_max_x = 0.0d0 ; decompdom_max_y = 0.0d0 ; decompdom_max_z = 0.0d0
+  decompdom_min_x = 1.0d0 ; decompdom_min_x = 1.0d0 ; decompdom_min_x = 1.0d0
   do i = 1, decomp_dom_ndomain
      select case(decomp_dom_type)
      case('sphere')
         call domain_constructor_from_scratch(domain_list(i),decomp_dom_type, &
              xc=decomp_dom_xc(i),yc=decomp_dom_yc(i),zc=decomp_dom_zc(i),r=decomp_dom_rsp(i))
-        decompdom_max = max(decompdom_max,decomp_dom_rsp(i))
+        decompdom_max_x = max(decompdom_max_x,decomp_dom_xc(i)+decomp_dom_rsp(i))
+        decompdom_max_y = max(decompdom_max_y,decomp_dom_yc(i)+decomp_dom_rsp(i))
+        decompdom_max_z = max(decompdom_max_z,decomp_dom_zc(i)+decomp_dom_rsp(i))
+        decompdom_min_x = min(decompdom_min_x,decomp_dom_xc(i)-decomp_dom_rsp(i))
+        decompdom_min_y = min(decompdom_min_y,decomp_dom_yc(i)-decomp_dom_rsp(i))
+        decompdom_min_z = min(decompdom_min_z,decomp_dom_zc(i)-decomp_dom_rsp(i))
      case('shell')
         call domain_constructor_from_scratch(domain_list(i),decomp_dom_type, &
              xc=decomp_dom_xc(i),yc=decomp_dom_yc(i),zc=decomp_dom_zc(i),r_inbound=decomp_dom_rin(i),r_outbound=decomp_dom_rout(i))
-        decompdom_max = max(decompdom_max,decomp_dom_rout(i))
+        decompdom_max_x = max(decompdom_max_x,decomp_dom_xc(i)+decomp_dom_rout(i))
+        decompdom_max_y = max(decompdom_max_y,decomp_dom_yc(i)+decomp_dom_rout(i))
+        decompdom_max_z = max(decompdom_max_z,decomp_dom_zc(i)+decomp_dom_rout(i))
+        decompdom_min_x = min(decompdom_min_x,decomp_dom_xc(i)-decomp_dom_rout(i))
+        decompdom_min_y = min(decompdom_min_y,decomp_dom_yc(i)-decomp_dom_rout(i))
+        decompdom_min_z = min(decompdom_min_z,decomp_dom_zc(i)-decomp_dom_rout(i))
      case('cube')
         call domain_constructor_from_scratch(domain_list(i),decomp_dom_type, & 
              xc=decomp_dom_xc(i),yc=decomp_dom_yc(i),zc=decomp_dom_zc(i),size=decomp_dom_size(i))
-        decompdom_max = max(decompdom_max,decomp_dom_size(i))
+        decompdom_max_x = max(decompdom_max_x,decomp_dom_xc(i)+decomp_dom_size(i)/2.0d0)
+        decompdom_max_y = max(decompdom_max_y,decomp_dom_yc(i)+decomp_dom_size(i)/2.0d0)
+        decompdom_max_z = max(decompdom_max_z,decomp_dom_zc(i)+decomp_dom_size(i)/2.0d0)
+        decompdom_min_x = min(decompdom_min_x,decomp_dom_xc(i)-decomp_dom_size(i)/2.0d0)
+        decompdom_min_y = min(decompdom_min_y,decomp_dom_yc(i)-decomp_dom_size(i)/2.0d0)
+        decompdom_min_z = min(decompdom_min_z,decomp_dom_zc(i)-decomp_dom_size(i)/2.0d0)
      case('slab')
         call domain_constructor_from_scratch(domain_list(i),decomp_dom_type, &
              xc=decomp_dom_xc(i),yc=decomp_dom_yc(i),zc=decomp_dom_zc(i),thickness=decomp_dom_thickness(i))
-        decompdom_max = max(decompdom_max,decomp_dom_thickness(i))
+        decompdom_max_x = 1.0d0 ; decompdom_max_y = 1.0d0
+        decompdom_min_x = 0.0d0 ; decompdom_min_y = 0.0d0
+        decompdom_max_z = max(decompdom_max_z,decomp_dom_zc(i)+decomp_dom_thickness(i)/2.0d0)
+        decompdom_min_z = min(decompdom_min_z,decomp_dom_zc(i)-decomp_dom_thickness(i)/2.0d0)
      end select
      write(toto,'(i8)') i
      write(toto,'(a)') adjustl(toto)  ! remove leading spaces
@@ -150,9 +191,10 @@ program CreateDomDump
   end do
   
   ! The computational domain should be fully enclosed in the domain mesh.
-  if (computdom_max > decompdom_max) then
+  if ((computdom_max_x > decompdom_max_x).or.(computdom_max_y > decompdom_max_y).or.(computdom_max_z > decompdom_max_z).or.&
+       (computdom_min_x < decompdom_min_x).or.(computdom_min_y < decompdom_min_y).or.(computdom_min_z < decompdom_min_z))then
      print*,'ERROR: computational domain should be fully enclosed in the data domains.'
-     !stop
+     stop
   endif
   
   ! write master info
@@ -172,7 +214,8 @@ program CreateDomDump
 
   ! building of the meshes
   do i = 1,decomp_dom_ndomain
-
+     if(verbose)print*,' '
+     
      if (reading_method == 'hilbert') then
         call cpu_time(intermed)
         if (verbose) print*,'Reading leaf cells...'
@@ -305,6 +348,7 @@ program CreateDomDump
      fichier = trim(DomDumpDir)//trim(mesh_file_list(i))
      call dump_mesh(domain_mesh, fichier)
      call mesh_destructor(domain_mesh)
+
      ! deallocate arrays from RAMSES reading
      if(allocated(cpu_list)) deallocate(cpu_list)
      if(allocated(ramses_var)) deallocate(ramses_var)
@@ -329,10 +373,10 @@ contains
     ! ---------------------------------------------------------------------------------
 
     character(*),intent(in) :: pfile
-    character(10000) :: line,name,value
-    integer(kind=4)  :: err,i
-    logical          :: section_present
-    logical          :: ndomain_present 
+    character(100000)       :: line,name,value
+    integer(kind=4)         :: err,i
+    logical                 :: section_present
+    logical                 :: ndomain_present 
     
     section_present = .false.
     ndomain_present = .false.
