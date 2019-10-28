@@ -223,8 +223,6 @@ program CreateDomDump
      if (reading_method == 'select_onthefly') then
         if (verbose) print*,'Reading leaf cells...'
         call cpu_time(intermed)
-        ! clean up arrays before reading again 
-        if (i > 1) deallocate(cpu_list,ramses_var,leaf_level,x_leaf,gas_leaves)
         ncpu_read = get_ncpu(repository,snapnum)
         allocate(cpu_list(1:ncpu_read))
         do j=1,ncpu_read
