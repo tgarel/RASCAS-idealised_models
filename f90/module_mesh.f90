@@ -27,8 +27,8 @@ module module_mesh
 
   ! WORKING VARIABLES (internal to this module, could be renamed)
   
-  integer(kind=8)                            :: nOct,nCell
-  integer(kind=4)                            :: nCoarse,nleaf
+  integer(kind=4)                            :: nOct,nCoarse,nleaf
+  integer(kind=8)                            :: nCell
   integer(kind=4)                            :: countleaf,countempty
 
   ! oct-tree data
@@ -140,7 +140,7 @@ module module_mesh
       call add_oct_domain(ilastoct,nLeaf,ileaf,xnew,lfather,ifathercell)
 
       ! resize arrays
-      nOctTrue = ilastoct
+      nOctTrue = int(ilastoct,4)
       call resize_octtree(nOct,nOctTrue)
       nOct  = nOctTrue
       nCell = nCoarse + 8*nOct
@@ -180,7 +180,7 @@ module module_mesh
 
       m%ncoarse = ncoarse
       m%noct    = noct
-      m%ncell   = ncell
+      m%ncell   = int(ncell,4)
       m%nleaf   = nleaf
 
       m%son = son
@@ -498,7 +498,7 @@ module module_mesh
       ilastoct = ilastoct + 1 
       octlevel(ilastoct)=fcl+1
       xoct(ilastoct,1:3) = fcx(1:3)
-      father(ilastoct) = ifc
+      father(ilastoct) = int(ifc,4)
       level=octlevel(ilastoct)
       ilastoctLevel = ilastoct
 
@@ -529,7 +529,7 @@ module module_mesh
             ! add a new oct
             allocate(ileaflocal(nleaflocal))
             ileaflocal = get_ileaflocal(n,id,xcentre,level,nleaflocal)                   ! indices dans xl(:,1:3)
-            son(icell) = ilastoct+1
+            son(icell) = int(ilastoct+1,4)
             call add_oct_domain(ilastoct,nleaflocal,ileaflocal,xcentre,level,icell)
             deallocate(ileaflocal)
 
@@ -548,7 +548,7 @@ module module_mesh
                   deallocate(ileaflocal)
                else
                   ! add a new oct
-                  son(icell) = ilastoct+1
+                  son(icell) = int(ilastoct+1,4)
                   call add_oct_domain(ilastoct,nleaflocal,ileaflocal,xcentre,level,icell)
                   deallocate(ileaflocal)
                endif
@@ -688,7 +688,7 @@ module module_mesh
       ! returns icell indexed with ngridmin instead of ngridmax
 
       integer(kind=4),intent(in) :: icell,ngridmin,ncoarse
-      integer(kind=8),intent(in) :: ngridmax
+      integer(kind=4),intent(in) :: ngridmax
       integer(kind=4)            :: icell2icell
       integer(kind=4)            :: ind,jcell
 
@@ -707,8 +707,7 @@ module module_mesh
       ! copyright JB
       
       ! need octlevel, xoct, ncoarse, noct, son 
-      integer(kind=4) :: inbor,level,ix,iy,iz,icell,l,ison
-      integer(kind=4) :: i,ind,ioct
+      integer(kind=4) :: inbor,level,ix,iy,iz,l,ison,i,ind,ioct,icell
       real(kind=8)    :: xc(3),xnbor(3),x(3),dx
       integer(kind=4) :: noops1
 
@@ -793,8 +792,7 @@ module module_mesh
 
     subroutine resize_octtree(nold,nnew)
 
-      integer(kind=8), intent(in)              :: nold
-      integer(kind=4), intent(in)              :: nnew
+      integer(kind=4), intent(in)              :: nold,nnew
       real(kind=8),dimension(:,:),allocatable  :: tmpr
       integer(kind=4),dimension(:),allocatable :: tmpi
       integer(kind=4)                          :: ncellnew,i
