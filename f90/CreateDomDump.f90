@@ -32,7 +32,8 @@ program CreateDomDump
   character(2000)           :: DomDumpDir = 'test/'       ! directory to which outputs will be written
   character(2000)           :: repository = './'          ! ramses run directory (where all output_xxxxx dirs are).
   integer(kind=4)           :: snapnum = 1                ! ramses output number to use
-  character(20)             :: reading_method = 'fullbox' ! strategy to read ramses data
+  character(20)             :: reading_method = 'fullbox' ! strategy to read ramses data, could be:
+                                                          ! fullbox, fullbox_omp, hilbert, select_onthefly, select_onthefly_h
   ! --- computational domain  
   character(10)             :: comput_dom_type      = 'sphere'         ! shape type of domain  // default is a shpere.
   real(kind=8),dimension(3) :: comput_dom_pos       = (/0.5,0.5,0.5/)  ! center of domain [code units]
@@ -197,8 +198,6 @@ program CreateDomDump
            zmin = decomp_dom_zc(i) - decomp_dom_thickness(i)*0.5d0
         end select
 
-        ! clean up arrays before reading again 
-        if (i > 1) deallocate(cpu_list,ramses_var,leaf_level,leaflevel_sel,x_leaf,xleaf_sel,gas_leaves,selected_leaves,ind_sel)
         call get_cpu_list_periodic(repository, snapnum, xmin,xmax,ymin,ymax,zmin,zmax, ncpu_read, cpu_list)
         call read_leaf_cells_in_domain(repository, snapnum, domain_list(i), ncpu_read, cpu_list, &
              & nleaftot, nvar, x_leaf, ramses_var, leaf_level)
@@ -212,8 +211,8 @@ program CreateDomDump
         call mesh_from_leaves(nOctSnap,domain_list(i),nleaftot, &
              gas_leaves,x_leaf,leaf_level,domain_mesh)
      else if (reading_method == 'select_onthefly') then
-        ! another last option would be to read all cpu files but to select cells on the fly to maintain low memory
-        ! this would be for zoom-in simulations with -Dquadhilbert
+        ! another option is to read all cpu files but to select cells on the fly to maintain low memory
+        ! this is useful for zoom-in simulations with -Dquadhilbert
         if (verbose) print*,'Reading leaf cells...'
         call cpu_time(intermed)
         ! clean up arrays before reading again 
@@ -235,6 +234,8 @@ program CreateDomDump
         nOctSnap = get_nGridTot_cpus(repository, snapnum, ncpu_read, cpu_list)
         call mesh_from_leaves(nOctSnap,domain_list(i),nleaftot, &
              gas_leaves,x_leaf,leaf_level,domain_mesh)
+        
+     ! this option combines the 2 previous one. 
      ! JB-- 
      else if (reading_method == 'select_onthefly_h') then
         if (verbose) print*,'Reading leaf cells...'
@@ -269,8 +270,7 @@ program CreateDomDump
            zmax = decomp_dom_zc(i) + decomp_dom_thickness(i)*0.5d0
            zmin = decomp_dom_zc(i) - decomp_dom_thickness(i)*0.5d0
         end select
-        ! clean up arrays before reading again 
-        if (i > 1) deallocate(cpu_list,ramses_var,leaf_level,x_leaf,gas_leaves)
+        
         call get_cpu_list_periodic(repository, snapnum, xmin,xmax,ymin,ymax,zmin,zmax, ncpu_read, cpu_list)
         call read_leaf_cells_in_domain(repository, snapnum, domain_list(i), ncpu_read, cpu_list, &
              & nleaftot, nvar, x_leaf, ramses_var, leaf_level)
@@ -301,6 +301,12 @@ program CreateDomDump
      fichier = trim(DomDumpDir)//trim(mesh_file_list(i))
      call dump_mesh(domain_mesh, fichier)
      call mesh_destructor(domain_mesh)
+     ! deallocate arrays from RAMSES reading
+     if(allocated(cpu_list)) deallocate(cpu_list)
+     if(allocated(ramses_var)) deallocate(ramses_var)
+     if(allocated(leaf_level)) deallocate(leaf_level)
+     if(allocated(x_leaf)) deallocate(x_leaf)
+     if(allocated(gas_leaves)) deallocate(gas_leaves)
   enddo
 
   call cpu_time(finish)
