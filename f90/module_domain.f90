@@ -747,7 +747,7 @@ contains
           domain_distance_to_border = min(ddx,ddy,ddz)
        else
           ! outside domain
-          domain_distance_to_border = sqrt((min(0.0d0,ddx))**2 + (min(0.0d0,ddy))**2 + (min(0.0d0,ddz))**2)  
+          domain_distance_to_border = -sqrt((min(0.0d0,ddx))**2 + (min(0.0d0,ddy))**2 + (min(0.0d0,ddz))**2)  
        endif
 
     case('slab')
