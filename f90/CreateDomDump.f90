@@ -323,10 +323,10 @@ contains
     ! ---------------------------------------------------------------------------------
 
     character(*),intent(in) :: pfile
-    character(1000) :: line,name,value
-    integer(kind=4) :: err,i
-    logical         :: section_present
-    logical         :: ndomain_present 
+    character(10000) :: line,name,value
+    integer(kind=4)  :: err,i
+    logical          :: section_present
+    logical          :: ndomain_present 
     
     section_present = .false.
     ndomain_present = .false.
@@ -461,7 +461,7 @@ contains
        write(unit,'(a)')             '# domain decomposition parameters'
        write(unit,'(a,a)')           '  decomp_dom_type      = ',trim(decomp_dom_type)
        write(unit,'(a,i5)')          '  decomp_dom_ndomain   = ',decomp_dom_ndomain
-       write(fmt,'(a,i3,a)') '(a,',decomp_dom_ndomain,'(ES10.3,1x))'
+       write(fmt,'(a,i5,a)') '(a,',decomp_dom_ndomain,'(ES10.3,1x))'
        write(unit,fmt)               '  decomp_dom_xc        = ',decomp_dom_xc(:)
        write(unit,fmt)               '  decomp_dom_yc        = ',decomp_dom_yc(:)
        write(unit,fmt)               '  decomp_dom_zc        = ',decomp_dom_zc(:)
@@ -507,7 +507,7 @@ contains
        write(*,'(a)')             '# domain decomposition parameters'
        write(*,'(a,a)')           '  decomp_dom_type      = ',trim(decomp_dom_type)
        write(*,'(a,i5)')          '  decomp_dom_ndomain   = ',decomp_dom_ndomain
-       write(fmt,'(a,i3,a)') '(a,',decomp_dom_ndomain,'(ES10.3,1x))'
+       write(fmt,'(a,i5,a)') '(a,',decomp_dom_ndomain,'(ES10.3,1x))'
        write(*,fmt)               '  decomp_dom_xc        = ',decomp_dom_xc(:)
        write(*,fmt)               '  decomp_dom_yc        = ',decomp_dom_yc(:)
        write(*,fmt)               '  decomp_dom_zc        = ',decomp_dom_zc(:)
