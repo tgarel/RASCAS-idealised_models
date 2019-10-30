@@ -280,8 +280,8 @@ contains
     if(read_rt_variables) then
        RT_precision = nint(get_param_real(repository,snapnum,'rtprecision' &
             ,default_value=8d0,rt_info=.true.))
+       print*,'The RT precision is ',RT_precision
     endif
-    print*,'The RT precision is ',RT_precision
     ! JB--
 !    ncell_l = get_ncell(repository,snapnum)
     allocate(cpu_is_useful(ncpu_read))
@@ -1935,7 +1935,7 @@ contains
     integer(kind=4)             :: ix,iy,iz,istart,ivar,igrid,nvarH,nvarRT
     real(kind=8),allocatable    :: xc(:,:),xx(:)
     real(kind=4),allocatable    :: xx_sp(:)
-
+    
     ! stuff read from the HYDRO files
     real(kind=8),allocatable,intent(out)     :: var_l(:,:)
     real(kind=8),allocatable,intent(out)     :: cell_x_l(:),cell_y_l(:),cell_z_l(:)
@@ -2367,7 +2367,7 @@ contains
     implicit none
     integer(kind=4),intent(in)  :: snapnum
     character(1000),intent(in)  :: repository
-    character(1000)             :: nomfich
+    character(1000)             :: filename
     integer(kind=4)             :: get_ncell
     integer(kind=4)             :: icpu,iunit,rank,nx,ny,nz,ngridmax_l
 
@@ -2377,8 +2377,8 @@ contains
     iunit = 100 + rank
     
     icpu = 1
-    write(nomfich,'(a,a,i5.5,a,i5.5,a,i5.5)') trim(repository),'/output_',snapnum,'/amr_',snapnum,'.out',icpu
-    open(unit=iunit,file=nomfich,form='unformatted',status='old',action='read')
+    write(filename,'(a,a,i5.5,a,i5.5,a,i5.5)') trim(repository),'/output_',snapnum,'/amr_',snapnum,'.out',icpu
+    open(unit=iunit,file=filename,form='unformatted',status='old',action='read')
     read(iunit)
     read(iunit)
     read(iunit) nx,ny,nz
