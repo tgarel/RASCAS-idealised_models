@@ -343,12 +343,14 @@ program CreateDomDump
      call dump_mesh(domain_mesh, fichier)
      call mesh_destructor(domain_mesh)
 
+     if (.not.(reading_method=='fullbox').and..not.(reading_method=='fullbox_omp')) then
      ! deallocate arrays from RAMSES reading
-     if(allocated(cpu_list)) deallocate(cpu_list)
-     if(allocated(ramses_var)) deallocate(ramses_var)
-     if(allocated(leaf_level)) deallocate(leaf_level)
-     if(allocated(x_leaf)) deallocate(x_leaf)
-     if(allocated(gas_leaves)) deallocate(gas_leaves)
+        if(allocated(cpu_list)) deallocate(cpu_list)
+        if(allocated(ramses_var)) deallocate(ramses_var)
+        if(allocated(leaf_level)) deallocate(leaf_level)
+        if(allocated(x_leaf)) deallocate(x_leaf)
+        if(allocated(gas_leaves)) deallocate(gas_leaves)
+     endif
   enddo
 
   call cpu_time(finish)
