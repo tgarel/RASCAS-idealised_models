@@ -84,7 +84,10 @@ contains
           if(const_directions) then
              rays(i)%k_em = directions(idir,:)
           else
+             ! The random generator call must be critical, otherwise it is messed up
+!$OMP CRITICAL
              call isotropic_direction(rays(i)%k_em,iran)
+!$OMP END CRITICAL
           endif
           rays(i)%tau = 0.0d0 
           rays(i)%dist = 0.0d0
