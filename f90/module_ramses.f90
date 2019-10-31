@@ -349,6 +349,12 @@ contains
     iloop=0
 !$OMP DO
     do k=1,ncpu_read
+#ifdef DISPLAY_PROGRESS_PERCENT
+       !write (*, "(A, f5.2, A, A)", advance='no') &           ! Progress bar
+       !     ' Reading leaves ',dble(iloop) / ncpu_read * 100,' % ',char(13)
+       write (*, "(A, f5.2, A, A, $)") &           ! Progress bar that works with ifort
+            ' Reading leaves ',dble(iloop) / ncpu_read * 100,' % ',char(13)
+#endif
        ! JB--
        if (.not. cpu_is_useful(k)) cycle
        !--JB
@@ -379,13 +385,7 @@ contains
        end do
 !$OMP CRITICAL
        ! only one CRITICAL zone
-#ifdef DISPLAY_PROGRESS_PERCENT
-       !write (*, "(A, f5.2, A, A)", advance='no') &           ! Progress bar
-       !     ' Reading leaves ',dble(iloop) / ncpu_read * 100,' % ',char(13)
-       write (*, "(A, f5.2, A, A, $)") &           ! Progress bar that works with ifort
-            ' Reading leaves ',dble(iloop) / ncpu_read * 100,' % ',char(13)
        iloop=iloop+1
-#endif
        ! ileaf is now the number of leaves on local cpu
        if(ileaf .gt. 0) then
           ! save leaf cells to return arrays
