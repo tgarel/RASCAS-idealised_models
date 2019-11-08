@@ -395,7 +395,6 @@ contains
     if(allocated(ramses_var)) deallocate(ramses_var,xleaf,leaf_level)
 !$OMP END PARALLEL
     
-    !call clear_amr
     nleaftot_all = nleaf_in_domain
     
     return
@@ -1881,20 +1880,8 @@ contains
   ! private functions 
   ! ----------------
 
-!  subroutine clear_amr
-!
-!    implicit none
-!
-!    if(allocated(son)) deallocate(son,cpu_map)
-!    if(allocated(xg))  deallocate(xg,nbor,next)
-!    if(allocated(headl)) deallocate(headl,taill,numbl,numbtot,headb,tailb,numbb)
-!    if(allocated(var)) deallocate(var,cell_x,cell_y,cell_z,cell_level)
-!
-!    return
-!
-!  end subroutine clear_amr
 
-  
+
   subroutine read_amr_hydro(repository,snapnum,icpu,&
        & son_l,cpu_map_l,var_l,cell_x_l,cell_y_l,cell_z_l,cell_level_l,ncell_l)
     ! purpose: use only local variables for OMP
