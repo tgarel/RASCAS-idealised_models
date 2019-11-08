@@ -8,26 +8,10 @@ module module_ramses
 
   private 
 
-  ! stuff read from AMR files
-  integer(kind=4)                  :: ncell,ncoarse,ngridmax
-  real(kind=8),allocatable         :: xg(:,:)      ! grids position
-  integer,allocatable              :: nbor(:,:)    ! neighboring father cells
-  integer,allocatable              :: next(:)      ! next grid in list
-  integer,allocatable              :: son(:)       ! sons grids
-  integer,allocatable              :: cpu_map(:)  ! domain decomposition
-  integer,allocatable              :: headl(:,:),taill(:,:),numbl(:,:),numbtot(:,:)
-  integer,allocatable              :: headb(:,:),tailb(:,:),numbb(:,:)
-  real(KIND=8),dimension(1:3)      :: xbound=(/0d0,0d0,0d0/)  
-
   ! Stop pretending this would work in 2D 
   integer(kind=4),parameter :: ndim = 3
   integer(kind=4),parameter :: twondim = 6
   integer(kind=4),parameter :: twotondim= 8 
-
-  ! stuff read from the HYDRO files
-  real(kind=8),allocatable         :: var(:,:)
-  real(kind=8),allocatable         :: cell_x(:),cell_y(:),cell_z(:)
-  integer(kind=4),allocatable      :: cell_level(:)
 
   integer(kind=4)                  :: ncpu
   integer(kind=4)                  :: U_precision=8 ! hydro-precision in RAMSES output
@@ -148,21 +132,29 @@ contains
     integer(kind=4)                           :: k, icpu, ileaf, icell, ivar, ilast, iloop
     logical                                   :: do_allocs
     
+    integer(kind=4)              :: ncell
+    integer,allocatable          :: son(:)       ! sons grids
+    integer,allocatable          :: cpu_map(:)   ! domain decomposition
+    real(kind=8),allocatable     :: var(:,:)
+    real(kind=8),allocatable     :: cell_x(:),cell_y(:),cell_z(:)
+    integer(kind=4),allocatable  :: cell_level(:)
+    
     if(verbose) print *,'Reading RAMSES cells...'
-
+    
     nleaftot = get_nleaf(repository,snapnum,ncpu_read,cpu_list)
     nvar     = get_nvar(repository,snapnum)
     allocate(ramses_var_all(nvar,nleaftot), xleaf_all(nleaftot,3), leaf_level_all(nleaftot))
+    
     ! Check whether the ramses output is in single or double precision
     U_precision = nint(get_param_real(repository,snapnum,'U_precision',default_value=8d0))
     print*,'The hydro precision is ',U_precision  !JOKI
     if(read_rt_variables) then
        RT_precision = nint(get_param_real(repository,snapnum,'rtprecision' &
             ,default_value=8d0,rt_info=.true.))
+       print*,'The RT precision is ',RT_precision  !JOKI
     endif
-    print*,'The RT precision is ',RT_precision  !JOKI
 
-    if(verbose) print *,'-- read_leaf_cells_omp: nleaftot(_read), nvar, ncpu(_read) =',nleaftot,nvar,ncpu_read
+    if(verbose) print *,'-- read_leaf_cells: nleaftot(_read), nvar, ncpu(_read) =',nleaftot,nvar,ncpu_read
 
     ileaf = 0
     iloop = 0
@@ -283,7 +275,7 @@ contains
        print*,'The RT precision is ',RT_precision
     endif
     ! JB--
-!    ncell_l = get_ncell(repository,snapnum)
+!    ncell_l = get_ncell(repository,snapnum)  ! computed in read_amr_hydro
     allocate(cpu_is_useful(ncpu_read))
     cpu_is_useful = .false.
     ! --JB
@@ -1889,18 +1881,18 @@ contains
   ! private functions 
   ! ----------------
 
-  subroutine clear_amr
-
-    implicit none
-
-    if(allocated(son)) deallocate(son,cpu_map)
-    if(allocated(xg))  deallocate(xg,nbor,next)
-    if(allocated(headl)) deallocate(headl,taill,numbl,numbtot,headb,tailb,numbb)
-    if(allocated(var)) deallocate(var,cell_x,cell_y,cell_z,cell_level)
-
-    return
-
-  end subroutine clear_amr
+!  subroutine clear_amr
+!
+!    implicit none
+!
+!    if(allocated(son)) deallocate(son,cpu_map)
+!    if(allocated(xg))  deallocate(xg,nbor,next)
+!    if(allocated(headl)) deallocate(headl,taill,numbl,numbtot,headb,tailb,numbb)
+!    if(allocated(var)) deallocate(var,cell_x,cell_y,cell_z,cell_level)
+!
+!    return
+!
+!  end subroutine clear_amr
 
   
   subroutine read_amr_hydro(repository,snapnum,icpu,&
