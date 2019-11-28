@@ -13,7 +13,7 @@ module module_gas_composition
 
   private
 
-  character(100),parameter :: moduleName = 'module_gas_composition_HI.f90'
+  character(100),parameter :: moduleName = 'module_gas_composition_HI_HeI_HeII.f90'
   
   type, public :: gas
      real(kind=8) :: nH    ! H  numerical density [H/cm3]
