@@ -125,11 +125,11 @@ contains
     read(unit) (g(i)%nHeII,i=1,n)
     read(unit) box_size_cm 
 
-    print*,'minmax densities : '
-    print*,minval(g(:)%nH), maxval(g(:)%nH)
-    print*,minval(g(:)%nHI), maxval(g(:)%nHI)
-    print*,minval(g(:)%nHeI), maxval(g(:)%nHeI)
-    print*,minval(g(:)%nHeII), maxval(g(:)%nHeII)
+    !print*,'minmax densities : '
+    !print*,minval(g(:)%nH), maxval(g(:)%nH)
+    !print*,minval(g(:)%nHI), maxval(g(:)%nHI)
+    !print*,minval(g(:)%nHeI), maxval(g(:)%nHeI)
+    !print*,minval(g(:)%nHeII), maxval(g(:)%nHeII)
     
 
   end subroutine read_gas

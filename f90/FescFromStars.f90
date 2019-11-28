@@ -115,10 +115,11 @@ program main
   ! do the RT stuff
   call ComputeFesc(nrays,rays,meshdom,compute_dom,maxdist,maxtau,ndirections)
 
-  if (verbose) print *,'--> RT done'
-
-  if (verbose) print *,' '
-  if (verbose) print*,'--> writing results in file: ',trim(fileout)
+  !if (verbose) print *,'--> RT done'
+  !if (verbose) print *,' '
+  !if (verbose) print*,'--> writing results in file: ',trim(fileout)
+  print*,''
+  print*,'RT done, writing results in file: ',trim(fileout)
   call dump_rays(fileout,rays)
 
   call cpu_time(finish)

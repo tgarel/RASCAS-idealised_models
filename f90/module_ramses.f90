@@ -155,7 +155,6 @@ contains
     allocate(ramses_var_all(nvar,nleaftot), xleaf_all(nleaftot,3), leaf_level_all(nleaftot))
     ! Check whether the ramses output is in single or double precision
     U_precision = nint(get_param_real(repository,snapnum,'U_precision',default_value=8d0))
-    print*,'The hydro precision is ',U_precision  !JOKI
     if(read_rt_variables) then
        RT_precision = nint(get_param_real(repository,snapnum,'rtprecision' &
             ,default_value=8d0,rt_info=.true.))
@@ -276,7 +275,6 @@ contains
     ncpu = get_ncpu(repository,snapnum)
     ! Check whether the ramses output is in single or double precision
     U_precision = nint(get_param_real(repository,snapnum,'U_precision',default_value=8d0))
-    print*,'The hydro precision is ',U_precision
     if(read_rt_variables) then
        RT_precision = nint(get_param_real(repository,snapnum,'rtprecision' &
             ,default_value=8d0,rt_info=.true.))
@@ -578,7 +576,7 @@ contains
     cpu_read=.false.
     cpu_list=0
     
-    print*,'Getting CPU list...'
+    if(verbose) write(*,*)'Getting CPU list...'
     
     call read_hilbert_keys(repository,snapnum,ncpu,bound_key)
 

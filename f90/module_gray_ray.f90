@@ -305,9 +305,10 @@ contains
        rays(i)%tau  = 0.d0
     enddo
 
-    print*,minval(rays(:)%x_em(1)),maxval(rays(:)%x_em(1))
-    print*,minval(rays(:)%x_em(2)),maxval(rays(:)%x_em(2))
-    print*,minval(rays(:)%x_em(3)),maxval(rays(:)%x_em(3))
+    write(*,*) 'The number of radiation sources is ',n_rays
+    !print*,minval(rays(:)%x_em(1)),maxval(rays(:)%x_em(1))
+    !print*,minval(rays(:)%x_em(2)),maxval(rays(:)%x_em(2))
+    !print*,minval(rays(:)%x_em(3)),maxval(rays(:)%x_em(3))
     
   end subroutine init_rays_from_file
 
