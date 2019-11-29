@@ -46,12 +46,6 @@ module module_gas_composition
   public :: gas_from_ramses_leaves,get_gas_velocity,gas_get_scatter_flag,gas_scatter,dump_gas
   public :: read_gas,gas_destructor,read_gas_composition_params,print_gas_composition_params
 
-  !--CORESKIP--
-  ! make function public so that module_photon knows about it and can call it...
-  public :: gas_get_tau
-  ! and push variable from module_HI_model up so that module_photon knows about it... 
-  public :: HI_core_skip 
-  !--PIKSEROC--
 
 contains
 
@@ -143,7 +137,8 @@ contains
 
 
 
-  function  gas_get_scatter_flag(cell_gas, distance_to_border_cm, nu_cell, tau_abs,iran)
+  !--CORESKIP-- 
+  function  gas_get_scatter_flag(cell_gas, distance_to_border_cm, nu_cell, tau_abs, iran, CS_dist_cm, CS_xcrit)
 
     ! --------------------------------------------------------------------------
     ! Decide whether a scattering event occurs, and if so, on which element
@@ -168,7 +163,12 @@ contains
     integer(kind=4),intent(inout)         :: iran
     integer(kind=4)                       :: gas_get_scatter_flag 
     real(kind=8)                          :: tau_HI, tau_dust, tau_cell, tirage, proba1
-
+    !--CORESKIP--
+    real(kind=8),intent(in)               :: CS_dist_cm
+    real(kind=8),intent(inout)            :: CS_xcrit
+    real(kind=8)                          :: CS_tau_cell,delta_nu_doppler,a,xcw,x
+    !--PIKSEROC--
+    
     ! compute optical depths for different components of the gas.
     tau_HI   = get_tau_HI_1216(cell_gas%nHI, cell_gas%dopwidth, distance_to_border_cm, nu_cell)
     tau_dust = get_tau_dust(cell_gas%ndust, distance_to_border_cm, nu_cell)
@@ -194,37 +194,21 @@ contains
        distance_to_border_cm = distance_to_border_cm * (tau_abs / tau_cell)
     end if
 
+    if (HI_core_skip) then 
+       delta_nu_doppler = cell_gas%dopwidth/lambda_0_cm
+       a = 6.265d8/fourpi/delta_nu_doppler
+       xcw = 6.9184721d0 + 81.766279d0 / (log10(a)-14.651253d0)  ! Smith+15, Eq. 21
+       x = (nu_cell - nu_0)/delta_nu_doppler
+       if (abs(x) < xcw) then ! apply core-skipping
+          CS_tau_cell = get_tau_HI_1216(cell_gas%nHI, cell_gas%dopwidth, CS_dist_cm, nu_cell)
+          CS_tau_cell = CS_tau_cell + get_tau_dust(cell_gas%ndust, CS_dist_cm, nu_cell)
+          CS_tau_cell = CS_tau_cell * a
+          if (CS_tau_cell > 1.0d0) CS_xcrit = CS_tau_cell**(1./3.)/5.
+       end if
+    end if
+    
     return
   end function gas_get_scatter_flag
-
-
-
-  !--CORESKIP-- 
-  function  gas_get_tau(cell_gas, distance_cm, nu_cell)
-    ! --------------------------------------------------------------------------
-    ! compute total opacity of gas accross distance_cm at freq. nu_cell
-    ! --------------------------------------------------------------------------
-    ! INPUTS:
-    ! - cell_gas : a mix of H and dust
-    ! - distance_cm : the distance along which to compute tau [cm]
-    ! - nu_cell : photon frequency in cell's frame [ Hz ]
-    ! OUTPUTS:
-    ! - gas_get_tau : the total optical depth
-    ! --------------------------------------------------------------------------
-    ! check whether scattering occurs within cell (scatter_flag > 0) or not (scatter_flag==0)
-    type(gas),intent(in)    :: cell_gas
-    real(kind=8),intent(in) :: distance_cm
-    real(kind=8),intent(in) :: nu_cell
-    real(kind=8)            :: gas_get_tau
-    real(kind=8)            :: tau_HI, tau_dust
-    ! compute optical depths for different components of the gas.
-    tau_HI   = get_tau_HI_1216(cell_gas%nHI, cell_gas%dopwidth, distance_cm, nu_cell)
-    tau_dust = get_tau_dust(cell_gas%ndust, distance_cm, nu_cell)
-    gas_get_tau = tau_HI + tau_dust
-    return
-  end function gas_get_tau
-  ! --------------------------------------------------------------------------
-  !--PIKSEROC--
 
 
 

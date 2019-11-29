@@ -79,7 +79,7 @@ contains
     logical                              :: cell_fully_in_domain, flagoutvol, in_domain, OutOfDomainBeforeCell
     real(kind=8)                         :: dborder, dborder_cm, error
     !--CORESKIP--
-    real(kind=8)                         :: xcrit,tau_cell,delta_nu_doppler,a,xcw,nu_0,x,dist_cm
+    real(kind=8)                         :: xcrit,dist_cm
     !--PIKSEROC--
     
     ! initialise working props of photon
@@ -128,14 +128,6 @@ contains
        pcell = cell_corner + 0.5d0*cell_size
        cell_fully_in_domain = domain_fully_contains_cell(pcell,cell_size,domaine_calcul)
        
-       !--CORESKIP--
-       if (HI_core_skip) then 
-          delta_nu_doppler = cell_gas%dopwidth/(1215.67d0/cmtoA)
-          a    = 6.265d8/fourpi/delta_nu_doppler
-          xcw  = 6.9184721d0 + 81.766279d0 / (log10(a)-14.651253d0)  ! Smith+15, Eq. 21
-          nu_0 = clight /(1215.67d0/cmtoA)
-       end if
-       !--PIKSEROC--
 
        propag_in_cell : do
           
@@ -163,22 +155,15 @@ contains
              end if
           endif
 
-          !--CORESKIP--
-          xcrit = 0.0d0
-          if (HI_core_skip) then 
-             x    = (nu_cell - nu_0)/delta_nu_doppler
-             if (abs(x) < xcw) then ! apply core-skipping
-                ! for core-skipping we are interested in the true distance to cell border, NOT the distance along k 
-                dist_cm = min(ppos_cell(1),1.0d0-ppos_cell(1),ppos_cell(2),1.0d0-ppos_cell(2),ppos_cell(3),1.0d0-ppos_cell(3)) * cell_size_cm
-                tau_cell = gas_get_tau(cell_gas, dist_cm, nu_cell)
-                tau_cell = tau_cell * a
-                if (tau_cell > 1.0d0) xcrit = tau_cell**(1./3.)/5.
-             end if
-          end if
-          !--PIKSEROC--
 
           ! check whether scattering occurs within cell or domain (scatter_flag > 0) or not (scatter_flag==0)
-          scatter_flag = gas_get_scatter_flag(cell_gas, distance_to_border_cm, nu_cell, tau_abs, iran)
+          !--CORESKIP--
+          ! also compute xcrit for core-skipping if needed
+          ! for core-skipping we are interested in the true distance to cell border, NOT the distance along k 
+          dist_cm = min(ppos_cell(1),1.0d0-ppos_cell(1),ppos_cell(2),1.0d0-ppos_cell(2),ppos_cell(3),1.0d0-ppos_cell(3)) * cell_size_cm
+          !scatter_flag = gas_get_scatter_flag(cell_gas, distance_to_border_cm, nu_cell, tau_abs, iran)
+          scatter_flag = gas_get_scatter_flag(cell_gas, distance_to_border_cm, nu_cell, tau_abs, iran, dist_cm, xcrit)
+          !--PIKSEROC--
 
           if (scatter_flag == 0) then   ! next scattering event will not occur in the cell or in the domain
 
