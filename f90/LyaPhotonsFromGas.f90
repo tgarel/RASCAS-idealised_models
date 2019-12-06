@@ -220,7 +220,7 @@ program LyaPhotonsFromGas
      ! write ICs
      ! --------------------------------------------------------------------------------------
      open(unit=14, file=outputfileRec, status='unknown', form='unformatted', action='write')
-     write(14) nphotons      ! nb of MC photons 
+     write(14) nphotons      ! nb of MC photons = nb of photon packets
      write(14) recomb_total  ! nb of real photons (per sec).
      write(14) ranseed
      write(14) (i,i=1,nphotons) ! ID
@@ -384,7 +384,7 @@ contains
              read(value,*) emission_dom_size
           case ('emission_dom_thickness')
              read(value,*) emission_dom_thickness
-          case('nphotons')
+          case('nPhotonPackets')
              read(value,*) nphotons
           case('ranseed')
              read(value,*) ranseed 
@@ -440,13 +440,13 @@ contains
           write(unit,'(a,ES10.3)')      '  emission_dom_thickness = ',emission_dom_thickness
        end select
        write(unit,'(a)')             '# parameters'
-       write(unit,'(a,i10)')           '  nphotons         = ',nphotons
+       write(unit,'(a,i10)')           '  nPhotonPackets   = ',nphotons
        write(unit,'(a,i10)')           '  ranseed          = ',ranseed
        write(unit,'(a,L1)')            '  doRecombs        = ',doRecombs
        write(unit,'(a,L1)')            '  doColls          = ',doColls  
        write(unit,'(a,ES10.3)')        '  tcool_resolution = ',tcool_resolution
        write(unit,'(a)')             '# miscelaneous parameters'
-       write(unit,'(a,L1)')          '  verbose            = ',verbose
+       write(unit,'(a,L1)')          '  verbose          = ',verbose
        write(unit,'(a)')             ' '
        call print_ramses_params(unit)
 
@@ -474,13 +474,13 @@ contains
           write(*,'(a,ES10.3)')      '  emission_dom_thickness = ',emission_dom_thickness
        end select
        write(*,'(a)')             '# parameters'
-       write(*,'(a,i10)')           '  nphotons      = ',nphotons
-       write(*,'(a,i10)')           '  ranseed       = ',ranseed
-       write(*,'(a,L1)')            '  doRecombs     = ',doRecombs
-       write(*,'(a,L1)')            '  doColls       = ',doColls
+       write(*,'(a,i10)')           '  nPhotonPackets   = ',nphotons
+       write(*,'(a,i10)')           '  ranseed          = ',ranseed
+       write(*,'(a,L1)')            '  doRecombs        = ',doRecombs
+       write(*,'(a,L1)')            '  doColls          = ',doColls
        write(*,'(a,ES10.3)')        '  tcool_resolution = ',tcool_resolution
        write(*,'(a)')             '# miscelaneous parameters'
-       write(*,'(a,L1)')          '  verbose         = ',verbose
+       write(*,'(a,L1)')          '  verbose          = ',verbose
        write(*,'(a)')             ' '
        call print_ramses_params()
        write(*,'(a)')             ' '
