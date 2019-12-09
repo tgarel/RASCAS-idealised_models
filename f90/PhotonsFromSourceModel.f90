@@ -23,7 +23,7 @@ program PhotonsFromSourceModel
   ! --- source type 
   character(10)             :: source_type = 'pointlike'             ! type of source model
   real(kind=8),dimension(3) :: source_pos  = (/0.5d0,0.5d0,0.5d0/)   ! position of the source [code units]
-  integer(kind=4)           :: nphot       = 5000000                 ! number of photons to generate
+  integer(kind=4)           :: nphotons    = 5000000                 ! number of photons to generate
   ! --- how source shines
   ! Four options here :
   ! - spec_type=='Mono'   : we emit all photons at the same wavelength (in star's frame)
@@ -100,9 +100,9 @@ program PhotonsFromSourceModel
   ! --------------------------------------------------------------------------------------
   ! make source shines
   ! --------------------------------------------------------------------------------------
-  allocate(photgrid(nphot))
+  allocate(photgrid(nphotons))
   iran = -abs(ranseed)
-  do i=1,nphot
+  do i=1,nphotons
      photgrid(i)%ID    = i
      select case(trim(spec_type))
      case('Mono')
@@ -166,15 +166,15 @@ program PhotonsFromSourceModel
   ! --------------------------------------------------------------------------------------
   if (verbose) write(*,*) '--> writing file: ',trim(outputfile)
   open(unit=14, file=trim(outputfile), status='unknown', form='unformatted', action='write')
-  write(14) nphot
+  write(14) nphotons
   one = 1.0d0
   write(14) one ! nb of real photons emited per sec ... This is irrelevant here but needed to match format of PhotonsFromStars.f90
   write(14) ranseed
-  write(14) (photgrid(i)%ID,i=1,nphot)
-  write(14) (photgrid(i)%nu_em,i=1,nphot)
-  write(14) (photgrid(i)%x_em(:),i=1,nphot)
-  write(14) (photgrid(i)%k_em(:),i=1,nphot)
-  write(14) (photgrid(i)%iran,i=1,nphot)
+  write(14) (photgrid(i)%ID,i=1,nphotons)
+  write(14) (photgrid(i)%nu_em,i=1,nphotons)
+  write(14) (photgrid(i)%x_em(:),i=1,nphotons)
+  write(14) (photgrid(i)%k_em(:),i=1,nphotons)
+  write(14) (photgrid(i)%iran,i=1,nphotons)
   close(14)
   ! --------------------------------------------------------------------------------------
 
@@ -257,8 +257,8 @@ contains
              read(value,*) spec_table_age
           case ('spec_table_met')
              read(value,*) spec_table_met
-          case ('nphot')
-             read(value,*) nphot
+          case ('nPhotonPackets')
+             read(value,*) nphotons
           end select
        end do
     end if
@@ -286,7 +286,7 @@ contains
        write(unit,'(a,a)')            '  source_type     = ',trim(source_type)
        write(unit,'(a,3(ES10.3,1x))') '  source_pos      = ',source_pos(1),source_pos(2),source_pos(3)
        write(unit,'(a)')              '# how source shines'
-       write(unit,'(a,i8)')           '  nphot           = ',nphot
+       write(unit,'(a,i8)')           '  nPhotonPackets  = ',nphotons
        write(unit,'(a,a)')            '  spec_type       = ',trim(spec_type)
        select case(trim(spec_type))
        case('Mono')
@@ -320,8 +320,8 @@ contains
        write(*,'(a,a)')            '  source_type   = ',trim(source_type)
        write(*,'(a,3(ES10.3,1x))') '  source_pos    = ',source_pos(1),source_pos(2),source_pos(3)
        write(*,'(a)')              '# how source shines'
-       write(*,'(a,i8)')           '  nphot         = ',nphot
-       write(*,'(a,a)')            '  spec_type     = ',trim(spec_type)
+       write(*,'(a,i8)')           '  nPhotonPackets = ',nphotons
+       write(*,'(a,a)')            '  spec_type      = ',trim(spec_type)
        select case(trim(spec_type))
        case('Mono')
           write(*,'(a,es10.3,a)')     '  spec_mono_l0_Ang     = ',spec_mono_l0_Ang, ' ! [A]'
