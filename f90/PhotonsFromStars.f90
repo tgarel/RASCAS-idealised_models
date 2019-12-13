@@ -64,9 +64,9 @@ program PhotonsFromStars
   real(kind=8)              :: spec_table_lmax_Ang = 1320.      ! max ...
   
   ! --- miscelaneous
-  integer(kind=4)           :: nphot   = 1000000      ! number of photons to generate
-  integer(kind=4)           :: ranseed = -100         ! seed for random generator
-  logical                   :: verbose = .true.
+  integer(kind=4)           :: nphotons = 1000000      ! number of photons to generate
+  integer(kind=4)           :: ranseed  = -100         ! seed for random generator
+  logical                   :: verbose  = .true.
   ! --- parameters for star particles/feedback in simulation
   logical                   :: recompute_particle_initial_mass = .false.
   real(kind=8)              :: tdelay_SN = 10.        ! [Myr] SNs go off at tdelay_SN ... 
@@ -178,10 +178,10 @@ program PhotonsFromStars
      if (verbose) write(*,*) 'Total luminosity (nb of photons per second): ',total_flux
 
      ! for each photon packet, draw the emitting star
-     allocate(x_em(1:3,1:nphot), k_em(1:3,1:nphot), nu_em(1:nphot), nu_star(1:nphot))
+     allocate(x_em(1:3,1:nphotons), k_em(1:3,1:nphotons), nu_em(1:nphotons), nu_star(1:nphotons))
 
      iseed = ranseed
-     do iphot = 1,nphot
+     do iphot = 1,nphotons
 
         call binary_search(iseed, nstars, low_prob, ilow)
         ! draw photon's ICs from star ilow
@@ -211,7 +211,7 @@ program PhotonsFromStars
      print*,'Table spectral type'
      lambdamin = spec_table_lmin_Ang
      lambdamax = spec_table_lmax_Ang
-     call ssp_lib_extract_subset(lambdamin,lambdamax,NdotGrid) ! extract the SSP age-met grid of Nphot in lambda range [lambdamin;lambdamax]
+     call ssp_lib_extract_subset(lambdamin,lambdamax,NdotGrid) ! extract the SSP age-met grid of Nphotons in lambda range [lambdamin;lambdamax]
      allocate(Ndot(NdotGrid%nlambda))
      
      ! compute the nb of photons per second emitted by each star particle
@@ -240,7 +240,7 @@ program PhotonsFromStars
      if (verbose) write(*,*) 'Total luminosity (nb of photons per second): ',total_flux
      
      ! for each photon packet, draw the emitting star
-     allocate(x_em(1:3,1:nphot), k_em(1:3,1:nphot), nu_em(1:nphot), nu_star(1:nphot))
+     allocate(x_em(1:3,1:nphotons), k_em(1:3,1:nphotons), nu_em(1:nphotons), nu_star(1:nphotons))
      allocate(low_prob2(NdotGrid%nlambda+1))
      iseed = ranseed
 
@@ -252,7 +252,7 @@ program PhotonsFromStars
      enddo
      lbin(NdotGrid%nlambda) = NdotGrid%lambda(NdotGrid%nlambda)
 
-     do iphot = 1,nphot
+     do iphot = 1,nphotons
 
         call binary_search(iseed, nstars, low_prob, ilow)
 
@@ -323,10 +323,10 @@ program PhotonsFromStars
      if (verbose) write(*,*) 'Total luminosity (nb of photons per second): ',total_flux
      
      ! for each photon packet, draw the emitting star
-     allocate(x_em(1:3,1:nphot), k_em(1:3,1:nphot), nu_em(1:nphot), nu_star(1:nphot))
+     allocate(x_em(1:3,1:nphotons), k_em(1:3,1:nphotons), nu_em(1:nphotons), nu_star(1:nphotons))
 
      iseed = ranseed
-     do iphot = 1,nphot
+     do iphot = 1,nphotons
 
         call binary_search(iseed, nstars, low_prob, ilow)
         ! draw photon's ICs from star ilow
@@ -357,15 +357,15 @@ program PhotonsFromStars
      write(*,*) ' '
   endif
   open(unit=14, file=trim(outputfile), status='unknown', form='unformatted', action='write')
-  write(14) nphot      ! nb of MC photons 
-  write(14) total_flux ! nb of real photons (per sec).
+  write(14) nphotons    ! nb of MC photons = nb of photon packets
+  write(14) total_flux  ! nb of real photons (per sec).
   write(14) ranseed
-  write(14) (i,i=1,nphot) ! ID
-  write(14) (nu_em(i),i=1,nphot)
-  write(14) (x_em(:,i),i=1,nphot)
-  write(14) (k_em(:,i),i=1,nphot)
-  write(14) (-i,i=1,nphot) ! seeds
-  write(14) (nu_star(i),i=1,nphot)
+  write(14) (i,i=1,nphotons) ! ID
+  write(14) (nu_em(i),i=1,nphotons)
+  write(14) (x_em(:,i),i=1,nphotons)
+  write(14) (k_em(:,i),i=1,nphotons)
+  write(14) (-i,i=1,nphotons) ! seeds
+  write(14) (nu_star(i),i=1,nphotons)
   close(14)
   ! --------------------------------------------------------------------------------------
 
@@ -515,8 +515,8 @@ contains
              read(value,*) spec_table_lmin_Ang
           case ('spec_table_lmax_Ang')
              read(value,*) spec_table_lmax_Ang
-          case ('nphot')
-             read(value,*) nphot
+          case ('nPhotonPackets')
+             read(value,*) nphotons
           case ('ranseed')
              read(value,*) ranseed
           case ('verbose')
@@ -587,7 +587,7 @@ contains
           write(unit,'(a,es10.3,a)')     '  spec_table_lmax_Ang    = ',spec_table_lmax_Ang, ' ! [A]'
        end select
        write(unit,'(a)')             '# miscelaneous parameters'
-       write(unit,'(a,i8)')          '  nphot           = ',nphot
+       write(unit,'(a,i8)')          '  nPhotonPackets  = ',nphotons
        write(unit,'(a,i8)')          '  ranseed         = ',ranseed
        write(unit,'(a,L1)')          '  verbose         = ',verbose
        write(unit,'(a,L1)')          '  recompute_particle_initial_mass = ',recompute_particle_initial_mass
@@ -636,7 +636,7 @@ contains
           write(*,'(a,es10.3,a)')     '  spec_table_lmax_Ang     = ',spec_table_lmax_Ang, ' ! [A]'
        end select
        write(*,'(a)')             '# miscelaneous parameters'
-       write(*,'(a,i8)')          '  nphot           = ',nphot
+       write(*,'(a,i8)')          '  nPhotonPackets  = ',nphotons
        write(*,'(a,i8)')          '  ranseed         = ',ranseed
        write(*,'(a,L1)')          '  verbose         = ',verbose
        write(*,'(a,L1)')          '  recompute_particle_initial_mass = ',recompute_particle_initial_mass
