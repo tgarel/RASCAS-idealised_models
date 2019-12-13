@@ -78,6 +78,9 @@ contains
     real(kind=8),dimension(3)            :: vgas, k, cell_corner, posoct, pcell
     logical                              :: cell_fully_in_domain, flagoutvol, in_domain, OutOfDomainBeforeCell
     real(kind=8)                         :: dborder, dborder_cm, error
+    !--CORESKIP--
+    real(kind=8)                         :: xcrit,dist_cm
+    !--PIKSEROC--
     
     ! initialise working props of photon
     ppos    = p%xcurr        ! position within full simulation box, in box units.
@@ -125,6 +128,7 @@ contains
        pcell = cell_corner + 0.5d0*cell_size
        cell_fully_in_domain = domain_fully_contains_cell(pcell,cell_size,domaine_calcul)
        
+
        propag_in_cell : do
           
           ! generate the opt depth where the photon is scattered/absorbed
@@ -151,8 +155,15 @@ contains
              end if
           endif
 
+
           ! check whether scattering occurs within cell or domain (scatter_flag > 0) or not (scatter_flag==0)
-          scatter_flag = gas_get_scatter_flag(cell_gas, distance_to_border_cm, nu_cell, tau_abs, iran)
+          !--CORESKIP--
+          ! also compute xcrit for core-skipping if needed
+          ! for core-skipping we are interested in the true distance to cell border, NOT the distance along k 
+          dist_cm = min(ppos_cell(1),1.0d0-ppos_cell(1),ppos_cell(2),1.0d0-ppos_cell(2),ppos_cell(3),1.0d0-ppos_cell(3)) * cell_size_cm
+          !scatter_flag = gas_get_scatter_flag(cell_gas, distance_to_border_cm, nu_cell, tau_abs, iran)
+          scatter_flag = gas_get_scatter_flag(cell_gas, distance_to_border_cm, nu_cell, tau_abs, iran, dist_cm, xcrit)
+          !--PIKSEROC--
 
           if (scatter_flag == 0) then   ! next scattering event will not occur in the cell or in the domain
 
@@ -265,7 +276,11 @@ contains
              ! so it needs to transport nu_cell, k, nu_ext, but not type p (because type p not known in gas)
              nu_ext = p%nu_ext
              k = p%k
-             call gas_scatter(scatter_flag, cell_gas, nu_cell, k, nu_ext, iran)    ! NB: nu_cell, k, nu_ext, and iran en inout
+             !--CORESKIP--
+             call gas_scatter(scatter_flag, cell_gas, nu_cell, k, nu_ext, iran, xcrit)    ! NB: nu_cell, k, nu_ext, and iran en inout
+             !call gas_scatter(scatter_flag, cell_gas, nu_cell, k, nu_ext, iran)    ! NB: nu_cell, k, nu_ext, and iran en inout             
+             !--PIKSEROC--
+             
              p%nu_ext = nu_ext
              ! NB: for TEST case, to have photons propagating straight on, comment the following line
              p%k = k
