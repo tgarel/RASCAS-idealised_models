@@ -142,7 +142,9 @@ contains
     ! check that the photon is actually in the computational domain ...
     in_domain = domain_contains_point(ppos,domaine_calcul)
     if (.not. in_domain) then
-       print*,'Propagate called for photon outside domain ... '
+       print*,'Propagate called for photon outside domain ...'
+       print*,'PPOS = ',ppos
+       print*,'mydom_calc = ',domaine_calcul
        stop
     end if
 

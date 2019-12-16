@@ -76,13 +76,13 @@ contains
     ! some sanity checks
     if(nbundle*nworker>nphottodo)then
        print *,'ERROR: decrease nbundle and/or ncpu'
-       call stop_mpi
+       ! call stop_mpi
     endif
     ! guidance for a good load-balancing
     if(4*nbundle*nworker>nphottodo)then
        print *,'ERROR: decrease nbundle for a good load-balancing of the code'
        print *,'--> suggested nbundle =', nphottodo/nworker/10
-       call stop_mpi
+       !call stop_mpi
     endif
 
     allocate(photpacket(nbundle))
@@ -111,6 +111,13 @@ contains
     first(:)=-1
     last(:)=-1
     nqueue(:)=0
+    
+    ! Patch Leo                                                                                                                                                                       
+    cpu(:)=0
+    ncpuperdom(:)=0
+    delta(:)=0.0d0
+    ! End patch Leo 
+
     do i=1,nphot
        if(photgrid(i)%status==0)then  ! for restart
           j = get_my_new_domain(photgrid(i)%xcurr,domain_list)
@@ -372,7 +379,10 @@ contains
     integer(kind=4), intent(in)  :: ndomain
     integer(kind=4)              :: nphottot,icpu,ndom,j
     integer(kind=4),dimension(1) :: jtoo
-    
+    ! Patch Leo
+    integer(kind=4) :: jold, jnew
+    ! End patch Leo
+
     nphottot=sum(nqueue)
     ! due to limitation in integer precision (default is kind=4), nworker*nqueue could easily give an overflow...
     ncpuperdom(:)=int(real(nworker)*real(nqueue(:))/nphottot)
@@ -400,6 +410,28 @@ contains
 
     end do
 
+    ! Patch Leo
+    ! test loadb and correct if necessary
+    do j=1,ndomain
+       if((ncpuperdom(j)/=0).and.(nqueue(j)==0))then
+          jtoo=maxloc(delta)
+          jold=j
+          jnew=jtoo(1)
+          ncpuperdom(jnew)=ncpuperdom(jnew)+1
+          ncpuperdom(jold)=ncpuperdom(jold)-1
+       endif
+    enddo
+    ! and redo this
+    icpu=1
+    do j=1,ndomain
+       ndom = ncpuperdom(j)
+       cpu(icpu:icpu+ndom-1)=j
+       icpu=icpu+ndom
+       ! we also have to initialize delta(j)
+       delta(j) = real(nqueue(j))/nbundle/(ncpuperdom(j)+1.)
+    end do
+    ! End patch Leo
+    
     !if(verbose)then
     !   write(*,*)'[master] init cpu mapping',cpu(:)
     !   write(*,*)'[master] init delta(j)',delta(:)
