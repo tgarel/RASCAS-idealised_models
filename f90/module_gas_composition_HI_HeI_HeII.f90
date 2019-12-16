@@ -229,20 +229,20 @@ endfunction gas_get_tau_verner
   
 
   ! --------------------------------------------------------------------------
-
 !!$  function  gas_get_scatter_flag(cell_gas, distance_to_border_cm, nu_cell, tau_abs,iran)
-!!$
+
 !!$    type(gas),intent(in)                  :: cell_gas
 !!$    real(kind=8),intent(inout)            :: distance_to_border_cm
 !!$    real(kind=8),intent(in)               :: nu_cell
-!!$    real(kind=8),intent(inout)            :: tau_abs                ! tau at which scattering is set to occur.
+!!$  real(kind=8),intent(inout)            :: tau_abs                ! tau at which scattering is set to occur.
 !!$    integer(kind=4),intent(inout)         :: iran 
-!!$
+
 !!$    print*,'ERROR: function module_gas_composition_HI_HeI_HeII.f90:gas_get_scatter_flag should not be called.'
 !!$    stop
 !!$    
 !!$    return
 !!$
+  
 !!$  end function gas_get_scatter_flag
 !!$
 !!$
@@ -410,6 +410,7 @@ endfunction gas_get_tau_verner
     return
 
   end subroutine print_gas_composition_params
+
 
 
 end module module_gas_composition

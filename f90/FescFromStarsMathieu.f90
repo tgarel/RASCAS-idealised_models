@@ -24,8 +24,8 @@ program main
   ! user-defined parameters - read from section [ColumnDensity] of the parameter file
   ! --------------------------------------------------------------------------
   ! --- inputs 
-  character(2000)           :: DataDir      = '/scratch/chuniaud/10mpc_analysis/'                      ! where input files below are 
-  character(2000)           :: RaysICFile = 'position_lum_groups_183.dat'      ! the file containing photons to cast.
+  character(2000)           :: DataDir      = '/scratch/chuniaud/analyse_jeremy'                  ! where input files below are 
+  character(2000)           :: RaysICFile = 'position_lum_groups.dat'      ! the file containing photons to cast.
   character(2000)           :: DomDumpFile  = 'domain_decomposition_params.dat' ! the file describing the outputs of CreateDomDump.
   character(2000)           :: DirectionsFile  = 'direction_nside12.txt'    ! file where the directions and ndirections are written !Mat 
   ! --- outputs

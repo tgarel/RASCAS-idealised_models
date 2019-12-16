@@ -116,6 +116,7 @@ module module_ramses
   public :: ramses_read_stars_in_domain
   public :: read_ramses_params, print_ramses_params, dump_ramses_info
   public :: ramses_get_LyaEmiss_HIDopwidth,ramses_get_cooling_time
+  public :: ramses_get_nhi_nhei_nheii_cgs
 
   !==================================================================================
 contains
@@ -1578,7 +1579,7 @@ contains
 
   ! Return, nHI, nHeI, nHeII in cells ------------------------------------
 
-  subroutine ramses_get_nhi_nhei_nehii_cgs(repository,snapnum,nleaf,nvar  &
+  subroutine ramses_get_nhi_nhei_nheii_cgs(repository,snapnum,nleaf,nvar  &
 
                                                ,ramses_var,nhi,nhei,nheii)
 
@@ -1613,7 +1614,7 @@ contains
     
     return
 
-  end subroutine ramses_get_nhi_nhei_nehii_cgs
+  end subroutine ramses_get_nhi_nhei_nheii_cgs
 
   ! Return, nHI, nHeI, nHeII in cells ------------------------------------
   subroutine ramses_get_nh_nhi_nhei_nehii_cgs(repository,snapnum,nleaf,nvar  &

@@ -320,12 +320,12 @@ contains
     
 
     !new loop to write the file
-!!    write(fichier,'(a,a)') trim(datadir),'/result_nside12_stack_02Rvir_183.txt'
-!!    open(unit=14, file=fichier, status='replace', form='formatted', action='write')
-!!    do j=1,ndirections
-!!       write(14,*) fesc(j)
-!!    enddo 
-!!    close(14)
+    write(fichier,'(a,a)') trim(datadir),'/result_nside12.txt'
+    open(unit=14, file=fichier, status='replace', form='formatted', action='write')
+    do j=1,ndirections
+       write(14,*) fesc(j)
+    enddo 
+    close(14)
 
 !!    write(fichier,'(a,a)') trim(datadir),'/nH_nside12_stack_02Rvir_183.txt'
 !!    open(unit=14, file=fichier, status='replace', form='formatted', action='write')
@@ -354,12 +354,12 @@ contains
 
     endif
 
-    write(fichier,'(a,a)') trim(datadir),'/dist_nside12.txt'
-    open(unit=14, file=fichier, status='replace', form='formatted', action='write')
-    do j=1,ndirections
-       write(14,*) distance(j)
-    enddo
-    close(14)
+!!    write(fichier,'(a,a)') trim(datadir),'/dist_nside12.txt'
+!!    open(unit=14, file=fichier, status='replace', form='formatted', action='write')
+!!    do j=1,ndirections
+!!       write(14,*) distance(j)
+!!    enddo
+!!    close(14)
   
     deallocate(directions)
     deallocate(fesc)
@@ -620,6 +620,7 @@ contains
     ! read ICs
     open(unit=14, file=trim(file), status='unknown', form='formatted', action='read')
     read(14,*) n_rays
+    print*,n_rays
     allocate(rays(n_rays))
     allocate(lum1(n_rays))
     allocate(lum2(n_rays))

@@ -32,9 +32,9 @@ endif
 
 ifeq ($(SYSTYPE),"CCF")
 F90         = ifort -openmp
-FFLAGS      = -g -fpp -check all -debug -warn all -ftrapuv -traceback 
-##FFLAGS      = -O3 -fpp -ftz  -xavx -sox -ipo -fno-alias -fno-fnalias -no-prec-div -no-prec-sqrt -align all
-#FFLAGS      = -openmp -O3 -fpp -ftz  -xavx -ipo -fno-alias -fno-fnalias -no-prec-div -no-prec-sqrt -align all
+##FFLAGS      = -g -fpp -check all -debug -warn all -ftrapuv -traceback 
+FFLAGS      = -O3 -fpp -ftz  -xavx -sox -ipo -fno-alias -fno-fnalias -no-prec-div -no-prec-sqrt -align all
+##FFLAGS      = -openmp -O3 -fpp -ftz  -xavx -ipo -fno-alias -fno-fnalias -no-prec-div -no-prec-sqrt -align all
 ##FFLAGS      = -p -g
 FFLAGS += $(OPTIONS)
 LDFLAGS     =  -lmpi
@@ -74,9 +74,7 @@ endif
 
 # choose the gas mix you want to use
 # 1/ HI, D, and dust
-
-COMPOBJS = module_dust_model.o module_D_1215_model.o module_HI_1216_model.o module_gas_composition_HI_D_dust.o
-
+#COMPOBJS = module_dust_model.o module_D_1215_model.o module_HI_1216_model.o module_gas_composition_HI_D_dust.o
 # 2/ HI and dust
 #COMPOBJS = module_dust_model.o module_HI_1216_model.o module_gas_composition_HI_dust.o
 # 3/ pure HI
@@ -101,6 +99,8 @@ COMPOBJS = module_dust_model.o module_D_1215_model.o module_HI_1216_model.o modu
 #COMPOBJS = module_dust_model.o module_SiII_1260_model.o module_gas_composition_SiII_1260_dust.o
 # 13/ pure dust
 #COMPOBJS = module_dust_model.o module_gas_composition_dust.o
+#14/ H, HeI and HeII
+COMPOBJS = module_gas_composition_HI_HeI_HeII.o
 
 
 GASOBJS = module_constants.o module_random.o module_utils.o module_voigt.o module_domain.o coolrates_module.o module_ramses.o module_uparallel.o $(COMPOBJS)
@@ -111,6 +111,8 @@ OBJSDOM = $(GASOBJS) module_select.o module_mesh.o
 OBJSPHO = $(GASOBJS) module_mesh.o module_mock.o module_photon.o 
 
 OBJSMPI = $(OBJSPHO) module_parallel_mpi.o module_worker.o module_master.o
+
+FESC    = $(GASOBJS) module_mesh.o module_mathieu.o
 
 OBJLYAFG = module_constants.o module_random.o module_utils.o module_voigt.o module_domain.o coolrates_module.o module_ramses.o module_uparallel.o module_HI_1216_model.o
 
@@ -135,8 +137,8 @@ PhotonsFromStars: $(OBJSPHO) module_ssp_lib.o PhotonsFromStars.o
 LyaPhotonsFromGas: $(OBJLYAFG)  LyaPhotonsFromGas.o
 	$(F90) $(FFLAGS) $(LDFLAGS) -o $@ $(OBJLYAFG)  LyaPhotonsFromGas.o
 
-LyaPhotonsFromGas: $(LYAFG)  LyaPhotonsFromGas.o
-	$(F90) $(FFLAGS) $(LDFLAGS) -o $@ $(LYAFG)  LyaPhotonsFromGas.o
+#LyaPhotonsFromGas: $(LYAFG)  LyaPhotonsFromGas.o
+#	$(#F90) $(#FFLAGS) $(#LDFLAGS) -o $#@ $(#LYAFG)  LyaPhotonsFromGas.o
 
 CreateDomDump: $(OBJSDOM) CreateDomDump.o
 	$(F90) $(FFLAGS) $(LDFLAGS) -o $@ $(OBJSDOM) CreateDomDump.o

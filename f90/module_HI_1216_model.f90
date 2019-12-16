@@ -31,9 +31,6 @@ module module_HI_1216_model
   public :: get_tau_HI_1216, scatter_HI_1216, read_HI_1216_params, print_HI_1216_params
 
 
-  !--CORESKIP--
-  public :: HI_core_skip 
-  !--PIKSEROC-- 
   
 contains
 
@@ -100,22 +97,12 @@ contains
     real(kind=8),dimension(3),intent(inout) :: k
     real(kind=8),dimension(3),intent(in)    :: vcell
     real(kind=8),intent(in)                 :: vth
-    !--CORESKIP--
-    real(kind=8),intent(in)                 :: xcrit
-    real(kind=8)                            :: xc
-    !--PIKSEROC--
     integer(kind=4),intent(inout)           :: iran
     real(kind=8)                            :: delta_nu_doppler, a, x_cell, upar, ruper
     real(kind=8)                            :: r2, uper, nu_atom, mu, bu, scalar
     real(kind=8)                            :: x_atom
     real(kind=8),dimension(3)               :: knew
 
-    !--CORESKIP--  sanity check ... 
-    if (.not. HI_core_skip .and. xcrit .ne. 0.0d0) then
-       print*,'ERROR: core skipping is on but xcrit is not zero ... '
-       stop
-    end if
-    if (HI_core_skip) xc = min(xcrit,xcritmax)
     !--PIKSEROC-- 
     
     ! define x_cell & a
@@ -131,9 +118,7 @@ contains
     ! 2/ component perpendicular to photon's propagation
     ruper  = ran3(iran)
     r2     = ran3(iran)
-    !--CORESKIP--
-    uper   = sqrt(xc**2-log(ruper))*cos(twopi*r2)
-    !--PIKSEROC--
+    uper   = sqrt(-log(ruper))*cos(twopi*r2)
     uper   = uper * vth  ! from x to velocity
 
     ! 3/ incoming frequency in atom's frame
@@ -209,12 +194,6 @@ contains
              read(value,*) recoil
           case ('isotropic')
              read(value,*) isotropic
-          !--CORESKIP--
-          case ('HI_core_skip') 
-             read(value,*) HI_core_skip
-          case ('xcritmax')
-             read(value,*) xcritmax
-          !--PIKSEROC--
           end select
        end do
     end if
