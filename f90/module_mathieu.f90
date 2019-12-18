@@ -385,7 +385,7 @@ contains
     real(kind=8)                   :: tau_cell,tau2_cell,tau3_cell, dborder
     integer(kind=4)                :: i, icellnew, npush, k,n, m ,l     !k le nombre de cellules le long de la ray, n la division de chaque groupe de photon pour l'intégral Verner
     real(kind=8),dimension(3)      :: vgas, kray, cell_corner, posoct
-    logical                        :: flagoutvol, in_domain
+    logical                        :: flagoutvol, in_domain, escape_domain_before_cell
     real(kind=8)                   :: excess, tmp
     logical,intent(in)             :: verner
 !    real(kind=8)                   :: eps01,eps11,eps02,eps12,eps03,eps13, deps    ! energies des différents groupes de photon + interval intégration pour verner    
@@ -466,10 +466,19 @@ contains
        ! compute distance of photon to border of cell or domain along propagation direction
        distance_to_border    = path(ppos_cell,kray) * cell_size            ! in box units
 
-       !! -> if au lieu du min, plus un flag qui nous dit quon va sortir ...
-       distance_to_border    = min(distance_to_border, &
-            & domain_distance_to_border_along_k(ppos,kray,domaine_calcul)) ! in box units
+      ! Check if ray escapes domain before cell 
+       escape_domain_before_cell = .false.
+       dborder = domain_distance_to_border_along_k(ppos,kray,domaine_calcul) ! in module_domain
+       if (dborder < distance_to_border) then
+          escape_domain_before_cell = .true.
+          distance_to_border = dborder
+       end if
        distance_to_border_cm = distance_to_border * box_size_cm ! cm
+
+       !! -> if au lieu du min, plus un flag qui nous dit quon va sortir ...
+       !distance_to_border    = min(distance_to_border, &
+       !    & domain_distance_to_border_along_k(ppos,kray,domaine_calcul)) ! in box units
+       !distance_to_border_cm = distance_to_border * box_size_cm ! cm
   
 
      
@@ -529,6 +538,11 @@ contains
           if (ppos(i) > 1.0d0) ppos(i)=ppos(i)-1.0d0
        enddo
        
+       if (escape_domain_before_cell) then ! ray escapes domain -> we are done.
+          exit ray_propagation  ! ray is done 
+       end if
+
+       
       ! check if photon still in computational domain after position update
        in_domain = domain_contains_point(ppos,domaine_calcul)
        if (.not.(in_domain)) then
@@ -556,13 +570,13 @@ contains
              exit ray_propagation
           endif
 
-          ! hack
-          do i=1,3
-             ppos(i) = ppos(i) + kray(i) * 1d7 * epsilon(ppos(i))
-          end do
-          !!$ ppos(1) = ppos(1) + merge(-1.0d0,1.0d0,kray(1)<0.0d0) * epsilon(ppos(1))
-          !!$ ppos(2) = ppos(2) + merge(-1.0d0,1.0d0,kray(2)<0.0d0) * epsilon(ppos(2))
-          !!$ ppos(3) = ppos(3) + merge(-1.0d0,1.0d0,kray(3)<0.0d0) * epsilon(ppos(3))
+          !!! hack
+          !!do i=1,3
+        !!     ppos(i) = ppos(i) + kray(i) * 1d7 * epsilon(ppos(i))
+          !!end do
+          ppos(1) = ppos(1) + merge(-1.0d0,1.0d0,kray(1)<0.0d0) * epsilon(ppos(1))
+          ppos(2) = ppos(2) + merge(-1.0d0,1.0d0,kray(2)<0.0d0) * epsilon(ppos(2))
+          ppos(3) = ppos(3) + merge(-1.0d0,1.0d0,kray(3)<0.0d0) * epsilon(ppos(3))
           ! kcah
           
           ! correct for periodicity
