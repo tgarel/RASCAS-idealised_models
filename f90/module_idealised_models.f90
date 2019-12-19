@@ -29,7 +29,7 @@ module module_idealised_models
 
   
   ! public functions:
-  public :: read_IdealisedModels_params, print_IdealisedModels_params, compute_idealised_gas, shell_V_rho_gradient, shellcone_V_rho_gradient, shell_chisholm, shell_V_rho_gradient_steady, sphere_homogen_velfix, sphere_homogen_Vgradient, shell_starburst_rho_gradient
+  public :: read_IdealisedModels_params, print_IdealisedModels_params, compute_idealised_gas, shell_V_rho_gradient, shellcone_V_rho_gradient, shell_chisholm, shell_V_rho_gradient_steady, sphere_homogen_velfix, sphere_homogen_Vgradient, shell_starburst_rho_gradient, shellcone_V_rho_gradient_steady
 
   !! WARNING: sphere_homogen_velfix and sphere_homogen_Vgradient are "sphere" models, i.e. only work for r_min=0
   
@@ -62,6 +62,10 @@ contains
     case('shellcone_V_rho_gradient')
        do ileaf=1,nleaf
           call shellcone_V_rho_gradient(n_dust(ileaf),n_gas(ileaf),b_param(ileaf),v_leaf(1,ileaf),v_leaf(2,ileaf),v_leaf(3,ileaf),x_leaf(ileaf,1),x_leaf(ileaf,2),x_leaf(ileaf,3),dx_cell)
+       end do
+    case('shellcone_V_rho_gradient_steady')
+       do ileaf=1,nleaf
+          call shellcone_V_rho_gradient_steady(n_dust(ileaf),n_gas(ileaf),b_param(ileaf),v_leaf(1,ileaf),v_leaf(2,ileaf),v_leaf(3,ileaf),x_leaf(ileaf,1),x_leaf(ileaf,2),x_leaf(ileaf,3),dx_cell)
        end do
     case('shell_chisholm')
        do ileaf=1,nleaf
@@ -133,7 +137,7 @@ contains
        if (ngas_slope .ne. 1.0) then
           n0 = coldens_norm * (1.0-ngas_slope) / ((r_min * box_size_IM_cm)**ngas_slope * ((r_max * box_size_IM_cm)**(1.0-ngas_slope) - (r_min * box_size_IM_cm)**(1.0-ngas_slope)))  ! cm-3
        else
-          n0 = coldens_norm / ((r_min * box_size_IM_cm) * log10(r_max / r_min))  ! cm-3
+          n0 = coldens_norm / ((r_min * box_size_IM_cm) * log(r_max / r_min))  ! cm-3
        end if
     else
        ! I use the std density ngas_norm
@@ -294,7 +298,7 @@ contains
        if (ngas_slope .ne. 1.0) then
           n0 = coldens_norm * (1.0-ngas_slope) / ((r_min * box_size_IM_cm)**ngas_slope * ((r_max * box_size_IM_cm)**(1.0-ngas_slope) - (r_min * box_size_IM_cm)**(1.0-ngas_slope)))  ! cm-3
        else
-          n0 = coldens_norm / ((r_min * box_size_IM_cm) * log10(r_max / r_min))  ! cm-3
+          n0 = coldens_norm / ((r_min * box_size_IM_cm) * log(r_max / r_min))  ! cm-3
        end if
     else
        ! I use the std density ngas_norm
@@ -538,7 +542,7 @@ contains
     real(kind=8)                          :: dist_cell,dist2,dist_cell_min,dist_cell_max
     integer(kind=4)                       :: missed_cell
     real(kind=8)                          :: n0,theta_coord
-    real(kind=8)                          :: theta_cone
+    real(kind=8)                          :: theta_cone !! half opening angle !
     real(kind=8)                          :: coldens_dust, ndust_0
 
     theta_cone = 45.0d0 ! deg
@@ -562,7 +566,7 @@ contains
        if (ngas_slope .ne. 1.0) then
           n0 = coldens_norm * (1.0-ngas_slope) / ((r_min * box_size_IM_cm)**ngas_slope * ((r_max * box_size_IM_cm)**(1.0-ngas_slope) - (r_min * box_size_IM_cm)**(1.0-ngas_slope)))  ! cm-3
        else
-          n0 = coldens_norm / ((r_min * box_size_IM_cm) * log10(r_max / r_min))  ! cm-3
+          n0 = coldens_norm / ((r_min * box_size_IM_cm) * log(r_max / r_min))  ! cm-3
        end if
     else
        ! I use the std density ngas_norm
@@ -593,7 +597,7 @@ contains
        vy_ideal    = Vgas_norm / r_max**(Vgas_slope) * dist_cell**(Vgas_slope-1.0) * (ycell_ideal - 0.5d0)
        vz_ideal    = Vgas_norm / r_max**(Vgas_slope) * dist_cell**(Vgas_slope-1.0) * (zcell_ideal - 0.5d0)
        
-       ngas_ideal  = n0 * (r_min / dist_cell)**(ngas_slope) ! ngas_slope  = +2 for P+11 fiducial model
+       ngas_ideal  = n0 *  (r_min / dist_cell)**(ngas_slope) ! ngas_slope  = +2 for P+11 fiducial model
 
        if (ngas_ideal .lt. 0.0d0) then
           print*,'ngas_ideal < 0... = ',ngas_ideal,dist_cell,ngas_slope,n0,coldens_norm
@@ -631,7 +635,111 @@ contains
   end subroutine shellcone_V_rho_gradient
 
 
-   subroutine shell_chisholm(ndust_ideal,ngas_ideal,bparam_ideal,vx_ideal,vy_ideal,vz_ideal,xcell_ideal,ycell_ideal,zcell_ideal,dx_cell)
+  !+++++++++++++++++++++++++++++++++++++++++++++++ Cone with velocity gradient and density gradient (power-laws) +++++++++++++++++++++++++++++++++++++++++++++
+
+  subroutine shellcone_V_rho_gradient_steady(ndust_ideal,ngas_ideal,bparam_ideal,vx_ideal,vy_ideal,vz_ideal,xcell_ideal,ycell_ideal,zcell_ideal,dx_cell)
+    
+    implicit none
+
+    ! Shell (or sphere if r_min=0) with "power-law" V and rho profiles 
+    ! point source at center and medium transparent at R < r_min and at R > r_max
+
+    ! Declare arguments
+    real(kind=8)                          :: dx_cell
+    real(kind=8),intent(inout)            :: ndust_ideal,ngas_ideal,bparam_ideal
+    real(kind=8),intent(inout)            :: vx_ideal,vy_ideal,vz_ideal
+    real(kind=8),intent(in)               :: xcell_ideal,ycell_ideal,zcell_ideal    
+    real(kind=8)                          :: dist_cell,dist2,dist_cell_min,dist_cell_max
+    integer(kind=4)                       :: missed_cell
+    real(kind=8)                          :: n0,theta_coord
+    real(kind=8)                          :: theta_cone       !! half opening angle !
+    real(kind=8)                          :: coldens_dust, ndust_0
+
+    theta_cone = 30.0d0 ! deg
+    theta_cone = theta_cone * pi / 180.0d0 ! rad
+    
+    vx_ideal    = 0.0d0
+    vy_ideal    = 0.0d0
+    vz_ideal    = 0.0d0
+    ngas_ideal  = 0.0d0
+    ndust_ideal = 0.0d0
+       
+    missed_cell = 1 ! =1 if cell doesn't satisfy and if statements... should not happen!
+    
+    ! xcell, ycell and zcell are in frame with origin at bottom-left corner of box
+    dist2 = (xcell_ideal-0.5d0)**2 + (ycell_ideal-0.5d0)**2 + (zcell_ideal-0.5d0)**2  ! in frame with origin at center of box
+    dist_cell = sqrt(dist2)
+    
+    if (coldens_norm .gt. 1.0d0) then 
+       ! if gas norm set as column density in param file....
+       n0 = coldens_norm * (Vgas_slope+1.0) / (r_min * box_size_IM_cm * (1.0d0 - (r_min / r_max)**(Vgas_slope+1.0)))
+    else
+       ! I use the std density ngas_norm
+       n0 = ngas_norm 
+    end if
+
+    !! Deal with the 2 different dust paramaterizations (taudust or ndust)
+    if (taudust_norm .gt. 0.0d0) then
+       coldens_dust = taudust_norm ! assumes sigma_dust = 1 (should be taudust_norm/sigma_dust)
+       ndust_0      = n0 / coldens_norm * coldens_dust
+    else
+       ndust_0      = 0.0d0
+    end if
+    if (ndust_norm .ge. 0.0d0) then
+       ndust_0      = ndust_norm
+    end if
+    
+    theta_coord = (zcell_ideal-0.5d0) / dist_cell
+    theta_coord = acos(theta_coord)
+    
+    !! Brut force: compare dist to cell center against Rmin/Rmax 
+    if (dist_cell < r_max .and. dist_cell > r_min .and. (theta_coord .lt. theta_cone .or. theta_coord .gt. (pi-theta_cone))) then ! cell completely within sphere
+!!$          vx_ideal    = Vgas_norm * (xcell_ideal-0.5d0) / r_max
+!!$          vy_ideal    = Vgas_norm * (ycell_ideal-0.5d0) / r_max
+!!$          vz_ideal    = Vgas_norm * (zcell_ideal-0.5d0) / r_max
+       vx_ideal    = Vgas_norm / r_max**(Vgas_slope) * dist_cell**(Vgas_slope-1.0) * (xcell_ideal - 0.5d0)
+       vy_ideal    = Vgas_norm / r_max**(Vgas_slope) * dist_cell**(Vgas_slope-1.0) * (ycell_ideal - 0.5d0)
+       vz_ideal    = Vgas_norm / r_max**(Vgas_slope) * dist_cell**(Vgas_slope-1.0) * (zcell_ideal - 0.5d0)
+       
+       ngas_ideal  = n0 *  (r_min / dist_cell)**(Vgas_slope+2.0) 
+
+       if (ngas_ideal .lt. 0.0d0) then
+          print*,'ngas_ideal < 0... = ',ngas_ideal,dist_cell,ngas_slope,n0,coldens_norm
+          if (ngas_ideal .gt. -1.d-14) then
+             ngas_ideal = 0.0d0
+          else
+             print*,'ngas_ideal < -1.d-14 = ',ngas_ideal
+             stop
+          endif
+       endif
+       
+       ndust_ideal = ndust_0 / n0 * ngas_ideal
+
+       missed_cell = 0
+    else                                                ! cell completely out of sphere or completely within r_min               
+       vx_ideal    = 0.0d0
+       vy_ideal    = 0.0d0
+       vz_ideal    = 0.0d0
+       ngas_ideal  = 0.0d0
+       ndust_ideal = 0.0d0
+       missed_cell = 0
+    end if
+    
+    
+    bparam_ideal = vth_norm
+    
+    if (missed_cell .eq. 1) then
+       print*,'I missed a cell in module_idealised_models !'
+       print*,dist_cell
+       stop
+    endif
+    
+    return
+    
+  end subroutine shellcone_V_rho_gradient_steady
+  
+  
+  subroutine shell_chisholm(ndust_ideal,ngas_ideal,bparam_ideal,vx_ideal,vy_ideal,vz_ideal,xcell_ideal,ycell_ideal,zcell_ideal,dx_cell)
     
     implicit none
 

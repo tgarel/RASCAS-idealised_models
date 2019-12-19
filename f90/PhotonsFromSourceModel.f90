@@ -164,9 +164,9 @@ program PhotonsFromSourceModel
      photgrid(i)%iran  = -i 
 !     call isotropic_direction(photgrid(i)%k_em,iran)
      ! OBIT for cone tests
-     photgrid(i)%k_em(1) = 0.0
-     photgrid(i)%k_em(2) = -1.0 ! -0.707107  ! 0.0
-     photgrid(i)%k_em(3) = 0.0 ! 0.707107 ! 1.0
+     photgrid(i)%k_em(1) = 0.0 ! 0.0
+     photgrid(i)%k_em(2) = -0.86602539 ! -1.0 ! -0.86602539 ! -0.707107  ! 0.0
+     photgrid(i)%k_em(3) = 0.5 ! 0.5 ! 0.707107 ! 1.0
      ! OBIT
   enddo
 

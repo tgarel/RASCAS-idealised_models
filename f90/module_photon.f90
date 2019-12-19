@@ -120,7 +120,14 @@ contains
        ! compute photon's frequency in cell's moving frame
        scalar       = p%k(1) * vgas(1) + p%k(2) * vgas(2) + p%k(3) * vgas(3)
        nu_cell      = (1.0d0 - scalar/clight) * p%nu_ext  
-
+!!$       if (p%nb_abs==0 .and. scalar < 0.0) then
+!!$          print*,'Scal = ',scalar/1.d5
+!!$          print*,vgas(1)/1.d5,vgas(2)/1.d5,vgas(3)/1.d5
+!!$          print*,p%k(1) , p%k(2) , p%k(3)
+!!$          print*,ppos
+!!$          print*,'============='
+!!$       end if
+       
        ! define/update flag_cell_fully_in_comp_dom to avoid various tests in the following
        pcell = cell_corner + 0.5d0*cell_size
        cell_fully_in_domain = domain_fully_contains_cell(pcell,cell_size,domaine_calcul)

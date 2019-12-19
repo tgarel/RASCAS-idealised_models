@@ -1,0 +1,100 @@
+!--------------------------------------------------------------------------------
+[PhotonsFromSourceModel] 
+  outputfile              = /Users/tgarel/IdealisedModels/output/metals/MgII/bicone_b20_Vslope0.0_nslopeSteady_vmax400.0_coldens15.5_taud0.0_xem00_048_-01_kemAlpha30/ICs_photons.dat
+  source_pos              =  0.5 0.97 0.4 ! 0.5 0.97 0.4 ! 0.5 0.5 0.5
+  source_type             = pointlike
+  ranseed                 = -100
+  spec_type               = FlatNphotDist ! PowLaw 
+  spec_FlatNphotDist_lmin_Ang    = 2770.0  ! A 
+  spec_FlatNphotDist_lmax_Ang    = 2830.0  ! A 
+  nphot                   = 1000000
+
+!--------------------------------------------------------------------------------
+[CreateDomDump]
+# input outputs:
+  DomDumpDir = /Users/tgarel/IdealisedModels/output/metals/MgII/bicone_b20_Vslope0.0_nslopeSteady_vmax400.0_coldens15.5_taud0.0_xem00_048_-01_kemAlpha30/
+  repository = /Users/tgarel/data/Grid_for_RT/
+  snapnum    = 00001
+# computational domain parameters
+  comput_dom_type      =  cube
+  comput_dom_pos       =  0.5, 0.5, 0.5
+  #comput_dom_rsp       =  0.49
+  comput_dom_size      = 0.98 
+# domain decomposition parameters
+  decomp_dom_type      =  cube
+  decomp_dom_ndomain   =  1
+  decomp_dom_xc        =  0.5!, 0.5
+  decomp_dom_yc        =  0.5!, 0.5
+  decomp_dom_zc        =  0.5!, 0.5
+  #decomp_dom_rsp       =  0.495
+  decomp_dom_size      = 0.99
+# miscelaneous :
+  verbose              = T
+  idealised_models     = T
+
+!--------------------------------------------------------------------------------
+[IdealisedModels]
+# type, geometry, MCsampling etc
+  idealmodel_type       = shellcone_V_rho_gradient_steady
+  MCsampling            = F
+# physical parameters
+  coldens_norm          = 3.0d15         ! This is a column density in cm-2
+  Vgas_norm             = 400.d5         ! cm/s 
+  Vgas_slope            = 0.0d0          ! 1.0d0
+#  ngas_slope            = 1.0d0	
+#  Tgas_norm            = 1.0d4	         ! K
+  vth_norm              = 20.0d5        ! cm/s
+  taudust_norm          = 0.0d0          
+  box_size_IM_cm        = 1.2833334d23   ! cm ! matches R_max=20 kpc and r_max_box=0.48
+  r_min                 = 0.012          ! box units
+  r_max                 = 0.40           ! box units
+# miscelaneous :
+  verbose              = T
+  
+!--------------------------------------------------------------------------------
+[RASCAS-serial]
+  DomDumpDir   = /Users/tgarel/IdealisedModels/output/metals/MgII/bicone_b20_Vslope0.0_nslopeSteady_vmax400.0_coldens15.5_taud0.0_xem00_048_-01_kemAlpha30/
+  DomDumpFile  = domain_decomposition_params.dat
+  PhotonICFile = /Users/tgarel/IdealisedModels/output/metals/MgII/bicone_b20_Vslope0.0_nslopeSteady_vmax400.0_coldens15.5_taud0.0_xem00_048_-01_kemAlpha30/ICs_photons.dat
+  fileout      = /Users/tgarel/IdealisedModels/output/metals/MgII/bicone_b20_Vslope0.0_nslopeSteady_vmax400.0_coldens15.5_taud0.0_xem00_048_-01_kemAlpha30/photons_out.dat
+  nbuffer      = 10
+  verbose      = T
+
+!--------------------------------------------------------------------------------
+[worker]
+  verbose = T
+
+!--------------------------------------------------------------------------------
+[master]
+  verbose = T
+  restart        = F
+
+!--------------------------------------------------------------------------------
+[mesh]
+  verbose = F
+
+!--------------------------------------------------------------------------------
+[gas_composition] 
+# mixture parameters
+  deut2H_nb_ratio     = 0.0     ! 3.000E-05
+  Zref                = 0.005   ! OK for LMC dust model.
+# overwrite parameters: uniform slab, sphere and shell only
+  gas_overwrite       = F
+
+# miscelaneous parameters
+  verbose             = T
+
+!--------------------------------------------------------------------------------
+[HI]
+  recoil    = T
+  isotropic = F
+
+!--------------------------------------------------------------------------------
+[dust]
+  albedo       = 0.0 ! 0.32
+  g_dust       = 0.73
+  dust_model   = SMC
+
+!--------------------------------------------------------------------------------
+[voigt]
+  approximation = Humlicek_w4
