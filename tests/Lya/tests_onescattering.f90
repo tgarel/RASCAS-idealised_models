@@ -52,7 +52,7 @@ program tests_onescattering
   character(200)                        :: outputdir = 'LyaTests_output_data/'
   logical                               :: recoil    = .false.
   logical                               :: isotropic = .false.     ! if set to true, scattering events will be isotropic [default is false]
-  real(kind=8)                          :: albedo    = 0.46
+  real(kind=8)                          :: albedo    = 0.32
   real(kind=8)                          :: g_dust    = 0.73
 
   narg = command_argument_count()
@@ -163,7 +163,7 @@ program tests_onescattering
         end if
 
           
-        write(outfile,'(a,a,a,a,a)'),trim(outputdir),'tests_dust_xin',trim(x_input_st),'_HG41.dat'
+        write(outfile,'(a,a,a,a,a)'),trim(outputdir),'tests_dust_xin',trim(x_input_st),'_HG41_alb032.dat'
         outfile = trim(outfile)//char(0)
         
         !! Perform nphotons realizations of one Dust scattering and dump nu_ext and kout to file

@@ -23,9 +23,9 @@ pro test_dust
   loadct,39
 
  ; mycol = [cgcolor('cg3'),cgcolor('chartreuse'),cgcolor('ygb3'),210,cgcolor('red4'),cgcolor('violet'),cgcolor('gray')]
-  mycol = [cgcolor('cg3'),210,cgcolor('violet')]
+  mycol = [cgcolor('cg3')];,210,cgcolor('violet')]
     
-  xin_arr = [0,3,5] ;,1,2,3,4,5]
+  xin_arr = [0];,3,5] ;,1,2,3,4,5]
   
   for j=0,n_elements(xin_arr)-1 do begin
      x_in = xin_arr(j)
@@ -36,7 +36,7 @@ pro test_dust
      kk2 = -99.
      kk3 = -99.
      iabs = -99
-     outfile = '../../LyaTests_output_data/SingleScatt_dust/tests_dust_xin'+strtrim(string(x_in,format='(i1)'),2)+'_HG41.dat'
+     outfile = '../../LyaTests_output_data/SingleScatt_dust/tests_dust_xin'+strtrim(string(x_in,format='(i1)'),2)+'_HG41_alb032.dat'
 
      openr,11,outfile
      readf,11, nphotons, x_in, T, nu_D

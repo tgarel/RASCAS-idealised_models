@@ -44,7 +44,6 @@ pro read_photons,myfile,vth,x_out,tau0,status,xlast,nb_abs,time,ids,k_ext
   xx = dblarr(3) 
   for i=0L,nphotons-1L do begin
      readu,11,xx & k_ext[i,*] = xx
-     print,xx
   endfor
 
   r=0L

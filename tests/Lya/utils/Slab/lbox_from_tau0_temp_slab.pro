@@ -1,9 +1,9 @@
 pro lbox_from_tau0_temp_slab
 
-  tau0          = 1.d4
-  temp          = 1.d2          ; K
+  tau0          = 1.d3
+  temp          = 1.d4          ; K
 
-  thickness     = 1.9531200d-5; 0.1  ; total thickness: use half of it to compute tau0, following Neufeld
+  thickness     = 0.7  ; total thickness: use half of it to compute tau0, following Neufeld
   nh            = 1.d0 ; cm^-3
 
   thickness_over_two = thickness / 2.
@@ -17,4 +17,6 @@ pro lbox_from_tau0_temp_slab
   print,'vth = ',vth,' cm/s'
   print,'fix_box_size_cm = ',fix_box_size_cm,' cm'
 
+ 
+  
 end

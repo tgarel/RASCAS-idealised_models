@@ -5,7 +5,7 @@ pro taudust_escape_fraction
    
   vth         = 128500.0d0       ; cm/s
 
-  path = '/Users/tgarel/all_rascasses/Rascas_tests/output/slab_dom/'
+  path = '/Users/tgarel/Rascas/output/Lya_tests/slab/'
   
   filearr = ['slab_np1e6_T1e2_ndust0.0_DH0.0_tauH1e6_vexp0_NoRecoil_iso/','slab_np1e6_T1e2_taudust00001_DH0.0_tauH1e6_vexp0_NoRecoil_iso/','slab_np1e6_T1e2_taudust0001_DH0.0_tauH1e6_vexp0_NoRecoil_iso/','slab_np1e6_T1e2_taudust001_DH0.0_tauH1e6_vexp0_NoRecoil_iso/','slab_np1e6_T1e2_taudust01_DH0.0_tauH1e6_vexp0_NoRecoil_iso/','slab_np1e6_T1e2_taudust05_DH0.0_tauH1e6_vexp0_NoRecoil_iso/','slab_np1e6_T1e2_taudust1_DH0.0_tauH1e6_vexp0_NoRecoil_iso/','slab_np1e6_T1e2_taudust2_DH0.0_tauH1e6_vexp0_NoRecoil_iso/','slab_np1e6_T1e2_taudust5_DH0.0_tauH1e6_vexp0_NoRecoil_iso/','slab_np1e6_T1e2_taudust10_DH0.0_tauH1e6_vexp0_NoRecoil_iso/']
 
@@ -13,7 +13,7 @@ pro taudust_escape_fraction
   fesc = dblarr(n_elements(filearr))
   xxx  = dblarr(n_elements(filearr))
   
-  PS_Start, File='plots/slab_fesc_temp100K_tau6_taudust_new.ps',nomatch=1,font=0
+  PS_Start, File='plots/slab_fesc_temp100K_tau6_taudust_paperVersion.ps',nomatch=1,font=0
 
   device, helvetica=1,/bold
   device, isolatin1=1,/bold
@@ -44,7 +44,8 @@ pro taudust_escape_fraction
      b           = vth / 1.d5                   ; km/s
      print,temp,vth
      
-     read_photons,myfile,vth,x_out,tau0,status,xlast,nb_abs,time,ids
+     read_photons_old,myfile,vth,x_out,tau0,status,xlast,nb_abs,time,ids
+
      nphotons = n_elements(x_out)
      
      ii = where(status eq 1,ni)  ;; escape

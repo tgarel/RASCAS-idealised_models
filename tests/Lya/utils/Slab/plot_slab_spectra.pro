@@ -6,10 +6,9 @@ pro plot_slab_spectra
   ;; tau0_arr_st = ['4','7']      ;,'8']
   ;; tau0_arr    = [1.d4,1.d7]  ;,1.d8]
    
- ;; vth         = 128500.0d0       ; cm/s
-  vth = 40635.269d0             ; cm/s
+  vth         = 128500.0d0      ; cm/s
 
-  PS_Start, File='plots/tauHall_neufeld_temp1d1_xin0_oneplot.ps',nomatch=1,font=0
+  PS_Start, File='plots/tauHall_neufeld_temp1d2_xin0_paperVersion.ps',nomatch=1,font=0
  ; PS_Start, File='plots/test_thickness.ps',nomatch=1,font=0
   
   device, helvetica=1,/bold
@@ -35,7 +34,7 @@ pro plot_slab_spectra
   for i=0,n_elements(tau0_arr)-1 do begin
 
      ;if i eq 0 then myfile = '/Users/tgarel/Rascas/output/Lya_tests/slab/tauH'+tau0_arr_st[i]+'_temp1d2_xin0/photons_out.dat'
-     myfile = '/Users/tgarel/Rascas/output/Lya_tests/slab/tauH'+tau0_arr_st[i]+'_temp1d1_xin0_hotfix_width01/photons_out.dat'
+     myfile = '/Users/tgarel/Rascas/output/Lya_tests/slab/tauH'+tau0_arr_st[i]+'_temp1d2_xin0_paperVersion/photons_out.dat'
      
      print,myfile
      tau0 = tau0_arr[i]
@@ -53,7 +52,7 @@ pro plot_slab_spectra
      histo,x_out,-250.,250.,480,h
 
      if i eq 0 then begin
-        plot,h.x,h.dn/h.dx/total(h.dn),xtitle='x',ytitle='J(x,'+greek('tau')+'!d0!n)',charthick=5,xr=[-115.,115.],/xs,thick=8,yr=[0.0001,max(h.dn/h.dx/total(h.dn))*1.1],/nodata ;,/ylog
+        plot,h.x,h.dn/h.dx/total(h.dn),xtitle='x',ytitle='J(x,'+greek('tau')+'!dHI!n)',charthick=5,xr=[-81.,81.],/xs,thick=8,yr=[0.0001,max(h.dn/h.dx/total(h.dn))*1.1],/nodata ;,/ylog
         ;;legendold,['R!dslab!n within 1 cell'],box=0,/left,charsize=1.3,spacing=2.1
      endif
 
@@ -67,14 +66,14 @@ pro plot_slab_spectra
      ;; plots,[-1.*x_peak,-1.*x_peak],[0.,1.*max(j_x*2.*!pi)],linestyle=2.,color=254
      ;; plots,[1.*x_peak,1.*x_peak],[0.,1.*max(j_x*2.*!pi)],linestyle=2,color=254
 
-     print,total(j_x*4.*!pi*(xx[1]-xx[0]))
+     ;print,total(j_x*4.*!pi*(xx[1]-xx[0]))
      
     ; legendold,[greek('tau')+'!d0!n = 10!u'+tau0_arr_st[i]+'!n'],textcolors=col[i],box=0,/right,charsize=1.6
    ;  legendold,['Hydrogen','T=10!u2!n K'],/center,/right,charthick=7,charsize=1.3,box=0,spacing=1.9
   endfor
 
 
-    legendold,[greek('tau')+'!d0!n = 10!u4!n',greek('tau')+'!d0!n = 10!u5!n',greek('tau')+'!d0!n = 10!u6!n',greek('tau')+'!d0!n = 10!u7!n'],textcolors=col,box=0,/right,charsize=1.7
+    legendold,[greek('tau')+'!dHI!n = 10!u4!n',greek('tau')+'!dHI!n = 10!u5!n',greek('tau')+'!dHI!n = 10!u6!n',greek('tau')+'!dHI!n = 10!u7!n'],textcolors=col,box=0,/right,charsize=1.9
 
     
  ;; legendold,[greek('tau')+'!d0!n = 10!u4!n',greek('tau')+'!d0!n = 10!u5!n',greek('tau')+'!d0!n = 10!u6!n',greek('tau')+'!d0!n = 10!u7!n',greek('tau')+'!d0!n = 10!u8!n'],textcolors=col,box=0,/right,charsize=1.4
