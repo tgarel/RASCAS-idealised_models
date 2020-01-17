@@ -29,7 +29,7 @@ module module_idealised_models
 
   
   ! public functions:
-  public :: read_IdealisedModels_params, print_IdealisedModels_params, compute_idealised_gas, shell_V_rho_gradient, shellcone_V_rho_gradient, shell_chisholm, shell_V_rho_gradient_steady, sphere_homogen_velfix, sphere_homogen_Vgradient, shell_starburst_rho_gradient
+  public :: read_IdealisedModels_params, print_IdealisedModels_params, compute_idealised_gas, shell_V_rho_gradient, shellcone_V_rho_gradient, shell_chisholm, shell_V_rho_gradient_steady, sphere_homogen_velfix, sphere_homogen_Vgradient, shell_starburst_rho_gradient, shell_Vcak_rho_gradient, shell_Vcak_rho_steady
 
   !! WARNING: sphere_homogen_velfix and sphere_homogen_Vgradient are "sphere" models, i.e. only work for r_min=0
   
@@ -79,6 +79,14 @@ contains
        do ileaf=1,nleaf
           call shell_starburst_rho_gradient(n_dust(ileaf),n_gas(ileaf),b_param(ileaf),v_leaf(1,ileaf),v_leaf(2,ileaf),v_leaf(3,ileaf),x_leaf(ileaf,1),x_leaf(ileaf,2),x_leaf(ileaf,3),dx_cell)
        end do
+    case('shell_Vcak_rho_gradient')
+       do ileaf=1,nleaf
+          call shell_Vcak_rho_gradient(n_dust(ileaf),n_gas(ileaf),b_param(ileaf),v_leaf(1,ileaf),v_leaf(2,ileaf),v_leaf(3,ileaf),x_leaf(ileaf,1),x_leaf(ileaf,2),x_leaf(ileaf,3),dx_cell)
+       end do
+    case('shell_Vcak_rho_steady')
+       do ileaf=1,nleaf
+          call shell_Vcak_rho_steady(n_dust(ileaf),n_gas(ileaf),b_param(ileaf),v_leaf(1,ileaf),v_leaf(2,ileaf),v_leaf(3,ileaf),x_leaf(ileaf,1),x_leaf(ileaf,2),x_leaf(ileaf,3),dx_cell)
+       end do
     end select
     
     return
@@ -112,8 +120,11 @@ contains
     integer(kind=4)                       :: missed_cell
     real(kind=8)                          :: n0, coldens_dust, ndust_0
     real(kind=8),parameter                :: alpha=3.8
-    real(kind=8),parameter                :: vmax_alpha_normed = 0.8262 ! assuming alpha=3.8 ! = 1./sqrt(alpha-1.0-log(alpha))
+    !real(kind=8),parameter                :: vmax_alpha_normed = 0.8262 ! assuming alpha=3.8 ! = 1./sqrt(alpha-1.0-ln(alpha))
+    real(kind=8)                          :: vmax_alpha_normed 
 
+
+    vmax_alpha_normed = 1.0d0/sqrt(alpha-1.0d0-log(alpha))
     
     vx_ideal    = 0.0d0
     vy_ideal    = 0.0d0
@@ -520,7 +531,278 @@ contains
   end subroutine shell_V_rho_gradient_steady
   
 
+ 
+  !+++++++++++++++++++++++++++++++++++++++++++++++ SHELL with CAK velocity gradient and density gradient +++++++++++++++++++++++++++++++++++++++++++++
 
+  subroutine shell_Vcak_rho_gradient(ndust_ideal,ngas_ideal,bparam_ideal,vx_ideal,vy_ideal,vz_ideal,xcell_ideal,ycell_ideal,zcell_ideal,dx_cell)
+    
+    implicit none
+
+    ! Shell (or sphere if r_min=0) with CAK V and rho "power-law" profiles 
+    ! point source at center and medium transparent at R < r_min and at R > r_max
+    ! V(r) = Vmax * (1- r_min/r)**beta, beta CANNOT be 1 
+    
+    ! Declare arguments
+    real(kind=8)                          :: dx_cell
+    real(kind=8),intent(inout)            :: ndust_ideal,ngas_ideal,bparam_ideal
+    real(kind=8),intent(inout)            :: vx_ideal,vy_ideal,vz_ideal
+    real(kind=8),intent(in)               :: xcell_ideal,ycell_ideal,zcell_ideal    
+    real(kind=8)                          :: volfrac2
+    real(kind=8)                          :: dist_cell,dist2,dist_cell_min,dist_cell_max
+    integer(kind=4)                       :: missed_cell
+    real(kind=8)                          :: n0, coldens_dust, ndust_0
+    real(kind=8),parameter                :: beta=0.5
+
+    
+    vx_ideal    = 0.0d0
+    vy_ideal    = 0.0d0
+    vz_ideal    = 0.0d0
+    ngas_ideal  = 0.0d0
+    ndust_ideal = 0.0d0
+    volfrac2    = 1.0d0
+    
+    missed_cell = 1 ! =1 if cell doesn't satisfy and if statements... should not happen!
+    
+    ! xcell, ycell and zcell are in frame with origin at bottom-left corner of box
+    dist2 = (xcell_ideal-0.5d0)**2 + (ycell_ideal-0.5d0)**2 + (zcell_ideal-0.5d0)**2  ! in frame with origin at center of box
+    dist_cell = sqrt(dist2)
+
+    if (coldens_norm .gt. 1.0d0) then
+       !! if gas norm set as column density in param file.... OK for model with n~r^-2 ONLY !!!
+       !! n0 = coldens_norm / (r_min * box_size_IM_cm * (1.0d0 - r_min / r_max))  ! cm-3
+       if (ngas_slope .ne. 1.0) then
+          n0 = coldens_norm * (1.0-ngas_slope) / ((r_min * box_size_IM_cm)**ngas_slope * ((r_max * box_size_IM_cm)**(1.0-ngas_slope) - (r_min * box_size_IM_cm)**(1.0-ngas_slope)))  ! cm-3
+       else
+          n0 = coldens_norm / ((r_min * box_size_IM_cm) * log(r_max / r_min))  ! cm-3
+       end if
+    else
+       ! I use the std density ngas_norm
+       n0 = ngas_norm 
+    end if
+
+    !! Deal with the 2 different dust paramaterizations (taudust or ndust)
+    if (taudust_norm .gt. 0.0d0) then
+       coldens_dust = taudust_norm ! assumes sigma_dust = 1 (should be taudust_norm/sigma_dust)
+       ndust_0      = n0 / coldens_norm * coldens_dust
+    else
+       ndust_0      = 0.0d0
+    end if
+    
+    if (ndust_norm .ge. 0.0d0) then
+       ndust_0      = ndust_norm
+    end if
+    
+    if (MCsampling) then
+       dist_cell_max = dist_cell + dx_cell * sqrt(3.0d0) / 2.0d0 ! dx_cell * sqrt(3.0) / 2. is half the longest length in a cube
+       dist_cell_min = dist_cell - dx_cell * sqrt(3.0d0) / 2.0d0 ! dx_cell * sqrt(3.0) / 2. is half the longest length in a cube
+
+       if ((dist_cell_max > r_max .and. dist_cell_min < r_max) .or. (dist_cell_max > r_min .and. dist_cell_min < r_min)) then ! cell partially within shell
+          volfrac2 = mc_sampling_shell(xcell_ideal,ycell_ideal,zcell_ideal,dx_cell)
+          missed_cell = 0
+       end if
+       if (dist_cell_max < r_max .and. dist_cell_min > r_min) then ! cell completely within shell
+          volfrac2 = 1.0
+          missed_cell = 0
+       end if
+       
+       ngas_ideal  = n0 *  (r_min / dist_cell)**(ngas_slope) * volfrac2 ! ngas_slope  = +2 for P+11 fiducial model
+     
+       if (ngas_ideal .lt. 0.0d0) then
+          print*,'ngas_ideal < 0... = ',ngas_ideal,dist_cell,ngas_slope,n0,volfrac2,coldens_norm
+          if (ngas_ideal .gt. -1.d-14) then
+             ngas_ideal = 0.0d0
+          else
+             print*,'ngas_ideal < -1.d-14 = ',ngas_ideal
+             stop
+          endif
+       endif
+
+       ndust_ideal = ndust_0 * ngas_ideal / n0
+       
+       vx_ideal = Vgas_norm * (1.0d0 - r_min/dist_cell)**beta * (xcell_ideal - 0.5d0) / dist_cell    
+       vy_ideal = Vgas_norm * (1.0d0 - r_min/dist_cell)**beta * (ycell_ideal - 0.5d0) / dist_cell  
+       vz_ideal = Vgas_norm * (1.0d0 - r_min/dist_cell)**beta * (zcell_ideal - 0.5d0) / dist_cell  
+       
+       if (dist_cell_min > r_max .or. dist_cell_max < r_min) then  ! cell completely out of shell or completely within r_min                                                       
+          vx_ideal    = 0.0d0
+          vy_ideal    = 0.0d0
+          vz_ideal    = 0.0d0
+          ngas_ideal  = 0.0d0
+          ndust_ideal = 0.0d0
+          missed_cell = 0
+       end if
+       
+    else  !! Brut force: compare dist to cell center against Rmin/Rmax 
+       if (dist_cell < r_max .and. dist_cell > r_min) then ! cell completely within sphere
+          vx_ideal = Vgas_norm * (1.0d0 - r_min/dist_cell)**beta * (xcell_ideal - 0.5d0) / dist_cell    
+          vy_ideal = Vgas_norm * (1.0d0 - r_min/dist_cell)**beta * (ycell_ideal - 0.5d0) / dist_cell  
+          vz_ideal = Vgas_norm * (1.0d0 - r_min/dist_cell)**beta * (zcell_ideal - 0.5d0) / dist_cell  
+          
+          ngas_ideal  = n0 *  (r_min / dist_cell)**(ngas_slope) ! ngas_slope  = +2 for P+11 fiducial model
+          ndust_ideal = ndust_0 * ngas_ideal / n0
+          missed_cell = 0
+
+          if (ngas_ideal .lt. 0.0d0) then
+             print*,ngas_ideal,dist_cell,ngas_slope,n0
+             stop
+          endif
+          
+       else                                                ! cell completely out of sphere or completely within r_min               
+          vx_ideal    = 0.0d0
+          vy_ideal    = 0.0d0
+          vz_ideal    = 0.0d0
+          ngas_ideal  = 0.0d0
+          ndust_ideal = 0.0d0
+          missed_cell = 0
+       end if
+    end if
+    
+    bparam_ideal = vth_norm
+
+    if (missed_cell .eq. 1) then
+       print*,'I missed a cell in module_idealised_models !'
+       print*,dist_cell
+       stop
+    endif
+    
+    return
+    
+  end subroutine shell_Vcak_rho_gradient
+
+   
+  !+++++++++++++++++++++++++++++++++++++++++++++++ SHELL with CAK velocity gradient and density gradient +++++++++++++++++++++++++++++++++++++++++++++
+
+  subroutine shell_Vcak_rho_steady(ndust_ideal,ngas_ideal,bparam_ideal,vx_ideal,vy_ideal,vz_ideal,xcell_ideal,ycell_ideal,zcell_ideal,dx_cell)
+    
+    implicit none
+
+    ! Shell (or sphere if r_min=0) with CAK V and rho "steady-state" profile 
+    ! point source at center and medium transparent at R < r_min and at R > r_max
+    ! V(r) = Vmax * (1- r_min/r)**beta, beta CANNOT be 1 
+    
+    ! Declare arguments
+    real(kind=8)                          :: dx_cell
+    real(kind=8),intent(inout)            :: ndust_ideal,ngas_ideal,bparam_ideal
+    real(kind=8),intent(inout)            :: vx_ideal,vy_ideal,vz_ideal
+    real(kind=8),intent(in)               :: xcell_ideal,ycell_ideal,zcell_ideal    
+    real(kind=8)                          :: volfrac2
+    real(kind=8)                          :: dist_cell,dist2,dist_cell_min,dist_cell_max
+    integer(kind=4)                       :: missed_cell
+    real(kind=8)                          :: n0, coldens_dust, ndust_0
+    real(kind=8),parameter                :: beta=0.5
+
+    
+    vx_ideal    = 0.0d0
+    vy_ideal    = 0.0d0
+    vz_ideal    = 0.0d0
+    ngas_ideal  = 0.0d0
+    ndust_ideal = 0.0d0
+    volfrac2    = 1.0d0
+    
+    missed_cell = 1 ! =1 if cell doesn't satisfy and if statements... should not happen!
+    
+    ! xcell, ycell and zcell are in frame with origin at bottom-left corner of box
+    dist2 = (xcell_ideal-0.5d0)**2 + (ycell_ideal-0.5d0)**2 + (zcell_ideal-0.5d0)**2  ! in frame with origin at center of box
+    dist_cell = sqrt(dist2)
+
+    if (coldens_norm .gt. 1.0d0) then
+       ! Works only for beta=0.5
+       n0 = coldens_norm * r_min * box_size_IM_cm / 2.0d0 / (1.0d0 - r_min/r_max)**0.5  ! cm-3
+    else
+       ! I use the std density ngas_norm
+       n0 = ngas_norm 
+    end if
+
+    !! Deal with the 2 different dust paramaterizations (taudust or ndust)
+    if (taudust_norm .gt. 0.0d0) then
+       coldens_dust = taudust_norm ! assumes sigma_dust = 1 (should be taudust_norm/sigma_dust)
+       ndust_0      = n0 / coldens_norm * coldens_dust
+    else
+       ndust_0      = 0.0d0
+    end if
+    
+    if (ndust_norm .ge. 0.0d0) then
+       ndust_0      = ndust_norm
+    end if
+    
+    if (MCsampling) then
+       dist_cell_max = dist_cell + dx_cell * sqrt(3.0d0) / 2.0d0 ! dx_cell * sqrt(3.0) / 2. is half the longest length in a cube
+       dist_cell_min = dist_cell - dx_cell * sqrt(3.0d0) / 2.0d0 ! dx_cell * sqrt(3.0) / 2. is half the longest length in a cube
+
+       if ((dist_cell_max > r_max .and. dist_cell_min < r_max) .or. (dist_cell_max > r_min .and. dist_cell_min < r_min)) then ! cell partially within shell
+          volfrac2 = mc_sampling_shell(xcell_ideal,ycell_ideal,zcell_ideal,dx_cell)
+          missed_cell = 0
+       end if
+       if (dist_cell_max < r_max .and. dist_cell_min > r_min) then ! cell completely within shell
+          volfrac2 = 1.0
+          missed_cell = 0
+       end if
+       
+       ngas_ideal  = n0 * 1.0d0 /  (dist_cell**2. * (1.0d0 - r_min/dist_cell)**beta) * volfrac2
+     
+       if (ngas_ideal .lt. 0.0d0) then
+          print*,'ngas_ideal < 0... = ',ngas_ideal,dist_cell,ngas_slope,n0,volfrac2,coldens_norm
+          if (ngas_ideal .gt. -1.d-14) then
+             ngas_ideal = 0.0d0
+          else
+             print*,'ngas_ideal < -1.d-14 = ',ngas_ideal
+             stop
+          endif
+       endif
+
+       ndust_ideal = ndust_0 * ngas_ideal / n0
+       
+       vx_ideal = Vgas_norm * (1.0d0 - r_min/dist_cell)**beta * (xcell_ideal - 0.5d0) / dist_cell    
+       vy_ideal = Vgas_norm * (1.0d0 - r_min/dist_cell)**beta * (ycell_ideal - 0.5d0) / dist_cell  
+       vz_ideal = Vgas_norm * (1.0d0 - r_min/dist_cell)**beta * (zcell_ideal - 0.5d0) / dist_cell  
+       
+       if (dist_cell_min > r_max .or. dist_cell_max < r_min) then  ! cell completely out of shell or completely within r_min                                                       
+          vx_ideal    = 0.0d0
+          vy_ideal    = 0.0d0
+          vz_ideal    = 0.0d0
+          ngas_ideal  = 0.0d0
+          ndust_ideal = 0.0d0
+          missed_cell = 0
+       end if
+       
+    else  !! Brut force: compare dist to cell center against Rmin/Rmax 
+       if (dist_cell < r_max .and. dist_cell > r_min) then ! cell completely within sphere
+          vx_ideal = Vgas_norm * (1.0d0 - r_min/dist_cell)**beta * (xcell_ideal - 0.5d0) / dist_cell    
+          vy_ideal = Vgas_norm * (1.0d0 - r_min/dist_cell)**beta * (ycell_ideal - 0.5d0) / dist_cell  
+          vz_ideal = Vgas_norm * (1.0d0 - r_min/dist_cell)**beta * (zcell_ideal - 0.5d0) / dist_cell  
+          
+          ngas_ideal  = n0 * 1.0d0 /  (dist_cell**2. * (1.0d0 - r_min/dist_cell)**beta)
+          ndust_ideal = ndust_0 * ngas_ideal / n0
+          missed_cell = 0
+
+          if (ngas_ideal .lt. 0.0d0) then
+             print*,ngas_ideal,dist_cell,ngas_slope,n0
+             stop
+          endif
+          
+       else                                                ! cell completely out of sphere or completely within r_min               
+          vx_ideal    = 0.0d0
+          vy_ideal    = 0.0d0
+          vz_ideal    = 0.0d0
+          ngas_ideal  = 0.0d0
+          ndust_ideal = 0.0d0
+          missed_cell = 0
+       end if
+    end if
+    
+    bparam_ideal = vth_norm
+
+    if (missed_cell .eq. 1) then
+       print*,'I missed a cell in module_idealised_models !'
+       print*,dist_cell
+       stop
+    endif
+    
+    return
+    
+  end subroutine shell_Vcak_rho_steady
+
+  
     !+++++++++++++++++++++++++++++++++++++++++++++++ Cone with velocity gradient and density gradient (power-laws) +++++++++++++++++++++++++++++++++++++++++++++
 
   subroutine shellcone_V_rho_gradient(ndust_ideal,ngas_ideal,bparam_ideal,vx_ideal,vy_ideal,vz_ideal,xcell_ideal,ycell_ideal,zcell_ideal,dx_cell)
