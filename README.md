@@ -2,7 +2,7 @@
 
 The homepage of the **RASCAS** project is [here](http://rascas.univ-lyon1.fr). 
 
-Documentation and cookbook are available here.
+Documentation and cookbook are available [here](http://rascas.univ-lyon1.fr/doc/indexdoc.html).
 
 If you use **RASCAS**, please acknowledge Michel-Dansac et al. (2020), A&A in press.
 
