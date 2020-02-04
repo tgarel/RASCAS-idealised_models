@@ -18,7 +18,7 @@ module module_HI_1216_model
   real(kind=8),parameter,public :: lambda_0_cm = lambda_0 / cmtoA               ! cm
   real(kind=8),parameter,public :: nu_0 = clight / lambda_0_cm                  ! Hz
   real(kind=8),parameter        :: sigmaH_factor = sqrtpi*e_ch**2*f12/me/clight ! H cross-section factor-> multiply by Voigt(x,a)/delta_nu_doppler to get sigma.
-  real(kind=8),parameter        :: gamma_over_fourpi = gamma / fourpi
+  real(kind=8),parameter,public :: gamma_over_fourpi = gamma / fourpi
 
   ! --------------------------------------------------------------------------
   ! user-defined parameters - read from section [HI] in the parameter file 

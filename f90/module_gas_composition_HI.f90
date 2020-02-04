@@ -166,7 +166,7 @@ contains
     if (HI_core_skip) then
        CS_xcrit = 0.0d0
        delta_nu_doppler = cell_gas%dopwidth/lambda_0_cm
-       a = 6.265d8/fourpi/delta_nu_doppler
+       a = gamma_over_fourpi/delta_nu_doppler
        xcw = 6.9184721d0 + 81.766279d0 / (log10(a)-14.651253d0)  ! Smith+15, Eq. 21
        x = (nu_cell - nu_0)/delta_nu_doppler
        if (abs(x) < xcw) then ! apply core-skipping
