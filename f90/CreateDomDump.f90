@@ -242,17 +242,23 @@ program CreateDomDump
         end select
 
         call get_cpu_list_periodic(repository, snapnum, xmin,xmax,ymin,ymax,zmin,zmax, ncpu_read, cpu_list)
-        call read_leaf_cells_in_domain(repository, snapnum, domain_list(i), ncpu_read, cpu_list, &
-             & nleaftot, nvar, x_leaf, ramses_var, leaf_level)
+        call read_leaf_cells(repository, snapnum, ncpu_read, cpu_list, nleaftot, nvar, x_leaf, ramses_var, leaf_level)
         if(verbose) write(*,*)'In CreateDomDump: nleaf_sel = ',nleaftot, size(leaf_level)
         ! Extract and convert properties of cells into gas mix properties
         call gas_from_ramses_leaves(repository,snapnum,nleaftot,nvar,ramses_var, gas_leaves)
         call cpu_time(finish)
         print '(" --> Time to read leaves in hilbert domain = ",f12.3," seconds.")',finish-intermed
+        ! selection of leaves and mesh building
+        call select_cells_in_domain(domain_list(i), nleaftot, x_leaf, leaf_level, ind_sel)
+        call select_from_domain(arr_in=x_leaf,     ind_sel=ind_sel, arr_out=xleaf_sel)
+        call select_from_domain(arr_in=leaf_level, ind_sel=ind_sel, arr_out=leaflevel_sel)
+        call select_from_domain(arr_in=gas_leaves, ind_sel=ind_sel, arr_out=selected_leaves)
+        nleaf_sel = size(ind_sel)
         if (verbose) write(*,*)'Building the mesh from the collection of leaves...'
         nOctSnap = get_nGridTot_cpus(repository, snapnum, ncpu_read, cpu_list)
-        call mesh_from_leaves(nOctSnap,domain_list(i),nleaftot, &
-             gas_leaves,x_leaf,leaf_level,domain_mesh)
+        call mesh_from_leaves(nOctSnap,domain_list(i),nleaf_sel, &
+             selected_leaves,xleaf_sel,leaflevel_sel,domain_mesh)
+        
      else if (reading_method == 'select_onthefly') then
         ! another option is to read all cpu files but to select cells on the fly to maintain low memory
         ! this is useful for zoom-in simulations with -Dquadhilbert
@@ -321,6 +327,7 @@ program CreateDomDump
         print '(" --> Time to read leaves in domain = ",f12.3," seconds.")',finish-intermed
         if (verbose) write(*,*)'Building the mesh from the collection of leaves...'
         ! and then no need for selection, but to adapt the call to mesh_from_leaves
+        nOctSnap = get_nGridTot_cpus(repository, snapnum, ncpu_read, cpu_list)
         call mesh_from_leaves(nOctSnap,domain_list(i),nleaftot, &
              gas_leaves,x_leaf,leaf_level,domain_mesh)
      ! --JB
