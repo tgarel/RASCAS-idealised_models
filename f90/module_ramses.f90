@@ -144,6 +144,8 @@ contains
     nleaftot = get_nleaf(repository,snapnum,ncpu_read,cpu_list)
     nvar     = get_nvar(repository,snapnum)
     allocate(ramses_var_all(nvar,nleaftot), xleaf_all(nleaftot,3), leaf_level_all(nleaftot))
+    ncpu = get_ncpu(repository,snapnum) !!! ncpu should be known before calling read_amr_hydro!!!
+
     
     ! Check whether the ramses output is in single or double precision
     U_precision = nint(get_param_real(repository,snapnum,'U_precision',default_value=8d0))
