@@ -37,7 +37,7 @@ program CreateDomDump
   character(2000)           :: repository = './'          ! ramses run directory (where all output_xxxxx dirs are).
   integer(kind=4)           :: snapnum = 1                ! ramses output number to use
   character(20)             :: reading_method = 'fullbox' ! strategy to read ramses data, could be:
-                                                          ! fullbox, fullbox_omp, hilbert, select_onthefly, select_onthefly_h
+                                                          ! fullbox, hilbert, select_onthefly, select_onthefly_h
   ! --- computational domain  
   character(10)             :: comput_dom_type      = 'sphere'         ! shape type of domain  // default is a shpere.
   real(kind=8),dimension(3) :: comput_dom_pos       = (/0.5,0.5,0.5/)  ! center of domain [code units]
@@ -324,7 +324,7 @@ program CreateDomDump
         call mesh_from_leaves(nOctSnap,domain_list(i),nleaftot, &
              gas_leaves,x_leaf,leaf_level,domain_mesh)
      ! --JB
-     else
+     else if (reading_method == 'fullbox') then
         call select_cells_in_domain(domain_list(i), nleaftot, x_leaf, leaf_level, ind_sel)
         call select_from_domain(arr_in=x_leaf,     ind_sel=ind_sel, arr_out=xleaf_sel)
         call select_from_domain(arr_in=leaf_level, ind_sel=ind_sel, arr_out=leaflevel_sel)
@@ -334,13 +334,16 @@ program CreateDomDump
         nOctSnap = get_nGridTot_cpus(repository, snapnum, ncpu_read, cpu_list)
         call mesh_from_leaves(nOctSnap,domain_list(i),nleaf_sel, &
              selected_leaves,xleaf_sel,leaflevel_sel,domain_mesh)
+     else
+        print*,'ERROR: reading method ',trim(reading_method), ' not known, better stop.'
+        stop
      endif
 
      fichier = trim(DomDumpDir)//trim(mesh_file_list(i))
      call dump_mesh(domain_mesh, fichier)
      call mesh_destructor(domain_mesh)
 
-     if (.not.(reading_method=='fullbox').and..not.(reading_method=='fullbox_omp')) then
+     if (.not.(reading_method=='fullbox')) then
      ! deallocate arrays from RAMSES reading
         if(allocated(cpu_list)) deallocate(cpu_list)
         if(allocated(ramses_var)) deallocate(ramses_var)
