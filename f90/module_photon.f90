@@ -104,7 +104,8 @@ contains
     integer(kind=4)                      :: nsubsteps
     real(kind=8)                         :: time_to_core               ! time for blue photons to reach core (x=0) in Hubble flow
     real(kind=8)                         :: time_to_igm_transparence   ! max time for red photons to reach optically thin IGM in Hubble flow
-
+    real(kind=8),parameter               :: ntmax = 10.0d0
+    
     !real(kind=8),parameter               :: Hub_kms_Mpc = 20.0d0 ! 660.0d0 ! at z=6 [km/s/Mpc]
     !------ if redshift defined as param:
     ! H =  H_0 * sqrt(Omega_M*(1.0 + redshift_snapshot)**3.0 + Omega_L) in km/s/Mpc
@@ -129,15 +130,15 @@ contains
 
     ! Setup criterion for stopping IGM RT
     nu_0 = clight /(1215.67d0/cmtoA)
-    if (p%nu_ext < nu_0) then
+    if (p%nu_ext > nu_0) then  ! blue photon 
        time_to_core = 1.0d0 / Hub_cms_cm * (1.0d0 - nu_0/p%nu_ext) ! s
     else
        time_to_core = 0.0d0 ! photon already red
     end if
     
-    time_to_igm_transparence = 7.01d14 * Omega_b * (1.0 + redshift_snapshot)**3.0 / (Omega_M * (1.0 + redshift_snapshot)**3.0 + Omega_L) ! [s]
+    time_to_igm_transparence = 7.01d14 * Omega_b * (1.0 + redshift_snapshot)**3.0 / (Omega_M * (1.0 + redshift_snapshot)**3.0 + Omega_L) * ntmax ! one may set tmax to N*tmax ! [s]
     time_to_igm_transparence = time_to_igm_transparence + time_to_core                                                                   ! [s]
-    time_to_igm_transparence = time_to_igm_transparence * 10.0d0 ! one may set tmax to N*tmax
+    time_to_igm_transparence = time_to_igm_transparence 
     
     ! check that the photon is actually in the computational domain ...
     in_domain = domain_contains_point(ppos,domaine_calcul)
