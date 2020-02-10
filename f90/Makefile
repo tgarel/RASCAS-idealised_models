@@ -98,7 +98,7 @@ COMPOBJS = module_dust_model.o module_D_1215_model.o module_HI_1216_model.o modu
 # 13/ pure dust
 #COMPOBJS = module_dust_model.o module_gas_composition_dust.o
 # 14/ HI, HeI, HeII -> WARNING, this is for fesc measurements only ! 
-COMPOBJS = module_gas_composition_HI_HeI_HeII.o
+#COMPOBJS = module_gas_composition_HI_HeI_HeII.o
 
 GASOBJS = module_constants.o module_random.o module_utils.o module_voigt.o module_domain.o coolrates_module.o module_ramses.o module_uparallel.o $(COMPOBJS)
 
