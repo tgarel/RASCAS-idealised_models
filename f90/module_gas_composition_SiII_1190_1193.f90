@@ -115,7 +115,7 @@ contains
 
 
   
-  function  gas_get_scatter_flag(cell_gas, distance_to_border_cm, nu_cell, tau_abs,iran)
+  function  gas_get_scatter_flag(cell_gas, distance_to_border_cm, nu_cell, tau_abs, iran, CS_dist_cm, CS_xcrit)
 
     ! --------------------------------------------------------------------------
     ! Decide whether a scattering event occurs, and if so, on which element
@@ -126,10 +126,12 @@ contains
     ! - nu_cell : photon frequency in cell's frame [ Hz ]
     ! - tau_abs : optical depth at which the next scattering event will occur
     ! - iran    : random generator state of the photon 
+    ! - CS_dist_cm: not useful here, for HI core-skipping only.
     ! OUTPUTS:
     ! - distance_to_border_cm : comes out as the distance to scattering event (if there is an event)
     ! - tau_abs : 0 if a scatter occurs, decremented by tau_cell if photon escapes cell. 
     ! - gas_get_scatter_flag : 0 [no scatter], 1 [SiII-1190 scatter], 2 [SiII-1193 scatter]
+    ! - CS_xcrit: not useful here, for HI core-skipping only.
     ! --------------------------------------------------------------------------
 
     type(gas),intent(in)                  :: cell_gas
@@ -139,7 +141,9 @@ contains
     integer,intent(inout)                 :: iran 
     integer(kind=4)                       :: gas_get_scatter_flag 
     real(kind=8)                          :: tau_SiII_1190, tau_SiII_1193, tau_cell, proba90, x 
-
+    real(kind=8),intent(in)               :: CS_dist_cm
+    real(kind=8),intent(inout)            :: CS_xcrit
+    
     ! compute optical depths for different components of the gas.
     tau_SiII_1190 = get_tau_SiII_1190(cell_gas%nSiII, cell_gas%dopwidth, distance_to_border_cm, nu_cell)
     tau_SiII_1193 = get_tau_SiII_1193(cell_gas%nSiII, cell_gas%dopwidth, distance_to_border_cm, nu_cell)
@@ -171,13 +175,14 @@ contains
 
 
 
-  subroutine gas_scatter(flag,cell_gas,nu_cell,k,nu_ext,iran)
+  subroutine gas_scatter(flag,cell_gas,nu_cell,k,nu_ext,iran,xcrit)
 
     integer, intent(inout)                    :: flag
     type(gas), intent(in)                     :: cell_gas
     real(kind=8), intent(inout)               :: nu_cell, nu_ext
     real(kind=8), dimension(3), intent(inout) :: k
     integer, intent(inout)                    :: iran
+    real(kind=8),intent(in)                   :: xcrit  ! not useful, for HI core-skipping only
 
     select case(flag)
     case(1)
