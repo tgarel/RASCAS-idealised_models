@@ -1,4 +1,4 @@
-program main
+program FescFromStars
 
   ! Use RASCAS to compute column densities along sight-lines. 
 
@@ -44,7 +44,7 @@ program main
   ! -------------------- read parameters --------------------
   narg = command_argument_count()
   if(narg .lt. 1)then
-     write(*,*)'You should type: ColumnDensity params.dat'
+     write(*,*)'You should type: FescFromStars params.dat'
      write(*,*)'File params.dat should contain a parameter namelist'
      stop
   end if
@@ -258,4 +258,4 @@ contains
 
   end subroutine print_FescFromStars_params
   
-end program main
+end program FescFromStars

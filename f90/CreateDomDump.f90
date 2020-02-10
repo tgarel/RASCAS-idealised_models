@@ -208,7 +208,7 @@ program CreateDomDump
      if (reading_method == 'hilbert') then
         call cpu_time(intermed)
         if (verbose) print*,'Reading leaf cells...'
-        ! read leaf cells in domain on the fly...
+        ! read leaf cells in cpu files given by hilbert keys
         ! define max extent of domain i
         select case(decomp_dom_type)
         case('sphere')
