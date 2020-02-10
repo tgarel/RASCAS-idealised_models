@@ -27,7 +27,8 @@ module module_mesh
 
   ! WORKING VARIABLES (internal to this module, could be renamed)
   
-  integer(kind=4)                            :: nCoarse,nOct,nCell,nleaf
+  integer(kind=8)                            :: nOct,nCell
+  integer(kind=4)                            :: nCoarse,nleaf
   integer(kind=4)                            :: countleaf,countempty
 
   ! oct-tree data
@@ -92,7 +93,8 @@ module module_mesh
       integer(kind=4),dimension(1:nleaves),intent(in)  :: leaveslevel
       type(mesh),intent(out)                           :: m
 
-      integer(kind=4)                                  :: ilastoct,lfather,ifathercell,i
+      integer(kind=8)                                  :: ilastoct,ifathercell
+      integer(kind=4)                                  :: lfather,i
       real(kind=8),dimension(3)                        :: xnew
       integer(kind=4), dimension(:),allocatable        :: ileaf
       integer(kind=4)                                  :: nocttrue
@@ -138,7 +140,7 @@ module module_mesh
       call add_oct_domain(ilastoct,nLeaf,ileaf,xnew,lfather,ifathercell)
 
       ! resize arrays
-      nOctTrue = ilastoct
+      nOctTrue = int(ilastoct,4)
       call resize_octtree(nOct,nOctTrue)
       nOct  = nOctTrue
       nCell = nCoarse + 8*nOct
@@ -177,8 +179,8 @@ module module_mesh
       m%domain = dom
 
       m%ncoarse = ncoarse
-      m%noct    = noct
-      m%ncell   = ncell
+      m%noct    = int(noct,4)
+      m%ncell   = int(ncell,4)
       m%nleaf   = nleaf
 
       m%son = son
@@ -481,12 +483,14 @@ module module_mesh
 
     recursive subroutine add_oct_domain(ilastoct,n,id,fcx,fcl,ifc)
     
-      integer(kind=4),intent(inout)            :: ilastoct
+      integer(kind=8),intent(inout)            :: ilastoct
       integer(kind=4),intent(in)               :: n
       integer(kind=4),dimension(n),intent(in)  :: id
-      integer(kind=4),intent(in)               :: fcl,ifc
+      integer(kind=4),intent(in)               :: fcl
+      integer(kind=8),intent(in)               :: ifc
       real(kind=8),dimension(3),intent(in)     :: fcx
-      integer(kind=4)                          :: ind,level,nleaflocal,icell,ilastoctLevel
+      integer(kind=8)                          :: icell,ilastoctLevel
+      integer(kind=4)                          :: ind,level,nleaflocal
       integer(kind=4),dimension(:),allocatable :: ileaflocal
       real(kind=8),dimension(3)                :: xcentre
       logical                                  :: same_level
@@ -494,7 +498,7 @@ module module_mesh
       ilastoct = ilastoct + 1 
       octlevel(ilastoct)=fcl+1
       xoct(ilastoct,1:3) = fcx(1:3)
-      father(ilastoct) = ifc
+      father(ilastoct) = int(ifc,4)
       level=octlevel(ilastoct)
       ilastoctLevel = ilastoct
 
@@ -510,6 +514,10 @@ module module_mesh
          nleaflocal = get_nleaflocal(n,id,xcentre,level)
 
          icell = nCoarse+ilastoctLevel+(ind-1)*nOct
+         if(icell .gt. size(son)) then !JOKI DEBUG!!
+            print*,'problem in module_mesh, add_oct_domain ',icell,nCoarse,ilastoctLevel,nOct,ind,nleaflocal,level, size(son)
+            stop
+         endif
 
          ! 3 possible cases according to the value of nleaflocal:
          ! 1/ nleaflocal > 1 -> add a new oct
@@ -521,7 +529,7 @@ module module_mesh
             ! add a new oct
             allocate(ileaflocal(nleaflocal))
             ileaflocal = get_ileaflocal(n,id,xcentre,level,nleaflocal)                   ! indices dans xl(:,1:3)
-            son(icell) = ilastoct+1
+            son(icell) = int(ilastoct+1,4)
             call add_oct_domain(ilastoct,nleaflocal,ileaflocal,xcentre,level,icell)
             deallocate(ileaflocal)
 
@@ -540,7 +548,7 @@ module module_mesh
                   deallocate(ileaflocal)
                else
                   ! add a new oct
-                  son(icell) = ilastoct+1
+                  son(icell) = int(ilastoct+1,4)
                   call add_oct_domain(ilastoct,nleaflocal,ileaflocal,xcentre,level,icell)
                   deallocate(ileaflocal)
                endif
@@ -679,12 +687,13 @@ module module_mesh
       ! copyright JB
       ! returns icell indexed with ngridmin instead of ngridmax
 
-      integer(kind=4),intent(in) :: icell,ngridmax,ngridmin,ncoarse
+      integer(kind=4),intent(in) :: icell,ngridmin,ncoarse
+      integer(kind=8),intent(in) :: ngridmax
       integer(kind=4)            :: icell2icell
       integer(kind=4)            :: ind,jcell
 
-      ind   = (icell - ncoarse - 1) / ngridmax + 1
-      jcell = icell - ncoarse - (ind - 1) * ngridmax
+      ind   = (icell - ncoarse - 1) / int(ngridmax,4) + 1
+      jcell = icell - ncoarse - (ind - 1) * int(ngridmax,4)
 
       icell2icell = ncoarse + jcell + (ind-1) * ngridmin
 
@@ -708,7 +717,7 @@ module module_mesh
          stop
       end if
       noops1=0
-      do ioct=1,nOct  ! loop over all octs. 
+      do ioct=1,int(nOct,4)  ! loop over all octs. 
          level = octlevel(ioct)   ! level of oct -> 6 neighbors are cells at level-1
          dx    = 0.5d0**(level-1) ! size of neighbor cells (or cell containing the oct)
          xc    = xoct(ioct,1:3)   ! position of current oct.
@@ -763,7 +772,7 @@ module module_mesh
                iy = merge(0,1,xnbor(2) < x(2))
                iz = merge(0,1,xnbor(3) < x(3))
                ind = ix + 2*iy + 4*iz 
-               icell = ncoarse + ind * nOct + ison
+               icell = ncoarse + ind * int(nOct,4) + ison
                ison  = son(icell)
                l   = l + 1
                if (l == level-1) exit
@@ -777,14 +786,15 @@ module module_mesh
       end do
       if (noops1 /= 0) print*,'-- make_nbor_array: error flag = ',noops1
       !-JB
-      
+
     end subroutine make_nbor_array
 
 
 
     subroutine resize_octtree(nold,nnew)
 
-      integer(kind=4), intent(in)              :: nold,nnew
+      integer(kind=8), intent(in)              :: nold
+      integer(kind=4), intent(in)              :: nnew
       real(kind=8),dimension(:,:),allocatable  :: tmpr
       integer(kind=4),dimension(:),allocatable :: tmpi
       integer(kind=4)                          :: ncellnew,i
@@ -880,10 +890,10 @@ module module_mesh
          endif
       endif
       
-      do i=1,nOct
+      do i=1,int(nOct,4)
          do ind=1,8
             icount=icount+1
-            ioct = nCoarse + i + (ind-1)*nOct
+            ioct = nCoarse + i + (ind-1)*int(nOct,4)
             if(son(ioct)<0)then
                countleaf=countleaf+1
             endif
@@ -903,10 +913,10 @@ module module_mesh
       ! count incomplete octs...
       icount=0
       icount2=0
-      do i=1,nOct
+      do i=1,int(nOct,4)
          oct_status=0
          do ind=1,8
-            ioct = nCoarse + i + (ind-1)*nOct
+            ioct = nCoarse + i + (ind-1)*int(nOct,4)
             if(son(ioct)/=0)then
                oct_status=oct_status+1
             endif

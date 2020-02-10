@@ -37,7 +37,7 @@ program CreateDomDump
   character(2000)           :: repository = './'          ! ramses run directory (where all output_xxxxx dirs are).
   integer(kind=4)           :: snapnum = 1                ! ramses output number to use
   character(20)             :: reading_method = 'fullbox' ! strategy to read ramses data, could be:
-                                                          ! fullbox, fullbox_omp, hilbert, select_onthefly, select_onthefly_h
+                                                          ! fullbox, hilbert, select_onthefly, select_onthefly_h
   ! --- computational domain  
   character(10)             :: comput_dom_type      = 'sphere'         ! shape type of domain  // default is a shpere.
   real(kind=8),dimension(3) :: comput_dom_pos       = (/0.5,0.5,0.5/)  ! center of domain [code units]
@@ -74,7 +74,7 @@ program CreateDomDump
   call read_CreateDomDump_params(parameter_file)
   if (verbose) call print_CreateDomDump_params
   ! ------------------------------------------------------------
-  
+
   
   ! Define the computational domain. This domain describes the volume in which photons fly.
   select case(comput_dom_type)
@@ -113,32 +113,21 @@ program CreateDomDump
      computdom_min_x = 0.0d0 ; computdom_min_y = 0.0d0
      computdom_min_z = comput_dom_pos(3)-comput_dom_thickness/2.0d0
   end select
+
   
-  
-  ! Read all the leaf cells
-  nOctSnap = get_nGridTot(repository,snapnum)
   if (reading_method == 'fullbox') then
-     if (verbose) print*,'Reading leaf cells...'
-     call read_leaf_cells(repository, snapnum, nleaftot, nvar, x_leaf, ramses_var, leaf_level)
-     ! Extract and convert properties of cells into gas mix properties
-     call gas_from_ramses_leaves(repository,snapnum,nleaftot,nvar,ramses_var, gas_leaves)
-     call cpu_time(finish)
-     print '(" --> Time to read all leaves in fullbox = ",f12.3," seconds.")',finish-start
-  end if
-  if (reading_method == 'fullbox_omp') then
      if (verbose) print*,'Reading leaf cells...'
      ncpu_read = get_ncpu(repository,snapnum)
      allocate(cpu_list(1:ncpu_read))
      do i=1,ncpu_read
         cpu_list(i)=i
      end do
-     call read_leaf_cells_omp(repository, snapnum, ncpu_read, cpu_list, nleaftot, nvar, x_leaf, ramses_var, leaf_level)
+     call read_leaf_cells(repository, snapnum, ncpu_read, cpu_list, nleaftot, nvar, x_leaf, ramses_var, leaf_level)
      ! Extract and convert properties of cells into gas mix properties
      call gas_from_ramses_leaves(repository,snapnum,nleaftot,nvar,ramses_var, gas_leaves)
      call cpu_time(finish)
-     print '(" --> Time to read all leaves in fullbox_omp = ",f12.3," seconds.")',finish-start
+     print '(" --> Time to read all leaves in fullbox = ",f12.3," seconds.")',finish-start
   end if
-  
   ! domain decomposition 
   if (verbose) print *,'Building domains...'
   meshroot = 'domain_'
@@ -189,14 +178,14 @@ program CreateDomDump
      write(mesh_file_list(i),'(a,a,a)') trim(meshroot),trim(toto),'.mesh'
      if (verbose) write(*,'(a,i3,a,a,a,a)') '     \_',i,'  ',trim(domain_file_list(i)),' ',trim(mesh_file_list(i))
   end do
-  
+
   ! The computational domain should be fully enclosed in the domain mesh.
   if ((computdom_max_x > decompdom_max_x).or.(computdom_max_y > decompdom_max_y).or.(computdom_max_z > decompdom_max_z).or.&
        (computdom_min_x < decompdom_min_x).or.(computdom_min_y < decompdom_min_y).or.(computdom_min_z < decompdom_min_z))then
      print*,'ERROR: computational domain should be fully enclosed in the data domains.'
      stop
   endif
-  
+
   ! write master info
   fichier = "compute_domain.dom"
   call domain_write_file(trim(DomDumpDir)//trim(fichier),domaine_de_calcul)
@@ -219,7 +208,7 @@ program CreateDomDump
      if (reading_method == 'hilbert') then
         call cpu_time(intermed)
         if (verbose) print*,'Reading leaf cells...'
-        ! read leaf cells in domain on the fly...
+        ! read leaf cells in cpu files given by hilbert keys
         ! define max extent of domain i
         select case(decomp_dom_type)
         case('sphere')
@@ -253,17 +242,26 @@ program CreateDomDump
         end select
 
         call get_cpu_list_periodic(repository, snapnum, xmin,xmax,ymin,ymax,zmin,zmax, ncpu_read, cpu_list)
-        call read_leaf_cells_omp(repository, snapnum, ncpu_read, cpu_list, nleaftot, nvar, x_leaf, ramses_var, leaf_level)
-
+        call read_leaf_cells(repository, snapnum, ncpu_read, cpu_list, nleaftot, nvar, x_leaf, ramses_var, leaf_level)
+        if(verbose) write(*,*)'In CreateDomDump: nleaf_sel = ',nleaftot, size(leaf_level)
         ! Extract and convert properties of cells into gas mix properties
         call gas_from_ramses_leaves(repository,snapnum,nleaftot,nvar,ramses_var, gas_leaves)
         call cpu_time(finish)
         print '(" --> Time to read leaves in hilbert domain = ",f12.3," seconds.")',finish-intermed
-     endif
-     
-     ! another option is to read all cpu files but to select cells on the fly to maintain low memory
-     ! this is useful for zoom-in simulations with -Dquadhilbert
-     if (reading_method == 'select_onthefly') then
+        ! selection of leaves and mesh building
+        call select_cells_in_domain(domain_list(i), nleaftot, x_leaf, leaf_level, ind_sel)
+        call select_from_domain(arr_in=x_leaf,     ind_sel=ind_sel, arr_out=xleaf_sel)
+        call select_from_domain(arr_in=leaf_level, ind_sel=ind_sel, arr_out=leaflevel_sel)
+        call select_from_domain(arr_in=gas_leaves, ind_sel=ind_sel, arr_out=selected_leaves)
+        nleaf_sel = size(ind_sel)
+        if (verbose) write(*,*)'Building the mesh from the collection of leaves...'
+        nOctSnap = get_nGridTot_cpus(repository, snapnum, ncpu_read, cpu_list)
+        call mesh_from_leaves(nOctSnap,domain_list(i),nleaf_sel, &
+             selected_leaves,xleaf_sel,leaflevel_sel,domain_mesh)
+        
+     else if (reading_method == 'select_onthefly') then
+        ! another option is to read all cpu files but to select cells on the fly to maintain low memory
+        ! this is useful for zoom-in simulations with -Dquadhilbert
         if (verbose) print*,'Reading leaf cells...'
         call cpu_time(intermed)
         ncpu_read = get_ncpu(repository,snapnum)
@@ -280,6 +278,7 @@ program CreateDomDump
         print '(" --> Time to read leaves in domain = ",f12.3," seconds.")',finish-intermed
         if (verbose) write(*,*)'Building the mesh from the collection of leaves...'
         ! and then no need for selection, but to adapt the call to mesh_from_leaves
+        nOctSnap = get_nGridTot_cpus(repository, snapnum, ncpu_read, cpu_list)
         call mesh_from_leaves(nOctSnap,domain_list(i),nleaftot, &
              gas_leaves,x_leaf,leaf_level,domain_mesh)
         
@@ -322,34 +321,36 @@ program CreateDomDump
         call get_cpu_list_periodic(repository, snapnum, xmin,xmax,ymin,ymax,zmin,zmax, ncpu_read, cpu_list)
         call read_leaf_cells_in_domain(repository, snapnum, domain_list(i), ncpu_read, cpu_list, &
              & nleaftot, nvar, x_leaf, ramses_var, leaf_level)
-        print*,'in CreateDomDump: nleaf_sel = ',nleaftot, size(leaf_level)
         ! Extract and convert properties of cells into gas mix properties
         call gas_from_ramses_leaves(repository,snapnum,nleaftot,nvar,ramses_var, gas_leaves)
         call cpu_time(finish)
         print '(" --> Time to read leaves in domain = ",f12.3," seconds.")',finish-intermed
         if (verbose) write(*,*)'Building the mesh from the collection of leaves...'
         ! and then no need for selection, but to adapt the call to mesh_from_leaves
+        nOctSnap = get_nGridTot_cpus(repository, snapnum, ncpu_read, cpu_list)
         call mesh_from_leaves(nOctSnap,domain_list(i),nleaftot, &
              gas_leaves,x_leaf,leaf_level,domain_mesh)
      ! --JB
-     else
+     else if (reading_method == 'fullbox') then
         call select_cells_in_domain(domain_list(i), nleaftot, x_leaf, leaf_level, ind_sel)
-        print*,'in CreateDomDump: ind_sel = ',size(ind_sel)
         call select_from_domain(arr_in=x_leaf,     ind_sel=ind_sel, arr_out=xleaf_sel)
         call select_from_domain(arr_in=leaf_level, ind_sel=ind_sel, arr_out=leaflevel_sel)
         call select_from_domain(arr_in=gas_leaves, ind_sel=ind_sel, arr_out=selected_leaves)
         nleaf_sel = size(ind_sel)
-        print*,'in CreateDomDump: nleaf_sel = ',nleaf_sel
         if (verbose) write(*,*)'Building the mesh from the collection of leaves...'
+        nOctSnap = get_nGridTot_cpus(repository, snapnum, ncpu_read, cpu_list)
         call mesh_from_leaves(nOctSnap,domain_list(i),nleaf_sel, &
              selected_leaves,xleaf_sel,leaflevel_sel,domain_mesh)
+     else
+        print*,'ERROR: reading method ',trim(reading_method), ' not known, better stop.'
+        stop
      endif
 
      fichier = trim(DomDumpDir)//trim(mesh_file_list(i))
      call dump_mesh(domain_mesh, fichier)
      call mesh_destructor(domain_mesh)
 
-     if (.not.(reading_method=='fullbox').and..not.(reading_method=='fullbox_omp')) then
+     if (.not.(reading_method=='fullbox')) then
      ! deallocate arrays from RAMSES reading
         if(allocated(cpu_list)) deallocate(cpu_list)
         if(allocated(ramses_var)) deallocate(ramses_var)
@@ -360,7 +361,7 @@ program CreateDomDump
   enddo
 
   call cpu_time(finish)
-  print '(" --> Total elapsed time = ",f12.3," seconds.")',finish-start
+  print '(" --> Done with CreateDomDump. Total elapsed time = ",f12.3," seconds.")',finish-start
   print*,' '
   
 contains
