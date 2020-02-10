@@ -77,7 +77,6 @@ program ExtractSubvol
   ! ------------------------------------------------------------
   
   ! Read all the leaf cells
-  nOctSnap = get_nGridTot(repository,snapnum)
   if (reading_method == 'fullbox') then
      ncpu_read = get_ncpu(repository,snapnum)
      allocate(cpu_list(1:ncpu_read))
@@ -88,7 +87,7 @@ program ExtractSubvol
      ! Extract and convert properties of cells into gas mix properties
      call gas_from_ramses_leaves(repository,snapnum,nleaftot,nvar,ramses_var, gas_leaves)
      call cpu_time(finish)
-     print '(" --> Time to read all leaves in fullbox_omp = ",f12.3," seconds.")',finish-start
+     print '(" --> Time to read all leaves in fullbox = ",f12.3," seconds.")',finish-start
   end if
   
   ! domain decomposition 
@@ -151,7 +150,8 @@ program ExtractSubvol
 
   ! building of the meshes
   do i = 1,decomp_dom_ndomain
-
+     if(verbose)print*,' '
+     
      if (reading_method == 'hilbert') then
         call cpu_time(intermed)
         ! define max extent of domain i and get cpu list
@@ -191,11 +191,20 @@ program ExtractSubvol
         call gas_from_ramses_leaves(repository,snapnum,nleaftot,nvar,ramses_var, gas_leaves)
         call cpu_time(finish)
         print '(" --> Time to read leaves in hilbert domain = ",f12.3," seconds.")',finish-intermed
-     endif
+        ! selection of leaves and mesh building
+        call select_cells_in_domain(domain_list(i), nleaftot, x_leaf, leaf_level, ind_sel)
+        call select_from_domain(arr_in=x_leaf,     ind_sel=ind_sel, arr_out=xleaf_sel)
+        call select_from_domain(arr_in=leaf_level, ind_sel=ind_sel, arr_out=leaflevel_sel)
+        call select_from_domain(arr_in=gas_leaves, ind_sel=ind_sel, arr_out=selected_leaves)
+        nleaf_sel = size(ind_sel)
+        if (verbose) write(*,*)'Building the mesh from the collection of leaves...'
+        nOctSnap = get_nGridTot_cpus(repository, snapnum, ncpu_read, cpu_list)
+        call mesh_from_leaves(nOctSnap,domain_list(i),nleaf_sel, &
+             selected_leaves,xleaf_sel,leaflevel_sel,domain_mesh)
 
      ! another last option would be to read all cpu files but to select cells on the fly to maintain low memory
      ! this would be for zoom-in simulations with -Dquadhilbert
-     if (reading_method == 'select_onthefly') then
+     else if (reading_method == 'select_onthefly') then
         ncpu_read = get_ncpu(repository,snapnum)
         allocate(cpu_list(1:ncpu_read))
         do j=1,ncpu_read
@@ -209,17 +218,71 @@ program ExtractSubvol
         call cpu_time(finish)
         print '(" --> Time to read leaves in domain = ",f12.3," seconds.")',finish-intermed
         ! and then no need for selection, but to adapt the call to mesh_from_leaves
+        nOctSnap = get_nGridTot_cpus(repository, snapnum, ncpu_read, cpu_list)
         call mesh_from_leaves(nOctSnap,domain_list(i),nleaftot, &
              gas_leaves,x_leaf,leaf_level,domain_mesh)
-     else
+
+     ! this option combines the 2 previous one. 
+     else if (reading_method == 'select_onthefly_h') then
+        if (verbose) print*,'Reading leaf cells...'
+        call cpu_time(intermed)
+        select case(decomp_dom_type)
+        case('sphere')
+           xmax = decomp_dom_xc(i) + decomp_dom_rsp(i)
+           xmin = decomp_dom_xc(i) - decomp_dom_rsp(i)
+           ymax = decomp_dom_yc(i) + decomp_dom_rsp(i)
+           ymin = decomp_dom_yc(i) - decomp_dom_rsp(i)
+           zmax = decomp_dom_zc(i) + decomp_dom_rsp(i)
+           zmin = decomp_dom_zc(i) - decomp_dom_rsp(i)
+        case('shell')
+           xmax = decomp_dom_xc(i) + decomp_dom_rout(i)
+           xmin = decomp_dom_xc(i) - decomp_dom_rout(i)
+           ymax = decomp_dom_yc(i) + decomp_dom_rout(i)
+           ymin = decomp_dom_yc(i) - decomp_dom_rout(i)
+           zmax = decomp_dom_zc(i) + decomp_dom_rout(i)
+           zmin = decomp_dom_zc(i) - decomp_dom_rout(i)
+        case('cube')
+           xmax = decomp_dom_xc(i) + decomp_dom_size(i)*0.5d0
+           xmin = decomp_dom_xc(i) - decomp_dom_size(i)*0.5d0
+           ymax = decomp_dom_yc(i) + decomp_dom_size(i)*0.5d0
+           ymin = decomp_dom_yc(i) - decomp_dom_size(i)*0.5d0
+           zmax = decomp_dom_zc(i) + decomp_dom_size(i)*0.5d0
+           zmin = decomp_dom_zc(i) - decomp_dom_size(i)*0.5d0
+        case('slab')
+           xmax = 1.0d0
+           xmin = 0.0d0
+           ymax = 1.0d0
+           ymin = 0.0d0
+           zmax = decomp_dom_zc(i) + decomp_dom_thickness(i)*0.5d0
+           zmin = decomp_dom_zc(i) - decomp_dom_thickness(i)*0.5d0
+        end select
+        
+        call get_cpu_list_periodic(repository, snapnum, xmin,xmax,ymin,ymax,zmin,zmax, ncpu_read, cpu_list)
+        call read_leaf_cells_in_domain(repository, snapnum, domain_list(i), ncpu_read, cpu_list, &
+             & nleaftot, nvar, x_leaf, ramses_var, leaf_level)
+        ! Extract and convert properties of cells into gas mix properties
+        call gas_from_ramses_leaves(repository,snapnum,nleaftot,nvar,ramses_var, gas_leaves)
+        call cpu_time(finish)
+        print '(" --> Time to read leaves in domain = ",f12.3," seconds.")',finish-intermed
+        if (verbose) write(*,*)'Building the mesh from the collection of leaves...'
+        ! and then no need for selection, but to adapt the call to mesh_from_leaves
+        nOctSnap = get_nGridTot_cpus(repository, snapnum, ncpu_read, cpu_list)
+        call mesh_from_leaves(nOctSnap,domain_list(i),nleaftot, &
+             gas_leaves,x_leaf,leaf_level,domain_mesh)
+        
+     else if (reading_method == 'fullbox') then
         call select_cells_in_domain(domain_list(i), nleaftot, x_leaf, leaf_level, ind_sel)
         call select_from_domain(arr_in=x_leaf,     ind_sel=ind_sel, arr_out=xleaf_sel)
         call select_from_domain(arr_in=leaf_level, ind_sel=ind_sel, arr_out=leaflevel_sel)
         call select_from_domain(arr_in=gas_leaves, ind_sel=ind_sel, arr_out=selected_leaves)
         nleaf_sel = size(ind_sel)
-
+        nOctSnap = get_nGridTot_cpus(repository,snapnum,ncpu_read,cpu_list)
         call mesh_from_leaves(nOctSnap,domain_list(i),nleaf_sel, &
              selected_leaves,xleaf_sel,leaflevel_sel,domain_mesh)
+        
+     else
+        print*,'ERROR: reading method ',trim(reading_method), ' not known, better stop.'
+        stop
      endif
 
      fichier = trim(DomDumpDir)//trim(mesh_file_list(i))
@@ -245,6 +308,7 @@ program ExtractSubvol
         fileout = trim(DomDumpDir)//trim(meshroot)//"stars_"//trim(charisnap)//".dat"
         if (verbose) write(*,*) '...writing stars in file: ',trim(fileout)
         call dump_subvol_stars
+        deallocate(star_pos,star_vel,star_mass,star_age,star_met)
      endif
 
      if (add_dm) then
@@ -252,6 +316,16 @@ program ExtractSubvol
      endif
 
      call mesh_destructor(domain_mesh)
+
+     if (.not.(reading_method=='fullbox')) then
+        ! deallocate arrays from RAMSES reading
+        if(allocated(cpu_list)) deallocate(cpu_list)
+        if(allocated(ramses_var)) deallocate(ramses_var)
+        if(allocated(leaf_level)) deallocate(leaf_level)
+        if(allocated(x_leaf)) deallocate(x_leaf)
+        if(allocated(gas_leaves)) deallocate(gas_leaves)
+     endif
+     
   enddo
 
   call cpu_time(finish)
@@ -356,6 +430,8 @@ contains
              read(value,*) decomp_dom_size(:)
           case ('decomp_dom_thickness')
              read(value,*) decomp_dom_thickness(:)
+          case('reading_method')
+             write(reading_method,'(a)') trim(value)
           end select
        end do
     end if
@@ -397,6 +473,7 @@ contains
        write(unit,'(a,a)')           '  DomDumpDir      = ',trim(DomDumpDir)
        write(unit,'(a,a)')           '  repository      = ',trim(repository)
        write(unit,'(a,i5)')          '  snapnum         = ',snapnum
+       write(unit,'(a,a)')           '  reading_method  = ',trim(reading_method)
        write(unit,'(a)')             '# domain decomposition parameters'
        write(unit,'(a,a)')           '  decomp_dom_type      = ',trim(decomp_dom_type)
        write(unit,'(a,i5)')          '  decomp_dom_ndomain   = ',decomp_dom_ndomain
@@ -427,9 +504,10 @@ contains
        write(*,'(a)')             ' '
        write(*,'(a,a,a)')         '[ExtractSubvol]'
        write(*,'(a)')             '# input / output parameters'
-       write(*,'(a,a)')           '  DomDumpDir = ',trim(DomDumpDir)
-       write(*,'(a,a)')           '  repository = ',trim(repository)
-       write(*,'(a,i5)')          '  snapnum    = ',snapnum
+       write(*,'(a,a)')           '  DomDumpDir      = ',trim(DomDumpDir)
+       write(*,'(a,a)')           '  repository      = ',trim(repository)
+       write(*,'(a,i5)')          '  snapnum         = ',snapnum
+       write(*,'(a,a)')           '  reading_method  = ',trim(reading_method)
        write(*,'(a)')             '# domain decomposition parameters'
        write(*,'(a,a)')           '  decomp_dom_type      = ',trim(decomp_dom_type)
        write(*,'(a,i5)')          '  decomp_dom_ndomain   = ',decomp_dom_ndomain
