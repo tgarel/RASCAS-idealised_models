@@ -190,7 +190,9 @@ contains
 !$OMP CRITICAL
        ! only one CRITICAL zone
 #ifdef DISPLAY_PROGRESS_PERCENT
-       write (*, "(A, f5.2, A, A)", advance='no') &           ! Progress bar
+       !write (*, "(A, f5.2, A, A)", advance='no') &           ! Progress bar
+       !     ' Reading leaves ',dble(iloop) / ncpu_read * 100,' % ',char(13)
+       write (*, "(A, f5.2, A, A, $)") &           ! Progress bar that works with ifort
             ' Reading leaves ',dble(iloop) / ncpu_read * 100,' % ',char(13)
        iloop=iloop+1
 #endif
@@ -281,11 +283,11 @@ contains
     ! --JB
 
     ! first count leaf cells in domain...
-    nleaftot = 0 ; nleaf_in_domain = 0
+    nleaftot = 0 ; nleaf_in_domain = 0 ; iloop=0
 !$OMP PARALLEL &
 !$OMP REDUCTION(+:nleaftot,nleaf_in_domain) &
 !$OMP DEFAULT(private) &
-!$OMP SHARED(repository, snapnum, ncpu_read, cpu_list, selection_domain, cpu_is_useful)
+!$OMP SHARED(iloop,repository, snapnum, ncpu_read, cpu_list, selection_domain, cpu_is_useful)
 !$OMP DO
     do k=1,ncpu_read
        icpu=cpu_list(k)
@@ -315,6 +317,13 @@ contains
        ! JB--
 !$OMP CRITICAL
        cpu_is_useful(k) = (nLeafInCpu > 0)
+#ifdef DISPLAY_PROGRESS_PERCENT
+       !write (*, "(A, f5.2, A, A)", advance='no') &           ! Progress bar
+       !     ' Counting leaves ',dble(iloop) / ncpu_read * 100,' % ',char(13)
+       write (*, "(A, f5.2, A, A, $)") &           ! Progress bar that works with ifort
+            ' Counting leaves ',dble(iloop) / ncpu_read * 100,' % ',char(13)
+#endif
+       iloop=iloop+1
 !$OMP END CRITICAL 
        deallocate(son_l,cpu_map_l,var_l,cell_x_l,cell_y_l,cell_z_l,cell_level_l)
        ! --JB
@@ -334,19 +343,13 @@ contains
     
     allocate(ramses_var_all(nvar,nleaf_in_domain), xleaf_all(nleaf_in_domain,3), leaf_level_all(nleaf_in_domain))
     ilast = 1
+    iloop=0
 !$OMP PARALLEL &
 !$OMP DEFAULT(private) &
-!$OMP SHARED(ilast, xleaf_all, leaf_level_all, ramses_var_all, repository, snapnum, nvar, nleaftot, ncpu_read, cpu_list, selection_domain, cpu_is_useful)
+!$OMP SHARED(iloop,ilast, xleaf_all, leaf_level_all, ramses_var_all, repository, snapnum, nvar, nleaftot, ncpu_read, cpu_list, selection_domain, cpu_is_useful, nLeafInCpu)
     do_allocs=.true.
-    iloop=0
 !$OMP DO
     do k=1,ncpu_read
-#ifdef DISPLAY_PROGRESS_PERCENT
-       !write (*, "(A, f5.2, A, A)", advance='no') &           ! Progress bar
-       !     ' Reading leaves ',dble(iloop) / ncpu_read * 100,' % ',char(13)
-       write (*, "(A, f5.2, A, A, $)") &           ! Progress bar that works with ifort
-            ' Reading leaves ',dble(iloop) / ncpu_read * 100,' % ',char(13)
-#endif
        ! JB--
        if (.not. cpu_is_useful(k)) cycle
        !--JB
@@ -376,6 +379,12 @@ contains
           end if
        end do
 !$OMP CRITICAL
+#ifdef DISPLAY_PROGRESS_PERCENT
+       !write (*, "(A, f5.2, A, A)", advance='no') &           ! Progress bar
+       !     ' Reading leaves ',dble(iloop) / nLeafInCpu * 100,' % ',char(13)
+       write (*, "(A, f5.2, A, A, $)") &           ! Progress bar that works with ifort
+            ' Reading leaves ',dble(iloop) / nLeafInCpu * 100,' % ',char(13)
+#endif
        ! only one CRITICAL zone
        iloop=iloop+1
        ! ileaf is now the number of leaves on local cpu
@@ -2455,7 +2464,7 @@ contains
 2   close (param_unit)  
 
     if (not_ok) then 
-       write(6,*) '> parameter not found in infoxxx.txt :',trim(param)
+       write(6,*) '--> parameter not found in infoxxx.txt : ',trim(param)
        if(present(default_value)) then
           get_param_real = default_value
        else
