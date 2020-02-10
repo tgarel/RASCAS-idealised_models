@@ -94,7 +94,7 @@ module module_ramses
   
   
   public :: read_leaf_cells, read_leaf_cells_in_domain, get_ngridtot_cpus
-  public :: get_ngridtot, ramses_get_box_size_cm, get_cpu_list, get_cpu_list_periodic, get_ncpu
+  public :: ramses_get_box_size_cm, get_cpu_list, get_cpu_list_periodic, get_ncpu
   public :: ramses_get_velocity_cgs, ramses_get_T_nhi_cgs, ramses_get_metallicity,  ramses_get_nh_cgs
   public :: ramses_get_T_nSiII_cgs, ramses_get_T_nMgII_cgs, ramses_get_T_nFeII_cgs
   public :: ramses_get_nh_nhi_nhei_nehii_cgs
@@ -836,44 +836,6 @@ contains
 
   end subroutine hilbert3d
 
-  
-  function get_nGridTot(repository,snapnum)
-
-    ! get total number of grids in the simulation 
-
-    implicit none 
-
-    integer(kind=4),intent(in)  :: snapnum
-    character(1000),intent(in)  :: repository
-    integer(kind=4)             :: get_nGridTot
-    character(1000)             :: filename
-    logical                     :: ok
-    integer(kind=4)             :: icpu,ngrid_current
-
-    ncpu = get_ncpu(repository,snapnum)
-    get_nGridTot = 0
-    do icpu = 1,ncpu
-       write(filename,'(a,a,i5.5,a,i5.5,a,i5.5)') trim(repository),'/output_',snapnum,'/amr_',snapnum,'.out',icpu
-       inquire(file=filename, exist=ok)
-       if(.not. ok)then
-          write(*,*)'File '//TRIM(filename)//' not found'    
-          stop
-       end if
-       open(unit=10,file=filename,form='unformatted',status='old',action='read')
-       read(10)
-       read(10)
-       read(10)
-       read(10)
-       read(10)
-       read(10)
-       read(10)ngrid_current
-       close(10)
-       get_nGridTot = get_nGridTot + ngrid_current
-    end do
-
-    return
-
-  end function get_nGridTot
 
 
   function get_nGridTot_cpus(repository,snapnum,ncpu_read,cpu_list)
