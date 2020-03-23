@@ -134,7 +134,7 @@ program CreateDomDump
   allocate(domain_list(decomp_dom_ndomain))
   allocate(domain_file_list(decomp_dom_ndomain),mesh_file_list(decomp_dom_ndomain))
   decompdom_max_x = 0.0d0 ; decompdom_max_y = 0.0d0 ; decompdom_max_z = 0.0d0
-  decompdom_min_x = 1.0d0 ; decompdom_min_x = 1.0d0 ; decompdom_min_x = 1.0d0
+  decompdom_min_x = 1.0d0 ; decompdom_min_y = 1.0d0 ; decompdom_min_z = 1.0d0
   do i = 1, decomp_dom_ndomain
      select case(decomp_dom_type)
      case('sphere')
@@ -183,6 +183,12 @@ program CreateDomDump
   if ((computdom_max_x > decompdom_max_x).or.(computdom_max_y > decompdom_max_y).or.(computdom_max_z > decompdom_max_z).or.&
        (computdom_min_x < decompdom_min_x).or.(computdom_min_y < decompdom_min_y).or.(computdom_min_z < decompdom_min_z))then
      print*,'ERROR: computational domain should be fully enclosed in the data domains.'
+     print*,computdom_max_x, decompdom_max_x
+     print*,computdom_max_y, decompdom_max_y
+     print*,computdom_max_z, decompdom_max_z
+     print*,computdom_min_x, decompdom_min_x
+     print*,computdom_min_y, decompdom_min_y
+     print*,computdom_min_z, decompdom_min_z
      stop
   endif
 
