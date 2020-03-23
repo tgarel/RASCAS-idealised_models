@@ -105,6 +105,9 @@ contains
     first(:)=-1
     last(:)=-1
     nqueue(:)=0
+    cpu(:)=0
+    ncpuperdom(:)=0
+    delta(:)=0.0d0
     do i=1,nphot
        if(photgrid(i)%status==0)then  ! for restart
           j = get_my_new_domain(photgrid(i)%xcurr,domain_list)
