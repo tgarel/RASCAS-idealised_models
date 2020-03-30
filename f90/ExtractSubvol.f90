@@ -203,7 +203,7 @@ program ExtractSubvol
              selected_leaves,xleaf_sel,leaflevel_sel,domain_mesh)
 
      ! another last option would be to read all cpu files but to select cells on the fly to maintain low memory
-     ! this would be for zoom-in simulations with -Dquadhilbert
+     ! this would be for zoom-in simulations without hilbert decomposition
      else if (reading_method == 'select_onthefly') then
         ncpu_read = get_ncpu(repository,snapnum)
         allocate(cpu_list(1:ncpu_read))

@@ -14,11 +14,7 @@ module module_ramses
   integer(kind=4),parameter :: twotondim= 8 
 
   ! QuadHilbert related precision
-#ifdef QUADHILBERT
   integer,parameter::qdp=kind(1.0_16) ! real*16
-#else
-  integer,parameter::qdp=kind(1.0_8) ! real*8
-#endif
 
 
   integer(kind=4)                  :: ncpu
@@ -435,20 +431,15 @@ contains
     integer(kind=4),dimension(1:8):: idom,jdom,kdom,cpu_min,cpu_max
     real(qdp),dimension(1:8):: bounding_min,bounding_max, order_min
     real(qdp)::dkey
+    !!!real(kind=8),dimension(1:8):: bounding_min_dp,bounding_max_dp, order_min_dp
+    real(kind=8)::dkey_dp
     real(KIND=8)::dmax,dx
 
     real(qdp),dimension(:),allocatable :: bound_key
+    real(kind=8),dimension(:),allocatable :: bound_key_dp
     logical,dimension(:),allocatable      :: cpu_read
     integer(kind=4),dimension(:),allocatable,intent(out)      :: cpu_list
 
-!!$    if (QuadHilbert) then
-!!$       ncpu_read = get_ncpu(repository,snapnum)
-!!$       allocate(cpu_list(ncpu_read))
-!!$       do i = 1,ncpu_read
-!!$          cpu_list(i) = i
-!!$       end do
-!!$       return
-!!$    end if
     
     lmax = nint(get_param_real(repository,snapnum,'levelmax'))
     ncpu = get_ncpu(repository,snapnum)
@@ -457,15 +448,17 @@ contains
 
     allocate(cpu_list(1:ncpu))
     allocate(bound_key(0:ncpu))
+    allocate(bound_key_dp(0:ncpu))
     allocate(cpu_read(1:ncpu))
     cpu_read=.false.
     cpu_list=0
     
-#ifdef QUADHILBERT
+    if (QuadHilbert) then
        call read_hilbert_keys_raw(repository,snapnum,ncpu,bound_key)
-#else
-       call read_hilbert_keys(repository,snapnum,ncpu,bound_key)
-#endif
+    else
+       call read_hilbert_keys(repository,snapnum,ncpu,bound_key_dp)
+       bound_key = real(bound_key_dp, kind=qdp)
+    endif
 
     
     do ilevel=1,lmax
@@ -537,7 +530,7 @@ contains
        enddo
     enddo
 
-    deallocate(bound_key,cpu_read)
+    deallocate(bound_key,bound_key_dp,cpu_read)
 
     print*,'--> nCPU to read = ',ncpu_read
     
@@ -571,34 +564,28 @@ contains
     real(KIND=8)::dx,dmin,dmax
 
     real(qdp),dimension(:),allocatable :: bound_key
+    real(kind=8),dimension(:),allocatable :: bound_key_dp
     logical,dimension(:),allocatable      :: cpu_read
     integer(kind=4),dimension(:),allocatable,intent(out)      :: cpu_list
 
-!!$    if (QuadHilbert) then
-!!$       ncpu_read = get_ncpu(repository,snapnum)
-!!$       allocate(cpu_list(ncpu_read))
-!!$       do i = 1,ncpu_read
-!!$          cpu_list(i) = i
-!!$       end do
-!!$       return
-!!$    end if
 
     lmax = nint(get_param_real(repository,snapnum,'levelmax'))
     ncpu = get_ncpu(repository,snapnum)
     
     allocate(cpu_list(1:ncpu))
-    allocate(bound_key(0:ncpu))
+    allocate(bound_key(0:ncpu),bound_key_dp(0:ncpu))
     allocate(cpu_read(1:ncpu))
     cpu_read=.false.
     cpu_list=0
     
     if(verbose) write(*,*)'Getting CPU list...'
     
-#ifdef QUADHILBERT
+    if (QuadHilbert) then
        call read_hilbert_keys_raw(repository,snapnum,ncpu,bound_key)
-#else
-       call read_hilbert_keys(repository,snapnum,ncpu,bound_key)
-#endif
+    else
+       call read_hilbert_keys(repository,snapnum,ncpu,bound_key_dp)
+       bound_key = real(bound_key_dp, kind=qdp)
+    endif
 
 
     ! Set up the periodic domains
@@ -716,7 +703,7 @@ contains
        end do !iy=1,2
     end do !iz=1,2
 
-    deallocate(bound_key,cpu_read)
+    deallocate(bound_key,cpu_read,bound_key_dp)
 
     print*,'--> nCPU to read = ',ncpu_read
     
@@ -886,11 +873,7 @@ contains
        order(ip)=0.
        do i=0,3*bit_length-1
           b0=0 ; if(i_bit_mask(i))b0=1
-#ifdef QUADHILBERT
-          order(ip)=order(ip)+real(b0,kind=16)*real(2,kind=16)**i
-#else
-          order(ip)=order(ip)+real(b0,kind=8)*real(2,kind=8)**i
-#endif
+          order(ip)=order(ip)+real(b0,kind=qdp)*real(2,kind=qdp)**i
        end do
        
     end do
@@ -3179,12 +3162,6 @@ contains
        end do
     end if
     close(10)
-
-#ifndef QUADHILBERT
-    if (QuadHilbert) then
-       print*,'QuadHilbert option requires the code to be compiled with -DQUADHILBERT'
-    end if
-#endif
 
 
     return

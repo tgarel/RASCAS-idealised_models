@@ -261,7 +261,7 @@ program CreateDomDump
         
      else if (reading_method == 'select_onthefly') then
         ! another option is to read all cpu files but to select cells on the fly to maintain low memory
-        ! this is useful for zoom-in simulations with -Dquadhilbert
+        ! this is useful for zoom-in simulations without hilbert decomposition
         if (verbose) print*,'Reading leaf cells...'
         call cpu_time(intermed)
         ncpu_read = get_ncpu(repository,snapnum)
