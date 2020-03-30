@@ -7,8 +7,10 @@ SYSTYPE="CCF"
 #SYSTYPE="mac"
 #SYSTYPE="macP"
 #SYSTYPE="ccage"
+#SYSTYPE="horizon"
 
 OPTIONS = -cpp -fopenmp
+#OPTIONS += -DQUADHILBERT
 OPTIONS += -DDISPLAY_PROGRESS_PERCENT
 
 
@@ -66,6 +68,14 @@ FFLAGS      = -O3 -ffree-line-length-none -ffree-form
 FFLAGS += $(OPTIONS)
 LDFLAGS     = 
 endif
+
+ifeq ($(SYSTYPE),"horizon")
+F90         = mpif90
+FFLAGS      = -fopenmp -g -traceback -O3 -fpp -ftz  -xavx -fno-alias -fno-fnalias -no-prec-div -no-prec-sqrt -align all -heap-arrays10
+FFLAGS += $(OPTIONS)
+LDFLAGS     =  #-lmpi
+endif
+
 
 #############################################################################
 # All objects

@@ -13,6 +13,14 @@ module module_ramses
   integer(kind=4),parameter :: twondim = 6
   integer(kind=4),parameter :: twotondim= 8 
 
+  ! QuadHilbert related precision
+#ifdef QUADHILBERT
+  integer,parameter::qdp=kind(1.0_16) ! real*16
+#else
+  integer,parameter::qdp=kind(1.0_8) ! real*8
+#endif
+
+
   integer(kind=4)                  :: ncpu
   integer(kind=4)                  :: U_precision=8 ! hydro-precision in RAMSES output
   integer(kind=4)                  :: RT_precision=8 ! RT-precision in RAMSES output
@@ -425,22 +433,22 @@ contains
     integer(kind=4) :: imin,imax,jmin,jmax,kmin,kmax
     integer(kind=4) :: impi,bit_length,maxdom
     integer(kind=4),dimension(1:8):: idom,jdom,kdom,cpu_min,cpu_max
-    real(KIND=8),dimension(1:8):: bounding_min,bounding_max, order_min
-    real(KIND=8)::dkey,dmax
-    real(KIND=8)::dx
+    real(qdp),dimension(1:8):: bounding_min,bounding_max, order_min
+    real(qdp)::dkey
+    real(KIND=8)::dmax,dx
 
-    real(kind=8),dimension(:),allocatable :: bound_key
+    real(qdp),dimension(:),allocatable :: bound_key
     logical,dimension(:),allocatable      :: cpu_read
     integer(kind=4),dimension(:),allocatable,intent(out)      :: cpu_list
 
-    if (QuadHilbert) then
-       ncpu_read = get_ncpu(repository,snapnum)
-       allocate(cpu_list(ncpu_read))
-       do i = 1,ncpu_read
-          cpu_list(i) = i
-       end do
-       return
-    end if
+!!$    if (QuadHilbert) then
+!!$       ncpu_read = get_ncpu(repository,snapnum)
+!!$       allocate(cpu_list(ncpu_read))
+!!$       do i = 1,ncpu_read
+!!$          cpu_list(i) = i
+!!$       end do
+!!$       return
+!!$    end if
     
     lmax = nint(get_param_real(repository,snapnum,'levelmax'))
     ncpu = get_ncpu(repository,snapnum)
@@ -453,7 +461,12 @@ contains
     cpu_read=.false.
     cpu_list=0
     
-    call read_hilbert_keys(repository,snapnum,ncpu,bound_key)
+#ifdef QUADHILBERT
+       call read_hilbert_keys_raw(repository,snapnum,ncpu,bound_key)
+#else
+       call read_hilbert_keys(repository,snapnum,ncpu,bound_key)
+#endif
+
     
     do ilevel=1,lmax
        dx=0.5d0**ilevel
@@ -472,7 +485,8 @@ contains
        kmax=kmin+1
     endif
 
-    dkey=(dble(2**(lmax+1)/dble(maxdom)))**ndim
+    !dkey=(dble(2**(lmax+1)/dble(maxdom)))**ndim
+    dkey=(real(2**(lmax+1),kind=qdp)/real(maxdom,kind=qdp))**ndim
     ndom=1
     if(bit_length>0)ndom=8
     idom(1)=imin; idom(2)=imax
@@ -552,22 +566,22 @@ contains
     integer(kind=4) :: imin,imax,jmin,jmax,kmin,kmax
     integer(kind=4) :: impi,bit_length,maxdom
     integer(kind=4),dimension(1:8):: idom,jdom,kdom,cpu_min,cpu_max
-    real(KIND=8),dimension(1:8):: bounding_min,bounding_max, order_min
-    real(KIND=8)::dkey,dmin,dmax
-    real(KIND=8)::dx
+    real(qdp),dimension(1:8):: bounding_min,bounding_max, order_min
+    real(qdp)::dkey
+    real(KIND=8)::dx,dmin,dmax
 
-    real(kind=8),dimension(:),allocatable :: bound_key
+    real(qdp),dimension(:),allocatable :: bound_key
     logical,dimension(:),allocatable      :: cpu_read
     integer(kind=4),dimension(:),allocatable,intent(out)      :: cpu_list
 
-    if (QuadHilbert) then
-       ncpu_read = get_ncpu(repository,snapnum)
-       allocate(cpu_list(ncpu_read))
-       do i = 1,ncpu_read
-          cpu_list(i) = i
-       end do
-       return
-    end if
+!!$    if (QuadHilbert) then
+!!$       ncpu_read = get_ncpu(repository,snapnum)
+!!$       allocate(cpu_list(ncpu_read))
+!!$       do i = 1,ncpu_read
+!!$          cpu_list(i) = i
+!!$       end do
+!!$       return
+!!$    end if
 
     lmax = nint(get_param_real(repository,snapnum,'levelmax'))
     ncpu = get_ncpu(repository,snapnum)
@@ -580,7 +594,12 @@ contains
     
     if(verbose) write(*,*)'Getting CPU list...'
     
-    call read_hilbert_keys(repository,snapnum,ncpu,bound_key)
+#ifdef QUADHILBERT
+       call read_hilbert_keys_raw(repository,snapnum,ncpu,bound_key)
+#else
+       call read_hilbert_keys(repository,snapnum,ncpu,bound_key)
+#endif
+
 
     ! Set up the periodic domains
     dom_min(1) = xmin;   dom_max(1) = xmax
@@ -642,7 +661,8 @@ contains
                 kmax=kmin+1
              endif
 
-             dkey=(dble(2**(lmax+1)/dble(maxdom)))**ndim
+             !dkey=(dble(2**(lmax+1)/dble(maxdom)))**ndim
+             dkey=(real(2**(lmax+1),kind=qdp)/real(maxdom,kind=qdp))**ndim
              ndom=1
              if(bit_length>0)ndom=8
              idom(1)=imin; idom(2)=imax
@@ -750,12 +770,49 @@ contains
   end subroutine read_hilbert_keys
 
 
+  subroutine read_hilbert_keys_raw(repository,snapnum,ncpu,bound_key)
+    
+    implicit none
+    
+    character(2000),intent(in)                   :: repository
+    integer(kind=4),intent(in)                   :: snapnum, ncpu
+    real(qdp),dimension(0:ncpu),intent(inout) :: bound_key
+    
+    logical(kind=4)            :: ok
+    character(512)             :: nomfich
+    character(128)             :: orderingtype
+    integer(kind=4)            :: i, impi
+    integer(kind=4),parameter  :: param_unit = 13
+    
+    write(nomfich,'(a,a,i5.5,a,i5.5,a)') trim(repository), '/output_', snapnum, '/amr_', snapnum, '.out00001'
+    inquire(file=nomfich, exist=ok)
+    if(.not. ok)then
+       write(*,*)'File '//TRIM(nomfich)//' not found'    
+       stop
+    end if
+    open(unit=param_unit,file=nomfich,form='unformatted',status='old',action='read')
+    do i=1,24 ! Assume that there is no "simple boundary"
+       read(param_unit)
+    end do
+    read(param_unit) orderingtype
+
+    if (trim(orderingtype) .ne. 'bisection') then
+       read(param_unit) bound_key
+    end if
+
+    close (param_unit)
+    
+    return
+    
+  end subroutine read_hilbert_keys_raw
+
+
   subroutine hilbert3d(x,y,z,order,bit_length,npoint)
     implicit none
 
     integer     ,INTENT(IN)                     ::bit_length,npoint
     integer     ,INTENT(IN) ,dimension(1:npoint)::x,y,z
-    real(kind=8),INTENT(OUT),dimension(1:npoint)::order
+    real(qdp),INTENT(OUT),dimension(1:npoint)::order
 
     logical,dimension(0:3*bit_length-1)::i_bit_mask
     logical,dimension(0:1*bit_length-1)::x_bit_mask,y_bit_mask,z_bit_mask
@@ -829,7 +886,11 @@ contains
        order(ip)=0.
        do i=0,3*bit_length-1
           b0=0 ; if(i_bit_mask(i))b0=1
-          order(ip)=order(ip)+dble(b0)*dble(2)**i
+#ifdef QUADHILBERT
+          order(ip)=order(ip)+real(b0,kind=16)*real(2,kind=16)**i
+#else
+          order(ip)=order(ip)+real(b0,kind=8)*real(2,kind=8)**i
+#endif
        end do
        
     end do
@@ -3118,6 +3179,14 @@ contains
        end do
     end if
     close(10)
+
+#ifndef QUADHILBERT
+    if (QuadHilbert) then
+       print*,'QuadHilbert option requires the code to be compiled with -DQUADHILBERT'
+    end if
+#endif
+
+
     return
 
   end subroutine read_ramses_params
