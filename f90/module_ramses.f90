@@ -746,16 +746,15 @@ contains
     
     implicit none
     
-    character(2000),intent(in)                   :: repository
-    integer(kind=4),intent(in)                   :: snapnum, ncpu
+    character(2000),intent(in)                :: repository
+    integer(kind=4),intent(in)                :: snapnum, ncpu
     real(qdp),dimension(0:ncpu),intent(inout) :: bound_key
-    real(kind=8),dimension(0:ncpu) :: bound_key_dp
-    
-    logical(kind=4)            :: ok
-    character(512)             :: nomfich
-    character(128)             :: orderingtype
-    integer(kind=4)            :: i, ios
-    integer(kind=4),parameter  :: param_unit = 13
+    real(kind=8),dimension(0:ncpu)            :: bound_key_dp    
+    logical(kind=4)                           :: ok
+    character(512)                            :: nomfich
+    character(128)                            :: orderingtype
+    integer(kind=4)                           :: i, ios
+    integer(kind=4),parameter                 :: param_unit = 13
     
     write(nomfich,'(a,a,i5.5,a,i5.5,a)') trim(repository), '/output_', snapnum, '/amr_', snapnum, '.out00001'
     inquire(file=nomfich, exist=ok)
