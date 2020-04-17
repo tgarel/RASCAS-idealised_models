@@ -75,7 +75,6 @@ module module_ramses
   logical                  :: use_initial_mass  = .false.  ! if true, use initial masses of star particles instead of mass at output time
   logical                  :: cosmo             = .true.   ! if false, assume idealised simulation
   logical                  :: use_proper_time   = .false.  ! if true, use proper time instead of conformal time for cosmo runs. 
-  logical                  :: QuadHilbert       = .false.  ! if true, do not use hilbert indexes for now ... 
   ! miscelaneous
   logical                  :: verbose        = .false. ! display some run-time info on this module
   ! RT variable indices
@@ -432,11 +431,9 @@ contains
     real(qdp),dimension(1:8):: bounding_min,bounding_max, order_min
     real(qdp)::dkey
     !!!real(kind=8),dimension(1:8):: bounding_min_dp,bounding_max_dp, order_min_dp
-    real(kind=8)::dkey_dp
     real(KIND=8)::dmax,dx
 
     real(qdp),dimension(:),allocatable :: bound_key
-    real(kind=8),dimension(:),allocatable :: bound_key_dp
     logical,dimension(:),allocatable      :: cpu_read
     integer(kind=4),dimension(:),allocatable,intent(out)      :: cpu_list
 
@@ -448,18 +445,11 @@ contains
 
     allocate(cpu_list(1:ncpu))
     allocate(bound_key(0:ncpu))
-    allocate(bound_key_dp(0:ncpu))
     allocate(cpu_read(1:ncpu))
     cpu_read=.false.
     cpu_list=0
     
-    if (QuadHilbert) then
-       call read_hilbert_keys_raw(repository,snapnum,ncpu,bound_key)
-    else
-       call read_hilbert_keys(repository,snapnum,ncpu,bound_key_dp)
-       bound_key = real(bound_key_dp, kind=qdp)
-    endif
-
+    call read_hilbert_keys_raw(repository,snapnum,ncpu,bound_key)
     
     do ilevel=1,lmax
        dx=0.5d0**ilevel
@@ -530,7 +520,7 @@ contains
        enddo
     enddo
 
-    deallocate(bound_key,bound_key_dp,cpu_read)
+    deallocate(bound_key,cpu_read)
 
     print*,'--> nCPU to read = ',ncpu_read
     
@@ -564,7 +554,6 @@ contains
     real(KIND=8)::dx,dmin,dmax
 
     real(qdp),dimension(:),allocatable :: bound_key
-    real(kind=8),dimension(:),allocatable :: bound_key_dp
     logical,dimension(:),allocatable      :: cpu_read
     integer(kind=4),dimension(:),allocatable,intent(out)      :: cpu_list
 
@@ -573,21 +562,15 @@ contains
     ncpu = get_ncpu(repository,snapnum)
     
     allocate(cpu_list(1:ncpu))
-    allocate(bound_key(0:ncpu),bound_key_dp(0:ncpu))
+    allocate(bound_key(0:ncpu))
     allocate(cpu_read(1:ncpu))
     cpu_read=.false.
     cpu_list=0
     
     if(verbose) write(*,*)'Getting CPU list...'
     
-    if (QuadHilbert) then
-       call read_hilbert_keys_raw(repository,snapnum,ncpu,bound_key)
-    else
-       call read_hilbert_keys(repository,snapnum,ncpu,bound_key_dp)
-       bound_key = real(bound_key_dp, kind=qdp)
-    endif
-
-
+    call read_hilbert_keys_raw(repository,snapnum,ncpu,bound_key)
+    
     ! Set up the periodic domains
     dom_min(1) = xmin;   dom_max(1) = xmax
     dom_min(2) = ymin;   dom_max(2) = ymax
@@ -703,7 +686,7 @@ contains
        end do !iy=1,2
     end do !iz=1,2
 
-    deallocate(bound_key,cpu_read,bound_key_dp)
+    deallocate(bound_key,cpu_read)
 
     print*,'--> nCPU to read = ',ncpu_read
     
@@ -713,7 +696,8 @@ contains
 
 
   subroutine read_hilbert_keys(repository,snapnum,ncpu,bound_key)
-
+    ! read the hilbert keys in the info file
+    
     implicit none
 
     character(2000),intent(in)                   :: repository
@@ -758,17 +742,19 @@ contains
 
 
   subroutine read_hilbert_keys_raw(repository,snapnum,ncpu,bound_key)
+    ! read hilbert keys in one amr file
     
     implicit none
     
     character(2000),intent(in)                   :: repository
     integer(kind=4),intent(in)                   :: snapnum, ncpu
     real(qdp),dimension(0:ncpu),intent(inout) :: bound_key
+    real(kind=8),dimension(0:ncpu) :: bound_key_dp
     
     logical(kind=4)            :: ok
     character(512)             :: nomfich
     character(128)             :: orderingtype
-    integer(kind=4)            :: i, impi
+    integer(kind=4)            :: i, ios
     integer(kind=4),parameter  :: param_unit = 13
     
     write(nomfich,'(a,a,i5.5,a,i5.5,a)') trim(repository), '/output_', snapnum, '/amr_', snapnum, '.out00001'
@@ -777,21 +763,43 @@ contains
        write(*,*)'File '//TRIM(nomfich)//' not found'    
        stop
     end if
-    open(unit=param_unit,file=nomfich,form='unformatted',status='old',action='read')
+    open(unit=param_unit,file=nomfich,form='unformatted',status='old',action='read',iostat=ios)
     do i=1,24 ! Assume that there is no "simple boundary"
-       read(param_unit)
+       read(param_unit,iostat=ios)
+       !print*,'ios =',ios
     end do
-    read(param_unit) orderingtype
+    read(param_unit,iostat=ios) orderingtype
+    !print*,'ios =',ios
 
     if (trim(orderingtype) .ne. 'bisection') then
-       read(param_unit) bound_key
-    end if
+       read(param_unit,iostat=ios) bound_key
+       !print*,'ios bk =',ios
+       if(ios/=0) then ! read in dp
+          print*,'Reading Hilbert keys in quad precision failed, read them in double precision...'
+          close(param_unit)
+          open(unit=param_unit,file=nomfich,form='unformatted',status='old',action='read',iostat=ios)
+          do i=1,24 ! Assume that there is no "simple boundary"
+             read(param_unit,iostat=ios)
+             !print*,'ios =',ios
+          end do
+          read(param_unit,iostat=ios) orderingtype
+          !print*,'ios =',ios
+          read(param_unit,iostat=ios) bound_key_dp
+          !print*,'ios bk =',ios
+          if(ios/=0) then
+             print*,'Reading Hilbert keys in double precision failed, read them in the info file...'
+             call read_hilbert_keys(repository,snapnum,ncpu,bound_key_dp)
+          end if
+          bound_key = real(bound_key_dp, kind=qdp)
+       end if
+     end if
 
     close (param_unit)
     
     return
     
   end subroutine read_hilbert_keys_raw
+
 
 
   subroutine hilbert3d(x,y,z,order,bit_length,npoint)
@@ -3156,8 +3164,6 @@ contains
              read(value,*) iheii
           case('iheiii') ! index of HeIII fraction 
              read(value,*) iheiii
-          case('QuadHilbert') ! True if simulation was run with -DQUADHILBERT option  
-             read(value,*) QuadHilbert
           end select
        end do
     end if
@@ -3187,7 +3193,6 @@ contains
        write(unit,'(a,L1)') '  use_initial_mass  = ',use_initial_mass
        write(unit,'(a,L1)') '  cosmo             = ',cosmo
        write(unit,'(a,L1)') '  use_proper_time   = ',use_proper_time
-       write(unit,'(a,L1)') '  QuadHilbert       = ',QuadHilbert
        write(unit,'(a,L1)') '  verbose           = ',verbose
        write(unit,'(a,i2)') '  itemp             = ', itemp
        write(unit,'(a,i2)') '  imetal            = ', imetal
@@ -3202,7 +3207,6 @@ contains
        write(*,'(a,L1)') '  use_initial_mass  = ',use_initial_mass
        write(*,'(a,L1)') '  cosmo             = ',cosmo
        write(*,'(a,L1)') '  use_proper_time   = ',use_proper_time
-       write(*,'(a,L1)') '  QuadHilbert       = ',QuadHilbert
        write(*,'(a,L1)') '  verbose           = ',verbose
        write(*,'(a,i2)') '  itemp             = ', itemp
        write(*,'(a,i2)') '  imetal            = ', imetal
