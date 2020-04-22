@@ -92,7 +92,7 @@ module module_ramses
   real(kind=8),parameter    :: abundance_Fe_number = 2.82d-5 ! From Scarlata (private comm.)
   ! --------------------------------------------------------------------------
   
-  public :: test_new_reader
+  public :: ramses_get_leaf_cells
   public :: read_leaf_cells, read_leaf_cells_in_domain, get_ngridtot_cpus
   public :: ramses_get_box_size_cm, get_cpu_list, get_cpu_list_periodic, get_ncpu
   public :: ramses_get_velocity_cgs, ramses_get_T_nhi_cgs, ramses_get_metallicity,  ramses_get_nh_cgs
@@ -109,7 +109,7 @@ contains
   ! public functions 
   ! ----------------
 
-  subroutine test_new_reader(repository, snapnum, ncpu_read, cpu_list, &
+  subroutine ramses_get_leaf_cells(repository, snapnum, ncpu_read, cpu_list, &
        & nleaftot, nvar, xleaf_all, ramses_var_all, leaf_level_all)
 
     implicit none 
@@ -181,7 +181,7 @@ contains
 
     print*,'Nleaf read = ',nleaf
     return
-  end subroutine test_new_reader
+  end subroutine ramses_get_leaf_cells
 
 
   
