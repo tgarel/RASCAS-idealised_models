@@ -20,7 +20,11 @@ program CreateDomDump
   integer :: noctsnap,nleaftot,nvar,nleaf_sel,i, narg, j
   character(2000) :: toto,meshroot,parameter_file,fichier, fichier2
   character(2000),dimension(:),allocatable :: domain_file_list, mesh_file_list
-  real(kind=8) :: computdom_max,decompdom_max, start, finish, intermed
+  real(kind=8) :: computdom_max_x, computdom_max_y, computdom_max_z
+  real(kind=8) :: decompdom_max_x, decompdom_max_y, decompdom_max_z
+  real(kind=8) :: computdom_min_x, computdom_min_y, computdom_min_z
+  real(kind=8) :: decompdom_min_x, decompdom_min_y, decompdom_min_z
+  real(kind=8) :: start, finish, intermed
   real(kind=8) :: xmin,xmax,ymin,ymax,zmin,zmax
   integer(kind=4),dimension(:),allocatable :: cpu_list
   integer(kind=4) :: ncpu_read
@@ -32,7 +36,8 @@ program CreateDomDump
   character(2000)           :: DomDumpDir = 'test/'       ! directory to which outputs will be written
   character(2000)           :: repository = './'          ! ramses run directory (where all output_xxxxx dirs are).
   integer(kind=4)           :: snapnum = 1                ! ramses output number to use
-  character(20)             :: reading_method = 'fullbox' ! strategy to read ramses data
+  character(20)             :: reading_method = 'fullbox' ! strategy to read ramses data, could be:
+                                                          ! fullbox, fullbox_omp, hilbert, select_onthefly, select_onthefly_h
   ! --- computational domain  
   character(10)             :: comput_dom_type      = 'sphere'         ! shape type of domain  // default is a shpere.
   real(kind=8),dimension(3) :: comput_dom_pos       = (/0.5,0.5,0.5/)  ! center of domain [code units]
@@ -76,19 +81,37 @@ program CreateDomDump
   case('sphere')
      call domain_constructor_from_scratch(domaine_de_calcul,comput_dom_type, &
           xc=comput_dom_pos(1),yc=comput_dom_pos(2),zc=comput_dom_pos(3),r=comput_dom_rsp)
-     computdom_max = comput_dom_rsp
+     computdom_max_x = comput_dom_pos(1)+comput_dom_rsp
+     computdom_max_y = comput_dom_pos(2)+comput_dom_rsp
+     computdom_max_z = comput_dom_pos(3)+comput_dom_rsp
+     computdom_min_x = comput_dom_pos(1)-comput_dom_rsp
+     computdom_min_y = comput_dom_pos(2)-comput_dom_rsp
+     computdom_min_z = comput_dom_pos(3)-comput_dom_rsp
   case('shell')
      call domain_constructor_from_scratch(domaine_de_calcul,comput_dom_type, &
           xc=comput_dom_pos(1),yc=comput_dom_pos(2),zc=comput_dom_pos(3),r_inbound=comput_dom_rin,r_outbound=comput_dom_rout)
-     computdom_max = comput_dom_rout
+     computdom_max_x = comput_dom_pos(1)+comput_dom_rout
+     computdom_max_y = comput_dom_pos(2)+comput_dom_rout
+     computdom_max_z = comput_dom_pos(3)+comput_dom_rout
+     computdom_min_x = comput_dom_pos(1)-comput_dom_rout
+     computdom_min_y = comput_dom_pos(2)-comput_dom_rout
+     computdom_min_z = comput_dom_pos(3)-comput_dom_rout
   case('cube')
      call domain_constructor_from_scratch(domaine_de_calcul,comput_dom_type, & 
           xc=comput_dom_pos(1),yc=comput_dom_pos(2),zc=comput_dom_pos(3),size=comput_dom_size)
-     computdom_max = comput_dom_size
+     computdom_max_x = comput_dom_pos(1)+comput_dom_size/2.0d0
+     computdom_max_y = comput_dom_pos(2)+comput_dom_size/2.0d0
+     computdom_max_z = comput_dom_pos(3)+comput_dom_size/2.0d0
+     computdom_min_x = comput_dom_pos(1)-comput_dom_size/2.0d0
+     computdom_min_y = comput_dom_pos(2)-comput_dom_size/2.0d0
+     computdom_min_z = comput_dom_pos(3)-comput_dom_size/2.0d0
   case('slab')
      call domain_constructor_from_scratch(domaine_de_calcul,comput_dom_type, &
           xc=comput_dom_pos(1),yc=comput_dom_pos(2),zc=comput_dom_pos(3),thickness=comput_dom_thickness)
-     computdom_max = comput_dom_thickness
+     computdom_max_x = 1.0d0 ; computdom_max_y = 1.0d0
+     computdom_max_z = comput_dom_pos(3)+comput_dom_thickness/2.0d0
+     computdom_min_x = 0.0d0 ; computdom_min_y = 0.0d0
+     computdom_min_z = comput_dom_pos(3)-comput_dom_thickness/2.0d0
   end select
   
   
@@ -121,25 +144,44 @@ program CreateDomDump
   meshroot = 'domain_'
   allocate(domain_list(decomp_dom_ndomain))
   allocate(domain_file_list(decomp_dom_ndomain),mesh_file_list(decomp_dom_ndomain))
-  decompdom_max = 0.0d0
+  decompdom_max_x = 0.0d0 ; decompdom_max_y = 0.0d0 ; decompdom_max_z = 0.0d0
+  decompdom_min_x = 1.0d0 ; decompdom_min_x = 1.0d0 ; decompdom_min_x = 1.0d0
   do i = 1, decomp_dom_ndomain
      select case(decomp_dom_type)
      case('sphere')
         call domain_constructor_from_scratch(domain_list(i),decomp_dom_type, &
              xc=decomp_dom_xc(i),yc=decomp_dom_yc(i),zc=decomp_dom_zc(i),r=decomp_dom_rsp(i))
-        decompdom_max = max(decompdom_max,decomp_dom_rsp(i))
+        decompdom_max_x = max(decompdom_max_x,decomp_dom_xc(i)+decomp_dom_rsp(i))
+        decompdom_max_y = max(decompdom_max_y,decomp_dom_yc(i)+decomp_dom_rsp(i))
+        decompdom_max_z = max(decompdom_max_z,decomp_dom_zc(i)+decomp_dom_rsp(i))
+        decompdom_min_x = min(decompdom_min_x,decomp_dom_xc(i)-decomp_dom_rsp(i))
+        decompdom_min_y = min(decompdom_min_y,decomp_dom_yc(i)-decomp_dom_rsp(i))
+        decompdom_min_z = min(decompdom_min_z,decomp_dom_zc(i)-decomp_dom_rsp(i))
      case('shell')
         call domain_constructor_from_scratch(domain_list(i),decomp_dom_type, &
              xc=decomp_dom_xc(i),yc=decomp_dom_yc(i),zc=decomp_dom_zc(i),r_inbound=decomp_dom_rin(i),r_outbound=decomp_dom_rout(i))
-        decompdom_max = max(decompdom_max,decomp_dom_rout(i))
+        decompdom_max_x = max(decompdom_max_x,decomp_dom_xc(i)+decomp_dom_rout(i))
+        decompdom_max_y = max(decompdom_max_y,decomp_dom_yc(i)+decomp_dom_rout(i))
+        decompdom_max_z = max(decompdom_max_z,decomp_dom_zc(i)+decomp_dom_rout(i))
+        decompdom_min_x = min(decompdom_min_x,decomp_dom_xc(i)-decomp_dom_rout(i))
+        decompdom_min_y = min(decompdom_min_y,decomp_dom_yc(i)-decomp_dom_rout(i))
+        decompdom_min_z = min(decompdom_min_z,decomp_dom_zc(i)-decomp_dom_rout(i))
      case('cube')
         call domain_constructor_from_scratch(domain_list(i),decomp_dom_type, & 
              xc=decomp_dom_xc(i),yc=decomp_dom_yc(i),zc=decomp_dom_zc(i),size=decomp_dom_size(i))
-        decompdom_max = max(decompdom_max,decomp_dom_size(i))
+        decompdom_max_x = max(decompdom_max_x,decomp_dom_xc(i)+decomp_dom_size(i)/2.0d0)
+        decompdom_max_y = max(decompdom_max_y,decomp_dom_yc(i)+decomp_dom_size(i)/2.0d0)
+        decompdom_max_z = max(decompdom_max_z,decomp_dom_zc(i)+decomp_dom_size(i)/2.0d0)
+        decompdom_min_x = min(decompdom_min_x,decomp_dom_xc(i)-decomp_dom_size(i)/2.0d0)
+        decompdom_min_y = min(decompdom_min_y,decomp_dom_yc(i)-decomp_dom_size(i)/2.0d0)
+        decompdom_min_z = min(decompdom_min_z,decomp_dom_zc(i)-decomp_dom_size(i)/2.0d0)
      case('slab')
         call domain_constructor_from_scratch(domain_list(i),decomp_dom_type, &
              xc=decomp_dom_xc(i),yc=decomp_dom_yc(i),zc=decomp_dom_zc(i),thickness=decomp_dom_thickness(i))
-        decompdom_max = max(decompdom_max,decomp_dom_thickness(i))
+        decompdom_max_x = 1.0d0 ; decompdom_max_y = 1.0d0
+        decompdom_min_x = 0.0d0 ; decompdom_min_y = 0.0d0
+        decompdom_max_z = max(decompdom_max_z,decomp_dom_zc(i)+decomp_dom_thickness(i)/2.0d0)
+        decompdom_min_z = min(decompdom_min_z,decomp_dom_zc(i)-decomp_dom_thickness(i)/2.0d0)
      end select
      write(toto,'(i8)') i
      write(toto,'(a)') adjustl(toto)  ! remove leading spaces
@@ -149,9 +191,10 @@ program CreateDomDump
   end do
   
   ! The computational domain should be fully enclosed in the domain mesh.
-  if (computdom_max > decompdom_max) then
+  if ((computdom_max_x > decompdom_max_x).or.(computdom_max_y > decompdom_max_y).or.(computdom_max_z > decompdom_max_z).or.&
+       (computdom_min_x < decompdom_min_x).or.(computdom_min_y < decompdom_min_y).or.(computdom_min_z < decompdom_min_z))then
      print*,'ERROR: computational domain should be fully enclosed in the data domains.'
-     !stop
+     stop
   endif
   
   ! write master info
@@ -171,7 +214,8 @@ program CreateDomDump
 
   ! building of the meshes
   do i = 1,decomp_dom_ndomain
-
+     if(verbose)print*,' '
+     
      if (reading_method == 'hilbert') then
         call cpu_time(intermed)
         if (verbose) print*,'Reading leaf cells...'
@@ -208,8 +252,6 @@ program CreateDomDump
            zmin = decomp_dom_zc(i) - decomp_dom_thickness(i)*0.5d0
         end select
 
-        ! clean up arrays before reading again 
-        if (i > 1) deallocate(cpu_list,ramses_var,leaf_level,leaflevel_sel,x_leaf,xleaf_sel,gas_leaves,selected_leaves,ind_sel)
         call get_cpu_list_periodic(repository, snapnum, xmin,xmax,ymin,ymax,zmin,zmax, ncpu_read, cpu_list)
         call read_leaf_cells_omp(repository, snapnum, ncpu_read, cpu_list, nleaftot, nvar, x_leaf, ramses_var, leaf_level)
 
@@ -219,13 +261,12 @@ program CreateDomDump
         print '(" --> Time to read leaves in hilbert domain = ",f12.3," seconds.")',finish-intermed
      endif
      
-     ! another last option would be to read all cpu files but to select cells on the fly to maintain low memory
-     ! this would be for zoom-in simulations with -Dquadhilbert
+     ! another option is to read all cpu files but to select cells on the fly to maintain low memory
+     ! this is useful for zoom-in simulations with -Dquadhilbert
      if (reading_method == 'select_onthefly') then
         if (verbose) print*,'Reading leaf cells...'
         call cpu_time(intermed)
-        ! clean up arrays before reading again 
-        if (i > 1) deallocate(cpu_list,ramses_var,leaf_level,x_leaf,gas_leaves)
+
         ncpu_read = get_ncpu(repository,snapnum)
         allocate(cpu_list(1:ncpu_read))
         do j=1,ncpu_read
@@ -242,6 +283,8 @@ program CreateDomDump
         ! and then no need for selection, but to adapt the call to mesh_from_leaves
         call mesh_from_leaves(nOctSnap,domain_list(i),nleaftot, &
              gas_leaves,x_leaf,leaf_level,domain_mesh)
+        
+     ! this option combines the 2 previous one. 
      ! JB-- 
      else if (reading_method == 'select_onthefly_h') then
         if (verbose) print*,'Reading leaf cells...'
@@ -276,8 +319,7 @@ program CreateDomDump
            zmax = decomp_dom_zc(i) + decomp_dom_thickness(i)*0.5d0
            zmin = decomp_dom_zc(i) - decomp_dom_thickness(i)*0.5d0
         end select
-        ! clean up arrays before reading again 
-        if (i > 1) deallocate(cpu_list,ramses_var,leaf_level,x_leaf,gas_leaves)
+        
         call get_cpu_list_periodic(repository, snapnum, xmin,xmax,ymin,ymax,zmin,zmax, ncpu_read, cpu_list)
         call read_leaf_cells_in_domain(repository, snapnum, domain_list(i), ncpu_read, cpu_list, &
              & nleaftot, nvar, x_leaf, ramses_var, leaf_level)
@@ -307,6 +349,15 @@ program CreateDomDump
      fichier = trim(DomDumpDir)//trim(mesh_file_list(i))
      call dump_mesh(domain_mesh, fichier)
      call mesh_destructor(domain_mesh)
+
+     if (.not.(reading_method=='fullbox').and..not.(reading_method=='fullbox_omp')) then
+     ! deallocate arrays from RAMSES reading
+        if(allocated(cpu_list)) deallocate(cpu_list)
+        if(allocated(ramses_var)) deallocate(ramses_var)
+        if(allocated(leaf_level)) deallocate(leaf_level)
+        if(allocated(x_leaf)) deallocate(x_leaf)
+        if(allocated(gas_leaves)) deallocate(gas_leaves)
+     endif
   enddo
 
   call cpu_time(finish)
@@ -325,10 +376,10 @@ contains
     ! ---------------------------------------------------------------------------------
 
     character(*),intent(in) :: pfile
-    character(1000) :: line,name,value
-    integer(kind=4) :: err,i
-    logical         :: section_present
-    logical         :: ndomain_present 
+    character(100000)       :: line,name,value
+    integer(kind=4)         :: err,i
+    logical                 :: section_present
+    logical                 :: ndomain_present 
     
     section_present = .false.
     ndomain_present = .false.
@@ -463,7 +514,7 @@ contains
        write(unit,'(a)')             '# domain decomposition parameters'
        write(unit,'(a,a)')           '  decomp_dom_type      = ',trim(decomp_dom_type)
        write(unit,'(a,i5)')          '  decomp_dom_ndomain   = ',decomp_dom_ndomain
-       write(fmt,'(a,i3,a)') '(a,',decomp_dom_ndomain,'(ES10.3,1x))'
+       write(fmt,'(a,i5,a)') '(a,',decomp_dom_ndomain,'(ES10.3,1x))'
        write(unit,fmt)               '  decomp_dom_xc        = ',decomp_dom_xc(:)
        write(unit,fmt)               '  decomp_dom_yc        = ',decomp_dom_yc(:)
        write(unit,fmt)               '  decomp_dom_zc        = ',decomp_dom_zc(:)
@@ -509,7 +560,7 @@ contains
        write(*,'(a)')             '# domain decomposition parameters'
        write(*,'(a,a)')           '  decomp_dom_type      = ',trim(decomp_dom_type)
        write(*,'(a,i5)')          '  decomp_dom_ndomain   = ',decomp_dom_ndomain
-       write(fmt,'(a,i3,a)') '(a,',decomp_dom_ndomain,'(ES10.3,1x))'
+       write(fmt,'(a,i5,a)') '(a,',decomp_dom_ndomain,'(ES10.3,1x))'
        write(*,fmt)               '  decomp_dom_xc        = ',decomp_dom_xc(:)
        write(*,fmt)               '  decomp_dom_yc        = ',decomp_dom_yc(:)
        write(*,fmt)               '  decomp_dom_zc        = ',decomp_dom_zc(:)
