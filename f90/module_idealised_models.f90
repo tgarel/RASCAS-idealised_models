@@ -140,7 +140,6 @@ contains
     dist_cell = sqrt(dist2)
 
     if (coldens_norm .gt. 1.0d0) then
-       !! if gas norm set as column density in param file.... OK for model with n~r^-2 ONLY !!!
        if (ngas_slope .ne. 1.0) then
           n0 = coldens_norm * (1.0-ngas_slope) / ((r_min * box_size_IM_cm)**ngas_slope * ((r_max * box_size_IM_cm)**(1.0-ngas_slope) - (r_min * box_size_IM_cm)**(1.0-ngas_slope)))  ! cm-3
        else
@@ -283,8 +282,15 @@ contains
     real(kind=8)                          :: volfrac2
     real(kind=8)                          :: dist_cell,dist2,dist_cell_min,dist_cell_max
     integer(kind=4)                       :: missed_cell
-    real(kind=8)                          :: n0, coldens_dust, ndust_0
+    real(kind=8)                          :: n0, coldens_dust, ndust_0, r_where_Vmax
 
+    ! r_where_Vmax = radius at which V=Vmax ;; Useful for Vgas_slope < 0...
+
+    if (Vgas_slope .ge. 0) then
+       r_where_Vmax = r_max
+    else
+       r_where_Vmax = r_min
+    end if
     
     vx_ideal    = 0.0d0
     vy_ideal    = 0.0d0
@@ -300,7 +306,7 @@ contains
     dist_cell = sqrt(dist2)
 
     if (coldens_norm .gt. 1.0d0) then
-       !! if gas norm set as column density in param file.... OK for model with n~r^-2 ONLY !!!
+       !! if gas norm set as column density in param file....
        !! n0 = coldens_norm / (r_min * box_size_IM_cm * (1.0d0 - r_min / r_max))  ! cm-3
        if (ngas_slope .ne. 1.0) then
           n0 = coldens_norm * (1.0-ngas_slope) / ((r_min * box_size_IM_cm)**ngas_slope * ((r_max * box_size_IM_cm)**(1.0-ngas_slope) - (r_min * box_size_IM_cm)**(1.0-ngas_slope)))  ! cm-3
@@ -350,10 +356,11 @@ contains
        endif
 
        ndust_ideal = ndust_0 * ngas_ideal / n0
-       
-       vx_ideal = Vgas_norm / r_max**(Vgas_slope) * dist_cell**(Vgas_slope-1.0) * (xcell_ideal - 0.5d0)
-       vy_ideal = Vgas_norm / r_max**(Vgas_slope) * dist_cell**(Vgas_slope-1.0) * (ycell_ideal - 0.5d0)
-       vz_ideal = Vgas_norm / r_max**(Vgas_slope) * dist_cell**(Vgas_slope-1.0) * (zcell_ideal - 0.5d0)
+
+       ! Replace r_max by r_where_Vmax to allow for decrease V with r (Vmax corresponds to max vel.: at r_max if Vgas_slope>=0 and at r_min if Vgas_slope<0)
+       vx_ideal = Vgas_norm / r_where_Vmax**(Vgas_slope) * dist_cell**(Vgas_slope-1.0) * (xcell_ideal - 0.5d0)
+       vy_ideal = Vgas_norm / r_where_Vmax**(Vgas_slope) * dist_cell**(Vgas_slope-1.0) * (ycell_ideal - 0.5d0)
+       vz_ideal = Vgas_norm / r_where_Vmax**(Vgas_slope) * dist_cell**(Vgas_slope-1.0) * (zcell_ideal - 0.5d0)
        
        if (dist_cell_min > r_max .or. dist_cell_max < r_min) then  ! cell completely out of shell or completely within r_min                                                       
           vx_ideal    = 0.0d0
@@ -366,9 +373,9 @@ contains
        
     else  !! Brut force: compare dist to cell center against Rmin/Rmax 
        if (dist_cell < r_max .and. dist_cell > r_min) then ! cell completely within sphere
-          vx_ideal    = Vgas_norm / r_max**(Vgas_slope) * dist_cell**(Vgas_slope-1.0) * (xcell_ideal - 0.5d0)
-          vy_ideal    = Vgas_norm / r_max**(Vgas_slope) * dist_cell**(Vgas_slope-1.0) * (ycell_ideal - 0.5d0)
-          vz_ideal    = Vgas_norm / r_max**(Vgas_slope) * dist_cell**(Vgas_slope-1.0) * (zcell_ideal - 0.5d0)
+          vx_ideal    = Vgas_norm / r_where_Vmax**(Vgas_slope) * dist_cell**(Vgas_slope-1.0) * (xcell_ideal - 0.5d0)
+          vy_ideal    = Vgas_norm / r_where_Vmax**(Vgas_slope) * dist_cell**(Vgas_slope-1.0) * (ycell_ideal - 0.5d0)
+          vz_ideal    = Vgas_norm / r_where_Vmax**(Vgas_slope) * dist_cell**(Vgas_slope-1.0) * (zcell_ideal - 0.5d0)
           
           ngas_ideal  = n0 *  (r_min / dist_cell)**(ngas_slope) ! ngas_slope  = +2 for P+11 fiducial model
           ndust_ideal = ndust_0 * ngas_ideal / n0
