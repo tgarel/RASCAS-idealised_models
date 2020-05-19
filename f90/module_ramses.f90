@@ -93,7 +93,7 @@ module module_ramses
   ! --------------------------------------------------------------------------
   
   public :: ramses_get_leaf_cells, minirats_get_leaf_cells
-  public :: read_leaf_cells, read_leaf_cells_in_domain, get_ngridtot_cpus
+  public :: read_leaf_cells, ramses_get_leaf_cells_in_domain, get_ngridtot_cpus
   public :: ramses_get_box_size_cm, get_cpu_list, get_cpu_list_periodic, get_ncpu
   public :: ramses_get_velocity_cgs, ramses_get_T_nhi_cgs, ramses_get_metallicity,  ramses_get_nh_cgs
   public :: ramses_get_T_nSiII_cgs, ramses_get_T_nMgII_cgs, ramses_get_T_nFeII_cgs
@@ -125,7 +125,7 @@ contains
     real(kind=8),allocatable,intent(inout)    :: xleaf_all(:,:)
     integer(kind=4),allocatable,intent(inout) :: leaf_level_all(:)
     
-        integer(kind=4) :: ileaf,nleaf,k,icpu,ilast,ncell,ivar,iloop
+    integer(kind=4) :: ileaf,nleaf,k,icpu,ncell,ivar,iloop
     real(kind=8) :: time1,time2,time3
     
     character(1000)                         :: filename 
@@ -428,7 +428,13 @@ contains
   
   subroutine ramses_get_leaf_cells(repository, snapnum, ncpu_read, cpu_list, &
        & nleaftot, nvar, xleaf_all, ramses_var_all, leaf_level_all)
-
+    
+    ! read all leaf cells from a simulation snapshot belonging to given
+    ! list of cpus. Return standard ramses variables through 
+    ! ramses_var(nvar,nleaftot) and positions (xleaf(3,nleaftot))
+    ! and levels (leaf_level).
+    ! 05-2020: corrected version that doesn't use cpu_map anymore.
+    
     implicit none 
     character(2000),intent(in)                :: repository
     integer(kind=4),intent(in)                :: snapnum, ncpu_read
@@ -474,7 +480,7 @@ contains
     iloop=0
 !$OMP PARALLEL &
 !$OMP DEFAULT(private) &
-!$OMP SHARED(nleaf, repository, snapnum, ncpu_read, cpu_list, ilast, nvar, xleaf_all, leaf_level_all, ramses_var_all)
+!$OMP SHARED(nleaf, repository, snapnum, ncpu_read, cpu_list, ilast, nvar, xleaf_all, leaf_level_all, ramses_var_all, iloop)
 !$OMP DO
     do k=1,ncpu_read
        icpu=cpu_list(k)
@@ -624,7 +630,7 @@ contains
   end subroutine read_leaf_cells
 
 
-  subroutine read_leaf_cells_in_domain(repository, snapnum, selection_domain, &
+  subroutine ramses_get_leaf_cells_in_domain(repository, snapnum, selection_domain, &
        & ncpu_read, cpu_list, &
        & nleaftot_all, nvar, xleaf_all, ramses_var_all, leaf_level_all)
 
@@ -642,32 +648,26 @@ contains
     integer(kind=4),intent(in)                :: snapnum, ncpu_read
     type(domain),intent(in)                   :: selection_domain
     integer(kind=4),intent(inout)             :: nleaftot_all, nvar
-    integer(kind=8)                           :: nleaftot
+    integer(kind=4)                           :: nleaftot
     real(kind=8),allocatable                  :: ramses_var(:,:)
     real(kind=8),allocatable                  :: xleaf(:,:)
     integer(kind=4),allocatable               :: leaf_level(:)
     real(kind=8),allocatable, intent(inout)   :: ramses_var_all(:,:)
     real(kind=8),allocatable,intent(inout)    :: xleaf_all(:,:)
     integer(kind=4),allocatable,intent(inout) :: leaf_level_all(:)
-
-    integer(kind=4),dimension(:),allocatable,intent(in) :: cpu_list
+    integer(kind=4),allocatable,intent(in)    :: cpu_list(:)
     
     logical                                   :: do_allocs
-    integer(kind=4)                           :: icpu, ivar, nleaf_in_domain, k
-    integer(kind=4)                           :: ileaf, icell, ilast, iloop=0
-    real(kind=8),dimension(3)                 :: temp
+    integer(kind=4)                           :: icpu, ivar, nleaf_in_domain, k, i
+    integer(kind=4)                           :: ileaf, ilast, iloop=0, nleaf, ncell
+    real(kind=8),dimension(3)                 :: xtemp
     real(kind=8)                              :: dx
 
-    ! JB--
-    integer(kind=4)              :: ncell_l
-    integer,allocatable          :: son_l(:)       ! sons grids
-    integer,allocatable          :: cpu_map_l(:)   ! domain decomposition
-    real(kind=8),allocatable     :: var_l(:,:)
-    real(kind=8),allocatable     :: cell_x_l(:),cell_y_l(:),cell_z_l(:)
-    integer(kind=4),allocatable  :: cell_level_l(:)
-    integer(kind=4) :: nLeafInCpu
-    logical,allocatable :: cpu_is_useful(:)
-    ! --JB
+    real(kind=8),allocatable                  :: cell_var(:,:)
+    real(kind=8),allocatable                  :: cell_pos(:,:)
+    integer(kind=4),allocatable               :: cell_lev(:)
+    integer(kind=4)                           :: nLeafInCpu
+    logical,allocatable                       :: cpu_is_useful(:)
     
     if(verbose) print *,'Reading RAMSES cells...'
 
@@ -680,13 +680,10 @@ contains
             ,default_value=8d0,rt_info=.true.))
        print*,'The RT precision is ',RT_precision
     endif
-    ! JB--
-!    ncell_l = get_ncell(repository,snapnum)  ! computed in read_amr_hydro
     allocate(cpu_is_useful(ncpu_read))
     cpu_is_useful = .false.
-    ! --JB
 
-    ! first count leaf cells in domain...
+    ! first count leaf cells in selection_domain...
     nleaftot = 0 ; nleaf_in_domain = 0 ; iloop=0
 !$OMP PARALLEL &
 !$OMP REDUCTION(+:nleaftot,nleaf_in_domain) &
@@ -695,30 +692,20 @@ contains
 !$OMP DO
     do k=1,ncpu_read
        icpu=cpu_list(k)
-       ! JB--
        nLeafInCpu = 0
-       ! --JB
+
+       call get_leaf_cell_per_cpu(repository,snapnum,icpu,ileaf,ncell,cell_pos,cell_var,cell_lev)
        
-       ! JB-- : added _l
-       call read_amr_hydro(repository,snapnum,icpu,&
-            & son_l,cpu_map_l,var_l,cell_x_l,cell_y_l,cell_z_l,cell_level_l,ncell_l)
-       ! --JB
-       
-       ! count leaf cells in domain
-       do icell = 1,ncell_l
-          if (son_l(icell)==0 .and. cpu_map_l(icell) == icpu) then
-             temp(:) = (/cell_x_l(icell), cell_y_l(icell), cell_z_l(icell)/)
-             dx = 0.5d0**(cell_level_l(icell))
-             nleaftot = nleaftot+1
-             if (domain_contains_cell(temp,dx,selection_domain)) then
-                nleaf_in_domain = nleaf_in_domain + 1
-                !JB--
-                nLeafInCpu = nLeafInCpu + 1
-                !--JB
-             end if
+       ! count leaf cells in selection_domain
+       do i = 1,ileaf
+          xtemp(:) = cell_pos(i,:)
+          dx = 0.5d0**(cell_lev(i))
+          nleaftot = nleaftot+1
+          if (domain_contains_cell(xtemp,dx,selection_domain)) then
+             nleaf_in_domain = nleaf_in_domain + 1
+             nLeafInCpu = nLeafInCpu + 1
           end if
        end do
-       ! JB--
 !$OMP CRITICAL
        cpu_is_useful(k) = (nLeafInCpu > 0)
 #ifdef DISPLAY_PROGRESS_PERCENT
@@ -729,8 +716,6 @@ contains
 #endif
        iloop=iloop+1
 !$OMP END CRITICAL 
-       deallocate(son_l,cpu_map_l,var_l,cell_x_l,cell_y_l,cell_z_l,cell_level_l)
-       ! --JB
     end do
 !$OMP END DO
 !$OMP END PARALLEL
@@ -743,7 +728,7 @@ contains
     print*,'--> ncpu to really read : ',nLeafInCpu
     ! --JB
     
-    if(verbose)print *,'-- read_leaf_cells_in_domain: nleaftot, nleaf_in_domain, nvar, ncpu =',nleaftot, nleaf_in_domain, nvar, ncpu_read
+    if(verbose)print *,'-- ramses_get_leaf_cells_in_domain: nleaftot, nleaf_in_domain, nvar, ncpu =',nleaftot, nleaf_in_domain, nvar, ncpu_read
     
     allocate(ramses_var_all(nvar,nleaf_in_domain), xleaf_all(nleaf_in_domain,3), leaf_level_all(nleaf_in_domain))
     ilast = 1
@@ -758,28 +743,21 @@ contains
        if (.not. cpu_is_useful(k)) cycle
        !--JB
        icpu=cpu_list(k)
-       ! JB-- : added _l
-       call read_amr_hydro(repository,snapnum,icpu,&
-            & son_l,cpu_map_l,var_l,cell_x_l,cell_y_l,cell_z_l,cell_level_l,ncell_l)
-       if (do_allocs) allocate(ramses_var(nvar,ncell_l), xleaf(ncell_l,3), leaf_level(ncell_l))
-       ! --JB
+       call get_leaf_cell_per_cpu(repository,snapnum,icpu,nleaf,ncell,cell_pos,cell_var,cell_lev)
+       if (do_allocs) allocate(ramses_var(nvar,ncell), xleaf(ncell,3), leaf_level(ncell))
        do_allocs=.false.
        ! collect leaf cells
-       ileaf = 0
-       do icell = 1,ncell_l  ! JB: _l
-          if (son_l(icell)==0 .and. cpu_map_l(icell) == icpu) then  ! JB: _l
-             temp(:) = (/cell_x_l(icell), cell_y_l(icell), cell_z_l(icell)/)  ! JB: _l
-             dx = 0.5d0**(cell_level_l(icell))  ! JB: _l
-             if (domain_contains_cell(temp,dx,selection_domain)) then
-                ileaf = ileaf + 1
-                do ivar = 1,nvar
-                   ramses_var(ivar,ileaf) = var_l(icell,ivar)  ! JB: _l
-                end do
-                xleaf(ileaf,1)    = cell_x_l(icell)  ! JB: _l
-                xleaf(ileaf,2)    = cell_y_l(icell)  ! JB: _l
-                xleaf(ileaf,3)    = cell_z_l(icell)  ! JB: _l
-                leaf_level(ileaf) = cell_level_l(icell)  ! JB: _l
-             end if
+       ileaf=0
+       do i = 1,nleaf
+          xtemp(:) = cell_pos(i,:)
+          dx = 0.5d0**(cell_lev(i))
+          if (domain_contains_cell(xtemp,dx,selection_domain)) then
+             ileaf = ileaf + 1
+             do ivar = 1,nvar
+                ramses_var(ivar,ileaf) = cell_var(i,ivar)
+             end do
+             xleaf(ileaf,:)    = cell_pos(i,:)
+             leaf_level(ileaf) = cell_lev(i)
           end if
        end do
 !$OMP CRITICAL
@@ -800,9 +778,6 @@ contains
        endif
        ilast=ilast+ileaf
 !$OMP END CRITICAL
-       ! JB--
-       deallocate(son_l,cpu_map_l,var_l,cell_x_l,cell_y_l,cell_z_l,cell_level_l)
-       ! --JB
     end do
 !$OMP END DO
     if(allocated(ramses_var)) deallocate(ramses_var,xleaf,leaf_level)
@@ -812,7 +787,7 @@ contains
     
     return
 
-  end subroutine read_leaf_cells_in_domain
+  end subroutine ramses_get_leaf_cells_in_domain
 
 
   subroutine get_cpu_list(repository, snapnum, xmin,xmax,ymin,ymax,zmin,zmax, ncpu_read, cpu_list)
