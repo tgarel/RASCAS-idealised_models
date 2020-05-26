@@ -184,7 +184,8 @@ contains
        tau  = tau + tau_cell 
        
        ! check if we reached tau or distance limits
-       if (dist > maxdist_cm .and. maxdist_cm > 0) then
+       if ((dist > maxdist_cm .and. maxdist_cm > 0) .or. &
+            (tau > maxtau .and. maxtau > 0) ) then
           ! dist exceeding boundary -> correct excess and exit. 
           excess   = maxdist_cm - dist
           ray%dist = dist

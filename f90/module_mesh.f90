@@ -797,7 +797,7 @@ module module_mesh
       integer(kind=4), intent(in)              :: nnew
       real(kind=8),dimension(:,:),allocatable  :: tmpr
       integer(kind=4),dimension(:),allocatable :: tmpi
-      integer(kind=4)                          :: ncellnew,i
+      integer(kind=8)                          :: ncellnew,i
 
       ncellnew = nCoarse+8*nnew
 
