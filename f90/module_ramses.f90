@@ -118,41 +118,35 @@ contains
     implicit none 
     character(2000),intent(in)                :: repository
     integer(kind=4),intent(in)                :: snapnum, ncpu_read
-    integer(kind=4),dimension(:),allocatable,intent(in) :: cpu_list
-    
+    integer(kind=4),allocatable,intent(in)    :: cpu_list(:)    
     integer(kind=4),intent(inout)             :: nleaftot, nvar
     real(kind=8),allocatable, intent(inout)   :: ramses_var_all(:,:)
     real(kind=8),allocatable,intent(inout)    :: xleaf_all(:,:)
     integer(kind=4),allocatable,intent(inout) :: leaf_level_all(:)
-
     type(domain),intent(in),optional          :: selection_domain
-
-    
-    integer(kind=4) :: ileaf,nleaf,k,icpu,ncell,ivar,iloop
-    real(kind=8) :: time1,time2,time3,rate
-    integer(kind=8) :: c1,c2,c3,cr
-    
-    character(1000)                         :: filename 
-    logical                                 :: ok,ok_cell
-    integer(kind=4)                         :: i,j,ilevel,nx,ny,nz,nlevelmax,nboundary
-    integer(kind=4)                         :: idim,ind,iu1,iu2,iu3,rank
+    integer(kind=4)                           :: ileaf,nleaf,k,icpu,ivar,iloop
+    real(kind=8)                              :: time1,time2,time3,rate
+    integer(kind=8)                           :: c1,c2,c3,cr
+    character(1000)                           :: filename 
+    logical                                   :: ok_cell
+    integer(kind=4)                           :: i,j,ilevel,nx,ny,nz,nlevelmax,nboundary
+    integer(kind=4)                           :: idim,ind,iu1,iu2,iu3,rank
     ! stuff read from AMR files
-    integer(kind=4)                         :: ncoarse,ngridmax,ngrid_current
-    real(kind=8),allocatable                :: xg(:,:)        ! grids position
-    integer(kind=4),allocatable             :: son(:,:)       ! sons grids
-    real(KIND=8),dimension(1:3)             :: xbound=(/0d0,0d0,0d0/)  
-    integer(kind=4),allocatable             :: ngridfile(:,:),ngridlevel(:,:),ngridbound(:,:)
-    integer(kind=4)                         :: ngrida,ncpused
-    logical,allocatable                     :: ref(:,:)
-    real(kind=8)                            :: dx,boxlen
-    integer(kind=4)                         :: ix,iy,iz,nvarH,nvarRT
-    real(kind=8),allocatable                :: xc(:,:),xp(:,:,:)
+    integer(kind=4)                           :: ngridmax,ngrid_current
+    real(kind=8),allocatable                  :: xg(:,:)        ! grids position
+    integer(kind=4),allocatable               :: son(:,:)       ! sons grids
+    real(KIND=8),dimension(1:3)               :: xbound=(/0d0,0d0,0d0/)  
+    integer(kind=4),allocatable               :: ngridfile(:,:),ngridlevel(:,:),ngridbound(:,:)
+    integer(kind=4)                           :: ngrida,ncpused
+    logical,allocatable                       :: ref(:,:)
+    real(kind=8)                              :: dx,boxlen
+    integer(kind=4)                           :: ix,iy,iz,nvarH,nvarRT
+    real(kind=8),allocatable                  :: xc(:,:),xp(:,:,:)
     ! stuff read from the HYDRO files
-    real(kind=8),allocatable                :: var(:,:,:)
-    real(kind=4),allocatable                :: var_sp(:)
-
-    logical :: cellInDomain
-    real(kind=8),dimension(3) :: xx
+    real(kind=8),allocatable                  :: var(:,:,:)
+    real(kind=4),allocatable                  :: var_sp(:)
+    logical                                   :: cellInDomain
+    real(kind=8),dimension(3)                 :: xx
     logical,allocatable                       :: cpu_is_useful(:)
     
     if(verbose) print *,'Reading RAMSES cells...'
