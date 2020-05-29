@@ -129,7 +129,8 @@ contains
 
     
     integer(kind=4) :: ileaf,nleaf,k,icpu,ncell,ivar,iloop
-    real(kind=8) :: time1,time2,time3
+    real(kind=8) :: time1,time2,time3,rate
+    integer(kind=8) :: c1,c2,c3,cr
     
     character(1000)                         :: filename 
     logical                                 :: ok,ok_cell
@@ -156,6 +157,9 @@ contains
     if(verbose) print *,'Reading RAMSES cells...'
 
     call cpu_time(time1)
+    call system_clock(count_rate=cr)
+    rate = float(cr)
+    call system_clock(c1)
 
     if(present(selection_domain))then
        call minirats_count_leaf_cells_in_domain(repository, snapnum, ncpu_read, cpu_list, &
@@ -167,8 +171,10 @@ contains
     endif
     
     call cpu_time(time2)
+    call system_clock(c2)
     print '(" --> Time to get nleaf new = ",f12.3," seconds.")',time2-time1
-
+    print '("         system_clock time = ",f12.3," seconds.")',(c2-c1)/rate
+    
     nvar     = get_nvar(repository,snapnum)
     allocate(ramses_var_all(nvar,nleaftot), xleaf_all(nleaftot,3), leaf_level_all(nleaftot))
 
@@ -393,13 +399,11 @@ contains
                 do i=1,ngrida
                    ref(i,ind)=son(i,ind)>0.and.ilevel<nlevelmax
                 end do
-                
                 ! Store leaf cells
-                ! 2 strategy here, either one does a first round to count nleaf and then allocate arrays,
-                ! either allocate bigger arrays and reduce them afterwards...
                 do i=1,ngrida
                    ok_cell= .not.ref(i,ind)
                    if(ok_cell)then
+                   !if(.not.ref(i,ind))then
                       cellInDomain=.true.
                       if(present(selection_domain))then
                          !
@@ -436,7 +440,9 @@ contains
     nleaf = ileaf-1
 
     call cpu_time(time3)
+    call system_clock(c3)
     print '(" --> Time to get leaf = ",f12.3," seconds.")',time3-time2
+    print '("    system_clock time = ",f12.3," seconds.")',(c3-c2)/rate
 
     print*,'Nleaf read = ',nleaf, nleaftot
     return
@@ -632,6 +638,7 @@ contains
                 do i=1,ngrida
                    ok_cell= .not.ref(i,ind)
                    if(ok_cell)then
+                   !if(.not.ref(i,ind))then
                       xx(1:3) = xp(i,ind,1:3)
                       dx = 0.5d0**(ilevel)
                       if (domain_contains_cell(xx,dx,selection_domain)) then
@@ -664,6 +671,7 @@ contains
     ! and levels (leaf_level).
     ! 05-2020: corrected version that doesn't use cpu_map anymore.
     
+    !$ use OMP_LIB
     implicit none 
     character(2000),intent(in)                :: repository
     integer(kind=4),intent(in)                :: snapnum, ncpu_read
@@ -678,18 +686,30 @@ contains
     integer(kind=4),allocatable  :: cell_lev(:)
     
     integer(kind=4) :: ileaf,nleaf,k,icpu,ilast,ncell,ivar,iloop
-    real(kind=8) :: time1,time2,time3
+    real(kind=8) :: time1,time2,time3,rate,ot1,ot2,ot3
+    integer(kind=8) :: c1,c2,c3,cr
     
     if(verbose) print *,'Reading RAMSES cells...'
 
+    ot1=0.
+    ot2=0.
+    ot3=0.
+    call system_clock(count_rate=cr)
+    rate = float(cr)
+    call system_clock(c1)
     call cpu_time(time1)
-
+    !$ ot1 = omp_get_wtime()
+    
     nleaftot = get_nleaf_new(repository,snapnum,ncpu_read,cpu_list)
     print*,'nleaftot (new) =',nleaftot
 
     call cpu_time(time2)
+    call system_clock(c2)
+    !$ ot2 = omp_get_wtime()
     print '(" --> Time to get nleaf new = ",f12.3," seconds.")',time2-time1
-
+    print '("         system_clock time = ",f12.3," seconds.")',(c2-c1)/rate
+    print '("             omp_get_wtime = ",f12.3," seconds.")',ot2-ot1
+    
     nvar     = get_nvar(repository,snapnum)
     allocate(ramses_var_all(nvar,nleaftot), xleaf_all(nleaftot,3), leaf_level_all(nleaftot))
 
@@ -710,9 +730,11 @@ contains
 !$OMP PARALLEL &
 !$OMP DEFAULT(private) &
 !$OMP SHARED(nleaf, repository, snapnum, ncpu_read, cpu_list, ilast, nvar, xleaf_all, leaf_level_all, ramses_var_all, iloop)
-!$OMP DO
+!!!!!$OMP DO
+!$OMP DO SCHEDULE(DYNAMIC, 5) 
     do k=1,ncpu_read
        icpu=cpu_list(k)
+
        call get_leaf_cell_per_cpu(repository,snapnum,icpu,ileaf,ncell,cell_pos,cell_var,cell_lev)
 
 !$OMP CRITICAL
@@ -726,9 +748,10 @@ contains
           ! save leaf cells to return arrays
           xleaf_all(ilast:ilast-1+ileaf,1:3)  = cell_pos(1:ileaf,1:3)
           leaf_level_all(ilast:ilast-1+ileaf) = cell_lev(1:ileaf)
-          do ivar = 1,nvar
-             ramses_var_all(ivar,ilast:ilast-1+ileaf) = cell_var(1:ileaf,ivar)
-          end do
+          !do ivar = 1,nvar
+          !   ramses_var_all(ivar,ilast:ilast-1+ileaf) = cell_var(1:ileaf,ivar)
+          !end do
+          ramses_var_all(1:nvar,ilast:ilast-1+ileaf) = cell_var(1:nvar,1:ileaf)
        endif
        ilast=ilast+ileaf
        nleaf=nleaf+ileaf
@@ -739,6 +762,10 @@ contains
 
     call cpu_time(time3)
     print '(" --> Time to get leaf = ",f12.3," seconds.")',time3-time2
+    call system_clock(c3)
+    print '("    system_clock time = ",f12.3," seconds.")',(c3-c2)/rate
+    !$ ot3 = omp_get_wtime()
+    print '("        omp_get_wtime = ",f12.3," seconds.")',ot3-ot2
 
     print*,'Nleaf read = ',nleaf
     return
@@ -982,9 +1009,10 @@ contains
           dx = 0.5d0**(cell_lev(i))
           if (domain_contains_cell(xtemp,dx,selection_domain)) then
              ileaf = ileaf + 1
-             do ivar = 1,nvar
-                ramses_var(ivar,ileaf) = cell_var(i,ivar)
-             end do
+             !do ivar = 1,nvar
+             !   ramses_var(ivar,ileaf) = cell_var(i,ivar)
+             !end do
+             ramses_var(1:nvar,ileaf) = cell_var(1:nvar,i)
              xleaf(ileaf,:)    = cell_pos(i,:)
              leaf_level(ileaf) = cell_lev(i)
           end if
@@ -2880,7 +2908,8 @@ contains
     ncoarse = nx*ny*nz
     ncell   = ncoarse+twotondim*ngridmax
 
-    allocate(cell_var(1:ncell,1:nvarH+nvarRT))
+    !allocate(cell_var(1:ncell,1:nvarH+nvarRT))
+    allocate(cell_var(1:nvarH+nvarRT,1:ncell))
     allocate(cell_pos(1:ncell,1:3))
     allocate(cell_lev(1:ncell))
 
@@ -3004,24 +3033,25 @@ contains
                 xp(i,ind,1)=(xg(i,1)+xc(ind,1)-xbound(1))
                 xp(i,ind,2)=(xg(i,2)+xc(ind,2)-xbound(2))
                 xp(i,ind,3)=(xg(i,3)+xc(ind,3)-xbound(3))
-             end do
+             enddo
              ! Check if cell is refined
              do i=1,ngrida
                 ref(i,ind)=son(i,ind)>0.and.ilevel<nlevelmax
-             end do
-
+             enddo
              ! Store leaf cells
-             ! 2 strategy here, either one does a first round to count nleaf and then allocate arrays,
-             ! either allocate bigger arrays and reduce them afterwards...
              do i=1,ngrida
                 ok_cell= .not.ref(i,ind)
                 if(ok_cell)then
+                !if(.not.ref(i,ind))then
                    cell_pos(ileaf,1:3) = xp(i,ind,1:3)
                    cell_lev(ileaf) = ilevel
-                   cell_var(ileaf,:) = var(i,ind,:)
+                   !cell_var(ileaf,:) = var(i,ind,:)
+                   do ivar=1,nvarh+nvarRT
+                      cell_var(ivar,ileaf) = var(i,ind,ivar)
+                   enddo
                    ileaf=ileaf+1
                 endif
-             enddo
+             end do
           end do
        endif
        
