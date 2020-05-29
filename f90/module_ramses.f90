@@ -743,7 +743,7 @@ contains
     do k=1,ncpu_read
        icpu=cpu_list(k)
 
-       call get_leaf_cell_per_cpu(repository,snapnum,icpu,ileaf,ncell,cell_pos,cell_var,cell_lev)
+       call get_leaf_cells_per_cpu(repository,snapnum,icpu,ileaf,ncell,cell_pos,cell_var,cell_lev)
 
 !$OMP CRITICAL
 #ifdef DISPLAY_PROGRESS_PERCENT
@@ -958,7 +958,7 @@ contains
        icpu=cpu_list(k)
        nLeafInCpu = 0
 
-       call get_leaf_cell_per_cpu(repository,snapnum,icpu,ileaf,ncell,cell_pos,cell_var,cell_lev)
+       call get_leaf_cells_per_cpu(repository,snapnum,icpu,ileaf,ncell,cell_pos,cell_var,cell_lev)
        
        ! count leaf cells in selection_domain
        do i = 1,ileaf
@@ -1007,7 +1007,7 @@ contains
        if (.not. cpu_is_useful(k)) cycle
        !--JB
        icpu=cpu_list(k)
-       call get_leaf_cell_per_cpu(repository,snapnum,icpu,nleaf,ncell,cell_pos,cell_var,cell_lev)
+       call get_leaf_cells_per_cpu(repository,snapnum,icpu,nleaf,ncell,cell_pos,cell_var,cell_lev)
        if (do_allocs) allocate(ramses_var(nvar,ncell), xleaf(ncell,3), leaf_level(ncell))
        do_allocs=.false.
        ! collect leaf cells
@@ -2802,7 +2802,7 @@ contains
 
 
 
-  subroutine get_leaf_cell_per_cpu(repository,snapnum,icpu,&
+  subroutine get_leaf_cells_per_cpu(repository,snapnum,icpu,&
        & nleaf,ncell,cell_pos,cell_var,cell_lev)
     ! purpose: use only local variables for OMP
     !          read leaf cell as in amr2map
@@ -3075,7 +3075,7 @@ contains
     close(iu3)
 
     return
-  end subroutine get_leaf_cell_per_cpu
+  end subroutine get_leaf_cells_per_cpu
 
 
 
