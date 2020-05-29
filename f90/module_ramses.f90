@@ -142,7 +142,7 @@ contains
     integer(kind=4),allocatable             :: son(:,:)       ! sons grids
     real(KIND=8),dimension(1:3)             :: xbound=(/0d0,0d0,0d0/)  
     integer(kind=4),allocatable             :: ngridfile(:,:),ngridlevel(:,:),ngridbound(:,:)
-    integer(kind=4)                         :: ngrida
+    integer(kind=4)                         :: ngrida,ncpused
     logical,allocatable                     :: ref(:,:)
     real(kind=8)                            :: dx,boxlen
     integer(kind=4)                         :: ix,iy,iz,nvarH,nvarRT
@@ -153,7 +153,8 @@ contains
 
     logical :: cellInDomain
     real(kind=8),dimension(3) :: xx
-                         
+    logical,allocatable                       :: cpu_is_useful(:)
+    
     if(verbose) print *,'Reading RAMSES cells...'
 
     call cpu_time(time1)
@@ -161,13 +162,22 @@ contains
     rate = float(cr)
     call system_clock(c1)
 
+    allocate(cpu_is_useful(ncpu_read))
+    cpu_is_useful = .false.
+
     if(present(selection_domain))then
        call minirats_count_leaf_cells_in_domain(repository, snapnum, ncpu_read, cpu_list, &
-            & selection_domain, nleaftot)
+            & selection_domain, nleaftot, cpu_is_useful)
        print*,'nleaftot (new) in selection_domain =',nleaftot
+       ncpused=0
+       do k = 1,ncpu_read
+          if (cpu_is_useful(k)) ncpused=ncpused+1
+       end do
+       print*,'--> ncpu to really read : ',ncpused
     else
        nleaftot = get_nleaf_new(repository,snapnum,ncpu_read,cpu_list)
        print*,'nleaftot (new) =',nleaftot
+       cpu_is_useful = .true.
     endif
     
     call cpu_time(time2)
@@ -205,7 +215,7 @@ contains
             ' Reading leaves ',dble(iloop) / ncpu_read * 100,' % ',char(13)
        iloop=iloop+1
 #endif
-    
+       if (.not. cpu_is_useful(k)) cycle
        ! verify AMR input file -> already done above in get_nleaf_new
        write(filename,'(a,a,i5.5,a,i5.5,a,i5.5)') trim(repository),'/output_',snapnum,'/amr_',snapnum,'.out',icpu
        ! Open AMR file and skip header
@@ -454,7 +464,7 @@ contains
 
 
   subroutine minirats_count_leaf_cells_in_domain(repository, snapnum, &
-       & ncpu_read, cpu_list, selection_domain, nleafInDomain)
+       & ncpu_read, cpu_list, selection_domain, nleafInDomain, cpu_is_useful)
     ! count leaf cells in cpu_list && in selection_domain
     
     implicit none 
@@ -463,6 +473,7 @@ contains
     integer(kind=4),allocatable,intent(in)  :: cpu_list(:)
     type(domain),intent(in)                 :: selection_domain
     integer(kind=4),intent(inout)           :: nleafInDomain
+    logical,allocatable,intent(inout)       :: cpu_is_useful(:)
     integer(kind=4)                         :: k,icpu,iloop
     character(1000)                         :: filename 
     logical                                 :: ok_cell
@@ -473,7 +484,7 @@ contains
     integer(kind=4),allocatable             :: son(:,:)       ! sons grids
     real(KIND=8),dimension(1:3)             :: xbound=(/0d0,0d0,0d0/),xx  
     integer(kind=4),allocatable             :: ngridfile(:,:),ngridlevel(:,:),ngridbound(:,:)
-    integer(kind=4)                         :: ngrida
+    integer(kind=4)                         :: ngrida,nleafInCpu
     logical,allocatable                     :: ref(:,:)
     real(kind=8)                            :: dx,boxlen
     integer(kind=4)                         :: ix,iy,iz,nvarH
@@ -551,7 +562,9 @@ contains
        read(iu2)
        read(iu2)
        read(iu2)
-       
+
+       nleafInCpu=0
+
        ! Loop over levels
        do ilevel=1,nlevelmax
           
@@ -643,16 +656,17 @@ contains
                       dx = 0.5d0**(ilevel)
                       if (domain_contains_cell(xx,dx,selection_domain)) then
                          nleafInDomain=nleafInDomain+1
+                         nleafInCpu=nleafInCpu+1
                       endif
                    endif
                 enddo
              end do
           endif
-          
        enddo ! end loop over levels
        
        close(iu1)
        close(iu2)
+       cpu_is_useful(k) = (nLeafInCpu > 0)
        
     enddo ! end loop over cpu
 
