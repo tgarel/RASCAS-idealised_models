@@ -127,10 +127,9 @@ program CreateDomDump
      do i=1,ncpu_read
         cpu_list(i)=i
      end do
-
-     !call read_leaf_cells(repository, snapnum, ncpu_read, cpu_list, nleaftot, nvar, x_leaf, ramses_var, leaf_level)
-     !call ramses_get_leaf_cells(repository, snapnum, ncpu_read, cpu_list, nleaftot, nvar, x_leaf, ramses_var, leaf_level)
-     call minirats_get_leaf_cells(repository, snapnum, ncpu_read, cpu_list, nleaftot, nvar, x_leaf, ramses_var, leaf_level)
+     
+     call ramses_get_leaf_cells(repository, snapnum, ncpu_read, cpu_list, nleaftot, nvar, x_leaf, ramses_var, leaf_level)
+     !call ramses_get_leaf_cells_stomp(repository, snapnum, ncpu_read, cpu_list, nleaftot, nvar, x_leaf, ramses_var, leaf_level)
      
      ! Extract and convert properties of cells into gas mix properties
      call gas_from_ramses_leaves(repository,snapnum,nleaftot,nvar,ramses_var, gas_leaves)
@@ -260,9 +259,8 @@ program CreateDomDump
         end select
 
         call get_cpu_list_periodic(repository, snapnum, xmin,xmax,ymin,ymax,zmin,zmax, ncpu_read, cpu_list)
-        !!!!!!call read_leaf_cells(repository, snapnum, ncpu_read, cpu_list, nleaftot, nvar, x_leaf, ramses_var, leaf_level)
-        !call ramses_get_leaf_cells(repository, snapnum, ncpu_read, cpu_list, nleaftot, nvar, x_leaf, ramses_var, leaf_level)
-        call minirats_get_leaf_cells(repository, snapnum, ncpu_read, cpu_list, nleaftot, nvar, x_leaf, ramses_var, leaf_level)
+        call ramses_get_leaf_cells(repository, snapnum, ncpu_read, cpu_list, nleaftot, nvar, x_leaf, ramses_var, leaf_level)
+        !call ramses_get_leaf_cells_slomp(repository, snapnum, ncpu_read, cpu_list, nleaftot, nvar, x_leaf, ramses_var, leaf_level)
         if(verbose) write(*,*)'In CreateDomDump: nleaf_sel = ',nleaftot, size(leaf_level)
         ! Extract and convert properties of cells into gas mix properties
         call gas_from_ramses_leaves(repository,snapnum,nleaftot,nvar,ramses_var, gas_leaves)
@@ -292,9 +290,9 @@ program CreateDomDump
         do j=1,ncpu_read
            cpu_list(j)=j
         end do
-        !call ramses_get_leaf_cells_in_domain(repository, snapnum, domain_list(i), ncpu_read, cpu_list, &
+        !call ramses_get_leaf_cells_in_domain_slomp(repository, snapnum, domain_list(i), ncpu_read, cpu_list, &
         !     & nleaftot, nvar, x_leaf, ramses_var, leaf_level)
-        call minirats_get_leaf_cells(repository, snapnum, ncpu_read, cpu_list, &
+        call ramses_get_leaf_cells(repository, snapnum, ncpu_read, cpu_list, &
              & nleaftot, nvar, x_leaf, ramses_var, leaf_level, domain_list(i))
         print*,'in CreateDomDump: nleaf_sel = ',nleaftot, size(leaf_level)
         ! Extract and convert properties of cells into gas mix properties
@@ -347,9 +345,9 @@ program CreateDomDump
         end select
         
         call get_cpu_list_periodic(repository, snapnum, xmin,xmax,ymin,ymax,zmin,zmax, ncpu_read, cpu_list)
-        !call ramses_get_leaf_cells_in_domain(repository, snapnum, domain_list(i), ncpu_read, cpu_list, &
+        !call ramses_get_leaf_cells_in_domain_slomp(repository, snapnum, domain_list(i), ncpu_read, cpu_list, &
         !     & nleaftot, nvar, x_leaf, ramses_var, leaf_level)
-        call minirats_get_leaf_cells(repository, snapnum, ncpu_read, cpu_list, &
+        call ramses_get_leaf_cells(repository, snapnum, ncpu_read, cpu_list, &
              & nleaftot, nvar, x_leaf, ramses_var, leaf_level, domain_list(i))
         ! Extract and convert properties of cells into gas mix properties
         call gas_from_ramses_leaves(repository,snapnum,nleaftot,nvar,ramses_var, gas_leaves)
