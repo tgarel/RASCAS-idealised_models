@@ -92,8 +92,8 @@ module module_ramses
   real(kind=8),parameter    :: abundance_Fe_number = 2.82d-5 ! From Scarlata (private comm.)
   ! --------------------------------------------------------------------------
   
-  public :: ramses_get_leaf_cells, minirats_get_leaf_cells
-  public :: ramses_get_leaf_cells_in_domain, get_ngridtot_cpus
+  public :: ramses_get_leaf_cells_slomp, ramses_get_leaf_cells
+  public :: ramses_get_leaf_cells_in_domain_slomp, get_ngridtot_cpus
   public :: ramses_get_box_size_cm, get_cpu_list, get_cpu_list_periodic, get_ncpu
   public :: ramses_get_velocity_cgs, ramses_get_T_nhi_cgs, ramses_get_metallicity,  ramses_get_nh_cgs
   public :: ramses_get_T_nSiII_cgs, ramses_get_T_nMgII_cgs, ramses_get_T_nFeII_cgs
@@ -110,7 +110,7 @@ contains
   ! ----------------
 
 
-  subroutine minirats_get_leaf_cells(repository, snapnum, ncpu_read, cpu_list, &
+  subroutine ramses_get_leaf_cells(repository, snapnum, ncpu_read, cpu_list, &
        & nleaftot, nvar, xleaf_all, ramses_var_all, leaf_level_all, selection_domain)
     ! non-openMP method, as in minirats...
     ! no subroutine, store cell data directly into final arrays
@@ -160,7 +160,7 @@ contains
     cpu_is_useful = .false.
 
     if(present(selection_domain))then
-       call minirats_count_leaf_cells_in_domain(repository, snapnum, ncpu_read, cpu_list, &
+       call ramses_count_leaf_cells_in_domain(repository, snapnum, ncpu_read, cpu_list, &
             & selection_domain, nleaftot, cpu_is_useful)
        print*,'nleaftot (new) in selection_domain =',nleaftot
        ncpused=0
@@ -190,7 +190,7 @@ contains
        print*,'The RT precision is ',RT_precision  !JOKI
     endif
 
-    if(verbose) print *,'-- read_leaf_cells (new reader): nleaftot(_read), nvar, ncpu(_read) =',nleaftot,nvar,ncpu_read
+    if(verbose) print *,'-- ramses_get_leaf_cells : nleaftot(_read), nvar, ncpu(_read) =',nleaftot,nvar,ncpu_read
 
     
     rank = 1
@@ -450,14 +450,11 @@ contains
 
     print*,'Nleaf read = ',nleaf, nleaftot
     return
-    
-    
-    
-  end subroutine minirats_get_leaf_cells
+  end subroutine ramses_get_leaf_cells
 
 
 
-  subroutine minirats_count_leaf_cells_in_domain(repository, snapnum, &
+  subroutine ramses_count_leaf_cells_in_domain(repository, snapnum, &
        & ncpu_read, cpu_list, selection_domain, nleafInDomain, cpu_is_useful)
     ! count leaf cells in cpu_list && in selection_domain
     
@@ -663,14 +660,13 @@ contains
        cpu_is_useful(k) = (nLeafInCpu > 0)
        
     enddo ! end loop over cpu
-
     
     return
-  end subroutine minirats_count_leaf_cells_in_domain
+  end subroutine ramses_count_leaf_cells_in_domain
   
   
   
-  subroutine ramses_get_leaf_cells(repository, snapnum, ncpu_read, cpu_list, &
+  subroutine ramses_get_leaf_cells_slomp(repository, snapnum, ncpu_read, cpu_list, &
        & nleaftot, nvar, xleaf_all, ramses_var_all, leaf_level_all)
     
     ! read all leaf cells from a simulation snapshot belonging to given
@@ -678,6 +674,7 @@ contains
     ! ramses_var(nvar,nleaftot) and positions (xleaf(3,nleaftot))
     ! and levels (leaf_level).
     ! 05-2020: corrected version that doesn't use cpu_map anymore.
+    !          --> not very efficient
     
     !$ use OMP_LIB
     implicit none 
@@ -729,7 +726,7 @@ contains
        print*,'The RT precision is ',RT_precision  !JOKI
     endif
 
-    if(verbose) print *,'-- read_leaf_cells (new reader): nleaftot(_read), nvar, ncpu(_read) =',nleaftot,nvar,ncpu_read
+    if(verbose) print *,'-- ramses_get_leaf_cells : nleaftot(_read), nvar, ncpu(_read) =',nleaftot,nvar,ncpu_read
 
     
     nleaf=0
@@ -777,11 +774,11 @@ contains
 
     print*,'Nleaf read = ',nleaf
     return
-  end subroutine ramses_get_leaf_cells
+  end subroutine ramses_get_leaf_cells_slomp
 
 
 
-  subroutine ramses_get_leaf_cells_in_domain(repository, snapnum, selection_domain, &
+  subroutine ramses_get_leaf_cells_in_domain_slomp(repository, snapnum, selection_domain, &
        & ncpu_read, cpu_list, &
        & nleaftot_all, nvar, xleaf_all, ramses_var_all, leaf_level_all)
 
@@ -939,7 +936,8 @@ contains
     
     return
 
-  end subroutine ramses_get_leaf_cells_in_domain
+  end subroutine ramses_get_leaf_cells_in_domain_slomp
+
 
 
   subroutine get_cpu_list(repository, snapnum, xmin,xmax,ymin,ymax,zmin,zmax, ncpu_read, cpu_list)
@@ -2658,9 +2656,6 @@ contains
 
     return
   end subroutine get_leaf_cells_per_cpu
-
-
-
 
 
 
