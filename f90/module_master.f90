@@ -105,6 +105,9 @@ contains
     first(:)=-1
     last(:)=-1
     nqueue(:)=0
+    cpu(:)=0
+    ncpuperdom(:)=0
+    delta(:)=0.0d0
     do i=1,nphot
        if(photgrid(i)%status==0)then  ! for restart
           j = get_my_new_domain(photgrid(i)%xcurr,domain_list)
@@ -345,7 +348,7 @@ contains
     implicit none
     integer(kind=4), intent(in)  :: nbundle
     integer(kind=4), intent(in)  :: ndomain
-    integer(kind=4)              :: nphottot,icpu,ndom,j
+    integer(kind=4)              :: nphottot,icpu,ndom,j,jold,jnew
     integer(kind=4),dimension(1) :: jtoo
     
     nphottot=sum(nqueue)
@@ -375,6 +378,26 @@ contains
 
     end do
 
+    ! test loadb and correct if necessary
+    do j=1,ndomain
+       if((ncpuperdom(j)/=0).and.(nqueue(j)==0))then
+          jtoo=maxloc(delta)
+          jold=j
+          jnew=jtoo(1)
+          ncpuperdom(jnew)=ncpuperdom(jnew)+1
+          ncpuperdom(jold)=ncpuperdom(jold)-1
+       endif
+    enddo
+    ! and redo this
+    icpu=1
+    do j=1,ndomain
+       ndom = ncpuperdom(j)
+       cpu(icpu:icpu+ndom-1)=j
+       icpu=icpu+ndom
+       ! we also have to initialize delta(j)
+       delta(j) = real(nqueue(j))/nbundle/(ncpuperdom(j)+1.)
+    end do
+    
     !if(verbose)then
     !   write(*,*)'[master] init cpu mapping',cpu(:)
     !   write(*,*)'[master] init delta(j)',delta(:)

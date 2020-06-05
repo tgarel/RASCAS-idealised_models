@@ -95,8 +95,8 @@ module module_ramses
   real(kind=8),parameter    :: abundance_Fe_number = 2.82d-5 ! From Scarlata (private comm.)
   ! --------------------------------------------------------------------------
   
-  
-  public :: read_leaf_cells, read_leaf_cells_in_domain, get_ngridtot_cpus
+  public :: ramses_get_leaf_cells_slomp, ramses_get_leaf_cells
+  public :: ramses_get_leaf_cells_in_domain_slomp, get_ngridtot_cpus
   public :: ramses_get_box_size_cm, get_cpu_list, get_cpu_list_periodic, get_ncpu
   public :: ramses_get_velocity_cgs, ramses_get_T_nhi_cgs, ramses_get_metallicity,  ramses_get_nh_cgs
   public :: ramses_get_T_nSiII_cgs, ramses_get_T_nMgII_cgs, ramses_get_T_nFeII_cgs
@@ -112,45 +112,80 @@ contains
   ! public functions 
   ! ----------------
 
-  subroutine read_leaf_cells(repository, snapnum, ncpu_read, cpu_list, &
-       & nleaftot, nvar, xleaf_all, ramses_var_all, leaf_level_all)
 
-    ! read all leaf cells from a simulation snapshot belonging to given
-    ! list of cpus. Return standard ramses variables through 
-    ! ramses_var(nvar,nleaftot) and positions (xleaf(3,nleaftot))
-    ! and levels (leaf_level).
-
+  subroutine ramses_get_leaf_cells(repository, snapnum, ncpu_read, cpu_list, &
+       & nleaftot, nvar, xleaf_all, ramses_var_all, leaf_level_all, selection_domain)
+    ! non-openMP method, as in minirats...
+    ! no subroutine, store cell data directly into final arrays
+    
     implicit none 
-
     character(2000),intent(in)                :: repository
     integer(kind=4),intent(in)                :: snapnum, ncpu_read
-    integer(kind=4),dimension(:),allocatable,intent(in) :: cpu_list
+    integer(kind=4),allocatable,intent(in)    :: cpu_list(:)    
     integer(kind=4),intent(inout)             :: nleaftot, nvar
     real(kind=8),allocatable, intent(inout)   :: ramses_var_all(:,:)
     real(kind=8),allocatable,intent(inout)    :: xleaf_all(:,:)
     integer(kind=4),allocatable,intent(inout) :: leaf_level_all(:)
-    real(kind=8),allocatable                  :: ramses_var(:,:)
-    real(kind=8),allocatable                  :: xleaf(:,:)
-    integer(kind=4),allocatable               :: leaf_level(:)
-    integer(kind=4)                           :: k, icpu, ileaf, icell, ivar, ilast, iloop
-    logical                                   :: do_allocs
-    
-    integer(kind=4)              :: ncell
-    integer,allocatable          :: son(:)       ! sons grids
-    integer,allocatable          :: cpu_map(:)   ! domain decomposition
-    real(kind=8),allocatable     :: var(:,:)
-    real(kind=8),allocatable     :: cell_x(:),cell_y(:),cell_z(:)
-    integer(kind=4),allocatable  :: cell_level(:)
+    type(domain),intent(in),optional          :: selection_domain
+    integer(kind=4)                           :: ileaf,nleaf,k,icpu,ivar,iloop
+    real(kind=8)                              :: time1,time2,time3,rate
+    integer(kind=8)                           :: c1,c2,c3,cr
+    character(1000)                           :: filename 
+    logical                                   :: ok_cell
+    integer(kind=4)                           :: i,j,ilevel,nx,ny,nz,nlevelmax,nboundary
+    integer(kind=4)                           :: idim,ind,iu1,iu2,iu3,rank
+    ! stuff read from AMR files
+    integer(kind=4)                           :: ngridmax,ngrid_current
+    real(kind=8),allocatable                  :: xg(:,:)        ! grids position
+    integer(kind=4),allocatable               :: son(:,:)       ! sons grids
+    real(KIND=8),dimension(1:3)               :: xbound=(/0d0,0d0,0d0/)  
+    integer(kind=4),allocatable               :: ngridfile(:,:),ngridlevel(:,:),ngridbound(:,:)
+    integer(kind=4)                           :: ngrida,ncpused
+    logical,allocatable                       :: ref(:,:)
+    real(kind=8)                              :: dx,boxlen
+    integer(kind=4)                           :: ix,iy,iz,nvarH,nvarRT
+    real(kind=8),allocatable                  :: xc(:,:),xp(:,:,:)
+    ! stuff read from the HYDRO files
+    real(kind=8),allocatable                  :: var(:,:,:)
+    real(kind=4),allocatable                  :: var_sp(:)
+    logical                                   :: cellInDomain
+    real(kind=8),dimension(3)                 :: xx
+    logical,allocatable                       :: cpu_is_useful(:)
     
     if(verbose) print *,'Reading RAMSES cells...'
+
+    call cpu_time(time1)
+    call system_clock(count_rate=cr)
+    rate = float(cr)
+    call system_clock(c1)
+
+    allocate(cpu_is_useful(ncpu_read))
+    cpu_is_useful = .false.
+
+    if(present(selection_domain))then
+       call ramses_count_leaf_cells_in_domain(repository, snapnum, ncpu_read, cpu_list, &
+            & selection_domain, nleaftot, cpu_is_useful)
+       print*,'nleaftot (new) in selection_domain =',nleaftot
+       ncpused=0
+       do k = 1,ncpu_read
+          if (cpu_is_useful(k)) ncpused=ncpused+1
+       end do
+       print*,'--> ncpu to really read : ',ncpused
+    else
+       nleaftot = get_nleaf_new(repository,snapnum,ncpu_read,cpu_list)
+       print*,'nleaftot (new) =',nleaftot
+       cpu_is_useful = .true.
+    endif
     
-    nleaftot = get_nleaf(repository,snapnum,ncpu_read,cpu_list)
+    call cpu_time(time2)
+    call system_clock(c2)
+    print '(" --> Time to get nleaf new = ",f12.3," seconds.")',time2-time1
+    print '("         system_clock time = ",f12.3," seconds.")',(c2-c1)/rate
+    
     nvar     = get_nvar(repository,snapnum)
     allocate(ramses_var_all(nvar,nleaftot), xleaf_all(nleaftot,3), leaf_level_all(nleaftot))
-    ncpu = get_ncpu(repository,snapnum) !!! ncpu should be known before calling read_amr_hydro!!!
 
-    
-    ! Check whether the ramses output is in single or double precision
+   ! Check whether the ramses output is in single or double precision
     U_precision = nint(get_param_real(repository,snapnum,'U_precision',default_value=8d0))
     if(read_rt_variables) then
        RT_precision = nint(get_param_real(repository,snapnum,'rtprecision' &
@@ -158,72 +193,595 @@ contains
        print*,'The RT precision is ',RT_precision  !JOKI
     endif
 
-    if(verbose) print *,'-- read_leaf_cells: nleaftot(_read), nvar, ncpu(_read) =',nleaftot,nvar,ncpu_read
+    if(verbose) print *,'-- ramses_get_leaf_cells : nleaftot(_read), nvar, ncpu(_read) =',nleaftot,nvar,ncpu_read
 
-    ileaf = 0
-    iloop = 0
-    ilast = 1
-!$OMP PARALLEL &
-!$OMP DEFAULT(private) &
-!$OMP SHARED(iloop, ilast, xleaf_all, leaf_level_all, ramses_var_all, repository, snapnum, nvar, nleaftot, ncpu_read, cpu_list)
-    do_allocs = .true.
-!$OMP DO
+    
+    rank = 1
+    iu1 = 10+rank*3
+    iu2 = 10+rank*3+1
+    iu3 = 10+rank*3+2
+
+    nleaf=0
+    ileaf=1
+    iloop=0
+    ! loop over cpu
     do k=1,ncpu_read
        icpu=cpu_list(k)
-       call read_amr_hydro(repository,snapnum,icpu,&
-            & son,cpu_map,var,cell_x,cell_y,cell_z,cell_level,ncell)
-       
-       if (do_allocs) allocate(ramses_var(nvar,ncell), xleaf(ncell,3), leaf_level(ncell))
-       do_allocs = .false.
-       ! collect leaf cells
-       ileaf = 0
-       do icell = 1,ncell
-          if (son(icell)==0 .and. cpu_map(icell) == icpu) then
-             ileaf = ileaf + 1
-             do ivar = 1,nvar
-                ramses_var(ivar,ileaf) = var(icell,ivar)
-             end do
-             xleaf(ileaf,1)    = cell_x(icell)
-             xleaf(ileaf,2)    = cell_y(icell)
-             xleaf(ileaf,3)    = cell_z(icell)
-             leaf_level(ileaf) = cell_level(icell)
-          end if
-       end do
-
-!$OMP CRITICAL
-       ! only one CRITICAL zone
 #ifdef DISPLAY_PROGRESS_PERCENT
-       !write (*, "(A, f5.2, A, A)", advance='no') &           ! Progress bar
-       !     ' Reading leaves ',dble(iloop) / ncpu_read * 100,' % ',char(13)
        write (*, "(A, f5.2, A, A, $)") &           ! Progress bar that works with ifort
             ' Reading leaves ',dble(iloop) / ncpu_read * 100,' % ',char(13)
        iloop=iloop+1
 #endif
+       if (.not. cpu_is_useful(k)) cycle
+       ! verify AMR input file -> already done above in get_nleaf_new
+       write(filename,'(a,a,i5.5,a,i5.5,a,i5.5)') trim(repository),'/output_',snapnum,'/amr_',snapnum,'.out',icpu
+       ! Open AMR file and skip header
+       open(unit=iu1,file=filename,form='unformatted',status='old',action='read')
+       read(iu1)ncpu
+       read(iu1)      !ndim
+       read(iu1)nx,ny,nz
+       read(iu1)nlevelmax
+       read(iu1)ngridmax
+       read(iu1)nboundary
+       read(iu1)ngrid_current
+       read(iu1)boxlen
+       do i=1,13
+          read(iu1)
+       end do
+       !twotondim=2**ndim
+       xbound=(/dble(nx/2),dble(ny/2),dble(nz/2)/)
+       if(allocated(ngridfile)) deallocate(ngridfile,ngridlevel)
+       allocate(ngridfile(1:ncpu+nboundary,1:nlevelmax))
+       allocate(ngridlevel(1:ncpu,1:nlevelmax))
+       if(nboundary>0)then
+          if(allocated(ngridbound)) deallocate(ngridbound)
+          allocate(ngridbound(1:nboundary,1:nlevelmax))
+       endif
+       ! Read grid numbers
+       read(iu1)ngridlevel
+       ngridfile(1:ncpu,1:nlevelmax)=ngridlevel
+       read(iu1)
+       if(nboundary>0)then
+          do i=1,2
+             read(iu1)
+          end do
+          read(iu1)ngridbound
+          ngridfile(ncpu+1:ncpu+nboundary,1:nlevelmax)=ngridbound
+       endif
+       read(iu1)
+       ! ROM: comment the single follwing line for old stuff
+       read(iu1)
+       read(iu1)
+       read(iu1)
+       read(iu1)
+       read(iu1)
+       
+       if(allocated(xc)) deallocate(xc)
+       allocate(xc(1:twotondim,1:ndim))
+       
+       
+       ! open hydro file and get nvarH
+       write(filename,'(a,a,i5.5,a,i5.5,a,i5.5)') trim(repository),'/output_',snapnum,'/hydro_',snapnum,'.out',icpu
+       open(unit=iu2,file=filename,form='unformatted',status='old',action='read')
+       read(iu2)
+       read(iu2)nvarH
+       read(iu2)
+       read(iu2)
+       read(iu2)
+       read(iu2)
+       
+       if (read_rt_variables) then
+          ! Open RT file and get nvarRT
+          write(filename,'(a,a,i5.5,a,i5.5,a,i5.5)') trim(repository),'/output_',snapnum,'/rt_',snapnum,'.out',icpu
+          open(unit=iu3,file=filename,status='old',form='unformatted')
+          read(iu3)
+          read(iu3)nvarRT
+          read(iu3)
+          read(iu3)
+          read(iu3)
+          read(iu3)
+       else
+          nvarRT = 0
+       end if
+       !ncoarse = nx*ny*nz
+       !ncell   = ncoarse+twotondim*ngridmax
+       
+       ! Loop over levels
+       do ilevel=1,nlevelmax
+          
+          ! Geometry
+          dx=0.5**ilevel
+          do ind=1,twotondim
+             iz=(ind-1)/4
+             iy=(ind-1-4*iz)/2
+             ix=(ind-1-2*iy-4*iz)
+             xc(ind,1)=(dble(ix)-0.5D0)*dx
+             xc(ind,2)=(dble(iy)-0.5D0)*dx
+             xc(ind,3)=(dble(iz)-0.5D0)*dx
+          end do
+          
+          ! Allocate work arrays
+          if(allocated(xg)) then 
+             deallocate(xg,son,var,xp,ref)
+          endif
+          if(allocated(var_sp)) deallocate(var_sp)
+          ngrida=ngridfile(icpu,ilevel)
+          if(ngrida>0)then
+             allocate(xg(1:ngrida,1:ndim))
+             allocate(son(1:ngrida,1:twotondim))
+             allocate(var(1:ngrida,1:twotondim,1:nvarh+nvarRT))
+             if((read_rt_variables .and. rt_Precision.eq.4) .or. U_precision.eq.4) allocate(var_sp(1:ngrida))
+             allocate(xp(1:ngrida,1:twotondim,1:ndim))
+             allocate(ref(1:ngrida,1:twotondim))
+             ref=.false.
+          endif
+          
+          
+          ! Loop over domains
+          do j=1,nboundary+ncpu
+             
+             ! Read AMR data
+             if(ngridfile(j,ilevel)>0)then
+                read(iu1) ! Skip grid index
+                read(iu1) ! Skip next index
+                read(iu1) ! Skip prev index
+                ! Read grid center
+                do idim=1,ndim
+                   if(j.eq.icpu)then
+                      read(iu1)xg(:,idim)
+                   else
+                      read(iu1)
+                   endif
+                end do
+                read(iu1) ! Skip father index
+                do ind=1,2*ndim
+                   read(iu1) ! Skip nbor index
+                end do
+                ! Read son index
+                do ind=1,twotondim
+                   if(j.eq.icpu)then
+                      read(iu1)son(:,ind)
+                   else
+                      read(iu1)
+                   end if
+                end do
+                ! Skip cpu map
+                do ind=1,twotondim
+                   read(iu1)
+                end do
+                ! Skip refinement map
+                do ind=1,twotondim
+                   read(iu1)
+                end do
+             endif
+             
+             ! Read HYDRO data
+             read(iu2)
+             read(iu2)
+             if(read_rt_variables)read(iu3)
+             if(read_rt_variables)read(iu3)
+             if(ngridfile(j,ilevel)>0)then
+                ! Read hydro variables
+                do ind=1,twotondim
+                   do ivar=1,nvarh
+                      if(j.eq.icpu)then
+                         if(U_precision.eq.4) then
+                            read(iu2) var_sp(:)
+                            var(:,ind,ivar) = var_sp(:)
+                         else
+                            read(iu2)var(:,ind,ivar)
+                         endif
+                      else
+                         read(iu2)
+                      end if
+                   end do
+                   do ivar=1,nvarRT
+                      if(j.eq.icpu)then
+                         if(rt_Precision.eq.4) then
+                            read(iu3) var_sp(:)
+                            var(:,ind,nvarh+ivar) = var_sp(:)
+                         else
+                            read(iu3)var(:,ind,nvarh+ivar)
+                         endif
+                      else
+                         read(iu3)
+                      end if
+                   end do
+                end do
+             end if
+             
+          enddo ! end loop over domains
+          
+          ! Get leaf cells and store data
+          if(ngrida>0)then
+             ! Loop over cells
+             do ind=1,twotondim
+                ! Compute cell center
+                do i=1,ngrida
+                   xp(i,ind,1)=(xg(i,1)+xc(ind,1)-xbound(1))
+                   xp(i,ind,2)=(xg(i,2)+xc(ind,2)-xbound(2))
+                   xp(i,ind,3)=(xg(i,3)+xc(ind,3)-xbound(3))
+                end do
+                ! Check if cell is refined
+                do i=1,ngrida
+                   ref(i,ind)=son(i,ind)>0.and.ilevel<nlevelmax
+                end do
+                ! Store leaf cells
+                do i=1,ngrida
+                   ok_cell= .not.ref(i,ind)
+                   if(ok_cell)then
+                   !if(.not.ref(i,ind))then
+                      cellInDomain=.true.
+                      if(present(selection_domain))then
+                         !
+                         cellInDomain=.false.
+                         xx(1:3) = xp(i,ind,1:3)
+                         dx = 0.5d0**(ilevel)
+                         if (domain_contains_cell(xx,dx,selection_domain)) cellInDomain=.true.
+                      endif
+                      if(cellInDomain)then
+                         xleaf_all(ileaf,1:3) = xp(i,ind,1:3)
+                         leaf_level_all(ileaf) = ilevel
+                         do ivar = 1,nvar
+                            ramses_var_all(ivar,ileaf) = var(i,ind,ivar)
+                         end do
+                         ileaf=ileaf+1
+                      endif
+                   endif
+                enddo
+             end do
+          endif
+          
+          
+       enddo ! end loop over levels
+       
+       
+       close(iu1)
+       close(iu2)
+       close(iu3)
+       
+    enddo ! end loop over cpu
 
+    !!print*,'Number of leaf cells =',ileaf-1,nvarH+nvarRT
+    !!print*,icpu,ileaf-1
+    nleaf = ileaf-1
+
+    call cpu_time(time3)
+    call system_clock(c3)
+    print '(" --> Time to get leaf = ",f12.3," seconds.")',time3-time2
+    print '("    system_clock time = ",f12.3," seconds.")',(c3-c2)/rate
+
+    print*,'Nleaf read = ',nleaf, nleaftot
+    return
+  end subroutine ramses_get_leaf_cells
+
+
+
+  subroutine ramses_count_leaf_cells_in_domain(repository, snapnum, &
+       & ncpu_read, cpu_list, selection_domain, nleafInDomain, cpu_is_useful)
+    ! count leaf cells in cpu_list && in selection_domain
+    
+    implicit none 
+    character(2000),intent(in)              :: repository
+    integer(kind=4),intent(in)              :: snapnum, ncpu_read
+    integer(kind=4),allocatable,intent(in)  :: cpu_list(:)
+    type(domain),intent(in)                 :: selection_domain
+    integer(kind=4),intent(inout)           :: nleafInDomain
+    logical,allocatable,intent(inout)       :: cpu_is_useful(:)
+    integer(kind=4)                         :: k,icpu,iloop
+    character(1000)                         :: filename 
+    logical                                 :: ok_cell
+    integer(kind=4)                         :: i,j,ilevel,nx,ny,nz,nlevelmax,nboundary
+    integer(kind=4)                         :: idim,ind,iu1,iu2,rank
+    integer(kind=4)                         :: ngridmax,ngrid_current
+    real(kind=8),allocatable                :: xg(:,:)        ! grids position
+    integer(kind=4),allocatable             :: son(:,:)       ! sons grids
+    real(KIND=8),dimension(1:3)             :: xbound=(/0d0,0d0,0d0/),xx  
+    integer(kind=4),allocatable             :: ngridfile(:,:),ngridlevel(:,:),ngridbound(:,:)
+    integer(kind=4)                         :: ngrida,nleafInCpu
+    logical,allocatable                     :: ref(:,:)
+    real(kind=8)                            :: dx,boxlen
+    integer(kind=4)                         :: ix,iy,iz,nvarH
+    real(kind=8),allocatable                :: xc(:,:),xp(:,:,:)
+    
+    
+    rank = 1
+    iu1 = 10+rank*3
+    iu2 = 10+rank*3+1
+
+    nleafInDomain=0
+    iloop=0
+    ! loop over cpu
+    do k=1,ncpu_read
+       icpu=cpu_list(k)
+#ifdef DISPLAY_PROGRESS_PERCENT
+       write (*, "(A, f5.2, A, A, $)") &           ! Progress bar that works with ifort
+            ' Counting leaves ',dble(iloop) / ncpu_read * 100,' % ',char(13)
+       iloop=iloop+1
+#endif
+       
+       ! verify AMR input file -> already done above in get_nleaf_new
+       write(filename,'(a,a,i5.5,a,i5.5,a,i5.5)') trim(repository),'/output_',snapnum,'/amr_',snapnum,'.out',icpu
+       ! Open AMR file and skip header
+       open(unit=iu1,file=filename,form='unformatted',status='old',action='read')
+       read(iu1)ncpu
+       read(iu1)      !ndim
+       read(iu1)nx,ny,nz
+       read(iu1)nlevelmax
+       read(iu1)ngridmax
+       read(iu1)nboundary
+       read(iu1)ngrid_current
+       read(iu1)boxlen
+       do i=1,13
+          read(iu1)
+       end do
+       !twotondim=2**ndim
+       xbound=(/dble(nx/2),dble(ny/2),dble(nz/2)/)
+       if(allocated(ngridfile)) deallocate(ngridfile,ngridlevel)
+       allocate(ngridfile(1:ncpu+nboundary,1:nlevelmax))
+       allocate(ngridlevel(1:ncpu,1:nlevelmax))
+       if(nboundary>0)then
+          if(allocated(ngridbound)) deallocate(ngridbound)
+          allocate(ngridbound(1:nboundary,1:nlevelmax))
+       endif
+       ! Read grid numbers
+       read(iu1)ngridlevel
+       ngridfile(1:ncpu,1:nlevelmax)=ngridlevel
+       read(iu1)
+       if(nboundary>0)then
+          do i=1,2
+             read(iu1)
+          end do
+          read(iu1)ngridbound
+          ngridfile(ncpu+1:ncpu+nboundary,1:nlevelmax)=ngridbound
+       endif
+       read(iu1)
+       ! ROM: comment the single follwing line for old stuff
+       read(iu1)
+       read(iu1)
+       read(iu1)
+       read(iu1)
+       read(iu1)
+       
+       if(allocated(xc)) deallocate(xc)
+       allocate(xc(1:twotondim,1:ndim))
+       
+       
+       ! open hydro file and get nvarH
+       write(filename,'(a,a,i5.5,a,i5.5,a,i5.5)') trim(repository),'/output_',snapnum,'/hydro_',snapnum,'.out',icpu
+       open(unit=iu2,file=filename,form='unformatted',status='old',action='read')
+       read(iu2)
+       read(iu2)nvarH
+       read(iu2)
+       read(iu2)
+       read(iu2)
+       read(iu2)
+
+       nleafInCpu=0
+
+       ! Loop over levels
+       do ilevel=1,nlevelmax
+          
+          ! Geometry
+          dx=0.5**ilevel
+          do ind=1,twotondim
+             iz=(ind-1)/4
+             iy=(ind-1-4*iz)/2
+             ix=(ind-1-2*iy-4*iz)
+             xc(ind,1)=(dble(ix)-0.5D0)*dx
+             xc(ind,2)=(dble(iy)-0.5D0)*dx
+             xc(ind,3)=(dble(iz)-0.5D0)*dx
+          end do
+          
+          ! Allocate work arrays
+          if(allocated(xg)) then 
+             deallocate(xg,son,xp,ref)
+          endif
+          ngrida=ngridfile(icpu,ilevel)
+          if(ngrida>0)then
+             allocate(xg(1:ngrida,1:ndim))
+             allocate(son(1:ngrida,1:twotondim))
+             allocate(xp(1:ngrida,1:twotondim,1:ndim))
+             allocate(ref(1:ngrida,1:twotondim))
+             ref=.false.
+          endif
+          
+          
+          ! Loop over domains
+          do j=1,nboundary+ncpu
+             
+             ! Read AMR data
+             if(ngridfile(j,ilevel)>0)then
+                read(iu1) ! Skip grid index
+                read(iu1) ! Skip next index
+                read(iu1) ! Skip prev index
+                ! Read grid center
+                do idim=1,ndim
+                   if(j.eq.icpu)then
+                      read(iu1)xg(:,idim)
+                   else
+                      read(iu1)
+                   endif
+                end do
+                read(iu1) ! Skip father index
+                do ind=1,2*ndim
+                   read(iu1) ! Skip nbor index
+                end do
+                ! Read son index
+                do ind=1,twotondim
+                   if(j.eq.icpu)then
+                      read(iu1)son(:,ind)
+                   else
+                      read(iu1)
+                   end if
+                end do
+                ! Skip cpu map
+                do ind=1,twotondim
+                   read(iu1)
+                end do
+                ! Skip refinement map
+                do ind=1,twotondim
+                   read(iu1)
+                end do
+             endif
+             ! no need to read HYDRO data...
+          enddo ! end loop over domains
+          
+          ! Get leaf cells and store data
+          if(ngrida>0)then
+             ! Loop over cells
+             do ind=1,twotondim
+                ! Compute cell center
+                do i=1,ngrida
+                   xp(i,ind,1)=(xg(i,1)+xc(ind,1)-xbound(1))
+                   xp(i,ind,2)=(xg(i,2)+xc(ind,2)-xbound(2))
+                   xp(i,ind,3)=(xg(i,3)+xc(ind,3)-xbound(3))
+                end do
+                ! Check if cell is refined
+                do i=1,ngrida
+                   ref(i,ind)=son(i,ind)>0.and.ilevel<nlevelmax
+                end do
+                ! check if cell is in selection_domain
+                do i=1,ngrida
+                   ok_cell= .not.ref(i,ind)
+                   if(ok_cell)then
+                   !if(.not.ref(i,ind))then
+                      xx(1:3) = xp(i,ind,1:3)
+                      dx = 0.5d0**(ilevel)
+                      if (domain_contains_cell(xx,dx,selection_domain)) then
+                         nleafInDomain=nleafInDomain+1
+                         nleafInCpu=nleafInCpu+1
+                      endif
+                   endif
+                enddo
+             end do
+          endif
+       enddo ! end loop over levels
+       
+       close(iu1)
+       close(iu2)
+       cpu_is_useful(k) = (nLeafInCpu > 0)
+       
+    enddo ! end loop over cpu
+    
+    return
+  end subroutine ramses_count_leaf_cells_in_domain
+  
+  
+  
+  subroutine ramses_get_leaf_cells_slomp(repository, snapnum, ncpu_read, cpu_list, &
+       & nleaftot, nvar, xleaf_all, ramses_var_all, leaf_level_all)
+    
+    ! read all leaf cells from a simulation snapshot belonging to given
+    ! list of cpus. Return standard ramses variables through 
+    ! ramses_var(nvar,nleaftot) and positions (xleaf(3,nleaftot))
+    ! and levels (leaf_level).
+    ! 05-2020: corrected version that doesn't use cpu_map anymore.
+    !          --> not very efficient
+    
+    !$ use OMP_LIB
+    implicit none 
+    character(2000),intent(in)                :: repository
+    integer(kind=4),intent(in)                :: snapnum, ncpu_read
+    integer(kind=4),dimension(:),allocatable,intent(in) :: cpu_list
+
+    integer(kind=4),intent(inout)             :: nleaftot, nvar
+    real(kind=8),allocatable, intent(inout)   :: ramses_var_all(:,:)
+    real(kind=8),allocatable,intent(inout)    :: xleaf_all(:,:)
+    integer(kind=4),allocatable,intent(inout) :: leaf_level_all(:)
+
+    real(kind=8),allocatable     :: cell_pos(:,:),cell_var(:,:)
+    integer(kind=4),allocatable  :: cell_lev(:)
+    
+    integer(kind=4) :: ileaf,nleaf,k,icpu,ilast,ncell,ivar,iloop
+    real(kind=8) :: time1,time2,time3,rate,ot1,ot2,ot3
+    integer(kind=8) :: c1,c2,c3,cr
+    
+    if(verbose) print *,'Reading RAMSES cells...'
+
+    ot1=0.
+    ot2=0.
+    ot3=0.
+    call system_clock(count_rate=cr)
+    rate = float(cr)
+    call system_clock(c1)
+    call cpu_time(time1)
+    !$ ot1 = omp_get_wtime()
+    
+    nleaftot = get_nleaf_new(repository,snapnum,ncpu_read,cpu_list)
+    print*,'nleaftot (new) =',nleaftot
+
+    call cpu_time(time2)
+    call system_clock(c2)
+    !$ ot2 = omp_get_wtime()
+    print '(" --> Time to get nleaf new = ",f12.3," seconds.")',time2-time1
+    print '("         system_clock time = ",f12.3," seconds.")',(c2-c1)/rate
+    print '("             omp_get_wtime = ",f12.3," seconds.")',ot2-ot1
+    
+    nvar     = get_nvar(repository,snapnum)
+    allocate(ramses_var_all(nvar,nleaftot), xleaf_all(nleaftot,3), leaf_level_all(nleaftot))
+
+   ! Check whether the ramses output is in single or double precision
+    U_precision = nint(get_param_real(repository,snapnum,'U_precision',default_value=8d0))
+    if(read_rt_variables) then
+       RT_precision = nint(get_param_real(repository,snapnum,'rtprecision' &
+            ,default_value=8d0,rt_info=.true.))
+       print*,'The RT precision is ',RT_precision  !JOKI
+    endif
+
+    if(verbose) print *,'-- ramses_get_leaf_cells : nleaftot(_read), nvar, ncpu(_read) =',nleaftot,nvar,ncpu_read
+
+    
+    nleaf=0
+    ilast=1
+    iloop=0
+!$OMP PARALLEL &
+!$OMP DEFAULT(private) &
+!$OMP SHARED(nleaf, repository, snapnum, ncpu_read, cpu_list, ilast, nvar, xleaf_all, leaf_level_all, ramses_var_all, iloop)
+!!!!!$OMP DO
+!$OMP DO SCHEDULE(DYNAMIC, 5) 
+    do k=1,ncpu_read
+       icpu=cpu_list(k)
+
+       call get_leaf_cells_per_cpu(repository,snapnum,icpu,ileaf,ncell,cell_pos,cell_var,cell_lev)
+
+!$OMP CRITICAL
+#ifdef DISPLAY_PROGRESS_PERCENT
+       write (*, "(A, f5.2, A, A, $)") &           ! Progress bar that works with ifort
+            ' Reading leaves ',dble(iloop) / ncpu_read * 100,' % ',char(13)
+       iloop=iloop+1
+#endif
        ! ileaf is now the number of leaves on local cpu
        if(ileaf .gt. 0) then
           ! save leaf cells to return arrays
-          xleaf_all(ilast:ilast-1+ileaf,1:3)  = xleaf(1:ileaf,1:3)
-          leaf_level_all(ilast:ilast-1+ileaf) = leaf_level(1:ileaf)
-          ramses_var_all(1:nvar,ilast:ilast-1+ileaf) = ramses_var(1:nvar,1:ileaf)
+          xleaf_all(ilast:ilast-1+ileaf,1:3)  = cell_pos(1:ileaf,1:3)
+          leaf_level_all(ilast:ilast-1+ileaf) = cell_lev(1:ileaf)
+          !do ivar = 1,nvar
+          !   ramses_var_all(ivar,ilast:ilast-1+ileaf) = cell_var(1:ileaf,ivar)
+          !end do
+          ramses_var_all(1:nvar,ilast:ilast-1+ileaf) = cell_var(1:nvar,1:ileaf)
        endif
        ilast=ilast+ileaf
+       nleaf=nleaf+ileaf
 !$OMP END CRITICAL
-       ! JB-- arrays allocated in read_amr_hydro should be deallocated
-       deallocate(son,cpu_map,var,cell_x,cell_y,cell_z,cell_level)
-       ! --JB       
     end do
 !$OMP END DO
-    if(.not. do_allocs) deallocate(ramses_var,xleaf,leaf_level)
 !$OMP END PARALLEL
-    if(verbose)print*,'--> Nleaves read =',ilast-1
 
+    call cpu_time(time3)
+    print '(" --> Time to get leaf = ",f12.3," seconds.")',time3-time2
+    call system_clock(c3)
+    print '("    system_clock time = ",f12.3," seconds.")',(c3-c2)/rate
+    !$ ot3 = omp_get_wtime()
+    print '("        omp_get_wtime = ",f12.3," seconds.")',ot3-ot2
+
+    print*,'Nleaf read = ',nleaf
     return
+  end subroutine ramses_get_leaf_cells_slomp
 
-  end subroutine read_leaf_cells
 
 
-  subroutine read_leaf_cells_in_domain(repository, snapnum, selection_domain, &
+  subroutine ramses_get_leaf_cells_in_domain_slomp(repository, snapnum, selection_domain, &
        & ncpu_read, cpu_list, &
        & nleaftot_all, nvar, xleaf_all, ramses_var_all, leaf_level_all)
 
@@ -241,32 +799,26 @@ contains
     integer(kind=4),intent(in)                :: snapnum, ncpu_read
     type(domain),intent(in)                   :: selection_domain
     integer(kind=4),intent(inout)             :: nleaftot_all, nvar
-    integer(kind=8)                           :: nleaftot
+    integer(kind=4)                           :: nleaftot
     real(kind=8),allocatable                  :: ramses_var(:,:)
     real(kind=8),allocatable                  :: xleaf(:,:)
     integer(kind=4),allocatable               :: leaf_level(:)
     real(kind=8),allocatable, intent(inout)   :: ramses_var_all(:,:)
     real(kind=8),allocatable,intent(inout)    :: xleaf_all(:,:)
     integer(kind=4),allocatable,intent(inout) :: leaf_level_all(:)
-
-    integer(kind=4),dimension(:),allocatable,intent(in) :: cpu_list
+    integer(kind=4),allocatable,intent(in)    :: cpu_list(:)
     
     logical                                   :: do_allocs
-    integer(kind=4)                           :: icpu, ivar, nleaf_in_domain, k
-    integer(kind=4)                           :: ileaf, icell, ilast, iloop=0
-    real(kind=8),dimension(3)                 :: temp
+    integer(kind=4)                           :: icpu, ivar, nleaf_in_domain, k, i
+    integer(kind=4)                           :: ileaf, ilast, iloop=0, nleaf, ncell
+    real(kind=8),dimension(3)                 :: xtemp
     real(kind=8)                              :: dx
 
-    ! JB--
-    integer(kind=4)              :: ncell_l
-    integer,allocatable          :: son_l(:)       ! sons grids
-    integer,allocatable          :: cpu_map_l(:)   ! domain decomposition
-    real(kind=8),allocatable     :: var_l(:,:)
-    real(kind=8),allocatable     :: cell_x_l(:),cell_y_l(:),cell_z_l(:)
-    integer(kind=4),allocatable  :: cell_level_l(:)
-    integer(kind=4) :: nLeafInCpu
-    logical,allocatable :: cpu_is_useful(:)
-    ! --JB
+    real(kind=8),allocatable                  :: cell_var(:,:)
+    real(kind=8),allocatable                  :: cell_pos(:,:)
+    integer(kind=4),allocatable               :: cell_lev(:)
+    integer(kind=4)                           :: nLeafInCpu
+    logical,allocatable                       :: cpu_is_useful(:)
     
     if(verbose) print *,'Reading RAMSES cells...'
 
@@ -279,13 +831,10 @@ contains
             ,default_value=8d0,rt_info=.true.))
        print*,'The RT precision is ',RT_precision
     endif
-    ! JB--
-!    ncell_l = get_ncell(repository,snapnum)  ! computed in read_amr_hydro
     allocate(cpu_is_useful(ncpu_read))
     cpu_is_useful = .false.
-    ! --JB
 
-    ! first count leaf cells in domain...
+    ! first count leaf cells in selection_domain...
     nleaftot = 0 ; nleaf_in_domain = 0 ; iloop=0
 !$OMP PARALLEL &
 !$OMP REDUCTION(+:nleaftot,nleaf_in_domain) &
@@ -294,30 +843,20 @@ contains
 !$OMP DO
     do k=1,ncpu_read
        icpu=cpu_list(k)
-       ! JB--
        nLeafInCpu = 0
-       ! --JB
+
+       call get_leaf_cells_per_cpu(repository,snapnum,icpu,ileaf,ncell,cell_pos,cell_var,cell_lev)
        
-       ! JB-- : added _l
-       call read_amr_hydro(repository,snapnum,icpu,&
-            & son_l,cpu_map_l,var_l,cell_x_l,cell_y_l,cell_z_l,cell_level_l,ncell_l)
-       ! --JB
-       
-       ! count leaf cells in domain
-       do icell = 1,ncell_l
-          if (son_l(icell)==0 .and. cpu_map_l(icell) == icpu) then
-             temp(:) = (/cell_x_l(icell), cell_y_l(icell), cell_z_l(icell)/)
-             dx = 0.5d0**(cell_level_l(icell))
-             nleaftot = nleaftot+1
-             if (domain_contains_cell(temp,dx,selection_domain)) then
-                nleaf_in_domain = nleaf_in_domain + 1
-                !JB--
-                nLeafInCpu = nLeafInCpu + 1
-                !--JB
-             end if
+       ! count leaf cells in selection_domain
+       do i = 1,ileaf
+          xtemp(:) = cell_pos(i,:)
+          dx = 0.5d0**(cell_lev(i))
+          nleaftot = nleaftot+1
+          if (domain_contains_cell(xtemp,dx,selection_domain)) then
+             nleaf_in_domain = nleaf_in_domain + 1
+             nLeafInCpu = nLeafInCpu + 1
           end if
        end do
-       ! JB--
 !$OMP CRITICAL
        cpu_is_useful(k) = (nLeafInCpu > 0)
 #ifdef DISPLAY_PROGRESS_PERCENT
@@ -328,8 +867,6 @@ contains
 #endif
        iloop=iloop+1
 !$OMP END CRITICAL 
-       deallocate(son_l,cpu_map_l,var_l,cell_x_l,cell_y_l,cell_z_l,cell_level_l)
-       ! --JB
     end do
 !$OMP END DO
 !$OMP END PARALLEL
@@ -342,7 +879,7 @@ contains
     print*,'--> ncpu to really read : ',nLeafInCpu
     ! --JB
     
-    if(verbose)print *,'-- read_leaf_cells_in_domain: nleaftot, nleaf_in_domain, nvar, ncpu =',nleaftot, nleaf_in_domain, nvar, ncpu_read
+    if(verbose)print *,'-- ramses_get_leaf_cells_in_domain: nleaftot, nleaf_in_domain, nvar, ncpu =',nleaftot, nleaf_in_domain, nvar, ncpu_read
     
     allocate(ramses_var_all(nvar,nleaf_in_domain), xleaf_all(nleaf_in_domain,3), leaf_level_all(nleaf_in_domain))
     ilast = 1
@@ -357,28 +894,22 @@ contains
        if (.not. cpu_is_useful(k)) cycle
        !--JB
        icpu=cpu_list(k)
-       ! JB-- : added _l
-       call read_amr_hydro(repository,snapnum,icpu,&
-            & son_l,cpu_map_l,var_l,cell_x_l,cell_y_l,cell_z_l,cell_level_l,ncell_l)
-       if (do_allocs) allocate(ramses_var(nvar,ncell_l), xleaf(ncell_l,3), leaf_level(ncell_l))
-       ! --JB
+       call get_leaf_cells_per_cpu(repository,snapnum,icpu,nleaf,ncell,cell_pos,cell_var,cell_lev)
+       if (do_allocs) allocate(ramses_var(nvar,ncell), xleaf(ncell,3), leaf_level(ncell))
        do_allocs=.false.
        ! collect leaf cells
-       ileaf = 0
-       do icell = 1,ncell_l  ! JB: _l
-          if (son_l(icell)==0 .and. cpu_map_l(icell) == icpu) then  ! JB: _l
-             temp(:) = (/cell_x_l(icell), cell_y_l(icell), cell_z_l(icell)/)  ! JB: _l
-             dx = 0.5d0**(cell_level_l(icell))  ! JB: _l
-             if (domain_contains_cell(temp,dx,selection_domain)) then
-                ileaf = ileaf + 1
-                do ivar = 1,nvar
-                   ramses_var(ivar,ileaf) = var_l(icell,ivar)  ! JB: _l
-                end do
-                xleaf(ileaf,1)    = cell_x_l(icell)  ! JB: _l
-                xleaf(ileaf,2)    = cell_y_l(icell)  ! JB: _l
-                xleaf(ileaf,3)    = cell_z_l(icell)  ! JB: _l
-                leaf_level(ileaf) = cell_level_l(icell)  ! JB: _l
-             end if
+       ileaf=0
+       do i = 1,nleaf
+          xtemp(:) = cell_pos(i,:)
+          dx = 0.5d0**(cell_lev(i))
+          if (domain_contains_cell(xtemp,dx,selection_domain)) then
+             ileaf = ileaf + 1
+             !do ivar = 1,nvar
+             !   ramses_var(ivar,ileaf) = cell_var(i,ivar)
+             !end do
+             ramses_var(1:nvar,ileaf) = cell_var(1:nvar,i)
+             xleaf(ileaf,:)    = cell_pos(i,:)
+             leaf_level(ileaf) = cell_lev(i)
           end if
        end do
 !$OMP CRITICAL
@@ -399,9 +930,6 @@ contains
        endif
        ilast=ilast+ileaf
 !$OMP END CRITICAL
-       ! JB--
-       deallocate(son_l,cpu_map_l,var_l,cell_x_l,cell_y_l,cell_z_l,cell_level_l)
-       ! --JB
     end do
 !$OMP END DO
     if(allocated(ramses_var)) deallocate(ramses_var,xleaf,leaf_level)
@@ -411,7 +939,8 @@ contains
     
     return
 
-  end subroutine read_leaf_cells_in_domain
+  end subroutine ramses_get_leaf_cells_in_domain_slomp
+
 
 
   subroutine get_cpu_list(repository, snapnum, xmin,xmax,ymin,ymax,zmin,zmax, ncpu_read, cpu_list)
@@ -1904,50 +2433,45 @@ contains
 
 
 
-  subroutine read_amr_hydro(repository,snapnum,icpu,&
-       & son_l,cpu_map_l,var_l,cell_x_l,cell_y_l,cell_z_l,cell_level_l,ncell_l)
+  subroutine get_leaf_cells_per_cpu(repository,snapnum,icpu,&
+       & nleaf,ncell,cell_pos,cell_var,cell_lev)
     ! purpose: use only local variables for OMP
+    !          read leaf cell as in amr2map
     !$ use OMP_LIB
     implicit none 
 
-    integer(kind=4),intent(in)  :: snapnum,icpu
-    character(1000),intent(in)  :: repository
+    integer(kind=4),intent(in)              :: snapnum,icpu
+    character(1000),intent(in)              :: repository
+    integer(kind=4),intent(out)             :: ncell,nleaf
+    real(kind=8),allocatable,intent(out)    :: cell_pos(:,:),cell_var(:,:)
+    integer(kind=4),allocatable,intent(out) :: cell_lev(:)
 
-    character(1000)             :: filename 
-    integer(kind=4),allocatable :: ind_grid(:),iig(:),grid(:)
-    real(kind=8),allocatable    :: xxg(:)
-    logical                     :: ok
-    integer(kind=4)             :: i,nx,ny,nz,nlevelmax,nboundary
-    integer(kind=4)             :: ilevel,ncache,ibound,idim,ind,iskip,iunit,iu2,rank
-
+    character(1000)                         :: filename 
+    logical                                 :: ok,ok_cell
+    integer(kind=4)                         :: i,j,ilevel,ileaf,nx,ny,nz,nlevelmax,nboundary
+    integer(kind=4)                         :: idim,ind,iu1,iu2,iu3,rank
     ! stuff read from AMR files
-    integer(kind=4),intent(out)      :: ncell_l
-    integer(kind=4)                  :: ncoarse_l,ngridmax_l
-    real(kind=8),allocatable         :: xg_l(:,:)      ! grids position
-    integer,allocatable              :: nbor_l(:,:)    ! neighboring father cells
-    integer,allocatable              :: next_l(:)      ! next grid in list
-    integer,allocatable,intent(out)  :: son_l(:)       ! sons grids
-    integer,allocatable,intent(out)  :: cpu_map_l(:)   ! domain decomposition
-    integer,allocatable              :: headl_l(:,:),taill_l(:,:),numbl_l(:,:),numbtot_l(:,:)
-    integer,allocatable              :: headb_l(:,:),tailb_l(:,:),numbb_l(:,:)
-    real(KIND=8),dimension(1:3)      :: xbound_l=(/0d0,0d0,0d0/)  
-
-    real(kind=8)                :: dx
-    integer(kind=4)             :: ix,iy,iz,istart,ivar,igrid,nvarH,nvarRT
-    real(kind=8),allocatable    :: xc(:,:),xx(:)
-    real(kind=4),allocatable    :: xx_sp(:)
-    
+    integer(kind=4)                         :: ncoarse,ngridmax,ngrid_current
+    real(kind=8),allocatable                :: xg(:,:)        ! grids position
+    integer(kind=4),allocatable             :: son(:,:)       ! sons grids
+    real(KIND=8),dimension(1:3)             :: xbound=(/0d0,0d0,0d0/)  
+    integer(kind=4),allocatable             :: ngridfile(:,:),ngridlevel(:,:),ngridbound(:,:)
+    integer(kind=4)                         :: ngrida
+    logical,allocatable                     :: ref(:,:)
+    real(kind=8)                            :: dx,boxlen
+    integer(kind=4)                         :: ix,iy,iz,ivar,nvarH,nvarRT
+    real(kind=8),allocatable                :: xc(:,:),xp(:,:,:)
     ! stuff read from the HYDRO files
-    real(kind=8),allocatable,intent(out)     :: var_l(:,:)
-    real(kind=8),allocatable,intent(out)     :: cell_x_l(:),cell_y_l(:),cell_z_l(:)
-    integer(kind=4),allocatable,intent(out)  :: cell_level_l(:)
+    real(kind=8),allocatable                :: var(:,:,:)
+    real(kind=4),allocatable                :: var_sp(:)
     
     rank = 1
     !$ rank = OMP_GET_THREAD_NUM()
-    iunit=10+rank*2
-    iu2 = 10+rank*2+1
-
-    ! Vérification de l'existence des fichiers AMR
+    iu1 = 10+rank*3
+    iu2 = 10+rank*3+1
+    iu3 = 10+rank*3+2
+    
+    ! verify AMR input file
     write(filename,'(a,a,i5.5,a,i5.5,a,i5.5)') trim(repository),'/output_',snapnum,'/amr_',snapnum,'.out',icpu
     inquire(file=filename, exist=ok)
     if(.not. ok)then
@@ -1955,171 +2479,89 @@ contains
        stop
     end if
 
-    open(unit=iunit,file=filename,form='unformatted',status='old',action='read')
-    ! Read grid variables
-    read(iunit)
-    read(iunit)
-    read(iunit)nx,ny,nz
-    xbound_l=(/dble(nx/2),dble(ny/2),dble(nz/2)/)
-
-    ! Critical parameter: define the root level of the tree
-    ncoarse_l=nx*ny*nz
-    read(iunit)nlevelmax
-    read(iunit)ngridmax_l
-    read(iunit)nboundary
-    read(iunit)!ngrid_current
-    read(iunit)
-    read(iunit)
-    read(iunit)
-    read(iunit)
-    read(iunit)
-    read(iunit)
-    read(iunit)
-    read(iunit)
-    read(iunit)
-    read(iunit)
-    read(iunit)
-    read(iunit)
-    allocate( headl_l(1:ncpu,1:nlevelmax),taill_l(1:ncpu,1:nlevelmax), &
-         & numbl_l(1:ncpu,1:nlevelmax),numbtot_l(1:10,1:nlevelmax), &
-         & headb_l(1:nboundary,1:nlevelmax),tailb_l(1:nboundary,1:nlevelmax), &
-         & numbb_l(1:nboundary,1:nlevelmax) )
-    headl_l=0;taill_l=0;numbl_l=0;numbtot_l=0;headb_l=0;tailb_l=0;numbb_l=0
-    ! Allocate tree arrays
-    allocate(next_l(1:ngridmax_l))
-    allocate(nbor_l(1:ngridmax_l,1:twondim))
-    nbor_l=0; next_l=0
-    ! Allocate grid center coordinates
-    allocate(xg_l(1:ngridmax_l,1:ndim))
-    xg_l=0.0D0
-    ! Read levels variables
-    read(iunit)headl_l(1:ncpu,1:nlevelmax)
-    read(iunit)taill_l(1:ncpu,1:nlevelmax)
-    read(iunit)numbl_l(1:ncpu,1:nlevelmax)
-    read(iunit)numbtot_l(1:10,1:nlevelmax)
-    ! Read boundary linked list
-    if(nboundary>0)then
-       read(iunit)headb_l(1:nboundary,1:nlevelmax)
-       read(iunit)tailb_l(1:nboundary,1:nlevelmax)
-       read(iunit)numbb_l(1:nboundary,1:nlevelmax)
-    end if
-    !  Read free memory
-    read(iunit)
-    next_l(ngridmax_l) = 0
-    ! Read cpu boundaries
-    read(iunit)
-    read(iunit)
-    ncell_l=ncoarse_l+twotondim*ngridmax_l
-    allocate(son_l(1:ncell_l),cpu_map_l(1:ncell_l))
-    son_l=0; cpu_map_l=0
-    ! Read coarse level
-    read(iunit)son_l(1:ncoarse_l)       
-    read(iunit)
-    read(iunit)cpu_map_l(1:ncoarse_l)
-    do ilevel=1,nlevelmax
-       do ibound=1,nboundary+ncpu
-          if(ibound<=ncpu)then
-             ncache=numbl_l(ibound,ilevel)
-          else
-             ncache=numbb_l(ibound-ncpu,ilevel)
-          end if
-          if(ncache>0)then
-             allocate(ind_grid(1:ncache))
-             allocate(xxg(1:ncache))
-             allocate(iig(1:ncache))
-             allocate(grid(1:ncache))
-             ! Read grid index
-             read(iunit)ind_grid
-             ! Read next index
-             read(iunit)iig
-             do i=1,ncache
-                next_l(ind_grid(i))=iig(i)
-             end do
-             ! Read prev index (skip)
-             read(iunit)iig
-             ! Read grid center
-             do idim=1,ndim
-                read(iunit)xxg
-                do i=1,ncache
-                   xg_l(ind_grid(i),idim)=xxg(i)
-                end do
-             end do
-             ! Read father index (skip)
-             read(iunit)iig
-             ! Read nbor index
-             do ind=1,twondim
-                read(iunit)iig
-                do i=1,ncache
-                   nbor_l(ind_grid(i),ind)=iig(i)
-                end do
-             end do
-             ! Read son index
-             do ind=1,twotondim
-                iskip=ncoarse_l+(ind-1)*ngridmax_l
-                read(iunit)iig
-                do i=1,ncache
-                   son_l(ind_grid(i)+iskip)=iig(i)
-                end do
-             end do
-             ! Read cpu map
-             do ind=1,twotondim
-                iskip=ncoarse_l+(ind-1)*ngridmax_l
-                read(iunit)iig
-                do i=1,ncache
-                   cpu_map_l(ind_grid(i)+iskip)=iig(i)
-                end do
-             end do
-             ! Read refinement map (skip)
-             do ind=1,twotondim
-                read(iunit)!iig 
-             end do
-             deallocate(xxg,iig,grid,ind_grid)
-          end if
-       end do
+    ! Open AMR file and skip header
+    open(unit=iu1,file=filename,form='unformatted',status='old',action='read')
+    read(iu1)ncpu
+    read(iu1)      !ndim
+    read(iu1)nx,ny,nz
+    read(iu1)nlevelmax
+    read(iu1)ngridmax
+    read(iu1)nboundary
+    read(iu1)ngrid_current
+    read(iu1)boxlen
+    do i=1,13
+       read(iu1)
     end do
-    close(iunit)
-    ! => can return cpu_map_l & son_l
+    !twotondim=2**ndim
+    xbound=(/dble(nx/2),dble(ny/2),dble(nz/2)/)
+    allocate(ngridfile(1:ncpu+nboundary,1:nlevelmax))
+    allocate(ngridlevel(1:ncpu,1:nlevelmax))
+    if(nboundary>0)allocate(ngridbound(1:nboundary,1:nlevelmax))
 
-    !print*,'in module_ramses.read_amr_hydro -> ',ncell_l,nvar,icpu,snapnum
-    ! and then the hydro file
+    ! Read grid numbers
+    read(iu1)ngridlevel
+    ngridfile(1:ncpu,1:nlevelmax)=ngridlevel
+    read(iu1)
+    if(nboundary>0)then
+       do i=1,2
+          read(iu1)
+       end do
+       read(iu1)ngridbound
+       ngridfile(ncpu+1:ncpu+nboundary,1:nlevelmax)=ngridbound
+    endif
+    read(iu1)
+    ! ROM: comment the single follwing line for old stuff
+    read(iu1)
+    read(iu1)
+    read(iu1)
+    read(iu1)
+    read(iu1)
+
+    allocate(xc(1:twotondim,1:ndim))
+
+
+    ! open hydro file and get nvarH
     write(filename,'(a,a,i5.5,a,i5.5,a,i5.5)') trim(repository),'/output_',snapnum,'/hydro_',snapnum,'.out',icpu
-    open(unit=iunit,file=filename,form='unformatted',status='old',action='read')
-    read(iunit)
-    read(iunit)nvarH
-    read(iunit)
-    read(iunit)nlevelmax
-    read(iunit)nboundary
-    read(iunit)
-
+    open(unit=iu2,file=filename,form='unformatted',status='old',action='read')
+    read(iu2)
+    read(iu2)nvarH
+    read(iu2)
+    read(iu2)
+    read(iu2)
+    read(iu2)
+    
     if (read_rt_variables) then
        ! Open RT file and get nvarRT
        write(filename,'(a,a,i5.5,a,i5.5,a,i5.5)') trim(repository),'/output_',snapnum,'/rt_',snapnum,'.out',icpu
-       open(unit=iu2,file=filename,status='old',form='unformatted')
-       read(iu2)
-       read(iu2)nvarRT
-       read(iu2)
-       read(iu2)
-       read(iu2)
-       read(iu2)
+       open(unit=iu3,file=filename,status='old',form='unformatted')
+       read(iu3)
+       read(iu3)nvarRT
+       read(iu3)
+       read(iu3)
+       read(iu3)
+       read(iu3)
     else
        nvarRT = 0
     end if
     
-    allocate(var_l(1:ncell_l,1:nvarH+nvarRT))
-    allocate(cell_x_l(1:ncell_l),cell_y_l(1:ncell_l),cell_z_l(1:ncell_l))
-    ! JB--
-    cell_x_l = 0.0d0
-    cell_y_l = 0.0d0
-    cell_z_l = 0.0d0
-    ! --JB 
-    allocate(cell_level_l(1:ncell_l))
-    allocate(xc(1:twotondim,1:ndim))
+    ncoarse = nx*ny*nz
+    ncell   = ncoarse+twotondim*ngridmax
 
-    cell_level_l = -1
+    !allocate(cell_var(1:ncell,1:nvarH+nvarRT))
+    allocate(cell_var(1:nvarH+nvarRT,1:ncell))
+    allocate(cell_pos(1:ncell,1:3))
+    allocate(cell_lev(1:ncell))
 
+    cell_pos = 0.0d0
+    cell_var = 0.0d0
+    cell_lev = -1
+    ileaf=1
+    
+    ! Loop over levels
     do ilevel=1,nlevelmax
-
-       dx=0.5d0**ilevel
+       
+       ! Geometry
+       dx=0.5**ilevel
        do ind=1,twotondim
           iz=(ind-1)/4
           iy=(ind-1-4*iz)/2
@@ -2128,239 +2570,320 @@ contains
           xc(ind,2)=(dble(iy)-0.5D0)*dx
           xc(ind,3)=(dble(iz)-0.5D0)*dx
        end do
-
-       do ibound=1,nboundary+ncpu
-          if(ibound<=ncpu)then  ! in the box 
-             ncache=numbl_l(ibound,ilevel)   ! nb of grids in the simulated box. 
-             istart=headl_l(ibound,ilevel)   ! head of grid list of simulated box
-          else                  ! boundaries of simulated volume (aka useless)
-             ncache=numbb_l(ibound-ncpu,ilevel)
-             istart=headb_l(ibound-ncpu,ilevel)
-          end if
-          read(iunit)!ilevel2
-          read(iunit)!numbl2
-          if (read_rt_variables) then
-             read(iu2)
-             read(iu2)
-          end if
-          if(ncache>0)then
-             allocate(ind_grid(1:ncache))
-             allocate(xx(1:ncache))
-             if(U_precision.eq.4 .or. RT_precision.eq.4) &
-                  allocate(xx_sp(1:ncache))
-             ! Loop over level grids
-             igrid=istart
-             do i=1,ncache
-                ind_grid(i)=igrid
-                igrid=next_l(igrid)
+       
+       ! Allocate work arrays
+       if(allocated(xg)) then 
+          deallocate(xg,son,var,xp,ref)
+       endif
+       if(allocated(var_sp)) deallocate(var_sp)
+       ngrida=ngridfile(icpu,ilevel)
+       if(ngrida>0)then
+          allocate(xg(1:ngrida,1:ndim))
+          allocate(son(1:ngrida,1:twotondim))
+          allocate(var(1:ngrida,1:twotondim,1:nvarh+nvarRT))
+          if((read_rt_variables .and. rt_Precision.eq.4) .or. U_precision.eq.4) allocate(var_sp(1:ngrida))
+          allocate(xp(1:ngrida,1:twotondim,1:ndim))
+          allocate(ref(1:ngrida,1:twotondim))
+          ref=.false.
+       endif
+       
+       
+       ! Loop over domains
+       do j=1,nboundary+ncpu
+          
+          ! Read AMR data
+          if(ngridfile(j,ilevel)>0)then
+             read(iu1) ! Skip grid index
+             read(iu1) ! Skip next index
+             read(iu1) ! Skip prev index
+             ! Read grid center
+             do idim=1,ndim
+                if(j.eq.icpu)then
+                   read(iu1)xg(:,idim)
+                else
+                   read(iu1)
+                endif
              end do
-             ! Loop over cells
+             read(iu1) ! Skip father index
+             do ind=1,2*ndim
+                read(iu1) ! Skip nbor index
+             end do
+             ! Read son index
              do ind=1,twotondim
-                iskip=ncoarse_l+(ind-1)*ngridmax_l
-                ! Loop over conservative variables
-                do ivar=1,nvarH
-                   if(U_precision.eq.4) then
-                      read(iunit) xx_sp
-                      xx = xx_sp
-                   else
-                      read(iunit) xx
-                   endif
-                   if (ibound > ncpu) cycle  ! dont bother with boundaries
-                   do i = 1, ncache
-                      var_l(ind_grid(i)+iskip,ivar) = xx(i)
-                   end do
-                end do
-                if (read_rt_variables) then 
-                   do ivar=1,nvarRT
-                      if(RT_precision.eq.4) then
-                         read(iu2) xx_sp
-                         xx = xx_sp
-                      else
-                         read(iu2) xx
-                      endif
-                      if (ibound > ncpu) cycle  ! dont bother with boundaries
-                      do i = 1, ncache
-                         var_l(ind_grid(i)+iskip,ivar+nvarH) = xx(i)
-                      end do
-                   end do
+                if(j.eq.icpu)then
+                   read(iu1)son(:,ind)
+                else
+                   read(iu1)
                 end if
-                do i = 1,ncache
-                   cell_x_l(ind_grid(i)+iskip) = xc(ind,1) + xg_l(ind_grid(i),1) -xbound_l(1)
-                   cell_y_l(ind_grid(i)+iskip) = xc(ind,2) + xg_l(ind_grid(i),2) -xbound_l(2)
-                   cell_z_l(ind_grid(i)+iskip) = xc(ind,3) + xg_l(ind_grid(i),3) -xbound_l(3)
-                   cell_level_l(ind_grid(i)+iskip)      = ilevel
+             end do
+             ! Skip cpu map
+             do ind=1,twotondim
+                read(iu1)
+             end do
+             ! Skip refinement map
+             do ind=1,twotondim
+                read(iu1)
+             end do
+          endif
+
+          ! Read HYDRO data
+          read(iu2)
+          read(iu2)
+          if(read_rt_variables)read(iu3)
+          if(read_rt_variables)read(iu3)
+          if(ngridfile(j,ilevel)>0)then
+             ! Read hydro variables
+             do ind=1,twotondim
+                do ivar=1,nvarh
+                   if(j.eq.icpu)then
+                      if(U_precision.eq.4) then
+                         read(iu2) var_sp(:)
+                         var(:,ind,ivar) = var_sp(:)
+                      else
+                         read(iu2)var(:,ind,ivar)
+                      endif
+                   else
+                      read(iu2)
+                   end if
+                end do
+                do ivar=1,nvarRT
+                   if(j.eq.icpu)then
+                      if(rt_Precision.eq.4) then
+                         read(iu3) var_sp(:)
+                         var(:,ind,nvarh+ivar) = var_sp(:)
+                      else
+                         read(iu3)var(:,ind,nvarh+ivar)
+                      endif
+                   else
+                      read(iu3)
+                   end if
                 end do
              end do
-             deallocate(ind_grid,xx)
-             if(allocated(xx_sp)) deallocate(xx_sp)
           end if
-       end do
-    end do
-    deallocate(xc)
-    close(iunit)
-    if (read_rt_variables) close(iu2)
 
-    deallocate(headl_l, taill_l, numbl_l, numbtot_l, headb_l, tailb_l, numbb_l)
-    deallocate(next_l, nbor_l, xg_l) 
+       enddo
+
+       ! Get leaf cells and store data
+       if(ngrida>0)then
+          ! Loop over cells
+          do ind=1,twotondim
+             ! Compute cell center
+             do i=1,ngrida
+                xp(i,ind,1)=(xg(i,1)+xc(ind,1)-xbound(1))
+                xp(i,ind,2)=(xg(i,2)+xc(ind,2)-xbound(2))
+                xp(i,ind,3)=(xg(i,3)+xc(ind,3)-xbound(3))
+             enddo
+             ! Check if cell is refined
+             do i=1,ngrida
+                ref(i,ind)=son(i,ind)>0.and.ilevel<nlevelmax
+             enddo
+             ! Store leaf cells
+             do i=1,ngrida
+                ok_cell= .not.ref(i,ind)
+                if(ok_cell)then
+                !if(.not.ref(i,ind))then
+                   cell_pos(ileaf,1:3) = xp(i,ind,1:3)
+                   cell_lev(ileaf) = ilevel
+                   !cell_var(ileaf,:) = var(i,ind,:)
+                   do ivar=1,nvarh+nvarRT
+                      cell_var(ivar,ileaf) = var(i,ind,ivar)
+                   enddo
+                   ileaf=ileaf+1
+                endif
+             end do
+          end do
+       endif
+       
+       
+    enddo
+
+    !!print*,'Number of leaf cells =',ileaf-1,nvarH+nvarRT
+    !!print*,icpu,ileaf-1
+    nleaf = ileaf-1
+    
+    close(iu1)
+    close(iu2)
+    close(iu3)
 
     return
-    
-  end subroutine read_amr_hydro
+  end subroutine get_leaf_cells_per_cpu
 
-  function get_nleaf(repository,snapnum,ncpu_read,cpu_list)
-    
+
+
+  function get_nleaf_new(repository,snapnum,ncpu_read,cpu_list)
+    ! get the total number of leaf cells
     implicit none
     integer(kind=4),intent(in)                          :: snapnum
     character(1000),intent(in)                          :: repository
     integer(kind=4),intent(in)                          :: ncpu_read
     integer(kind=4),dimension(:),allocatable,intent(in) :: cpu_list
-    integer(kind=4)             :: get_nleaf
-    integer(kind=4)             :: icpu,icell,ncpu
-    logical                     :: do_allocs
-    character(1000)             :: filename 
-    integer,allocatable         :: ind_grid(:),iig(:)
-    integer,allocatable         :: son(:)
-    integer,allocatable         :: cpu_map(:)
-    integer,allocatable         :: numbl(:,:)
-    integer,allocatable         :: numbb(:,:)
-    logical                     :: ok
-    integer(kind=4)             :: i,nx,ny,nz,nlevelmax,nboundary,ncell,ncoarse,ngridmax
-    integer(kind=4)             :: ilevel,ncache,ibound,idim,ind,iskip
-    integer(kind=4)             :: ndim,twondim,twotondim,k
-    integer(kind=4)             :: nleaf, nleaftot, iloop, iunit
+    integer(kind=4)                                     :: get_nleaf_new
+    integer(kind=4)                                     :: icpu,k,nleaf,nleaftot
 
-    ncpu = get_ncpu(repository,snapnum)
-    get_nleaf = 0
-    ndim = 3
-    twondim = 2*ndim
-    twotondim = 2**ndim
+    get_nleaf_new = 0
     nleaftot = 0
-    iloop = 0
     
 !$OMP PARALLEL &
 !$OMP DEFAULT(private) &
-!$OMP SHARED(iloop, nleaftot, ncpu_read, cpu_list, repository, snapnum, ndim, twondim, twotondim, ncpu)
-    do_allocs = .true. 
+!$OMP SHARED(nleaftot, ncpu_read, cpu_list, repository, snapnum)
 !$OMP DO SCHEDULE(DYNAMIC, 10) 
     do k=1,ncpu_read
        icpu=cpu_list(k)
-       iunit = icpu+10
-       write(filename,'(a,a,i5.5,a,i5.5,a,i5.5)') trim(repository),'/output_',snapnum,'/amr_',snapnum,'.out',icpu
-       inquire(file=filename, exist=ok)
-       if(.not. ok)then
-          write(*,*)'File '//TRIM(filename)//' not found'    
-          stop
-       end if
-       open(unit=iunit,file=filename,form='unformatted',status='old',action='read')
-       read(iunit)
-       read(iunit)
-       read(iunit)nx,ny,nz
-       ncoarse=nx*ny*nz ! Critical parameter: define the root level of the tree
-       read(iunit)nlevelmax
-       read(iunit)ngridmax
-       read(iunit)nboundary
-       read(iunit)
-       read(iunit)
-       read(iunit)
-       read(iunit)
-       read(iunit)
-       read(iunit)
-       read(iunit)
-       read(iunit)
-       read(iunit)
-       read(iunit)
-       read(iunit)
-       read(iunit)
-       read(iunit)
-       if (do_allocs) allocate(numbl(1:ncpu,1:nlevelmax),numbb(1:nboundary,1:nlevelmax))
-       numbl=0;numbb=0
-       ! Read levels variables
-       read(iunit)!headl(1:ncpu,1:nlevelmax)
-       read(iunit)!taill(1:ncpu,1:nlevelmax)
-       read(iunit)numbl(1:ncpu,1:nlevelmax)
-       read(iunit)!numbtot(1:10,1:nlevelmax)
-       ! Read boundary linked list
-       if(nboundary>0)then
-          read(iunit)!headb(1:nboundary,1:nlevelmax)
-          read(iunit)!tailb(1:nboundary,1:nlevelmax)
-          read(iunit)numbb(1:nboundary,1:nlevelmax)
-       end if
-       read(iunit) ! Read free memory
-       read(iunit) ! Read cpu boundaries
-       read(iunit)
-       ncell=ncoarse+twotondim*ngridmax
-       if (do_allocs) then
-          allocate(son(1:ncell),cpu_map(1:ncell))
-          do_allocs = .false. 
-       end if
-       son=0; cpu_map=0
-       ! Read coarse level
-       read(iunit)son(1:ncoarse)       
-       read(iunit)
-       read(iunit)cpu_map(1:ncoarse)
-       do ilevel=1,nlevelmax
-          do ibound=1,nboundary+ncpu
-             if(ibound<=ncpu)then
-                ncache=numbl(ibound,ilevel)
-             else
-                ncache=numbb(ibound-ncpu,ilevel)
-             end if
-             if(ncache>0)then
-                allocate(ind_grid(1:ncache))
-                allocate(iig(1:ncache))
-                read(iunit)ind_grid ! Read grid index
-                read(iunit) ! Read next index
-                read(iunit) ! Read prev index
-                do idim=1,ndim
-                   read(iunit) ! Read grid center
-                end do
-                read(iunit) ! Read father index
-                do ind=1,twondim
-                   read(iunit) ! Read nbor index
-                end do
-                do ind=1,twotondim
-                   iskip=ncoarse+(ind-1)*ngridmax
-                   read(iunit)iig  ! Read son index 
-                   do i=1,ncache
-                      son(ind_grid(i)+iskip)=iig(i) 
-                   end do
-                end do
-                do ind=1,twotondim
-                   iskip=ncoarse+(ind-1)*ngridmax
-                   read(iunit)iig ! Read cpu map
-                   do i=1,ncache
-                      cpu_map(ind_grid(i)+iskip)=iig(i)
-                   end do
-                end do
-
-                do ind=1,twotondim
-                   read(iunit) ! Read refinement map (skip)
-                end do
-                deallocate(iig,ind_grid)
-             end if
-          end do
-       end do
-       close(iunit)
-       ! count leaf cells
-       nleaf = 0
-       do icell = 1,ncell
-          if (son(icell)==0 .and. cpu_map(icell) == icpu) then
-             nleaf = nleaf + 1
-          end if
-       end do
-
-       ! nleaf is now the number of leaves on local cpu
+       call get_nleaf_per_cpu(repository,snapnum,icpu,nleaf)
 !$OMP ATOMIC
        nleaftot = nleaftot + nleaf
     end do
 !$OMP END DO
-    if(.not. do_allocs) deallocate(son,cpu_map,numbl,numbb)
 !$OMP END PARALLEL
-
-    get_nleaf = nleaftot
+    
+    get_nleaf_new = nleaftot
     
     return
-  end function get_nleaf
+  end function get_nleaf_new
+
+
+
+  subroutine get_nleaf_per_cpu(repository,snapnum,icpu,nleaf)
+    ! purpose: get the number of leaf cells in this icpu file
+
+    !$ use OMP_LIB
+    implicit none 
+
+    integer(kind=4),intent(in)  :: snapnum,icpu
+    character(1000),intent(in)  :: repository
+    integer(kind=4),intent(out) :: nleaf
+
+    character(1000)             :: filename 
+    logical                     :: ok
+    integer(kind=4)             :: i,j,ilevel,nx,ny,nz,nlevelmax,nboundary
+    integer(kind=4)             :: idim,ind,iu1,rank
+    integer(kind=4)             :: ngridmax,ngrid_current,ngrida
+    integer,allocatable         :: son(:,:)       ! sons grids
+    real(KIND=8),dimension(1:3) :: xbound=(/0d0,0d0,0d0/)  
+    integer, allocatable        :: ngridfile(:,:),ngridlevel(:,:),ngridbound(:,:)
+    logical, allocatable        :: ref(:,:)
+    real(kind=8)                :: boxlen
+    
+    rank = 1
+    !$ rank = OMP_GET_THREAD_NUM()
+    iu1 = 10+rank*3
+    
+    ! verify AMR input file
+    write(filename,'(a,a,i5.5,a,i5.5,a,i5.5)') trim(repository),'/output_',snapnum,'/amr_',snapnum,'.out',icpu
+    inquire(file=filename, exist=ok)
+    if(.not. ok)then
+       write(*,*)'File '//TRIM(filename)//' not found'    
+       stop
+    end if
+    
+    ! Open AMR file and skip header
+    open(unit=iu1,file=filename,form='unformatted',status='old',action='read')
+    read(iu1)ncpu
+    read(iu1)      !ndim
+    read(iu1)nx,ny,nz
+    read(iu1)nlevelmax
+    read(iu1)ngridmax
+    read(iu1)nboundary
+    read(iu1)ngrid_current
+    read(iu1)boxlen
+    do i=1,13
+       read(iu1)
+    end do
+    !twotondim=2**ndim
+    xbound=(/dble(nx/2),dble(ny/2),dble(nz/2)/)
+    allocate(ngridfile(1:ncpu+nboundary,1:nlevelmax))
+    allocate(ngridlevel(1:ncpu,1:nlevelmax))
+    if(nboundary>0)allocate(ngridbound(1:nboundary,1:nlevelmax))
+    
+    ! Read grid numbers
+    read(iu1)ngridlevel
+    ngridfile(1:ncpu,1:nlevelmax)=ngridlevel
+    read(iu1)
+    if(nboundary>0)then
+       do i=1,2
+          read(iu1)
+       end do
+       read(iu1)ngridbound
+       ngridfile(ncpu+1:ncpu+nboundary,1:nlevelmax)=ngridbound
+    endif
+    read(iu1)
+    ! ROM: comment the single follwing line for old stuff
+    read(iu1)
+    read(iu1)
+    read(iu1)
+    read(iu1)
+    read(iu1)
+    
+    nleaf=0
+    
+    ! Loop over levels
+    do ilevel=1,nlevelmax
+       
+       ! Allocate work arrays
+       if(allocated(son)) then 
+          deallocate(son,ref)
+       endif
+       ngrida=ngridfile(icpu,ilevel)
+       if(ngrida>0)then
+          allocate(son(1:ngrida,1:twotondim))
+          allocate(ref(1:ngrida,1:twotondim))
+          ref=.false.
+       endif
+       
+       ! Loop over domains
+       do j=1,nboundary+ncpu
+          ! Read AMR data
+          if(ngridfile(j,ilevel)>0)then
+             read(iu1) ! Skip grid index
+             read(iu1) ! Skip next index
+             read(iu1) ! Skip prev index
+             do idim=1,ndim ! Skip grid center
+                read(iu1)
+             end do
+             read(iu1) ! Skip father index
+             do ind=1,2*ndim
+                read(iu1) ! Skip nbor index
+             end do
+             ! Read son index
+             do ind=1,twotondim
+                if(j.eq.icpu)then
+                   read(iu1)son(:,ind)
+                else
+                   read(iu1)
+                end if
+             end do
+             ! Skip cpu map
+             do ind=1,twotondim
+                read(iu1)
+             end do
+             ! Skip refinement map
+             do ind=1,twotondim
+                read(iu1)
+             end do
+          endif
+       enddo
+
+       ! Count leaf cells
+       if(ngrida>0)then
+          ! Loop over cells
+          do ind=1,twotondim
+             ! Check if cell is refined
+             do i=1,ngrida
+                ref(i,ind)=son(i,ind)>0.and.ilevel<nlevelmax
+                if (.not.ref(i,ind))then
+                   nleaf=nleaf+1
+                endif
+             end do
+          end do
+       endif
+       
+    enddo
+
+    close(iu1) 
+    return
+  end subroutine get_nleaf_per_cpu
+
+
 
   ! JB--
   function get_ncell(repository,snapnum)

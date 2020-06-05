@@ -24,10 +24,12 @@ program CreateDomDump
   real(kind=8) :: decompdom_max_x, decompdom_max_y, decompdom_max_z
   real(kind=8) :: computdom_min_x, computdom_min_y, computdom_min_z
   real(kind=8) :: decompdom_min_x, decompdom_min_y, decompdom_min_z
-  real(kind=8) :: start, finish, intermed
+  real(kind=8) :: start, finish, intermed, rate
+  integer(kind=8) :: c1,c2,cr,c3
   real(kind=8) :: xmin,xmax,ymin,ymax,zmin,zmax
   integer(kind=4),dimension(:),allocatable :: cpu_list
   integer(kind=4) :: ncpu_read
+  
   
   ! --------------------------------------------------------------------------
   ! user-defined parameters - read from section [CreateDomDump] of the parameter file
@@ -62,6 +64,9 @@ program CreateDomDump
   ! --------------------------------------------------------------------------
   
   call cpu_time(start)
+  call system_clock(count_rate=cr)
+  rate = float(cr)
+  call system_clock(c1)
   
   ! -------------------- read parameters --------------------
   narg = command_argument_count()
@@ -122,11 +127,16 @@ program CreateDomDump
      do i=1,ncpu_read
         cpu_list(i)=i
      end do
-     call read_leaf_cells(repository, snapnum, ncpu_read, cpu_list, nleaftot, nvar, x_leaf, ramses_var, leaf_level)
+     
+     call ramses_get_leaf_cells(repository, snapnum, ncpu_read, cpu_list, nleaftot, nvar, x_leaf, ramses_var, leaf_level)
+     !call ramses_get_leaf_cells_stomp(repository, snapnum, ncpu_read, cpu_list, nleaftot, nvar, x_leaf, ramses_var, leaf_level)
+     
      ! Extract and convert properties of cells into gas mix properties
      call gas_from_ramses_leaves(repository,snapnum,nleaftot,nvar,ramses_var, gas_leaves)
      call cpu_time(finish)
+     call system_clock(c2)
      print '(" --> Time to read all leaves in fullbox = ",f12.3," seconds.")',finish-start
+     print '("                      system_clock time = ",f12.3," seconds.")',(c2-c1)/rate
   end if
   ! domain decomposition 
   if (verbose) print *,'Building domains...'
@@ -134,7 +144,7 @@ program CreateDomDump
   allocate(domain_list(decomp_dom_ndomain))
   allocate(domain_file_list(decomp_dom_ndomain),mesh_file_list(decomp_dom_ndomain))
   decompdom_max_x = 0.0d0 ; decompdom_max_y = 0.0d0 ; decompdom_max_z = 0.0d0
-  decompdom_min_x = 1.0d0 ; decompdom_min_x = 1.0d0 ; decompdom_min_x = 1.0d0
+  decompdom_min_x = 1.0d0 ; decompdom_min_y = 1.0d0 ; decompdom_min_z = 1.0d0
   do i = 1, decomp_dom_ndomain
      select case(decomp_dom_type)
      case('sphere')
@@ -183,6 +193,12 @@ program CreateDomDump
   if ((computdom_max_x > decompdom_max_x).or.(computdom_max_y > decompdom_max_y).or.(computdom_max_z > decompdom_max_z).or.&
        (computdom_min_x < decompdom_min_x).or.(computdom_min_y < decompdom_min_y).or.(computdom_min_z < decompdom_min_z))then
      print*,'ERROR: computational domain should be fully enclosed in the data domains.'
+     print*,computdom_max_x, decompdom_max_x
+     print*,computdom_max_y, decompdom_max_y
+     print*,computdom_max_z, decompdom_max_z
+     print*,computdom_min_x, decompdom_min_x
+     print*,computdom_min_y, decompdom_min_y
+     print*,computdom_min_z, decompdom_min_z
      stop
   endif
 
@@ -207,6 +223,7 @@ program CreateDomDump
      
      if (reading_method == 'hilbert') then
         call cpu_time(intermed)
+        call system_clock(c2)
         if (verbose) print*,'Reading leaf cells...'
         ! read leaf cells in cpu files given by hilbert keys
         ! define max extent of domain i
@@ -242,12 +259,15 @@ program CreateDomDump
         end select
 
         call get_cpu_list_periodic(repository, snapnum, xmin,xmax,ymin,ymax,zmin,zmax, ncpu_read, cpu_list)
-        call read_leaf_cells(repository, snapnum, ncpu_read, cpu_list, nleaftot, nvar, x_leaf, ramses_var, leaf_level)
+        call ramses_get_leaf_cells(repository, snapnum, ncpu_read, cpu_list, nleaftot, nvar, x_leaf, ramses_var, leaf_level)
+        !call ramses_get_leaf_cells_slomp(repository, snapnum, ncpu_read, cpu_list, nleaftot, nvar, x_leaf, ramses_var, leaf_level)
         if(verbose) write(*,*)'In CreateDomDump: nleaf_sel = ',nleaftot, size(leaf_level)
         ! Extract and convert properties of cells into gas mix properties
         call gas_from_ramses_leaves(repository,snapnum,nleaftot,nvar,ramses_var, gas_leaves)
         call cpu_time(finish)
+        call system_clock(c3)
         print '(" --> Time to read leaves in hilbert domain = ",f12.3," seconds.")',finish-intermed
+        print '("                         system_clock time = ",f12.3," seconds.")',(c3-c2)/rate
         ! selection of leaves and mesh building
         call select_cells_in_domain(domain_list(i), nleaftot, x_leaf, leaf_level, ind_sel)
         call select_from_domain(arr_in=x_leaf,     ind_sel=ind_sel, arr_out=xleaf_sel)
@@ -264,18 +284,23 @@ program CreateDomDump
         ! this is useful for zoom-in simulations without hilbert decomposition
         if (verbose) print*,'Reading leaf cells...'
         call cpu_time(intermed)
+        call system_clock(c2)
         ncpu_read = get_ncpu(repository,snapnum)
         allocate(cpu_list(1:ncpu_read))
         do j=1,ncpu_read
            cpu_list(j)=j
         end do
-        call read_leaf_cells_in_domain(repository, snapnum, domain_list(i), ncpu_read, cpu_list, &
-             & nleaftot, nvar, x_leaf, ramses_var, leaf_level)
+        !call ramses_get_leaf_cells_in_domain_slomp(repository, snapnum, domain_list(i), ncpu_read, cpu_list, &
+        !     & nleaftot, nvar, x_leaf, ramses_var, leaf_level)
+        call ramses_get_leaf_cells(repository, snapnum, ncpu_read, cpu_list, &
+             & nleaftot, nvar, x_leaf, ramses_var, leaf_level, domain_list(i))
         print*,'in CreateDomDump: nleaf_sel = ',nleaftot, size(leaf_level)
         ! Extract and convert properties of cells into gas mix properties
         call gas_from_ramses_leaves(repository,snapnum,nleaftot,nvar,ramses_var, gas_leaves)
         call cpu_time(finish)
+        call system_clock(c3)
         print '(" --> Time to read leaves in domain = ",f12.3," seconds.")',finish-intermed
+        print '("                 system_clock time = ",f12.3," seconds.")',(c3-c2)/rate
         if (verbose) write(*,*)'Building the mesh from the collection of leaves...'
         ! and then no need for selection, but to adapt the call to mesh_from_leaves
         nOctSnap = get_nGridTot_cpus(repository, snapnum, ncpu_read, cpu_list)
@@ -287,6 +312,7 @@ program CreateDomDump
      else if (reading_method == 'select_onthefly_h') then
         if (verbose) print*,'Reading leaf cells...'
         call cpu_time(intermed)
+        call system_clock(c2)
         select case(decomp_dom_type)
         case('sphere')
            xmax = decomp_dom_xc(i) + decomp_dom_rsp(i)
@@ -319,12 +345,16 @@ program CreateDomDump
         end select
         
         call get_cpu_list_periodic(repository, snapnum, xmin,xmax,ymin,ymax,zmin,zmax, ncpu_read, cpu_list)
-        call read_leaf_cells_in_domain(repository, snapnum, domain_list(i), ncpu_read, cpu_list, &
-             & nleaftot, nvar, x_leaf, ramses_var, leaf_level)
+        !call ramses_get_leaf_cells_in_domain_slomp(repository, snapnum, domain_list(i), ncpu_read, cpu_list, &
+        !     & nleaftot, nvar, x_leaf, ramses_var, leaf_level)
+        call ramses_get_leaf_cells(repository, snapnum, ncpu_read, cpu_list, &
+             & nleaftot, nvar, x_leaf, ramses_var, leaf_level, domain_list(i))
         ! Extract and convert properties of cells into gas mix properties
         call gas_from_ramses_leaves(repository,snapnum,nleaftot,nvar,ramses_var, gas_leaves)
         call cpu_time(finish)
+        call system_clock(c3)
         print '(" --> Time to read leaves in domain = ",f12.3," seconds.")',finish-intermed
+        print '("                 system_clock time = ",f12.3," seconds.")',(c3-c2)/rate
         if (verbose) write(*,*)'Building the mesh from the collection of leaves...'
         ! and then no need for selection, but to adapt the call to mesh_from_leaves
         nOctSnap = get_nGridTot_cpus(repository, snapnum, ncpu_read, cpu_list)
@@ -362,6 +392,8 @@ program CreateDomDump
 
   call cpu_time(finish)
   print '(" --> Done with CreateDomDump. Total elapsed time = ",f12.3," seconds.")',finish-start
+  call system_clock(c2)
+  print '("                               system_clock time = ",f12.3," seconds.")',(c2-c1)/rate
   print*,' '
   
 contains
