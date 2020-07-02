@@ -28,8 +28,7 @@ program CreateDomDump
   integer(kind=8) :: c1,c2,cr,c3
   real(kind=8) :: xmin,xmax,ymin,ymax,zmin,zmax
   integer(kind=4),dimension(:),allocatable :: cpu_list
-  integer(kind=4) :: ncpu_read
-  
+  integer(kind=4) :: ncpu_read, lmax
   
   ! --------------------------------------------------------------------------
   ! user-defined parameters - read from section [CreateDomDump] of the parameter file
@@ -80,7 +79,6 @@ program CreateDomDump
   if (verbose) call print_CreateDomDump_params
   ! ------------------------------------------------------------
 
-  
   ! Define the computational domain. This domain describes the volume in which photons fly.
   select case(comput_dom_type)
   case('sphere')
@@ -129,7 +127,7 @@ program CreateDomDump
      end do
      
      call ramses_get_leaf_cells(repository, snapnum, ncpu_read, cpu_list, nleaftot, nvar, x_leaf, ramses_var, leaf_level)
-     !call ramses_get_leaf_cells_stomp(repository, snapnum, ncpu_read, cpu_list, nleaftot, nvar, x_leaf, ramses_var, leaf_level)
+     !call ramses_get_leaf_cells_slomp(repository, snapnum, ncpu_read, cpu_list, nleaftot, nvar, x_leaf, ramses_var, leaf_level)
      
      ! Extract and convert properties of cells into gas mix properties
      call gas_from_ramses_leaves(repository,snapnum,nleaftot,nvar,ramses_var, gas_leaves)
@@ -303,7 +301,9 @@ program CreateDomDump
         print '("                 system_clock time = ",f12.3," seconds.")',(c3-c2)/rate
         if (verbose) write(*,*)'Building the mesh from the collection of leaves...'
         ! and then no need for selection, but to adapt the call to mesh_from_leaves
-        nOctSnap = get_nGridTot_cpus(repository, snapnum, ncpu_read, cpu_list)
+        !nOctSnap = get_nGridTot_cpus(repository, snapnum, ncpu_read, cpu_list)
+        lmax = maxval(leaf_level)
+        nOctSnap = get_noctmax(nleaftot,lmax)
         call mesh_from_leaves(nOctSnap,domain_list(i),nleaftot, &
              gas_leaves,x_leaf,leaf_level,domain_mesh)
         
@@ -357,7 +357,9 @@ program CreateDomDump
         print '("                 system_clock time = ",f12.3," seconds.")',(c3-c2)/rate
         if (verbose) write(*,*)'Building the mesh from the collection of leaves...'
         ! and then no need for selection, but to adapt the call to mesh_from_leaves
-        nOctSnap = get_nGridTot_cpus(repository, snapnum, ncpu_read, cpu_list)
+        !nOctSnap = get_nGridTot_cpus(repository, snapnum, ncpu_read, cpu_list)
+        lmax = maxval(leaf_level)
+        nOctSnap = get_noctmax(nleaftot,lmax)
         call mesh_from_leaves(nOctSnap,domain_list(i),nleaftot, &
              gas_leaves,x_leaf,leaf_level,domain_mesh)
      ! --JB
@@ -397,6 +399,24 @@ program CreateDomDump
   print*,' '
   
 contains
+
+  function get_noctmax(nleaftot,lmax)
+    implicit none
+    integer(kind=4),intent(in)  :: nleaftot,lmax
+    integer(kind=4)  :: get_nOctMax
+    integer(kind=8) :: ilevel,ncellmax
+    ncellmax=0
+    do ilevel=0,lmax-1
+       ncellmax = ncellmax + nleaftot/8**ilevel
+    enddo
+    get_noctmax=2*int(ncellmax/8,4)
+    ! this computation gives an estimate of the number of octs needed
+    ! when reconstructing the mesh structure from nleaftot leaves.
+    ! It could be a bit more, so a factor 2 is safe. 
+    return
+  end function get_noctmax
+  
+  
   
   subroutine read_CreateDomDump_params(pfile)
 
