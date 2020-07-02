@@ -120,7 +120,12 @@ module module_mesh
       octlevel=-1
       xoct=-99.
       !nbor=0
-  
+      if(size(son).le.0)then !sanity check
+         print*,'problem in module_mesh, mesh_from_leaves ', size(son), ncell, nOctMax
+         print*,'cannot allocate arrays of this size, decrease nOctMax...'
+         stop
+      endif
+      
       countleaf=0
       countempty=0
 
@@ -502,6 +507,12 @@ module module_mesh
       level=octlevel(ilastoct)
       ilastoctLevel = ilastoct
 
+      if(ilastoct .gt. size(father))then
+         print*,'problem in module_mesh, add_oct_domain ',ilastoct,size(father)
+         print*,'nOctMax used to allocate arrays is probably too small, try to increase it...'
+         stop
+      endif
+      
       do ind=1,8
 
          if(level==1 .and. verbose)then
