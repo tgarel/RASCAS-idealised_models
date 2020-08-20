@@ -4,6 +4,6 @@ The homepage of the **RASCAS** project is [here](http://rascas.univ-lyon1.fr).
 
 Documentation and cookbook are available [here](http://rascas.univ-lyon1.fr/doc/indexdoc.html).
 
-If you use **RASCAS**, please acknowledge Michel-Dansac et al. (2020), A&A in press.
+If you use **RASCAS**, please acknowledge [Michel-Dansac et al. 2020, A&A 635, A154](https://www.aanda.org/articles/aa/abs/2020/03/aa34961-18/aa34961-18.html).
 
 
