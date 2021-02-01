@@ -3025,7 +3025,7 @@ contains
     dp_scale_d    = get_param_real(repository,snapnum,'unit_d')
     dp_scale_t    = get_param_real(repository,snapnum,'unit_t')
     dp_scale_nH   = XH/mp * dp_scale_d      ! convert mass density (code units) to numerical density of H atoms [/cm3]
-    dp_scale_nHe  = (1d0-XH)/mp * dp_scale_d ! mass dens to He/cm3
+    dp_scale_nHe  = (1d0-XH)/4.0d0/mp * dp_scale_d ! mass dens to He/cm3
     dp_scale_v    = dp_scale_l/dp_scale_t   ! -> converts velocities into cm/s
     dp_scale_T2   = mp/kB * dp_scale_v**2   ! -> converts P/rho to T/mu, in K
     dp_scale_zsun = 1.d0/0.0127     
