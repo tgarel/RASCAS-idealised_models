@@ -116,7 +116,7 @@ contains
 
     !--CORESKIP--  sanity check ... 
     if (.not. HI_core_skip .and. xcrit .ne. 0.0d0) then
-       print*,'ERROR: core skipping is on but xcrit is not zero ... '
+       print*,'ERROR: core skipping is off but xcrit is not zero ... '
        stop
     end if
     if (HI_core_skip)  then
