@@ -1,16 +1,17 @@
 #############################################################################
 # Fortran compiler options and directives
 
-SYSTYPE="CCF"
+#SYSTYPE="CCF"
 #SYSTYPE="lyocral"
 #SYSTYPE="lyocralP"
 #SYSTYPE="mac"
 #SYSTYPE="macP"
 #SYSTYPE="ccage"
 #SYSTYPE="horizon"
+SYSTYPE="yggdrasil"
 
 OPTIONS = -cpp -fopenmp
-OPTIONS += -DDISPLAY_PROGRESS_PERCENT
+#OPTIONS += -DDISPLAY_PROGRESS_PERCENT
 
 
 ifeq ($(SYSTYPE),"lyocral")
@@ -38,6 +39,14 @@ F90         = ifort
 FFLAGS      = -O3 -fpp -ftz  -xavx -ipo -fno-alias -fno-fnalias -no-prec-div -no-prec-sqrt -align all
 FFLAGS += $(OPTIONS)
 LDFLAGS     =  -lmpi 
+endif
+
+ifeq ($(SYSTYPE),"yggdrasil")
+F90 = mpif90 #-g -fcheck=all -ftrapv -fbacktrace -Wall 
+FFLAGS      = -O3 -ffree-line-length-none -ffree-form  #-fpp -ftz  -xavx -ipo -fno-alias -fno-fnalias -no-prec-div -no-prec-sqrt -align all ### Optim mode
+#FFLAGS      = -g -fcheck=all -ftrapv -fbacktrace -Wall -ffree-line-length-none ### DEBUG mode
+FFLAGS += $(OPTIONS)
+LDFLAGS     = -lmpi
 endif
 
 ifeq ($(SYSTYPE),"mac")
