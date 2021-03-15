@@ -410,6 +410,7 @@ contains
        ncellmax = ncellmax + nleaftot/8**ilevel
     enddo
     get_noctmax=2*int(ncellmax/8,4)
+    get_noctmax = max(get_noctmax,1000)
     ! this computation gives an estimate of the number of octs needed
     ! when reconstructing the mesh structure from nleaftot leaves.
     ! It could be a bit more, so a factor 2 is safe. 
