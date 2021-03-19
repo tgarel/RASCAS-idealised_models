@@ -27,7 +27,7 @@ module module_HI_1216_model
   logical                       :: isotropic    = .false.     ! if set to true, scattering events will be isotropic [default is false]
   !--CORESKIP--
   logical                       :: HI_core_skip = .false.     ! if true, skip scatterings in the core of the line (as in Smith+15).
-  real(kind=8)                  :: xcritmax     = 1d10        ! core-skipping will truncate at min(xcrit, xcritmax) -> set to a low value to activate. 
+  real(kind=8)                  :: xcritmax     = -1d10        ! core-skipping will truncate at min(xcrit, xcritmax) -> set to a low (but positive) value to activate. 
   !--PIKSEROC--
   ! --------------------------------------------------------------------------
 
@@ -116,7 +116,7 @@ contains
 
     !--CORESKIP--  sanity check ... 
     if (.not. HI_core_skip .and. xcrit .ne. 0.0d0) then
-       print*,'ERROR: core skipping is on but xcrit is not zero ... '
+       print*,'ERROR: core skipping is off but xcrit is not zero ... '
        stop
     end if
     if (HI_core_skip)  then
@@ -229,6 +229,13 @@ contains
     end if
     close(10)
 
+    !--CORESKIP--  sanity check ... 
+    if (HI_core_skip .and. xcritmax <= 0.0d0) then
+       print*,'ERROR: core skipping is on but xcritmax is not set... '
+       stop
+    end if
+    !--PIKSEROC-- 
+    
     call read_uparallel_params(pfile)
     call read_voigt_params(pfile)
 
