@@ -113,7 +113,7 @@ GASOBJS = module_constants.o module_random.o module_utils.o module_voigt.o modul
 
 OBJSDOM = $(GASOBJS) module_select.o module_mesh.o
 
-OBJSPHO = $(GASOBJS) module_mesh.o module_photon.o 
+OBJSPHO = $(GASOBJS) module_mesh.o module_mock.o module_photon.o 
 
 OBJSMPI = $(OBJSPHO) module_parallel_mpi.o module_worker.o module_master.o
 
