@@ -86,6 +86,13 @@ contains
     ! final synchronization, for profiling purposes
     call MPI_BARRIER(MPI_COMM_WORLD,code)
 
+    !--PEEL--
+    if (peeling_off) then
+       call send_mock_to_master(rank)
+       ! post-final synchronization, for profiling purposes
+       call MPI_BARRIER(MPI_COMM_WORLD,code)    
+    end if
+    !--LEEP--
 
   end subroutine worker
 

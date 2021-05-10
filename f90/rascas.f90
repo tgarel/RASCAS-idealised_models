@@ -4,6 +4,9 @@ program main
   use module_master
   use module_worker
   use module_utils, only : print_rascas_header
+  !--PEEL--
+  use module_mock, only : read_mock_params
+  !--LEEP--
 
   implicit none
 
@@ -156,6 +159,9 @@ contains
     
     call read_master_params(pfile)
     call read_worker_params(pfile)
+    !--PEEL--
+    call read_mock_params(pfile)
+    !--LEEP--
     
     return
 

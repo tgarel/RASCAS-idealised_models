@@ -115,7 +115,30 @@ contains
     
   end subroutine anisotropic_direction_HIcore
 
-  
+  !--PEEL--
+  function anisotropic_probability_HIcore(kin,kout,mu,bu)
+
+    ! ---------------------------------------------------------------------------------
+    ! sends back the probability of photon going along kout as a function of incident direction kin, for a phase function
+    ! described by P(mu) = 11/24 + 3/24 * mu**2 (with mu = cos(theta) = kin.kout). This is a good
+    ! description, e.g., of core scatterings on HI atoms.
+    ! ---------------------------------------------------------------------------------
+
+    implicit none
+
+    real(kind=8),intent(in)    :: kin(3),kout(3)
+    real(kind=8),intent(inout) :: mu,bu
+    real(kind=8)               :: anisotropic_probability_HIcore
+
+    mu = kin(1)*kout(1) + kin(2)*kout(2) + kin(3)*kout(3)
+    bu = sqrt(1.0d0 - mu*mu)
+    anisotropic_probability_HIcore = (11.d0 + 3.d0 * mu**2) / 24.d0
+
+    return
+    
+  end function anisotropic_probability_HIcore
+  !--LEEP--
+
   subroutine anisotropic_direction_Rayleigh(kin,kout,mu,bu,iran)
 
     ! ---------------------------------------------------------------------------------
@@ -182,6 +205,30 @@ contains
 
   end subroutine anisotropic_direction_Rayleigh
 
+  !--PEEL--
+  function anisotropic_probability_Rayleigh(kin,kout,mu,bu)
+
+    ! ---------------------------------------------------------------------------------
+    ! sends back the probability of photon going along kout as a function of incident direction kin, for a phase function
+    ! described by P(mu) = 3/8 * (1 + mu**2) (with mu = cos(theta) = kin.kout). This is a good
+    ! description, e.g., of wing scatterings on HI atoms.
+    ! It is actually the phase function of Rayleigh scattering.
+    ! ---------------------------------------------------------------------------------
+
+    implicit none
+
+    real(kind=8),intent(in)    :: kin(3),kout(3)
+    real(kind=8),intent(inout) :: mu,bu
+    real(kind=8)               :: anisotropic_probability_Rayleigh
+
+    mu = kin(1)*kout(1) + kin(2)*kout(2) + kin(3)*kout(3)
+    bu = sqrt(1.0d0 - mu*mu)
+    anisotropic_probability_Rayleigh = 3.d0 * (1.0d0 + mu**2) / 8.d0
+
+    return
+    
+  end function anisotropic_probability_Rayleigh
+  !--LEEP--
 
   subroutine anisotropic_direction_Dust(kin,kout,mu,iran,g_dust)
 
@@ -247,6 +294,30 @@ contains
 
   end subroutine anisotropic_direction_Dust
 
+  !--PEEL--
+  function anisotropic_probability_Dust(kin,kout,g_dust)
+
+    ! ---------------------------------------------------------------------------------
+    ! sends back the probability of photon going along kout as a function of incident direction kin, for a phase function
+    ! described by P(mu) = (1-g**2)/(1+g**2 - 2 g mu)**(3/2)
+    ! (with mu = cos(theta) = kin.kout).
+    ! This is the Henyey phase function (unpolarized).
+    ! ---------------------------------------------------------------------------------
+
+    implicit none
+
+    real(kind=8),intent(in)    :: kin(3),kout(3),g_dust
+    real(kind=8)               :: mu,bu
+    real(kind=8)               :: anisotropic_probability_Dust
+
+    mu = kin(1)*kout(1) + kin(2)*kout(2) + kin(3)*kout(3)
+    bu = sqrt(1.0d0 - mu*mu)
+    anisotropic_probability_Dust = 0.5d0* (1.d0-g_dust**2)/(1.d0+g_dust**2 - 2.0d0*g_dust*mu)**(3./2.)
+
+    return
+    
+  end function anisotropic_probability_Dust
+  !--LEEP--
 
   subroutine locatedb(xx,n,x,j)
     
