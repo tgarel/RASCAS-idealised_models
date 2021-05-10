@@ -21,10 +21,10 @@ module module_dust_model
   character(20) :: dust_model = 'SMC' 
   ! --------------------------------------------------------------------------
   
-  public get_tau_dust, scatter_dust, read_dust_params, print_dust_params
-  private sigma_d
+  public :: get_tau_dust, scatter_dust, read_dust_params, print_dust_params
+  private :: sigma_d
   !--PEEL--
-  public dust_peeloff_weight
+  public :: dust_peeloff_weight
   !--LEEP--
   
 contains
