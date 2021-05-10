@@ -97,10 +97,8 @@ contains
     !--CORESKIP--
     real(kind=8)                         :: xcrit,dist_cm
     !--PIKSEROC--
-    !--PEEL--
-    real(kind=8) :: x ! a random number
-    !--LEEP--
-
+    
+    
     ! initialise working props of photon
     ppos    = p%xcurr        ! position within full simulation box, in box units.
     time    = p%time
