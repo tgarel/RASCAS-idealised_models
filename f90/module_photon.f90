@@ -125,7 +125,10 @@ contains
        ! compute first term of ray's weights : the peeling-off strategy
        PeelBuffer(nPeeled)%weight = 0.5      ! assume isotropy for this particular (non-)event
        PeelBuffer(nPeeled)%nu     = p%nu_ext ! frequency in the direction of observation
-       PeelBuffer(nPeeled)%scatter_flag = -1 ! flag peel as an initial peel 
+       PeelBuffer(nPeeled)%scatter_flag = -1 ! flag peel as an initial peel
+       ! JB-
+       PeelBuffer(nPeeled)%kin = p%k ! emission direction (nu is in this direction, not in the direction to mock observer)
+       ! -JB 
        if (nPeeled == PeelBufferSize) then ! buffer is full -> process.
           call process_peels(domesh,domaine_calcul,iran)
           nPeeled=0
@@ -551,7 +554,10 @@ contains
     logical                       :: increment_flux, increment_spec, increment_image, increment_cube
     type(gas)                     :: cell_gas       ! gas in the current cell 
     real(kind=8)                  :: nupeel
-    
+    ! JB-
+    real(kind=8)                  :: vgas(3),nu_cell, nu_ext, scalar
+    ! -JB
+
     do idir = 1,nDirections
        kobs = mock_line_of_sight(idir)
        do ipeel = 1,nPeeled
@@ -570,6 +576,23 @@ contains
                 ! NB: the following line updates peel%nu to the frequency in the direction of observation. 
                 PeelBuffer(ipeel)%weight = gas_peeloff_weight(PeelBuffer(ipeel)%scatter_flag, cell_gas, PeelBuffer(ipeel)%nu, PeelBuffer(ipeel)%kin, kobs, iran)
              end if
+             ! JB-
+             if (PeelBuffer(ipeel)%scatter_flag < 0) then ! this is initialisation (i.e. a peel from emission site)
+                ! -> re-compute frequency in the direction of mock observation...
+                ! ---> nu is initialised as frequency in external frame, in the direction of emission.
+                ! ---> Go back to cell frame and then to external frame using directio of mock instead. 
+                ! get nu_cell from nu_ext
+                ileaf    = - domesh%son(PeelBuffer(ipeel)%icell)
+                cell_gas = domesh%gas(ileaf)
+                vgas     = get_gas_velocity(cell_gas)
+                scalar   = PeelBuffer(ipeel)%kin(1) * vgas(1) + PeelBuffer(ipeel)%kin(2) * vgas(2) + PeelBuffer(ipeel)%kin(3) * vgas(3)
+                nu_cell  = PeelBuffer(ipeel)%nu * (1.0d0 - scalar/clight) 
+                ! get nu_ext from nu_cell now in the direction of observation
+                scalar   = vgas(1)*kobs(1) + vgas(2)*kobs(2) + vgas(3)*kobs(3)
+                nu_ext   = (1.0d0 + scalar/clight) * nu_cell
+                PeelBuffer(ipeel)%nu = nu_ext
+             end if
+             ! -JB
              tau = tau_to_border(PeelBuffer(ipeel),domesh,domaine_calcul,tau_max,kobs)
           end if
           ! if tau is not absurdly large, increment detectors 
