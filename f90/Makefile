@@ -1,10 +1,10 @@
 #############################################################################
 # Fortran compiler options and directives
 
-SYSTYPE="CCF"
+#SYSTYPE="CCF"
 #SYSTYPE="lyocral"
 #SYSTYPE="lyocralP"
-#SYSTYPE="mac"
+SYSTYPE="mac"
 #SYSTYPE="macP"
 #SYSTYPE="ccage"
 
@@ -95,7 +95,7 @@ endif
 # TIBO-1/ pure HI + idealised_models
 #COMPOBJS = module_HI_1216_model.o module_idealised_models.o module_gas_composition_HI.o
 # TIBO-1bis/ HI + dust + idealised_models
-# COMPOBJS = module_dust_model.o module_HI_1216_model.o module_idealised_models.o module_gas_composition_HI_dust.o
+ COMPOBJS = module_dust_model.o module_HI_1216_model.o module_idealised_models.o module_gas_composition_HI_dust.o
 # TIBO-2/ SiII_dust + idealised_models
 #COMPOBJS = module_dust_model.o module_SiII_1190_model.o module_SiII_1193_model.o module_idealised_models.o module_gas_composition_SiII_dust.o
 # TIBO-3/ MgII_dust + idealised_models
@@ -115,7 +115,7 @@ endif
 # TIBO-10/ SiII-1260 + dust + idealised_models
 # COMPOBJS =  module_dust_model.o module_SiII_1260_model.o module_idealised_models.o module_gas_composition_SiII_1260_dust.o
 # TIBO-11/ CII-1334 + dust + idealised_models
- COMPOBJS =  module_dust_model.o module_CII_1334_model.o module_idealised_models.o module_gas_composition_CII_1334_dust.o
+# COMPOBJS =  module_dust_model.o module_CII_1334_model.o module_idealised_models.o module_gas_composition_CII_1334_dust.o
 # 11/ SiII 1260
 #COMPOBJS = module_SiII_1260_model.o module_gas_composition_SiII_1260.o
 # 12/ SiII 1260 and dust
