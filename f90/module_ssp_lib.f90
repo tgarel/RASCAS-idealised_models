@@ -190,10 +190,10 @@ contains
        wx2  = wx2 / norm
     end if
     
-    res(:) =  wx1 * wy1 * lib%grid(i2, j2, :)  &
-            + wx2 * wy1 * lib%grid(i1, j2, :)  &
-            + wx1 * wy2 * lib%grid(i2, j1, :)  &
-            + wx2 * wy2 * lib%grid(i1, j1, :)
+    res(:) =  wx2 * wy2 * lib%grid(i2, j2, :)  &
+            + wx1 * wy2 * lib%grid(i1, j2, :)  &
+            + wx2 * wy1 * lib%grid(i2, j1, :)  &
+            + wx1 * wy1 * lib%grid(i1, j1, :)
     return
   end subroutine ssp_lib_interpolate
     
