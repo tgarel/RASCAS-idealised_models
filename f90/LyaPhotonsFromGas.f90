@@ -18,7 +18,7 @@ program LyaPhotonsFromGas
   real(kind=8)                 :: r1, r2, dx, dv, nu, scalar, recomb_total,coll_total,k(3), boxsize,maxrec,maxcol
   real(kind=8)                 :: start_photpacket,end_photpacket,x(3),dt,xmin,xmax,ymin,ymax,zmin,zmax
   logical                      :: ok
-  real(kind=8),allocatable     :: nu_em(:),x_em(:,:),k_em(:,:),nu_cell(:)
+  real(kind=8),allocatable     :: nu_em(:),x_em(:,:),k_em(:,:),nu_cell(:),v_em(:,:)
   integer(kind=4),allocatable  :: cpu_list(:)
   integer(kind=4)              :: ncpu_read
   real(kind=8),allocatable     :: low_prob_rec(:),low_prob_col(:)
@@ -159,7 +159,7 @@ program LyaPhotonsFromGas
   deallocate(ramses_var)
   ! ----------------------------------------------------------------------------
   
-  allocate(nu_em(nphotons),x_em(3,nphotons),k_em(3,nphotons),nu_cell(nphotons))
+  allocate(nu_em(nphotons),x_em(3,nphotons),k_em(3,nphotons),nu_cell(nphotons),v_em(3,nphotons))
   
   ! --------------------------------------------------------------------------------------
   if (doRecombs) then 
@@ -211,6 +211,8 @@ program LyaPhotonsFromGas
               ! compute frequency in exteral frame 
               scalar = k(1)*v_leaf(1,j) + k(2)*v_leaf(2,j) + k(3)*v_leaf(3,j)
               nu_em(iphot)  = nu_cell(iphot) / (1d0 - scalar/clight)
+              ! store velocity of the emitting cell, for peeling-off only
+              v_em(:,iphot) = v_leaf(:,j)
               ok = .true.
            end if
         end do
@@ -228,6 +230,7 @@ program LyaPhotonsFromGas
      write(14) (k_em(:,i),i=1,nphotons)
      write(14) (-i,i=1,nphotons) ! seeds
      write(14) (nu_cell(i),i=1,nphotons)
+     write(14) (v_em(:,i),i=1,nphotons)
      close(14)
      ! --------------------------------------------------------------------------------------
      if (verbose) then 
@@ -289,6 +292,8 @@ program LyaPhotonsFromGas
               ! compute frequency in exteral frame 
               scalar = k(1)*v_leaf(1,j) + k(2)*v_leaf(2,j) + k(3)*v_leaf(3,j)
               nu_em(iphot)  = nu_cell(iphot) / (1d0 - scalar/clight)
+              ! store velocity of the emitting cell, for peeling-off only
+              v_em(:,iphot) = v_leaf(:,j)
               ok = .true.
            end if
         end do
@@ -306,6 +311,7 @@ program LyaPhotonsFromGas
      write(14) (k_em(:,i),i=1,nphotons)
      write(14) (-i,i=1,nphotons) ! seeds
      write(14) (nu_cell(i),i=1,nphotons)
+     write(14) (v_em(:,i),i=1,nphotons)
      close(14)
      ! --------------------------------------------------------------------------------------
      if (verbose) then 
@@ -316,7 +322,7 @@ program LyaPhotonsFromGas
   end if
   ! --------------------------------------------------------------------------------------
   
-  deallocate(nu_em,x_em,k_em,nu_cell)
+  deallocate(nu_em,x_em,k_em,nu_cell,v_em)
   
 contains
 

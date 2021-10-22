@@ -22,7 +22,7 @@ program PhotonsFromStars
   real(kind=8)             :: total_flux
   type(SSPgrid)            :: NdotGrid
   real(kind=8),allocatable :: low_prob(:), low_prob2(:), nu_em(:), Ndot(:), sweight(:), lbin(:)
-  real(kind=8),allocatable :: x_em(:,:), k_em(:,:), NdotStar(:,:)
+  real(kind=8),allocatable :: x_em(:,:), k_em(:,:), NdotStar(:,:), v_em(:,:)
   integer(kind=4)          :: ilow, iphot, iseed, ilow2
   real(kind=8)             :: lambda0, k(3), lambdamin, lambdamax, nu, spec_gauss_nu0, lambda_star, weight
   
@@ -179,7 +179,8 @@ program PhotonsFromStars
 
      ! for each photon packet, draw the emitting star
      allocate(x_em(1:3,1:nphotons), k_em(1:3,1:nphotons), nu_em(1:nphotons), nu_star(1:nphotons))
-
+     allocate(v_em(1:3,1:nphotons))
+     
      iseed = ranseed
      do iphot = 1,nphotons
 
@@ -199,6 +200,8 @@ program PhotonsFromStars
         ! compute frequency in external frame 
         scalar = k(1)*star_vel(1,ilow) + k(2)*star_vel(2,ilow) + k(3)*star_vel(3,ilow)
         nu_em(iphot)  = nu_star(iphot) / (1d0 - scalar/clight)
+        ! store velocity of the star, for peeling-off only
+        v_em(:,iphot) = star_vel(:,ilow)
      end do
 
      
@@ -241,6 +244,7 @@ program PhotonsFromStars
      
      ! for each photon packet, draw the emitting star
      allocate(x_em(1:3,1:nphotons), k_em(1:3,1:nphotons), nu_em(1:nphotons), nu_star(1:nphotons))
+     allocate(v_em(1:3,1:nphotons))
      allocate(low_prob2(NdotGrid%nlambda+1))
      iseed = ranseed
 
@@ -289,6 +293,9 @@ program PhotonsFromStars
         ! compute frequency in external frame 
         scalar = k(1)*star_vel(1,ilow) + k(2)*star_vel(2,ilow) + k(3)*star_vel(3,ilow)
         nu_em(iphot)  = nu_star(iphot) / (1d0 - scalar/clight)
+
+        ! store velocity of the star, for peeling-off only
+        v_em(:,iphot) = star_vel(:,ilow)
      enddo
      
 
@@ -324,7 +331,8 @@ program PhotonsFromStars
      
      ! for each photon packet, draw the emitting star
      allocate(x_em(1:3,1:nphotons), k_em(1:3,1:nphotons), nu_em(1:nphotons), nu_star(1:nphotons))
-
+     allocate(v_em(1:3,1:nphotons))
+     
      iseed = ranseed
      do iphot = 1,nphotons
 
@@ -342,6 +350,8 @@ program PhotonsFromStars
         ! compute frequency in external frame 
         scalar = k(1)*star_vel(1,ilow) + k(2)*star_vel(2,ilow) + k(3)*star_vel(3,ilow)
         nu_em(iphot)  = nu_star(iphot) / (1d0 - scalar/clight)
+        ! store velocity of the star, for peeling-off only
+        v_em(:,iphot) = star_vel(:,ilow)
      end do
 
   end select
@@ -366,6 +376,7 @@ program PhotonsFromStars
   write(14) (k_em(:,i),i=1,nphotons)
   write(14) (-i,i=1,nphotons) ! seeds
   write(14) (nu_star(i),i=1,nphotons)
+  write(14) (v_em(:,i),i=1,nphotons)
   close(14)
   ! --------------------------------------------------------------------------------------
 
@@ -375,7 +386,7 @@ program PhotonsFromStars
   ! --------------------------------------------------------------------------------------
   deallocate(star_pos,star_vel,star_mass,star_age,star_met)
   deallocate(sweight, Ndot)
-  deallocate(nu_star, nu_em, x_em, k_em)
+  deallocate(nu_star, nu_em, x_em, k_em, v_em)
   ! --------------------------------------------------------------------------------------
 
   

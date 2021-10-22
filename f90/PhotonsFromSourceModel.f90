@@ -23,6 +23,7 @@ program PhotonsFromSourceModel
   ! --- source type 
   character(10)             :: source_type = 'pointlike'             ! type of source model
   real(kind=8),dimension(3) :: source_pos  = (/0.5d0,0.5d0,0.5d0/)   ! position of the source [code units]
+  real(kind=8),dimension(3) :: source_vel  = (/0.d0,0.d0,0.d0/)      ! velocity of the source [cm/s]
   integer(kind=4)           :: nphotons    = 5000000                 ! number of photons to generate
   ! --- how source shines
   ! Four options here :
@@ -150,7 +151,8 @@ program PhotonsFromSourceModel
      photgrid(i)%nu_em = nu
      select case(trim(source_type))
      case('pointlike')
-        photgrid(i)%x_em  = source_pos
+        photgrid(i)%x_em = source_pos
+        photgrid(i)%v_em = source_vel
      case default
         print*,'ERROR: unknown source_type :',trim(source_type)
      end select
@@ -175,6 +177,7 @@ program PhotonsFromSourceModel
   write(14) (photgrid(i)%x_em(:),i=1,nphotons)
   write(14) (photgrid(i)%k_em(:),i=1,nphotons)
   write(14) (photgrid(i)%iran,i=1,nphotons)
+  write(14) (photgrid(i)%v_em(:),i=1,nphotons)
   close(14)
   ! --------------------------------------------------------------------------------------
 
@@ -227,6 +230,8 @@ contains
              write(outputfile,'(a)') trim(value)
           case ('source_pos')
              read(value,*) source_pos(1),source_pos(2),source_pos(3)
+          case ('source_vel')
+             read(value,*) source_vel(1),source_vel(2),source_vel(3)
           case ('source_type')
              write(source_type,'(a)') trim(value)
           case ('verbose')
@@ -285,6 +290,7 @@ contains
        write(unit,'(a)')              '# source type parameters'
        write(unit,'(a,a)')            '  source_type     = ',trim(source_type)
        write(unit,'(a,3(ES10.3,1x))') '  source_pos      = ',source_pos(1),source_pos(2),source_pos(3)
+       write(unit,'(a,3(ES10.3,1x))') '  source_vel      = ',source_vel(1),source_vel(2),source_vel(3)
        write(unit,'(a)')              '# how source shines'
        write(unit,'(a,i8)')           '  nPhotonPackets  = ',nphotons
        write(unit,'(a,a)')            '  spec_type       = ',trim(spec_type)
@@ -319,6 +325,7 @@ contains
        write(*,'(a)')              '# source type parameters'
        write(*,'(a,a)')            '  source_type   = ',trim(source_type)
        write(*,'(a,3(ES10.3,1x))') '  source_pos    = ',source_pos(1),source_pos(2),source_pos(3)
+       write(*,'(a,3(ES10.3,1x))') '  source_vel    = ',source_vel(1),source_vel(2),source_vel(3)
        write(*,'(a)')              '# how source shines'
        write(*,'(a,i8)')           '  nPhotonPackets = ',nphotons
        write(*,'(a,a)')            '  spec_type      = ',trim(spec_type)

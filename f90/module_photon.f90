@@ -26,6 +26,7 @@ module module_photon
      real(kind=8)              :: time         ! time in [s] from emission to escape/absorption        
      real(kind=8)              :: tau_abs_curr ! current optical depth (useful when photon change mesh domain)
      integer(kind=4)           :: iran         ! state of the random generator
+     real(kind=8),dimension(3) :: v_src        ! velocity of the source -- for peeling off
   end type photon_current
   ! Note: if you change something in photon_current, don't forget to update the mpi_photon_type in module_parallel_mpi.f90
 
@@ -36,6 +37,7 @@ module module_photon
      real(kind=8),dimension(3) :: x_em
      real(kind=8),dimension(3) :: k_em
      integer(kind=4)           :: iran     ! state of the random generator
+     real(kind=8),dimension(3) :: v_em     ! velocity of the source -- for peeling off
   end type photon_init
 
   !--PEEL--
@@ -46,6 +48,7 @@ module module_photon
      integer(kind=4)           :: icell  ! cell in which scattering occurs, saves one search... 
      real(kind=8)              :: weight ! probability of being re-emitted in obs direction
      integer(kind=4)           :: scatter_flag ! (if negative, this is a emission peel-> specific processing)
+     real(kind=8),dimension(3) :: v_src  ! velocity of the source -- for peeling off
   end type peel
   integer(kind=4),parameter            :: PeelBufferSize = 1000000
   type(peel),dimension(PeelBufferSize) :: PeelBuffer
@@ -129,6 +132,7 @@ contains
        ! JB-
        PeelBuffer(nPeeled)%kin = p%k ! emission direction (nu is in this direction, not in the direction to mock observer)
        ! -JB 
+       PeelBuffer(nPeeled)%v_src = p%v_src
        if (nPeeled == PeelBufferSize) then ! buffer is full -> process.
           call process_peels(domesh,domaine_calcul,iran)
           nPeeled=0
@@ -553,9 +557,9 @@ contains
     real(kind=8)                  :: projpos(2),kobs(3)
     logical                       :: increment_flux, increment_spec, increment_image, increment_cube
     type(gas)                     :: cell_gas       ! gas in the current cell 
-    real(kind=8)                  :: nupeel
+    real(kind=8)                  :: nupeel, nu_src
     ! JB-
-    real(kind=8)                  :: vgas(3),nu_cell, nu_ext, scalar
+    real(kind=8)                  :: vgas(3), nu_ext, scalar
     ! -JB
 
     do idir = 1,nDirections
@@ -580,16 +584,14 @@ contains
              if (PeelBuffer(ipeel)%scatter_flag < 0) then ! this is initialisation (i.e. a peel from emission site)
                 ! -> re-compute frequency in the direction of mock observation...
                 ! ---> nu is initialised as frequency in external frame, in the direction of emission.
-                ! ---> Go back to cell frame and then to external frame using directio of mock instead. 
-                ! get nu_cell from nu_ext
-                ileaf    = - domesh%son(PeelBuffer(ipeel)%icell)
-                cell_gas = domesh%gas(ileaf)
-                vgas     = get_gas_velocity(cell_gas)
-                scalar   = PeelBuffer(ipeel)%kin(1) * vgas(1) + PeelBuffer(ipeel)%kin(2) * vgas(2) + PeelBuffer(ipeel)%kin(3) * vgas(3)
-                nu_cell  = PeelBuffer(ipeel)%nu * (1.0d0 - scalar/clight) 
-                ! get nu_ext from nu_cell now in the direction of observation
+                ! ---> Go back to emitting source frame (cell, stars, or model) and then to external frame using direction of mock instead. 
+                ! get nu_source from nu_ext
+                scalar   = PeelBuffer(ipeel)%kin(1) * PeelBuffer(ipeel)%v_src(1) + &
+                     PeelBuffer(ipeel)%kin(2) * PeelBuffer(ipeel)%v_src(2) + PeelBuffer(ipeel)%kin(3) * PeelBuffer(ipeel)%v_src(3)
+                nu_src = PeelBuffer(ipeel)%nu * (1.0d0 - scalar/clight) 
+                ! get nu_ext from nu_source now in the direction of observation
                 scalar   = vgas(1)*kobs(1) + vgas(2)*kobs(2) + vgas(3)*kobs(3)
-                nu_ext   = (1.0d0 + scalar/clight) * nu_cell
+                nu_ext   = (1.0d0 + scalar/clight) * nu_src
                 PeelBuffer(ipeel)%nu = nu_ext
              end if
              ! -JB
@@ -630,6 +632,7 @@ contains
     read(14) (pgridinit(i)%x_em(:),i=1,n_photon)
     read(14) (pgridinit(i)%k_em(:),i=1,n_photon)
     read(14) (pgridinit(i)%iran,i=1,n_photon)
+    read(14) (pgridinit(i)%v_em(:),i=1,n_photon)
     close(14)
 
     ! build photgrid current
@@ -647,6 +650,7 @@ contains
        pgrid(i)%time         = 0.0d0
        pgrid(i)%tau_abs_curr = -1.0d0
        pgrid(i)%iran         = pgridinit(i)%iran
+       pgrid(i)%v_src        = pgridinit(i)%v_em
     enddo
     deallocate(pgridinit)
 
@@ -676,6 +680,7 @@ contains
     read(16) (pgrid(i)%time,         i=1,np)
     read(16) (pgrid(i)%tau_abs_curr, i=1,np)
     read(16) (pgrid(i)%iran,         i=1,np)
+    read(16) (pgrid(i)%v_src(:),     i=1,np)
 
     close(16)
 
@@ -702,6 +707,7 @@ contains
     write(16) (pgrid(i)%time,         i=1,np)
     write(16) (pgrid(i)%tau_abs_curr, i=1,np)
     write(16) (pgrid(i)%iran,         i=1,np)
+    write(16) (pgrid(i)%v_src(:),     i=1,np)
     close(16)
 
   end subroutine save_photons
