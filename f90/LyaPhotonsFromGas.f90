@@ -309,7 +309,6 @@ program LyaPhotonsFromGas
      write(14) (x_em(:,i),i=1,nphotons)
      write(14) (k_em(:,i),i=1,nphotons)
      write(14) (-i,i=1,nphotons) ! seeds
-     write(14) (nu_cell(i),i=1,nphotons)
      write(14) (v_em(:,i),i=1,nphotons)
      close(14)
      ! --------------------------------------------------------------------------------------
