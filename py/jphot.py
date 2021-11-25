@@ -5,19 +5,19 @@ import lya_utils as lya  # all lya-specific constants and conversions.
 
 class photonlist(object):
     
-    def __init__(self,icFile,resFile,bakFile=None,load=True,stars=False):
+    def __init__(self,icFile,resFile,bakFile=None,load=True):
         self.icFile  = icFile
         self.resFile = resFile
         self.bakFile = bakFile
         if load: 
-            self.load_ic(stars=stars)
+            self.load_ic()
             if self.bakFile is not None:
                 self.load_bak()
             else:
                 self.load_res()
 
             
-    def load_ic(self,stars=False):
+    def load_ic(self):
         # read photn IC file
         f = ff(self.icFile) 
         [self.nphoton]  = f.read_ints()
@@ -36,8 +36,12 @@ class photonlist(object):
         self.ky_ic = xx[:,1]
         self.kz_ic = xx[:,2]
         self.iran_ic = f.read_ints()
-        if stars:
-            self.nu_star = f.read_reals('d')
+        # read velocity of the emitting source
+        xx = f.read_reals('d')
+        xx = xx.reshape((self.nphoton,3))
+        self.vx_ic = xx[:,0]
+        self.vy_ic = xx[:,1]
+        self.vz_ic = xx[:,2]
         f.close()
 
                 
@@ -193,7 +197,7 @@ class photonlist(object):
     def spectrum(self,frame='obs',nbins=200,Flambda=True,lmin=None,lmax=None):
         # compute the spectrum (F_lambda) corresponding to list of photons (self)
         # inputs:
-        #    frame (optional)   : can be 'obs', 'ic', or 'star'
+        #    frame (optional)   : can be 'obs', 'ic', or 'source'
         #    nbins (optional)   : nb of bins
         #    Flambda (optional) : compute spectrum or just MC photon histogram
         #    lmin (optional) : minimum wavelentgh to use [A]
@@ -203,12 +207,14 @@ class photonlist(object):
         # h           : spectrum [erg/s/A] if Flambda==True or distribution of MC photons [#/A] if Flambda==False
         #
         nphot_per_packet = self.nRealPhotons / self.nphoton # nb of real phot /s / MC phot
-        if frame == 'star':
-            nu = self.nu_star  # [Hz]
         if frame == 'ic':
             nu = self.nu_ic  # [Hz]
         if frame == 'obs':
             nu = self.nu  # [Hz]
+        if frame == 'source':
+            scalar = self.kx_ic*self.vx_ic + self.ky_ic*self.vy_ic + self.kz_ic*self.vz_ic
+            nu = self.nu * (1. - scalar/lya.clight) # [Hz]
+
         lbda = lya.clight / nu * 1e8  # [A]
 
         if lmin is None:
