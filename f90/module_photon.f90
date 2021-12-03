@@ -557,10 +557,7 @@ contains
     real(kind=8)                  :: projpos(2),kobs(3)
     logical                       :: increment_flux, increment_spec, increment_image, increment_cube
     type(gas)                     :: cell_gas       ! gas in the current cell 
-    real(kind=8)                  :: nupeel, nu_src
-    ! JB-
-    real(kind=8)                  :: vgas(3), nu_ext, scalar
-    ! -JB
+    real(kind=8)                  :: nupeel, nu_src, nu_ext, scalar
 
     do idir = 1,nDirections
        kobs = mock_line_of_sight(idir)
@@ -586,12 +583,12 @@ contains
                 ! ---> nu is initialised as frequency in external frame, in the direction of emission.
                 ! ---> Go back to emitting source frame (cell, stars, or model) and then to external frame using direction of mock instead. 
                 ! get nu_source from nu_ext
-                scalar   = PeelBuffer(ipeel)%kin(1) * PeelBuffer(ipeel)%v_src(1) + &
+                scalar = PeelBuffer(ipeel)%kin(1) * PeelBuffer(ipeel)%v_src(1) + &
                      PeelBuffer(ipeel)%kin(2) * PeelBuffer(ipeel)%v_src(2) + PeelBuffer(ipeel)%kin(3) * PeelBuffer(ipeel)%v_src(3)
                 nu_src = PeelBuffer(ipeel)%nu * (1.0d0 - scalar/clight) 
                 ! get nu_ext from nu_source now in the direction of observation
-                scalar   = vgas(1)*kobs(1) + vgas(2)*kobs(2) + vgas(3)*kobs(3)
-                nu_ext   = (1.0d0 + scalar/clight) * nu_src
+                scalar = PeelBuffer(ipeel)%v_src(1)*kobs(1) + PeelBuffer(ipeel)%v_src(2)*kobs(2) + PeelBuffer(ipeel)%v_src(3)*kobs(3)
+                nu_ext = (1.0d0 + scalar/clight) * nu_src
                 PeelBuffer(ipeel)%nu = nu_ext
              end if
              ! -JB
