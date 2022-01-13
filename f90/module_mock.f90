@@ -316,7 +316,7 @@ contains
           if (.not. copen) then 
              write(filename,'(a,a,i5.5)') trim(mock_outputfilename),'_cube.',rank
              open(unit=cunit,file=filename,form='unformatted',status='unknown')
-             iopen = .true.
+             copen = .true.
           end if
           write(cunit) mock(idir)%cube_lbda_npix, mock(idir)%cube_image_npix
           write(cunit) mock(idir)%cube_lmin,mock(idir)%cube_lmax,mock(idir)%cube_side
