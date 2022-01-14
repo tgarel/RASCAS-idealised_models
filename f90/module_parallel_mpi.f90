@@ -17,7 +17,7 @@ module module_parallel_mpi
   integer(kind=4),dimension(MPI_STATUS_SIZE)      :: status
 
   ! define a MPI derived type for photons
-  integer(kind=4),parameter                       :: nbloc=10
+  integer(kind=4),parameter                       :: nbloc=11
   integer(kind=4),dimension(nbloc)                :: types, longueurs_blocs
   integer(kind=MPI_ADDRESS_KIND),dimension(nbloc) :: deplacements, adresses
   integer(kind=MPI_ADDRESS_KIND)                  :: lb,extent,nextelement,lbound,asize
@@ -89,6 +89,7 @@ contains
     !    real(kind=8)              :: time         ! time in [s] from emission to escape/absorption        
     !    real(kind=8)              :: tau_abs_curr ! current optical depth (useful when photon change mesh domain)
     !    integer(kind=4)           :: iran         ! state of the random generator
+    !    real(kind=8),dimension(3) :: v_src        ! velocity of the source -- for peeling off
     ! end type photon_current
 
 
@@ -102,10 +103,11 @@ contains
          MPI_INTEGER, &
          MPI_DOUBLE_PRECISION, &
          MPI_DOUBLE_PRECISION, &
-         MPI_INTEGER /)
+         MPI_INTEGER, &
+         MPI_DOUBLE_PRECISION /)
 
     ! block lengths
-    longueurs_blocs = (/1,1,3,3,1,3,1,1,1,1/)
+    longueurs_blocs = (/1,1,3,3,1,3,1,1,1,1,3/)
   
     call MPI_GET_ADDRESS(p(1)%id,           adresses(1),code)
     call MPI_GET_ADDRESS(p(1)%status,       adresses(2),code)
@@ -117,6 +119,7 @@ contains
     call MPI_GET_ADDRESS(p(1)%time,         adresses(8),code)
     call MPI_GET_ADDRESS(p(1)%tau_abs_curr, adresses(9),code)
     call MPI_GET_ADDRESS(p(1)%iran,         adresses(10),code)
+    call MPI_GET_ADDRESS(p(1)%v_src,        adresses(11),code)
 
     ! Compute array of displacements
     do i=1,nbloc
@@ -172,6 +175,7 @@ contains
        p_test(i)%time = 1.23456789 * i
        p_test(i)%tau_abs_curr = 0.
        p_test(i)%iran = -99
+       p_test(i)%v_src = (/20.e5*i,-10.e5*i,5.e5*i/)
     enddo
     
     ! Send p_test from 0 to 1
@@ -195,6 +199,9 @@ contains
           if(p_test(i)%time /= temp_p(i)%time) stop 'problem with MPI type'
           if(p_test(i)%tau_abs_curr /= temp_p(i)%tau_abs_curr) stop 'problem with MPI type'
           if(p_test(i)%iran /= temp_p(i)%iran) stop 'problem with MPI type'
+          do j=1,3
+             if(p_test(i)%v_src(j) /= temp_p(i)%v_src(j)) stop 'problem with MPI type'
+          enddo
        enddo
     endif
   end subroutine test_mpi_type
