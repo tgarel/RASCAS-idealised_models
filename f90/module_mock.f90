@@ -50,6 +50,7 @@ module module_mock
   ! public functions 
   public :: read_mock_params, mock_line_of_sight, mock_point_in_spectral_aperture, mock_point_in_flux_aperture, mock_point_in_image, mock_point_in_cube
   public :: mock_projected_pos, peel_to_flux, peel_to_map, peel_to_spec, peel_to_cube, dump_mocks
+  public :: print_mock_params
   
 contains
   
@@ -386,6 +387,35 @@ contains
     return
 
   end subroutine read_mock_params
+
+
+
+  subroutine print_mock_params(unit)
+
+    ! ---------------------------------------------------------------------------------
+    ! write parameter values to std output or to an open file if argument unit is
+    ! present.
+    ! ---------------------------------------------------------------------------------
+
+    integer(kind=4),optional,intent(in) :: unit
+
+    if (present(unit)) then 
+       write(unit,'(a)')             '[mock]'
+       write(unit,'(a,i8)')          '  nDirections         = ',nDirections
+       write(unit,'(a,a)')           '  mock_parameter_file = ',trim(mock_parameter_file)
+       write(unit,'(a,a)')           '  mock_outputfilename = ',trim(mock_outputfilename)
+       write(unit,'(a)')             ' '
+    else
+       write(*,'(a)')             '[mock]'
+       write(*,'(a,i8)')          '  nDirections         = ',nDirections
+       write(*,'(a,a)')           '  mock_parameter_file = ',trim(mock_parameter_file)
+       write(*,'(a,a)')           '  mock_outputfilename = ',trim(mock_outputfilename)
+       write(*,'(a)')             ' '       
+    end if
+
+    return
+
+  end subroutine print_mock_params
 
 
 end module module_mock

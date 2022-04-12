@@ -5,7 +5,7 @@ program main
   use module_worker
   use module_utils, only : print_rascas_header
   !--PEEL--
-  use module_mock, only : read_mock_params
+  use module_mock, only : read_mock_params, print_mock_params, peeling_off
   !--LEEP--
 
   implicit none
@@ -185,6 +185,7 @@ contains
        write(unit,'(a,i8)')          '  nbundle        = ',nbundle
        write(unit,'(a,L1)')          '  verbose        = ',verbose
        write(unit,'(a)')             ' '
+       if (peeling_off) call print_mock_params(unit)
        call print_master_params(unit)
        write(unit,'(a)')             ' '
        call print_worker_params(unit)
@@ -198,6 +199,7 @@ contains
        write(*,'(a,i8)')          '  nbundle        = ',nbundle
        write(*,'(a,L1)')          '  verbose        = ',verbose
        write(*,'(a)')             ' '       
+       if (peeling_off) call print_mock_params
        call print_master_params
        write(*,'(a)')             ' '
        call print_worker_params
