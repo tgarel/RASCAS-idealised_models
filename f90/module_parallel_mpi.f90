@@ -252,6 +252,10 @@ contains
           call MPI_SEND(mock(idir)%cube, n, MPI_DOUBLE_PRECISION, 0, tag , MPI_COMM_WORLD, code)
        end if
     end do
+    ! stats
+    call MPI_SEND(peels_count, 1, MPI_INTEGER, 0, tag, MPI_COMM_WORLD, code)
+    call MPI_SEND(rays_count, 1, MPI_INTEGER, 0, tag, MPI_COMM_WORLD, code)
+    call MPI_SEND(detectors_count, 1, MPI_INTEGER, 0, tag, MPI_COMM_WORLD, code)
     
     return
     
@@ -262,7 +266,7 @@ contains
     ! Receive mocks from a worker and add it to master's
 
     implicit none 
-    integer(kind=4) :: idir, n, idcpu
+    integer(kind=4) :: idir, n, idcpu, count
     real(kind=8)             :: flux
     real(kind=8),allocatable :: spec(:), image(:,:), cube(:,:,:)
     
@@ -321,6 +325,13 @@ contains
           deallocate(cube)
        end if
     end do
+    ! stats
+    call MPI_RECV(count, 1, MPI_INTEGER, idcpu, DONE_TAG , MPI_COMM_WORLD, status, IERROR)
+    peels_count = peels_count+count
+    call MPI_RECV(count, 1, MPI_INTEGER, idcpu, DONE_TAG , MPI_COMM_WORLD, status, IERROR)
+    rays_count = rays_count+count
+    call MPI_RECV(count, 1, MPI_INTEGER, idcpu, DONE_TAG , MPI_COMM_WORLD, status, IERROR)
+    detectors_count = detectors_count+count
     
     return
     

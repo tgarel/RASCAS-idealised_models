@@ -35,6 +35,12 @@ contains
     ! get the computational domain
     call domain_constructor_from_file(file_compute_dom,compute_dom)
 
+    if(peeling_off)then
+       peels_count=0
+       rays_count=0
+       detectors_count=0
+    endif
+
     mydom=-1
 
     do while (status(MPI_TAG) .ne. EXI_TAG)

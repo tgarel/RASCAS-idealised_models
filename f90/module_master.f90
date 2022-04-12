@@ -275,6 +275,12 @@ contains
        
        print*,'[master] writing mock to file'
        call dump_mocks(0)
+
+       print*,'[master] mock statistics'
+       print*,'   peels_count     = ',peels_count
+       print*,'   rays_count      = ',rays_count
+       print*,'   detectors_count = ',detectors_count
+       
     end if
     !--LEEP--
 

@@ -34,6 +34,9 @@ module module_mock
   end type mockObs
   type(mockObs),allocatable :: mock(:)
 
+  ! for statistics
+  integer(kind=4) :: peels_count,rays_count,detectors_count
+
   ! parameters in the [mock] section :
   integer(kind=4) :: nDirections = 0
   character(2000) :: mock_parameter_file
@@ -46,6 +49,7 @@ module module_mock
   
   ! public variables 
   public :: peeling_off, nDirections, mock
+  public :: peels_count,rays_count,detectors_count
 
   ! public functions 
   public :: read_mock_params, mock_line_of_sight, mock_point_in_spectral_aperture, mock_point_in_flux_aperture, mock_point_in_image, mock_point_in_cube
@@ -96,6 +100,11 @@ contains
              mock(idir)%cube = 0.0d0
              mock(idir)%compute_cube = .true.
           end if
+
+          ! initialise counters
+          peels_count = 0
+          rays_count = 0
+          detectors_count = 0
           
           ! define direction of observation (normalise vector)
           mock(idir)%kobs = mock(idir)%kobs / sqrt(mock(idir)%kobs(1)*mock(idir)%kobs(1)+&
