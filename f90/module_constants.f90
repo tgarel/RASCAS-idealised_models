@@ -20,10 +20,14 @@ module module_constants
   real(kind=8),parameter :: sqrt_H2Deut_mass_ratio = 0.7071067811865d0   ! == sqrt(mp/mdeut) = 1/sqrt(2).
   real(kind=8),parameter :: XH = 0.76d0
   real(kind=8),parameter :: amu = 1.66054d-24                 ![g] atomic mass unit
-  real(kind=8),parameter :: msun = 1.989d33                   ![g] solar mass 
+  real(kind=8),parameter :: msun = 1.989d33                   ![g] solar mass
+  real(kind=8),parameter :: mO  = 15.999 * amu                ![g] mass of Oxygen
   real(kind=8),parameter :: mSi = 28.085d0 * amu              ![g] mass of Silicon
   real(kind=8),parameter :: mMg = 24.305d0 * amu              ![g] mass of Magnesium
+  real(kind=8),parameter :: hp=6.6262d-27                     !Planck const   [erg sec ]
+  !real(kind=8),parameter,dimension(39) :: ionEvs = (/ 13.598, 24.587, 54.418, 11.26, 24.3845, 47.888, 64.4935, 14.53, 29.6, 47.45, 77.47, 13.618, 35.121, 54.936, 77.414, 21.56, 40.96, 63.42, 97.19, 7.646, 15.035, 80.144, 109.2654, 5.986, 18.83, 28.45, 119.99, 8.152, 16.346, 33.493, 45.142, 10.36, 23.34, 34.86, 47.22, 7.9, 16.2, 30.65, 54.91 /)
+  real(kind=8),parameter,dimension(57) :: ionEvs = (/ 13.598, 24.587, 54.418, 11.26, 24.3845, 47.888, 64.4935, 392.0905, 489.993, 14.53, 29.6, 47.45, 77.47, 97.8901, 552.067, 13.618, 35.121, 54.936, 77.414, 113.899, 138.118, 21.56, 40.96, 63.42, 97.19, 126.247, 157.934, 7.646, 15.035, 80.144, 109.2654, 141.33, 186.76, 5.986, 18.83, 28.45, 119.99, 153.8252, 190.49, 8.152, 16.346, 33.493, 45.142, 166.767, 205.279, 10.36, 23.34, 34.86, 47.22, 72.5945, 88.0529, 7.9, 16.2, 30.65, 54.91, 75.00, 98.985 /)
   real(kind=8),parameter :: mFe = 55.845d0 * amu              ![g] mass of Fer
+  real(kind=8),parameter :: mAl = 26.982d0 * amu              ![g] mass of Aluminium
 
 end module module_constants
-
