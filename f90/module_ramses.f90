@@ -1286,6 +1286,7 @@ contains
     character(128)                            :: orderingtype
     integer(kind=4)                           :: i, ios
     integer(kind=4),parameter                 :: param_unit = 13
+    real(qdp)                                 :: delta
     
     write(nomfich,'(a,a,i5.5,a,i5.5,a)') trim(repository), '/output_', snapnum, '/amr_', snapnum, '.out00001'
     inquire(file=nomfich, exist=ok)
@@ -1296,14 +1297,14 @@ contains
     open(unit=param_unit,file=nomfich,form='unformatted',status='old',action='read',iostat=ios)
     do i=1,24 ! Assume that there is no "simple boundary"
        read(param_unit,iostat=ios)
-       !print*,'ios =',ios
+       !print*,'ios =',ios,is_iostat_end(ios)
     end do
     read(param_unit,iostat=ios) orderingtype
     !print*,'ios =',ios
-
+    
     if (trim(orderingtype) .ne. 'bisection') then
        read(param_unit,iostat=ios) bound_key
-       !print*,'ios bk =',ios
+       !print*,'ios bk =',ios !,is_iostat_end(ios)
        if(ios/=0) then ! read in dp
           print*,'Reading Hilbert keys in quad precision failed, read them in double precision...'
           close(param_unit)
@@ -1322,7 +1323,49 @@ contains
           end if
           bound_key = real(bound_key_dp, kind=qdp)
        end if
-     end if
+       ! add a second test, because some intel versions do not return ios properly...
+       print *,'-- test keys in info file'
+       call read_hilbert_keys(repository,snapnum,ncpu,bound_key_dp)
+       !print*,minval(bound_key_dp),maxval(bound_key_dp)
+       !print*,maxval(real(bound_key_dp, kind=qdp))
+       delta = abs(maxval(bound_key)-maxval(real(bound_key_dp, kind=qdp)))/maxval(bound_key)
+       if (delta < 0.01) then
+          print *, '-- similar max value found, everything looks good'
+       else
+          print *,'-- found some different values', delta
+          print *,'-- better to read in dp'
+          !print*,'Reading Hilbert keys in quad precision failed, read them in double precision...'
+          close(param_unit)
+          open(unit=param_unit,file=nomfich,form='unformatted',status='old',action='read',iostat=ios)
+          do i=1,24 ! Assume that there is no "simple boundary"
+             read(param_unit,iostat=ios)
+             !print*,'ios =',ios
+          end do
+          read(param_unit,iostat=ios) orderingtype
+          !print*,'ios =',ios
+          read(param_unit,iostat=ios) bound_key_dp
+          !print*,'ios bk =',ios
+          !print*,bound_key_dp(0:10)
+          !print*,minval(bound_key_dp),maxval(bound_key_dp)
+          if(ios/=0) then
+             print*,'Reading Hilbert keys in double precision failed, read them in the info file...'
+             call read_hilbert_keys(repository,snapnum,ncpu,bound_key_dp)
+          end if
+          bound_key = real(bound_key_dp, kind=qdp)
+          print *,'-- test keys in info file'
+          call read_hilbert_keys(repository,snapnum,ncpu,bound_key_dp)
+          !print*,minval(bound_key_dp),maxval(bound_key_dp)
+          !print*,maxval(real(bound_key_dp, kind=qdp))
+          delta = abs(maxval(bound_key)-maxval(real(bound_key_dp, kind=qdp)))/maxval(bound_key)
+          if (delta < 0.01) then
+             !print *,delta
+             print *, '-- similar max value found, everything looks good'
+          else
+             print*,'-- problem, better stop'
+             stop
+          endif
+       endif
+    end if
 
     close (param_unit)
     
