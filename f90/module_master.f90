@@ -274,7 +274,7 @@ contains
        call MPI_BARRIER(MPI_COMM_WORLD,code)    
        
        print*,'[master] writing mock to file'
-       call dump_mocks(0)
+       call dump_mocks
 
        print*,'[master] mock statistics'
        print*,'   peels_count     = ',peels_count
