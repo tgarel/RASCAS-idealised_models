@@ -40,7 +40,8 @@ module module_mock
   ! parameters in the [mock] section :
   integer(kind=4) :: nDirections = 0
   character(2000) :: mock_parameter_file
-  character(2000) :: mock_outputfilename  ! Prefix for output files (including absolute path) -> will be followed by "_image.xxxxx" or "_spectrum.xxxxx", with xxxxx the cpu number.
+  character(2000) :: mock_outputfilename  ! Prefix for output mock files (including absolute path)
+                                          ! -> will be followed by ".image" or ".spectrum" or ".cube"
 
 
   ! global parameter setting peeling-off on or off.
@@ -292,7 +293,7 @@ contains
     do idir = 1,nDirections
        ! save flux
        if (.not. fopen) then 
-          write(filename,'(a,a)') trim(mock_outputfilename),'_flux'
+          write(filename,'(a,a)') trim(mock_outputfilename),'.flux'
           open(unit=funit,file=filename,form='unformatted',status='unknown')
           fopen = .true.
        end if
@@ -300,7 +301,7 @@ contains
        ! save spectrum
        if (mock(idir)%compute_spectrum) then 
           if (.not. sopen) then 
-             write(filename,'(a,a)') trim(mock_outputfilename),'_spectrum'
+             write(filename,'(a,a)') trim(mock_outputfilename),'.spectrum'
              open(unit=sunit,file=filename,form='unformatted',status='unknown')
              sopen = .true.
           end if
@@ -311,7 +312,7 @@ contains
        ! save image
        if (mock(idir)%compute_image) then 
           if (.not. iopen) then 
-             write(filename,'(a,a)') trim(mock_outputfilename),'_image'
+             write(filename,'(a,a)') trim(mock_outputfilename),'.image'
              open(unit=iunit,file=filename,form='unformatted',status='unknown')
              iopen = .true.
           end if
@@ -323,7 +324,7 @@ contains
        ! save cube
        if (mock(idir)%compute_cube) then 
           if (.not. copen) then 
-             write(filename,'(a,a)') trim(mock_outputfilename),'_cube'
+             write(filename,'(a,a)') trim(mock_outputfilename),'.cube'
              open(unit=cunit,file=filename,form='unformatted',status='unknown')
              copen = .true.
           end if
