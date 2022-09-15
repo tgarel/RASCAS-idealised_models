@@ -141,7 +141,7 @@ program main
      print*,'mock statistics:'
      print*,'   peels_count     = ',peels_count
      print*,'   rays_count      = ',rays_count
-     print*,'   detectors_count = ',detectors_count
+     print*,'   detectors_count = ',(detectors_count(i), i=1,nDirections)
   end if
   !--LEEP--
 

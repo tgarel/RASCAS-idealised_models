@@ -1,7 +1,7 @@
 !--PEEL--
 module module_mock
 
-  use module_constants, only:clight
+  use module_constants, only:clight,planck
   
   private
 
@@ -12,7 +12,8 @@ module module_mock
      real(kind=8) :: center(3)
      ! --- FLUX --- 
      real(kind=8)             :: flux_aperture         ! collect only photons within a circle of radius flux_aperture
-     real(kind=8)             :: flux                  ! flux 
+     real(kind=8)             :: flux                  ! flux
+     real(kind=8)             :: flux_hnu              ! mean energy of photons contributing to flux
      ! --- SPECTRUM --- 
      integer(kind=4)          :: spec_npix = 0         ! nb of pixels
      real(kind=8)             :: spec_aperture         ! collect only photons within a circle of radius spec_aperture
@@ -35,7 +36,8 @@ module module_mock
   type(mockObs),allocatable :: mock(:)
 
   ! for statistics
-  integer(kind=4) :: peels_count,rays_count,detectors_count
+  integer(kind=4) :: peels_count,rays_count
+  integer(kind=4), allocatable, dimension(:) :: detectors_count
 
   ! parameters in the [mock] section :
   integer(kind=4) :: nDirections = 0
@@ -69,6 +71,7 @@ contains
        peeling_off = .true.
        
        allocate(mock(nDirections))
+       allocate(detectors_count(nDirections))
        open(unit=unit,file=mock_parameter_file,status='old',action='read',form='formatted')
        do idir = 1,nDirections
           call read_a_mock_param_set(unit,idir)
@@ -76,7 +79,8 @@ contains
           ! initialise flux
           mock(idir)%flux = 0.0d0
           mock(idir)%flux_aperture2 = mock(idir)%flux_aperture*mock(idir)%flux_aperture
-
+          mock(idir)%flux_hnu = 0.0d0
+          
           ! initialise spectrum 
           mock(idir)%compute_spectrum = .false.
           if (mock(idir)%spec_npix > 0) then 
@@ -102,11 +106,6 @@ contains
              mock(idir)%compute_cube = .true.
           end if
 
-          ! initialise counters
-          peels_count = 0
-          rays_count = 0
-          detectors_count = 0
-          
           ! define direction of observation (normalise vector)
           mock(idir)%kobs = mock(idir)%kobs / sqrt(mock(idir)%kobs(1)*mock(idir)%kobs(1)+&
                & mock(idir)%kobs(2)*mock(idir)%kobs(2)+mock(idir)%kobs(3)*mock(idir)%kobs(3))
@@ -130,6 +129,10 @@ contains
              mock(idir)%kobs_perp_2 = (/0.0d0,0.0d0,1.0d0/)
           end if
        end do
+       ! initialise counters
+       peels_count = 0
+       rays_count = 0
+       detectors_count(:) = 0
        close(unit)
     else
        peeling_off = .false. 
@@ -216,11 +219,13 @@ contains
   end subroutine mock_projected_pos
     
 
-  subroutine peel_to_flux(peel_contribution,idir)
+  subroutine peel_to_flux(peel_nu,peel_contribution,idir)
     implicit none
-    real(kind=8),intent(in) :: peel_contribution
+    real(kind=8),intent(in)    :: peel_nu,peel_contribution
     integer(kind=4),intent(in) :: idir
+    mock(idir)%flux_hnu = mock(idir)%flux_hnu + peel_nu * planck * peel_contribution
     mock(idir)%flux = mock(idir)%flux + peel_contribution
+    return
   end subroutine peel_to_flux
     
   
@@ -297,7 +302,9 @@ contains
           open(unit=funit,file=filename,form='unformatted',status='unknown')
           fopen = .true.
        end if
-       write(funit) mock(idir)%flux_aperture, mock(idir)%flux
+       ! normalize hnu by flux, i.e. the sum of exp(-tau)
+       mock(idir)%flux_hnu =  mock(idir)%flux_hnu / mock(idir)%flux
+       write(funit) mock(idir)%flux_aperture, mock(idir)%flux, mock(idir)%flux_hnu
        ! save spectrum
        if (mock(idir)%compute_spectrum) then 
           if (.not. sopen) then 
