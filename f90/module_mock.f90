@@ -22,6 +22,7 @@ module module_mock
      ! --- IMAGE --- 
      integer(kind=4)          :: image_npix = 0        ! nb of pixels across image
      real(kind=8)             :: image_side            ! extent of observation [box units]
+     real(kind=8)             :: image_hnu             ! mean energy of photons contributing to image
      real(kind=8),allocatable :: image(:,:)            ! actual image. 
      ! --- CUBE ---
      integer(kind=4)          :: cube_lbda_npix  = 0
@@ -95,6 +96,7 @@ contains
           if (mock(idir)%image_npix > 0) then 
              allocate(mock(idir)%image(mock(idir)%image_npix,mock(idir)%image_npix))
              mock(idir)%image = 0.0d0
+             mock(idir)%image_hnu = 0.0d0
              mock(idir)%compute_image = .true.
           end if
 
@@ -229,20 +231,22 @@ contains
   end subroutine peel_to_flux
     
   
-  subroutine peel_to_map(pp,peel_contribution,idir)
+  subroutine peel_to_map(pp,peel_nu,peel_contribution,idir)
 
     implicit none
-
-    real(kind=8),intent(in) :: pp(2),peel_contribution
+    real(kind=8),intent(in)    :: pp(2),peel_nu,peel_contribution
     integer(kind=4),intent(in) :: idir
-    integer(kind=4) :: ix,iy,n
-    real(kind=8) :: dx
+    integer(kind=4)            :: ix,iy,n
+    real(kind=8)               :: dx
     dx = mock(idir)%image_side
     n  = mock(idir)%image_npix
     ix = int((pp(1) + 0.5d0 * dx) /dx * n) + 1
     iy = int((pp(2) + 0.5d0 * dx) /dx * n) + 1
-    if (ix>0 .and. ix<=n .and. iy>0 .and. iy<=n) mock(idir)%image(ix,iy) = mock(idir)%image(ix,iy) + peel_contribution
-    
+    if (ix>0 .and. ix<=n .and. iy>0 .and. iy<=n) then
+       mock(idir)%image(ix,iy) = mock(idir)%image(ix,iy) + peel_contribution
+       mock(idir)%image_hnu = mock(idir)%image_hnu + peel_nu * planck * peel_contribution
+    endif
+
     return
 
   end subroutine peel_to_map
@@ -327,6 +331,9 @@ contains
           write(iunit) mock(idir)%image_side
           write(iunit) (mock(idir)%center(i),i=1,3)
           write(iunit) ((mock(idir)%image(i,j),i=1,mock(idir)%image_npix),j=1,mock(idir)%image_npix)
+          ! normalize hnu by flux, i.e. the sum of exp(-tau) over all pixels
+          mock(idir)%image_hnu =  mock(idir)%image_hnu / sum(mock(idir)%image)
+          write(iunit) mock(idir)%image_hnu
        end if
        ! save cube
        if (mock(idir)%compute_cube) then 
