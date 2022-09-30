@@ -2,7 +2,10 @@ module module_parallel_mpi
 
   use mpi
   use module_photon
-  
+  !--PEEL-- 
+  use module_mock
+  !--LEEP--
+
   implicit none
 
   ! MPI constants
@@ -14,12 +17,15 @@ module module_parallel_mpi
   integer(kind=4),dimension(MPI_STATUS_SIZE)      :: status
 
   ! define a MPI derived type for photons
-  integer(kind=4),parameter                       :: nbloc=10
+  integer(kind=4),parameter                       :: nbloc=11
   integer(kind=4),dimension(nbloc)                :: types, longueurs_blocs
   integer(kind=MPI_ADDRESS_KIND),dimension(nbloc) :: deplacements, adresses
   integer(kind=MPI_ADDRESS_KIND)                  :: lb,extent,nextelement,lbound,asize
   integer(kind=4)                                 :: mpi_type_photon,temp
 
+  !--PEEL--
+  public :: master_receives_mock, send_mock_to_master
+  !--LEEP-- 
 
 contains
 
@@ -83,6 +89,7 @@ contains
     !    real(kind=8)              :: time         ! time in [s] from emission to escape/absorption        
     !    real(kind=8)              :: tau_abs_curr ! current optical depth (useful when photon change mesh domain)
     !    integer(kind=4)           :: iran         ! state of the random generator
+    !    real(kind=8),dimension(3) :: v_src        ! velocity of the source -- for peeling off
     ! end type photon_current
 
 
@@ -96,10 +103,11 @@ contains
          MPI_INTEGER, &
          MPI_DOUBLE_PRECISION, &
          MPI_DOUBLE_PRECISION, &
-         MPI_INTEGER /)
+         MPI_INTEGER, &
+         MPI_DOUBLE_PRECISION /)
 
     ! block lengths
-    longueurs_blocs = (/1,1,3,3,1,3,1,1,1,1/)
+    longueurs_blocs = (/1,1,3,3,1,3,1,1,1,1,3/)
   
     call MPI_GET_ADDRESS(p(1)%id,           adresses(1),code)
     call MPI_GET_ADDRESS(p(1)%status,       adresses(2),code)
@@ -111,6 +119,7 @@ contains
     call MPI_GET_ADDRESS(p(1)%time,         adresses(8),code)
     call MPI_GET_ADDRESS(p(1)%tau_abs_curr, adresses(9),code)
     call MPI_GET_ADDRESS(p(1)%iran,         adresses(10),code)
+    call MPI_GET_ADDRESS(p(1)%v_src,        adresses(11),code)
 
     ! Compute array of displacements
     do i=1,nbloc
@@ -166,6 +175,7 @@ contains
        p_test(i)%time = 1.23456789 * i
        p_test(i)%tau_abs_curr = 0.
        p_test(i)%iran = -99
+       p_test(i)%v_src = (/20.e5*i,-10.e5*i,5.e5*i/)
     enddo
     
     ! Send p_test from 0 to 1
@@ -189,10 +199,151 @@ contains
           if(p_test(i)%time /= temp_p(i)%time) stop 'problem with MPI type'
           if(p_test(i)%tau_abs_curr /= temp_p(i)%tau_abs_curr) stop 'problem with MPI type'
           if(p_test(i)%iran /= temp_p(i)%iran) stop 'problem with MPI type'
+          do j=1,3
+             if(p_test(i)%v_src(j) /= temp_p(i)%v_src(j)) stop 'problem with MPI type'
+          enddo
        enddo
     endif
   end subroutine test_mpi_type
-  
+
+  !--PEEL--
+  subroutine send_mock_to_master(idcpu)
+    ! send mocks to master
+
+    integer(kind=4),intent(in) :: idcpu
+    integer(kind=4) :: idir, n
+
+    n = idcpu
+    print*,'cpu ',idcpu,' is sending info ... '
+    call MPI_SEND(n, 1, MPI_INTEGER, 0, tag , MPI_COMM_WORLD, code)
+
+    do idir = 1,nDirections
+       ! flux
+       call MPI_SEND(mock(idir)%flux_aperture, 1, MPI_DOUBLE_PRECISION, 0, tag , MPI_COMM_WORLD, code)
+       call MPI_SEND(mock(idir)%flux, 1, MPI_DOUBLE_PRECISION, 0, tag , MPI_COMM_WORLD, code)
+       call MPI_SEND(mock(idir)%flux_hnu, 1, MPI_DOUBLE_PRECISION, 0, tag , MPI_COMM_WORLD, code)
+       ! spectrum
+       call MPI_SEND(mock(idir)%compute_spectrum, 1, MPI_LOGICAL, 0, tag , MPI_COMM_WORLD, code)
+       if (mock(idir)%compute_spectrum) then 
+          call MPI_SEND(mock(idir)%spec_npix, 1, MPI_INTEGER, 0, tag , MPI_COMM_WORLD, code)
+          call MPI_SEND(mock(idir)%spec_aperture, 1, MPI_DOUBLE_PRECISION, 0, tag , MPI_COMM_WORLD, code)
+          call MPI_SEND(mock(idir)%spec_lmin, 1, MPI_DOUBLE_PRECISION, 0, tag , MPI_COMM_WORLD, code)
+          call MPI_SEND(mock(idir)%spec_lmax, 1, MPI_DOUBLE_PRECISION, 0, tag , MPI_COMM_WORLD, code)
+          call MPI_SEND(mock(idir)%spectrum, mock(idir)%spec_npix, MPI_DOUBLE_PRECISION, 0, tag , MPI_COMM_WORLD, code)
+       end if
+       ! image
+       call MPI_SEND(mock(idir)%compute_image, 1, MPI_LOGICAL, 0, tag , MPI_COMM_WORLD, code)
+       if (mock(idir)%compute_image) then 
+          call MPI_SEND(mock(idir)%image_npix, 1, MPI_INTEGER, 0, tag , MPI_COMM_WORLD, code)
+          call MPI_SEND(mock(idir)%image_side, 1, MPI_DOUBLE_PRECISION, 0, tag , MPI_COMM_WORLD, code)
+          call MPI_SEND(mock(idir)%center, 3, MPI_DOUBLE_PRECISION, 0, tag , MPI_COMM_WORLD, code)
+          n = mock(idir)%image_npix*mock(idir)%image_npix
+          call MPI_SEND(mock(idir)%image, n, MPI_DOUBLE_PRECISION, 0, tag , MPI_COMM_WORLD, code)
+          call MPI_SEND(mock(idir)%image_hnu, 1, MPI_DOUBLE_PRECISION, 0, tag , MPI_COMM_WORLD, code)
+       end if
+       ! cube
+       call MPI_SEND(mock(idir)%compute_cube, 1, MPI_LOGICAL, 0, tag , MPI_COMM_WORLD, code)
+       if (mock(idir)%compute_cube) then 
+          call MPI_SEND(mock(idir)%cube_lbda_npix, 1, MPI_INTEGER, 0, tag , MPI_COMM_WORLD, code)
+          call MPI_SEND(mock(idir)%cube_image_npix, 1, MPI_INTEGER, 0, tag , MPI_COMM_WORLD, code)
+          call MPI_SEND(mock(idir)%cube_lmin, 1, MPI_DOUBLE_PRECISION, 0, tag , MPI_COMM_WORLD, code)
+          call MPI_SEND(mock(idir)%cube_lmax, 1, MPI_DOUBLE_PRECISION, 0, tag , MPI_COMM_WORLD, code)
+          call MPI_SEND(mock(idir)%cube_side, 1, MPI_DOUBLE_PRECISION, 0, tag , MPI_COMM_WORLD, code)
+          call MPI_SEND(mock(idir)%center, 3, MPI_DOUBLE_PRECISION, 0, tag , MPI_COMM_WORLD, code)
+          n = mock(idir)%cube_lbda_npix*mock(idir)%cube_image_npix*mock(idir)%cube_image_npix
+          call MPI_SEND(mock(idir)%cube, n, MPI_DOUBLE_PRECISION, 0, tag , MPI_COMM_WORLD, code)
+       end if
+       ! stats
+       call MPI_SEND(detectors_count(idir), 1, MPI_INTEGER, 0, tag, MPI_COMM_WORLD, code)
+    end do
+    ! stats
+    call MPI_SEND(peels_count, 1, MPI_INTEGER, 0, tag, MPI_COMM_WORLD, code)
+    call MPI_SEND(rays_count, 1, MPI_INTEGER, 0, tag, MPI_COMM_WORLD, code)
+    
+    return
+    
+  end subroutine send_mock_to_master
+
+  subroutine master_receives_mock
+
+    ! Receive mocks from a worker and add it to master's
+
+    implicit none 
+    integer(kind=4) :: idir, n, idcpu, count
+    real(kind=8)             :: flux,tmp_hnu
+    real(kind=8),allocatable :: spec(:), image(:,:), cube(:,:,:)
+    
+    
+    ! First, receive information from a given CPU and identify the CPU
+    print*,'master about to receive ... '
+    call MPI_RECV(n, 1, MPI_INTEGER, MPI_ANY_SOURCE, MPI_ANY_TAG, MPI_COMM_WORLD, status, IERROR)
+    print*,'master received idcpu = ',n
+    idcpu = status(MPI_SOURCE)
+    if (idcpu /= n) then
+       print*,'Jeje has to learn MPI ... '
+    end if
+    
+    do idir = 1,nDirections
+       ! flux
+       call MPI_RECV(mock(idir)%flux_aperture, 1, MPI_DOUBLE_PRECISION, idcpu, DONE_TAG , MPI_COMM_WORLD, status,IERROR)
+       call MPI_RECV(flux, 1, MPI_DOUBLE_PRECISION, idcpu, DONE_TAG , MPI_COMM_WORLD, status,IERROR)
+       call MPI_RECV(tmp_hnu, 1, MPI_DOUBLE_PRECISION, idcpu, DONE_TAG , MPI_COMM_WORLD, status,IERROR)
+       mock(idir)%flux = mock(idir)%flux + flux
+       mock(idir)%flux_hnu = mock(idir)%flux_hnu + tmp_hnu
+       ! spectrum
+       call MPI_RECV(mock(idir)%compute_spectrum, 1, MPI_LOGICAL, idcpu, DONE_TAG , MPI_COMM_WORLD, status,IERROR)
+       if (mock(idir)%compute_spectrum) then
+          call MPI_RECV(mock(idir)%spec_npix, 1, MPI_INTEGER, idcpu, DONE_TAG , MPI_COMM_WORLD, status,IERROR)
+          call MPI_RECV(mock(idir)%spec_aperture, 1, MPI_DOUBLE_PRECISION, idcpu, DONE_TAG , MPI_COMM_WORLD, status,IERROR)
+          call MPI_RECV(mock(idir)%spec_lmin, 1, MPI_DOUBLE_PRECISION, idcpu, DONE_TAG , MPI_COMM_WORLD, status,IERROR)
+          call MPI_RECV(mock(idir)%spec_lmax, 1, MPI_DOUBLE_PRECISION, idcpu, DONE_TAG , MPI_COMM_WORLD, status,IERROR)
+          allocate(spec(mock(idir)%spec_npix))
+          call MPI_RECV(spec, mock(idir)%spec_npix, MPI_DOUBLE_PRECISION, idcpu, DONE_TAG , MPI_COMM_WORLD, status,IERROR)
+          mock(idir)%spectrum = mock(idir)%spectrum + spec
+          deallocate(spec)
+       end if
+       ! image
+       call MPI_RECV(mock(idir)%compute_image, 1, MPI_LOGICAL, idcpu, DONE_TAG , MPI_COMM_WORLD, status,IERROR)
+       if (mock(idir)%compute_image) then 
+          call MPI_RECV(mock(idir)%image_npix, 1, MPI_INTEGER, idcpu, DONE_TAG , MPI_COMM_WORLD, status,IERROR)
+          call MPI_RECV(mock(idir)%image_side, 1, MPI_DOUBLE_PRECISION, idcpu, DONE_TAG , MPI_COMM_WORLD, status,IERROR)
+          call MPI_RECV(mock(idir)%center, 3, MPI_DOUBLE_PRECISION, idcpu, DONE_TAG , MPI_COMM_WORLD, status,IERROR)
+          n = mock(idir)%image_npix*mock(idir)%image_npix
+          allocate(image(mock(idir)%image_npix,mock(idir)%image_npix))
+          call MPI_RECV(image, n, MPI_DOUBLE_PRECISION, idcpu, DONE_TAG , MPI_COMM_WORLD, status,IERROR)
+          mock(idir)%image = mock(idir)%image + image
+          deallocate(image)
+          call MPI_RECV(tmp_hnu, 1, MPI_DOUBLE_PRECISION, idcpu, DONE_TAG , MPI_COMM_WORLD, status,IERROR)
+          mock(idir)%image_hnu =  mock(idir)%image_hnu + tmp_hnu
+       end if
+       ! cube
+       call MPI_RECV(mock(idir)%compute_cube, 1, MPI_LOGICAL, idcpu, DONE_TAG , MPI_COMM_WORLD, status,IERROR)
+       if (mock(idir)%compute_cube) then 
+          call MPI_RECV(mock(idir)%cube_lbda_npix, 1, MPI_INTEGER, idcpu, DONE_TAG , MPI_COMM_WORLD, status,IERROR)
+          call MPI_RECV(mock(idir)%cube_image_npix, 1, MPI_INTEGER, idcpu, DONE_TAG , MPI_COMM_WORLD, status,IERROR)
+          call MPI_RECV(mock(idir)%cube_lmin, 1, MPI_DOUBLE_PRECISION, idcpu, DONE_TAG , MPI_COMM_WORLD, status,IERROR)
+          call MPI_RECV(mock(idir)%cube_lmax, 1, MPI_DOUBLE_PRECISION, idcpu, DONE_TAG , MPI_COMM_WORLD, status,IERROR)
+          call MPI_RECV(mock(idir)%cube_side, 1, MPI_DOUBLE_PRECISION, idcpu, DONE_TAG , MPI_COMM_WORLD, status,IERROR)
+          call MPI_RECV(mock(idir)%center, 3, MPI_DOUBLE_PRECISION, idcpu, DONE_TAG , MPI_COMM_WORLD, status,IERROR)
+          n = mock(idir)%cube_lbda_npix*mock(idir)%cube_image_npix*mock(idir)%cube_image_npix
+          allocate(cube(mock(idir)%cube_lbda_npix,mock(idir)%cube_image_npix,mock(idir)%cube_image_npix))
+          call MPI_RECV(cube, n, MPI_DOUBLE_PRECISION, idcpu, DONE_TAG , MPI_COMM_WORLD, status,IERROR)
+          mock(idir)%cube = mock(idir)%cube + cube
+          deallocate(cube)
+       end if
+       call MPI_RECV(count, 1, MPI_INTEGER, idcpu, DONE_TAG , MPI_COMM_WORLD, status, IERROR)
+       detectors_count(idir) = detectors_count(idir)+count
+    end do
+    ! stats
+    call MPI_RECV(count, 1, MPI_INTEGER, idcpu, DONE_TAG , MPI_COMM_WORLD, status, IERROR)
+    peels_count = peels_count+count
+    call MPI_RECV(count, 1, MPI_INTEGER, idcpu, DONE_TAG , MPI_COMM_WORLD, status, IERROR)
+    rays_count = rays_count+count
+    
+    return
+    
+  end subroutine master_receives_mock
+  !--LEEP--
   
 end module module_parallel_mpi
 

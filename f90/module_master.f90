@@ -3,6 +3,9 @@ module module_master
   use module_parallel_mpi
   use module_domain
   use module_photon
+  !--PEEL--
+  use module_mock
+  !--LEEP-- 
 
   implicit none
 
@@ -45,6 +48,9 @@ contains
     logical                                       :: everything_not_done
     real(kind=8)                                  :: start_initphot, end_initphot, time_now, dt_since_last_backup, time_last_backup
     real(kind=8)                                  :: percentDone, percentBefore
+    !--PEEL--
+    integer(kind=4) :: nmocks_received
+    !--LEEP-- 
     
     call cpu_time(start_initphot)
 
@@ -254,6 +260,31 @@ contains
     ! finale synchronization, for profiling purposes
     call MPI_BARRIER(MPI_COMM_WORLD,code)    
 
+    !--PEEL--
+    if (peeling_off) then 
+       nmocks_received = 0
+       print*,'[master] gathering mocks from workers ... '
+       do while (nmocks_received /= nworker)
+          call master_receives_mock
+          nmocks_received = nmocks_received + 1
+          print*,'[master] \__ ',nmocks_received,'/',nworker
+       end do
+       
+       ! post-final synchronization, for profiling purposes
+       call MPI_BARRIER(MPI_COMM_WORLD,code)    
+       
+       print*,'[master] writing mock to file'
+       call dump_mocks
+
+       print*,'[master] mock statistics'
+       print*,'   peels_count     = ',peels_count
+       print*,'   rays_count      = ',rays_count
+       print*,'   detectors_count = ',(detectors_count(i), i=1,nDirections)
+       
+    end if
+    !--LEEP--
+
+    
     if(verbose)then
        call print_diagnostics
        !print *,' '

@@ -113,7 +113,7 @@ GASOBJS = module_constants.o module_random.o module_utils.o module_voigt.o modul
 
 OBJSDOM = $(GASOBJS) module_select.o module_mesh.o
 
-OBJSPHO = $(GASOBJS) module_mesh.o module_photon.o 
+OBJSPHO = $(GASOBJS) module_mesh.o module_mock.o module_photon.o 
 
 OBJSMPI = $(OBJSPHO) module_parallel_mpi.o module_worker.o module_master.o
 
@@ -133,8 +133,8 @@ OBJFESC	= $(GASOBJS) module_mesh.o module_gray_ray.o
 #############################################################################
 all: clean CreateDomDump PhotonsFromSourceModel PhotonsFromStars rascas-serial
 
-PhotonsFromSourceModel: $(OBJSPHO) PhotonsFromSourceModel.o
-	$(F90) $(FFLAGS) $(LDFLAGS) -o $@ $(OBJSPHO) PhotonsFromSourceModel.o
+PhotonsFromSourceModel: $(OBJSPHO) module_ssp_lib.o PhotonsFromSourceModel.o
+	$(F90) $(FFLAGS) $(LDFLAGS) -o $@ $(OBJSPHO) module_ssp_lib.o PhotonsFromSourceModel.o
 
 PhotonsFromStars: $(OBJSPHO) module_ssp_lib.o PhotonsFromStars.o
 	$(F90) $(FFLAGS) $(LDFLAGS) -o $@ $(OBJSPHO) module_ssp_lib.o PhotonsFromStars.o
