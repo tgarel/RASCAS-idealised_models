@@ -133,8 +133,8 @@ OBJFESC	= $(GASOBJS) module_mesh.o module_gray_ray.o
 #############################################################################
 all: clean CreateDomDump PhotonsFromSourceModel PhotonsFromStars rascas-serial
 
-PhotonsFromSourceModel: $(OBJSPHO) PhotonsFromSourceModel.o
-	$(F90) $(FFLAGS) $(LDFLAGS) -o $@ $(OBJSPHO) PhotonsFromSourceModel.o
+PhotonsFromSourceModel: $(OBJSPHO) module_ssp_lib.o PhotonsFromSourceModel.o
+	$(F90) $(FFLAGS) $(LDFLAGS) -o $@ $(OBJSPHO) module_ssp_lib.o PhotonsFromSourceModel.o
 
 PhotonsFromStars: $(OBJSPHO) module_ssp_lib.o PhotonsFromStars.o
 	$(F90) $(FFLAGS) $(LDFLAGS) -o $@ $(OBJSPHO) module_ssp_lib.o PhotonsFromStars.o
