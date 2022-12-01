@@ -103,8 +103,10 @@ contains
          MPI_INTEGER /)
 
     ! block lengths
-    longueurs_blocs = (/1,1,3,3,1,3,1,1,1,1/)
-  
+    ! TIBO
+    longueurs_blocs = (/1,1,3,3,1,3,1,1,1,1,1/)
+    ! OBIT
+    
     call MPI_GET_ADDRESS(p(1)%id,           adresses(1),code)
     call MPI_GET_ADDRESS(p(1)%status,       adresses(2),code)
     call MPI_GET_ADDRESS(p(1)%xlast,        adresses(3),code)
