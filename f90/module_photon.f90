@@ -23,6 +23,7 @@ module module_photon
      real(kind=8)              :: time         ! time in [s] from emission to escape/absorption        
      real(kind=8)              :: tau_abs_curr ! current optical depth (useful when photon change mesh domain)
      integer(kind=4)           :: iran         ! state of the random generator
+     integer(kind=4)           :: n_backscatt  ! state of the random generator
   end type photon_current
   ! Note: if you change something in photon_current, don't forget to update the mpi_photon_type in module_parallel_mpi.f90
 
@@ -78,6 +79,17 @@ contains
     real(kind=8),dimension(3)            :: vgas, k, cell_corner, posoct, pcell
     logical                              :: cell_fully_in_domain, flagoutvol, in_domain, OutOfDomainBeforeCell
     real(kind=8)                         :: dborder, dborder_cm, error
+
+    !--CORESKIP--
+    real(kind=8)                         :: xcrit,dist_cm
+    !--PIKSEROC--
+
+    ! TIBO
+    integer(kind=4)                      :: n_bs
+    real(kind=8)                         :: travelled_distance, dist_to_intersection, dot_kin_k, scalar2
+    real(kind=8),dimension(3)            :: k_input, intersect_point
+    logical                              :: in_domain2
+    ! OBIT
     
     ! initialise working props of photon
     ppos    = p%xcurr        ! position within full simulation box, in box units.
@@ -96,7 +108,12 @@ contains
     ioct  = icell - domesh%nCoarse - (ind - 1) * domesh%nOct
     flagoutvol = .false.
 
-
+    ! TIBO
+    n_bs               = 0
+    travelled_distance = 0.0d0
+    k_input            = p%k     ! Save input k vector
+    ! OBIT
+    
     ! propagate photon until escape or death ... 
     photon_propagation : do 
 
@@ -166,7 +183,10 @@ contains
              enddo
              ! update travel time
              time = time + distance_to_border_cm/clight
-
+             ! TIBO: increment travelled distance as long as photon does not scatter
+             travelled_distance = travelled_distance + distance_to_border_cm/clight
+             !OBIT
+             
              if (OutOfDomainBeforeCell) then ! photon exits computational domain and is done 
                 ! it may happen due to numerical precision that the photon is still in the domain despite epsilon above.
                 ! -> check and issue warning if it is the case. The error should not be larger than a few times epsilon. 
@@ -248,14 +268,16 @@ contains
              d    = distance_to_border_cm   ! NB: at this point, distance_to_border became "distance_to_interaction" in gas_get_scatter_flag
              time = time + d/clight
              d    = d / cell_size_cm        ! in cell units
-
+             ! TIBO
+             travelled_distance = travelled_distance + d/clight
+             
              ! update ppos_cell
              do i=1,3
                 ppos_cell(i) = ppos_cell(i) + p%k(i) * d
              enddo
              ! update ppos according to ppos_cell
              ppos = ppos_cell * cell_size + cell_corner
-
+                
              !------------
              ! scattering
              !------------
@@ -266,6 +288,36 @@ contains
              nu_ext = p%nu_ext
              k = p%k
              call gas_scatter(scatter_flag, cell_gas, nu_cell, k, nu_ext, iran)    ! NB: nu_cell, k, nu_ext, and iran en inout
+                        
+             ! TIBO : Scattering occurs -> Check if is a BS
+             ! 0/ ignore if distance D traveled by photon is small (i.e. D < 5*dx_cell)
+             ! 1/ if kin.k < 0 (potential BS) => find position P of intersection between scattered photon's direction and plane orthogonal to kin
+             ! 2/ check P contained in domain (i.e. sphere of r=r_max)
+             ! 3/ Is scattering really reaches P ? where Dp = |P-xlast| = distance to intersection
+             ! 4/ if D > Dp => BS => n_bs = n_bs+1
+
+             ! 1/
+             if (travelled_distance > 5.0*cell_size_cm) then
+                dot_kin_k = p%k(1) * k_input(1) + p%k(2) * k_input(2) + p%k(3) * k_input(3)
+                if (dot_kin_k < 0.0) then ! potential BS
+                   scalar2 = p%xlast(1) * k_input(1) + p%xlast(2) * k_input(2) + p%xlast(3) * k_input(3)
+                   do i=1,3
+                      intersect_point(i) = p%xlast(i) - scalar2 / dot_kin_k *  p%k(i)
+                   end do
+                   !2/
+                   in_domain2 = domain_contains_point(intersect_point,domaine_calcul)
+                   if (in_domain2) then
+                      ! 3/
+                      dist_to_intersection = scalar2 / dot_kin_k * sqrt((p%k(1)*p%k(1)+p%k(2)*p%k(2)+p%k(3)*p%k(3)))
+                      ! 4/
+                      if (travelled_distance .ge. dist_to_intersection) then
+                         n_bs = n_bs + 1
+                      end if
+                   end if
+                end if
+             end if
+             
+>>>>>>> Stashed changes
              p%nu_ext = nu_ext
              ! NB: for TEST case, to have photons propagating straight on, comment the following line
              p%k = k
@@ -345,6 +397,7 @@ contains
        pgrid(i)%time         = 0.0d0
        pgrid(i)%tau_abs_curr = -1.0d0
        pgrid(i)%iran         = pgridinit(i)%iran
+       pgrid(i)%n_backscatt  = 0
     enddo
     deallocate(pgridinit)
 
@@ -400,6 +453,7 @@ contains
     write(16) (pgrid(i)%time,         i=1,np)
     write(16) (pgrid(i)%tau_abs_curr, i=1,np)
     write(16) (pgrid(i)%iran,         i=1,np)
+    write(16) (pgrid(i)%n_backscatt,  i=1,np)
     close(16)
 
   end subroutine save_photons
@@ -422,6 +476,7 @@ contains
     write(14) (pgrid(i)%k(:),    i=1,np)
     write(14) (pgrid(i)%nb_abs,  i=1,np)
     write(14) (pgrid(i)%time,    i=1,np)
+    write(14) (pgrid(i)%n_backscatt, i=1,np)
     close(14)
 
   end subroutine dump_photons

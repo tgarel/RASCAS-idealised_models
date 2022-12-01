@@ -14,7 +14,7 @@ module module_parallel_mpi
   integer(kind=4),dimension(MPI_STATUS_SIZE)      :: status
 
   ! define a MPI derived type for photons
-  integer(kind=4),parameter                       :: nbloc=10
+  integer(kind=4),parameter                       :: nbloc=11 ! nbloc=10 ! TIBO
   integer(kind=4),dimension(nbloc)                :: types, longueurs_blocs
   integer(kind=MPI_ADDRESS_KIND),dimension(nbloc) :: deplacements, adresses
   integer(kind=MPI_ADDRESS_KIND)                  :: lb,extent,nextelement,lbound,asize
@@ -70,8 +70,11 @@ contains
     ! Create an MPI datatype for sending photons
 
     integer(kind=4)      :: i
-    type(photon_current),dimension(10) :: p
-
+    ! TIBO
+    !type(photon_current),dimension(10) :: p
+    type(photon_current),dimension(11) :: p
+    ! OBIT
+    
     ! type photon_current
     !    integer(kind=4)           :: ID
     !    integer(kind=4)           :: status       ! =0 if flying, =1 if escape, =2 if absorption (by dust)
@@ -96,6 +99,7 @@ contains
          MPI_INTEGER, &
          MPI_DOUBLE_PRECISION, &
          MPI_DOUBLE_PRECISION, &
+         MPI_INTEGER, &
          MPI_INTEGER /)
 
     ! block lengths
@@ -111,7 +115,10 @@ contains
     call MPI_GET_ADDRESS(p(1)%time,         adresses(8),code)
     call MPI_GET_ADDRESS(p(1)%tau_abs_curr, adresses(9),code)
     call MPI_GET_ADDRESS(p(1)%iran,         adresses(10),code)
-
+    ! TIBO
+    call MPI_GET_ADDRESS(p(1)%n_backscatt,  adresses(11),code)
+    ! OBIT
+    
     ! Compute array of displacements
     do i=1,nbloc
        deplacements(i)=adresses(i) - adresses(1)
