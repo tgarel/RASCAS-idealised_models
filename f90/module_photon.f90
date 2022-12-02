@@ -82,8 +82,8 @@ contains
 
     ! TIBO
     !integer(kind=4)                      :: n_bs
-    real(kind=8)                         :: travelled_distance, dist_to_intersection, dot_kin_k, scalar2
-    real(kind=8),dimension(3)            :: k_input, intersect_point
+    real(kind=8)                         :: travelled_distance, dist_to_intersection, dot_kin_k, scalar2,direction_factor
+    ! real(kind=8),dimension(3)            :: k_input, intersect_point
     logical                              :: in_domain2
     ! OBIT
     
@@ -108,6 +108,7 @@ contains
     !n_bs               = 0
     ! travelled_distance = 0.0d0
     k_input            = p%k     ! Save input k vector
+    direction_factor   = 1.0
     ! OBIT
     
     ! propagate photon until escape or death ... 
@@ -320,9 +321,10 @@ contains
              !!! New version
              ! Simply check ik OP.k_em < or > 0
              ! OP = position of scattering = p%xlast
-             scalar2 = p%xlast(1) * k_input(1) + p%xlast(2) * k_input(2) + p%xlast(3) * k_input(3)
+             scalar2 = p%xlast(1) * direction_factor * k_input(1) + p%xlast(2) * direction_factor * k_input(2) + p%xlast(3) * direction_factor * k_input(3)
              if (scalar2 < 0.0) then ! BS
                 p%n_backscatt = p%n_backscatt + 1
+                direction_factor = -1.0 * direction_factor ! revert k_input at each BS to count crossing of plane orthonal to k_input
              end if
                 
              p%nu_ext = nu_ext
