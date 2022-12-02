@@ -258,6 +258,13 @@ contains
                    p%time         = time
                    p%tau_abs_curr = tau_abs
                    p%iran         = iran
+                   ! TIBO : backscattering
+                   scalar2 = (p%xcurr(1)-0.5) * direction_factor * k_input(1) + (p%xcurr(2)-0.5) * direction_factor * k_input(2) + (p%xcurr(3)-0.5) * direction_factor * k_input(3)
+                   if (scalar2 < 0.0) then ! BS
+                      p%n_backscatt = p%n_backscatt + 1
+                      !direction_factor = -1.0 * direction_factor ! revert k_input at each BS to count crossing of plane orthonal to k_input
+                   end if
+                   !OBIT   
                    exit photon_propagation
                 endif
                 ! Finally, if we're here, the photon entered a cell within the current cpu domain so we go on. 
