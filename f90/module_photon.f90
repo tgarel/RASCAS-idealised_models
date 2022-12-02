@@ -83,7 +83,7 @@ contains
     ! TIBO
     !integer(kind=4)                      :: n_bs
     real(kind=8)                         :: travelled_distance, dist_to_intersection, dot_kin_k, scalar2,direction_factor
-    ! real(kind=8),dimension(3)            :: k_input, intersect_point
+    real(kind=8),dimension(3)            :: k_input ! , intersect_point
     logical                              :: in_domain2
     ! OBIT
     
