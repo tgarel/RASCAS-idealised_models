@@ -321,7 +321,7 @@ contains
              !!! New version
              ! Simply check ik OP.k_em < or > 0
              ! OP = position of scattering = p%xlast
-             scalar2 = p%xlast(1) * direction_factor * k_input(1) + p%xlast(2) * direction_factor * k_input(2) + p%xlast(3) * direction_factor * k_input(3)
+             scalar2 = (p%xlast(1)-0.5) * direction_factor * k_input(1) + (p%xlast(2)-0.5) * direction_factor * k_input(2) + (p%xlast(3)-0.5) * direction_factor * k_input(3)
              if (scalar2 < 0.0) then ! BS
                 p%n_backscatt = p%n_backscatt + 1
                 direction_factor = -1.0 * direction_factor ! revert k_input at each BS to count crossing of plane orthonal to k_input
