@@ -16,7 +16,32 @@ class photonlist(object):
             else:
                 self.load_res()
 
-            
+    def get_nRealPhotons(self):
+        # usefull to get luminosity from ICs without reading the full thing. 
+        f = ff(self.icFile) 
+        [nphoton]  = f.read_ints()
+        [nRealPhotons] = f.read_reals('d')
+        f.close()
+        return nRealPhotons
+
+    def get_nphoton(self):
+        # usefull to get luminosity from ICs without reading the full thing. 
+        f = ff(self.icFile) 
+        [nphoton]  = f.read_ints()
+        f.close()
+        return nphoton
+
+    def get_nu_ic(self):
+        # read photn IC file
+        f = ff(self.icFile) 
+        [nphoton]  = f.read_ints()
+        [nRealPhotons] = f.read_reals('d')
+        [iseed_ic] = f.read_ints()
+        ID_ic = f.read_ints()
+        nu_ic = f.read_reals('d')
+        f.close()
+        return nu_ic
+
     def load_ic(self):
         # read photn IC file
         f = ff(self.icFile) 
@@ -145,6 +170,9 @@ class photonlist(object):
         p.kx_ic    = self.kx_ic[indexes]        
         p.ky_ic    = self.ky_ic[indexes]
         p.kz_ic    = self.kz_ic[indexes]
+        p.vx_ic    = self.vx_ic[indexes]
+        p.vy_ic    = self.vy_ic[indexes]
+        p.vz_ic    = self.vz_ic[indexes]
         p.iran_ic  = self.iran_ic[indexes]
         p.ID       = self.ID[indexes]
         p.status   = self.status[indexes]
@@ -178,7 +206,10 @@ class photonlist(object):
         self.z_ic     = np.append(self.z_ic,p.z_ic)
         self.kx_ic    = np.append(self.kx_ic,p.kx_ic)
         self.ky_ic    = np.append(self.ky_ic,p.ky_ic)
-        self.kz_ic    = np.append(self.kz_ic, p.kz_ic)
+        self.kz_ic    = np.append(self.kz_ic,p.kz_ic)
+        self.vx_ic    = np.append(self.vx_ic,p.vx_ic)
+        self.vy_ic    = np.append(self.vy_ic,p.vy_ic)
+        self.vz_ic    = np.append(self.vz_ic,p.vz_ic)
         self.iran_ic  = np.append(self.iran_ic,p.iran_ic)
         self.ID       = np.append(self.ID,p.ID)
         self.status   = np.append(self.status,p.status)
@@ -213,7 +244,7 @@ class photonlist(object):
             nu = self.nu  # [Hz]
         if frame == 'source':
             scalar = self.kx_ic*self.vx_ic + self.ky_ic*self.vy_ic + self.kz_ic*self.vz_ic
-            nu = self.nu * (1. - scalar/lya.clight) # [Hz]
+            nu = self.nu_ic * (1. - scalar/lya.clight) # [Hz]
 
         lbda = lya.clight / nu * 1e8  # [A]
 

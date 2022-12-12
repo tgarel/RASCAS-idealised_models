@@ -221,6 +221,7 @@ contains
        ! flux
        call MPI_SEND(mock(idir)%flux_aperture, 1, MPI_DOUBLE_PRECISION, 0, tag , MPI_COMM_WORLD, code)
        call MPI_SEND(mock(idir)%flux, 1, MPI_DOUBLE_PRECISION, 0, tag , MPI_COMM_WORLD, code)
+       call MPI_SEND(mock(idir)%flux_hnu, 1, MPI_DOUBLE_PRECISION, 0, tag , MPI_COMM_WORLD, code)
        ! spectrum
        call MPI_SEND(mock(idir)%compute_spectrum, 1, MPI_LOGICAL, 0, tag , MPI_COMM_WORLD, code)
        if (mock(idir)%compute_spectrum) then 
@@ -238,6 +239,7 @@ contains
           call MPI_SEND(mock(idir)%center, 3, MPI_DOUBLE_PRECISION, 0, tag , MPI_COMM_WORLD, code)
           n = mock(idir)%image_npix*mock(idir)%image_npix
           call MPI_SEND(mock(idir)%image, n, MPI_DOUBLE_PRECISION, 0, tag , MPI_COMM_WORLD, code)
+          call MPI_SEND(mock(idir)%image_hnu, 1, MPI_DOUBLE_PRECISION, 0, tag , MPI_COMM_WORLD, code)
        end if
        ! cube
        call MPI_SEND(mock(idir)%compute_cube, 1, MPI_LOGICAL, 0, tag , MPI_COMM_WORLD, code)
@@ -251,11 +253,12 @@ contains
           n = mock(idir)%cube_lbda_npix*mock(idir)%cube_image_npix*mock(idir)%cube_image_npix
           call MPI_SEND(mock(idir)%cube, n, MPI_DOUBLE_PRECISION, 0, tag , MPI_COMM_WORLD, code)
        end if
+       ! stats
+       call MPI_SEND(detectors_count(idir), 1, MPI_INTEGER, 0, tag, MPI_COMM_WORLD, code)
     end do
     ! stats
     call MPI_SEND(peels_count, 1, MPI_INTEGER, 0, tag, MPI_COMM_WORLD, code)
     call MPI_SEND(rays_count, 1, MPI_INTEGER, 0, tag, MPI_COMM_WORLD, code)
-    call MPI_SEND(detectors_count, 1, MPI_INTEGER, 0, tag, MPI_COMM_WORLD, code)
     
     return
     
@@ -267,7 +270,7 @@ contains
 
     implicit none 
     integer(kind=4) :: idir, n, idcpu, count
-    real(kind=8)             :: flux
+    real(kind=8)             :: flux,tmp_hnu
     real(kind=8),allocatable :: spec(:), image(:,:), cube(:,:,:)
     
     
@@ -284,7 +287,9 @@ contains
        ! flux
        call MPI_RECV(mock(idir)%flux_aperture, 1, MPI_DOUBLE_PRECISION, idcpu, DONE_TAG , MPI_COMM_WORLD, status,IERROR)
        call MPI_RECV(flux, 1, MPI_DOUBLE_PRECISION, idcpu, DONE_TAG , MPI_COMM_WORLD, status,IERROR)
+       call MPI_RECV(tmp_hnu, 1, MPI_DOUBLE_PRECISION, idcpu, DONE_TAG , MPI_COMM_WORLD, status,IERROR)
        mock(idir)%flux = mock(idir)%flux + flux
+       mock(idir)%flux_hnu = mock(idir)%flux_hnu + tmp_hnu
        ! spectrum
        call MPI_RECV(mock(idir)%compute_spectrum, 1, MPI_LOGICAL, idcpu, DONE_TAG , MPI_COMM_WORLD, status,IERROR)
        if (mock(idir)%compute_spectrum) then
@@ -308,6 +313,8 @@ contains
           call MPI_RECV(image, n, MPI_DOUBLE_PRECISION, idcpu, DONE_TAG , MPI_COMM_WORLD, status,IERROR)
           mock(idir)%image = mock(idir)%image + image
           deallocate(image)
+          call MPI_RECV(tmp_hnu, 1, MPI_DOUBLE_PRECISION, idcpu, DONE_TAG , MPI_COMM_WORLD, status,IERROR)
+          mock(idir)%image_hnu =  mock(idir)%image_hnu + tmp_hnu
        end if
        ! cube
        call MPI_RECV(mock(idir)%compute_cube, 1, MPI_LOGICAL, idcpu, DONE_TAG , MPI_COMM_WORLD, status,IERROR)
@@ -324,14 +331,14 @@ contains
           mock(idir)%cube = mock(idir)%cube + cube
           deallocate(cube)
        end if
+       call MPI_RECV(count, 1, MPI_INTEGER, idcpu, DONE_TAG , MPI_COMM_WORLD, status, IERROR)
+       detectors_count(idir) = detectors_count(idir)+count
     end do
     ! stats
     call MPI_RECV(count, 1, MPI_INTEGER, idcpu, DONE_TAG , MPI_COMM_WORLD, status, IERROR)
     peels_count = peels_count+count
     call MPI_RECV(count, 1, MPI_INTEGER, idcpu, DONE_TAG , MPI_COMM_WORLD, status, IERROR)
     rays_count = rays_count+count
-    call MPI_RECV(count, 1, MPI_INTEGER, idcpu, DONE_TAG , MPI_COMM_WORLD, status, IERROR)
-    detectors_count = detectors_count+count
     
     return
     

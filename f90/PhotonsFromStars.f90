@@ -2,7 +2,7 @@ program PhotonsFromStars
   
   ! generate photons emitted by star particles within a given domain
 
-  use module_utils
+  use module_utils, only: isotropic_direction, binary_search
   use module_domain
   use module_random
   use module_constants
@@ -37,7 +37,7 @@ program PhotonsFromStars
   ! --- domain whithin which star particles will be selected (should be within computational domain used for RT). 
   character(10)             :: star_dom_type      = 'sphere'         ! shape type of domain  // default is sphere.
   real(kind=8),dimension(3) :: star_dom_pos       = (/0.5,0.5,0.5/)  ! center of domain [code units]
-  real(kind=8)              :: star_dom_rsp       = 0.3              ! radius of spher [code units]
+  real(kind=8)              :: star_dom_rsp       = 0.3              ! radius of sphere [code units]
   real(kind=8)              :: star_dom_size      = 0.3              ! size of cube [code units]
   real(kind=8)              :: star_dom_rin       = 0.0              ! inner radius of shell [code units]
   real(kind=8)              :: star_dom_rout      = 0.3              ! outer radius of shell [code units]
@@ -417,39 +417,7 @@ contains
     
     return
   end subroutine compute_cum_low_prob
-  
-  
-  subroutine binary_search(iseed, nbin, low_prob, ilow)
-    
-    implicit none
-    integer(kind=4),intent(inout)             :: iseed
-    integer(kind=4),intent(in)                :: nbin
-    real(kind=8),intent(in),dimension(nbin+1) :: low_prob
-    integer(kind=4),intent(out)               :: ilow
-    integer(kind=4)                           :: iup, imid
-    real(kind=8)                              :: mid, r1
-    
-    r1 = ran3(iseed)
-    ! binary search
-    iup = nbin+1
-    ilow = 1
-    do while (iup - ilow > 1)
-       imid = (iup+ilow)/2
-       mid  = low_prob(imid)
-       if (r1 >= mid) then 
-          ilow = imid
-       else
-          iup = imid
-       end if
-    end do
-    ! check
-    if (.not. (r1 >= low_prob(ilow) .and. r1 < low_prob(iup) )) then
-       print*,'ERROR'
-       stop
-    end if
-    return
-  end subroutine binary_search
-  
+
   
   subroutine read_PhotonsFromStars_params(pfile)
 

@@ -59,6 +59,7 @@ module module_ramses
 
   ! particle-related stuff -----------------------------------------------------------
   character(30) :: ParticleFields(20)  ! array of particle fields (e.g. (/'pos','vel','mass','iord','level'/) for a DM-only run)
+  integer(kind=1),parameter :: FAM_DM=1, FAM_STAR=2, FAM_CLOUD=3, FAM_DEBRIS=4, FAM_OTHER=5, FAM_UNDEF=127
   ! conformal time things
   integer(kind=4),parameter             :: n_frw = 1000
   real(KIND=8),dimension(:),allocatable :: aexp_frw,hexp_frw,tau_frw,t_frw
@@ -75,6 +76,7 @@ module module_ramses
   logical                  :: use_initial_mass  = .false.  ! if true, use initial masses of star particles instead of mass at output time
   logical                  :: cosmo             = .true.   ! if false, assume idealised simulation
   logical                  :: use_proper_time   = .false.  ! if true, use proper time instead of conformal time for cosmo runs. 
+  logical                  :: particle_families = .false.  ! if true, all particles have an extra family field, and the header file is different
   ! miscelaneous
   logical                  :: verbose        = .false. ! display some run-time info on this module
   ! RT variable indices
@@ -1284,6 +1286,7 @@ contains
     character(128)                            :: orderingtype
     integer(kind=4)                           :: i, ios
     integer(kind=4),parameter                 :: param_unit = 13
+    real(qdp)                                 :: delta
     
     write(nomfich,'(a,a,i5.5,a,i5.5,a)') trim(repository), '/output_', snapnum, '/amr_', snapnum, '.out00001'
     inquire(file=nomfich, exist=ok)
@@ -1294,14 +1297,14 @@ contains
     open(unit=param_unit,file=nomfich,form='unformatted',status='old',action='read',iostat=ios)
     do i=1,24 ! Assume that there is no "simple boundary"
        read(param_unit,iostat=ios)
-       !print*,'ios =',ios
+       !print*,'ios =',ios,is_iostat_end(ios)
     end do
     read(param_unit,iostat=ios) orderingtype
     !print*,'ios =',ios
-
+    
     if (trim(orderingtype) .ne. 'bisection') then
        read(param_unit,iostat=ios) bound_key
-       !print*,'ios bk =',ios
+       !print*,'ios bk =',ios !,is_iostat_end(ios)
        if(ios/=0) then ! read in dp
           print*,'Reading Hilbert keys in quad precision failed, read them in double precision...'
           close(param_unit)
@@ -1320,7 +1323,49 @@ contains
           end if
           bound_key = real(bound_key_dp, kind=qdp)
        end if
-     end if
+       ! add a second test, because some intel versions do not return ios properly...
+       print *,'-- test keys in info file'
+       call read_hilbert_keys(repository,snapnum,ncpu,bound_key_dp)
+       !print*,minval(bound_key_dp),maxval(bound_key_dp)
+       !print*,maxval(real(bound_key_dp, kind=qdp))
+       delta = abs(maxval(bound_key)-maxval(real(bound_key_dp, kind=qdp)))/maxval(bound_key)
+       if (delta < 0.01) then
+          print *, '-- similar max value found, everything looks good'
+       else
+          print *,'-- found some different values', delta
+          print *,'-- better to read in dp'
+          !print*,'Reading Hilbert keys in quad precision failed, read them in double precision...'
+          close(param_unit)
+          open(unit=param_unit,file=nomfich,form='unformatted',status='old',action='read',iostat=ios)
+          do i=1,24 ! Assume that there is no "simple boundary"
+             read(param_unit,iostat=ios)
+             !print*,'ios =',ios
+          end do
+          read(param_unit,iostat=ios) orderingtype
+          !print*,'ios =',ios
+          read(param_unit,iostat=ios) bound_key_dp
+          !print*,'ios bk =',ios
+          !print*,bound_key_dp(0:10)
+          !print*,minval(bound_key_dp),maxval(bound_key_dp)
+          if(ios/=0) then
+             print*,'Reading Hilbert keys in double precision failed, read them in the info file...'
+             call read_hilbert_keys(repository,snapnum,ncpu,bound_key_dp)
+          end if
+          bound_key = real(bound_key_dp, kind=qdp)
+          print *,'-- test keys in info file'
+          call read_hilbert_keys(repository,snapnum,ncpu,bound_key_dp)
+          !print*,minval(bound_key_dp),maxval(bound_key_dp)
+          !print*,maxval(real(bound_key_dp, kind=qdp))
+          delta = abs(maxval(bound_key)-maxval(real(bound_key_dp, kind=qdp)))/maxval(bound_key)
+          if (delta < 0.01) then
+             !print *,delta
+             print *, '-- similar max value found, everything looks good'
+          else
+             print*,'-- problem, better stop'
+             stop
+          endif
+       endif
+    end if
 
     close (param_unit)
     
@@ -3089,6 +3134,39 @@ contains
 
   end subroutine get_fields_from_header
 
+  subroutine get_fields_from_descriptor(dir,ts,nfields)
+
+    implicit none
+
+    character(1000),intent(in)  :: dir
+    integer(kind=4),intent(in)  :: ts
+    integer(kind=4),intent(out) :: nfields
+    character(2000)             :: filename,line,iv,name
+    integer(kind=4) :: i,j,err,ivar
+
+    write(filename,'(a,a,i5.5,a,i5.5,a)') trim(dir),'/output_',ts,'/part_file_descriptor.txt'
+    open(unit=50,file=filename,status='old',action='read',form='formatted')
+    nfields = 0
+    do
+       read (50,'(a)',iostat=err) line
+       if(err/=0) exit
+       ! format should be ivar, var_name, descriptor
+       i = scan(line, ',')
+       j = scan(line, ',', .true.)  ! We need the second comma
+       if(i==0 .or. line(1:1)=='#') cycle  ! skip empty/commented lines
+       name = trim(adjustl(line(i+1:j-1)))
+       iv = trim(adjustl(line(:i-1)))
+       read(iv,*) ivar
+       ParticleFields(ivar) = name
+       nfields = nfields + 1
+    end do
+    close(50)
+
+    return
+
+  end subroutine get_fields_from_descriptor
+
+
   !*****************************************************************************************************************
 
   subroutine read_cooling(repository,snapnum)
@@ -3192,8 +3270,10 @@ contains
     character(1000)                        :: filename
     integer(kind=4),allocatable            :: id(:)
     real(kind=8),allocatable               :: age(:),m(:),x(:,:),v(:,:),mets(:),imass(:)
+    integer(kind=1),allocatable            :: family(:)
     real(kind=8)                           :: temp(3)
     integer(kind=4)                        :: rank, iunit, ilast_all
+    logical                                :: ok
     
     ! get cosmological parameters to convert conformal time into ages
     call read_cosmo_params(repository,snapnum,omega_0,lambda_0,little_h)
@@ -3219,14 +3299,22 @@ contains
     endif
 
     ! read stars 
-    nstars = get_tot_nstars(repository,snapnum)
+    if (particle_families) then
+       nstars = get_tot_nstars_families(repository, snapnum)
+    else
+       nstars = get_tot_nstars(repository,snapnum)
+    end if
     if (nstars == 0) then
        write(*,*) 'ERROR : no star particles in output '
        stop
     end if
     allocate(star_pos_all(3,nstars),star_age_all(nstars),star_mass_all(nstars),star_vel_all(3,nstars),star_met_all(nstars))
     ! get list of particle fields in outputs 
-    call get_fields_from_header(repository,snapnum,nfields)
+    if (particle_families) then
+       call get_fields_from_descriptor(repository,snapnum,nfields)
+    else
+       call get_fields_from_header(repository,snapnum,nfields)
+    end if
     ncpu  = get_ncpu(repository,snapnum)
     ilast_all = 1
 
@@ -3234,7 +3322,7 @@ contains
 !$OMP DEFAULT(private) &
 !$OMP SHARED(ncpu, repository, snapnum, ParticleFields, nfields, selection_domain) &
 !$OMP SHARED(h0, stime, dp_scale_t, dp_scale_m, dp_scale_v, boxsize, time_cu, aexp) &
-!$OMP SHARED(cosmo, use_initial_mass, use_proper_time) &
+!$OMP SHARED(cosmo, use_initial_mass, use_proper_time, particle_families) &
 !$OMP SHARED(ilast_all, star_pos_all, star_age_all, star_vel_all, star_mass_all, star_met_all)
 !$OMP DO
     do icpu = 1, ncpu
@@ -3256,28 +3344,45 @@ contains
        allocate(id(1:npart))
        allocate(mets(1:npart))
        allocate(v(1:npart,1:ndim))
+       if(particle_families) allocate(family(1:npart))
        do ifield = 1,nfields
           select case(trim(ParticleFields(ifield)))
           case('pos')
              do i = 1,ndim
                 read(iunit) x(1:npart,i)
              end do
+          case('position_x')
+             read(iunit) x(1:npart,1)
+          case('position_y')
+             read(iunit) x(1:npart,2)
+          case('position_z')
+             read(iunit) x(1:npart,3)
           case('vel')
              do i = 1,ndim 
                 read(iunit) v(1:npart,i)
              end do
+          case('velocity_x')
+             read(iunit) v(1:npart,1)
+          case('velocity_y')
+             read(iunit) v(1:npart,2)
+          case('velocity_z')
+             read(iunit) v(1:npart,3)
           case('mass')
              read(iunit) m(1:npart)
-          case('iord') 
+          case('iord','identity') 
              read(iunit) id(1:npart)
-          case('level')
+          case('level','levelp')
              read(iunit)
-          case('tform')
+          case('tform','birth_time')
              read(iunit) age(1:npart)
-          case('metal')
+          case('metal','metallicity')
              read(iunit) mets(1:npart)
           case('imass')
              read(iunit) imass(1:npart)
+          case('family')
+             read(iunit) family(1:npart)
+          case('tag','ptracegroup')
+             read(iunit)  ! Skip
           case default
              read(iunit)
              print*,'Error, Field unknown: ',trim(ParticleFields(ifield))
@@ -3293,7 +3398,13 @@ contains
        ! save star particles within selection region
        ilast = 0
        do i = 1,npart
-          if (age(i).ne.0.0d0) then ! This is a star
+          ok = .false.
+          if (particle_families) then
+             ok = family(i).eq.FAM_STAR
+          else
+             ok = age(i).ne.0.0d0  ! FIXME: does not work with AGN?
+          end if
+          if (ok) then ! This is a star
              temp(:) = x(i,:)
              if (domain_contains_point(temp,selection_domain)) then ! it is inside the domain
                 ilast = ilast + 1
@@ -3321,6 +3432,7 @@ contains
        end do
 
        deallocate(age,m,x,id,mets,v,imass)
+       if(particle_families) deallocate(family)
 
 !$OMP CRITICAL
        if(ilast .gt. 0) then
@@ -3410,6 +3522,36 @@ contains
     return
 
   end function get_tot_nstars
+
+  function get_tot_nstars_families(dir, ts)
+    
+    implicit none
+
+    integer(kind=4),intent(in) :: ts
+    character(1000),intent(in) :: dir
+    character(2000)            :: filename,line,v
+    integer(kind=4)            :: i,j,err
+    integer(kind=4)            :: get_tot_nstars_families
+
+    get_tot_nstars_families = 0
+    write(filename,'(a,a,i5.5,a,i5.5,a)') trim(dir),'/output_',ts,'/header_',ts,'.txt'
+    open(unit=50,file=filename,status='old',action='read',form='formatted')
+
+    do
+       read (50,'(a)',iostat=err) line
+       if(err/=0) exit
+       i = index(line, 'star')
+       j = index(line, 'star_tracer')
+       if (i/=0 .and. j==0) then
+          ! We have found the entry with stars and not the tracer one
+          v = trim(adjustl(line(i+len('star'):)))
+          read(v,*) get_tot_nstars_families
+       end if
+    end do
+    close(50)    
+
+  end function get_tot_nstars_families
+
 
   ! conformal time utils :
     function ct_conftime2time(tau)
@@ -3676,6 +3818,8 @@ contains
              read(value,*) cosmo
           case ('use_proper_time')
              read(value,*) use_proper_time
+          case ('particle_families')
+             read(value,*) particle_families
           case('itemp') ! index of thermal pressure
              read(value,*) itemp
           case('imetal')! index of metallicity  
@@ -3715,6 +3859,7 @@ contains
        write(unit,'(a,L1)') '  use_initial_mass  = ',use_initial_mass
        write(unit,'(a,L1)') '  cosmo             = ',cosmo
        write(unit,'(a,L1)') '  use_proper_time   = ',use_proper_time
+       write(unit,'(a,L1)') '  particle_families = ',particle_families
        write(unit,'(a,L1)') '  verbose           = ',verbose
        write(unit,'(a,i2)') '  itemp             = ', itemp
        write(unit,'(a,i2)') '  imetal            = ', imetal
@@ -3729,6 +3874,7 @@ contains
        write(*,'(a,L1)') '  use_initial_mass  = ',use_initial_mass
        write(*,'(a,L1)') '  cosmo             = ',cosmo
        write(*,'(a,L1)') '  use_proper_time   = ',use_proper_time
+       write(*,'(a,L1)') '  particle_families = ',particle_families
        write(*,'(a,L1)') '  verbose           = ',verbose
        write(*,'(a,i2)') '  itemp             = ', itemp
        write(*,'(a,i2)') '  imetal            = ', imetal

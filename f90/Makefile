@@ -96,7 +96,11 @@ OBJSMPI = $(OBJSPHO) module_parallel_mpi.o module_worker.o module_master.o
 	$(F90) -ffree-line-length-none -w -c $^ -o $@
 
 #############################################################################
-all: clean CreateDomDump PhotonsFromStars rascas
+
+all: clean CreateDomDump PhotonsFromSourceModel PhotonsFromStars rascas-serial
+
+PhotonsFromSourceModel: $(OBJSPHO) module_ssp_lib.o PhotonsFromSourceModel.o
+	$(F90) $(FFLAGS) $(LDFLAGS) -o $@ $(OBJSPHO) module_ssp_lib.o PhotonsFromSourceModel.o
 
 PhotonsFromStars: $(OBJSPHO) PhotonsFromStars.o
 	$(F90) $(FFLAGS) $(LDFLAGS) -o $@ $(OBJSPHO) PhotonsFromStars.o

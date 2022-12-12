@@ -8,6 +8,7 @@ module module_utils
   ! - anisotropic_direction_Dust
   ! - locatedb
   ! - path
+  ! - binary_search
   ! - print_rascas_header
   
   use module_constants, only : twopi
@@ -377,6 +378,38 @@ contains
     return
     
   end function path
+
+
+  subroutine binary_search(iseed, nbin, low_prob, ilow)
+    
+    implicit none
+    integer(kind=4),intent(inout)             :: iseed
+    integer(kind=4),intent(in)                :: nbin
+    real(kind=8),intent(in),dimension(nbin+1) :: low_prob
+    integer(kind=4),intent(out)               :: ilow
+    integer(kind=4)                           :: iup, imid
+    real(kind=8)                              :: mid, r1
+    
+    r1 = ran3(iseed)
+    ! binary search
+    iup = nbin+1
+    ilow = 1
+    do while (iup - ilow > 1)
+       imid = (iup+ilow)/2
+       mid  = low_prob(imid)
+       if (r1 >= mid) then 
+          ilow = imid
+       else
+          iup = imid
+       end if
+    end do
+    ! check
+    if (.not. (r1 >= low_prob(ilow) .and. r1 < low_prob(iup) )) then
+       print*,'ERROR'
+       stop
+    end if
+    return
+  end subroutine binary_search
 
 
   subroutine print_rascas_header

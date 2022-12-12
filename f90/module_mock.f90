@@ -1,7 +1,7 @@
 !--PEEL--
 module module_mock
 
-  use module_constants, only:clight
+  use module_constants, only:clight,planck
   
   private
 
@@ -12,7 +12,8 @@ module module_mock
      real(kind=8) :: center(3)
      ! --- FLUX --- 
      real(kind=8)             :: flux_aperture         ! collect only photons within a circle of radius flux_aperture
-     real(kind=8)             :: flux                  ! flux 
+     real(kind=8)             :: flux                  ! flux
+     real(kind=8)             :: flux_hnu              ! mean energy of photons contributing to flux
      ! --- SPECTRUM --- 
      integer(kind=4)          :: spec_npix = 0         ! nb of pixels
      real(kind=8)             :: spec_aperture         ! collect only photons within a circle of radius spec_aperture
@@ -21,6 +22,7 @@ module module_mock
      ! --- IMAGE --- 
      integer(kind=4)          :: image_npix = 0        ! nb of pixels across image
      real(kind=8)             :: image_side            ! extent of observation [box units]
+     real(kind=8)             :: image_hnu             ! mean energy of photons contributing to image
      real(kind=8),allocatable :: image(:,:)            ! actual image. 
      ! --- CUBE ---
      integer(kind=4)          :: cube_lbda_npix  = 0
@@ -35,12 +37,14 @@ module module_mock
   type(mockObs),allocatable :: mock(:)
 
   ! for statistics
-  integer(kind=4) :: peels_count,rays_count,detectors_count
+  integer(kind=4) :: peels_count,rays_count
+  integer(kind=4), allocatable, dimension(:) :: detectors_count
 
   ! parameters in the [mock] section :
   integer(kind=4) :: nDirections = 0
   character(2000) :: mock_parameter_file
-  character(2000) :: mock_outputfilename  ! Prefix for output files (including absolute path) -> will be followed by "_image.xxxxx" or "_spectrum.xxxxx", with xxxxx the cpu number.
+  character(2000) :: mock_outputfilename  ! Prefix for output mock files (including absolute path)
+                                          ! -> will be followed by ".image" or ".spectrum" or ".cube"
 
 
   ! global parameter setting peeling-off on or off.
@@ -68,6 +72,7 @@ contains
        peeling_off = .true.
        
        allocate(mock(nDirections))
+       allocate(detectors_count(nDirections))
        open(unit=unit,file=mock_parameter_file,status='old',action='read',form='formatted')
        do idir = 1,nDirections
           call read_a_mock_param_set(unit,idir)
@@ -75,7 +80,8 @@ contains
           ! initialise flux
           mock(idir)%flux = 0.0d0
           mock(idir)%flux_aperture2 = mock(idir)%flux_aperture*mock(idir)%flux_aperture
-
+          mock(idir)%flux_hnu = 0.0d0
+          
           ! initialise spectrum 
           mock(idir)%compute_spectrum = .false.
           if (mock(idir)%spec_npix > 0) then 
@@ -90,6 +96,7 @@ contains
           if (mock(idir)%image_npix > 0) then 
              allocate(mock(idir)%image(mock(idir)%image_npix,mock(idir)%image_npix))
              mock(idir)%image = 0.0d0
+             mock(idir)%image_hnu = 0.0d0
              mock(idir)%compute_image = .true.
           end if
 
@@ -101,11 +108,6 @@ contains
              mock(idir)%compute_cube = .true.
           end if
 
-          ! initialise counters
-          peels_count = 0
-          rays_count = 0
-          detectors_count = 0
-          
           ! define direction of observation (normalise vector)
           mock(idir)%kobs = mock(idir)%kobs / sqrt(mock(idir)%kobs(1)*mock(idir)%kobs(1)+&
                & mock(idir)%kobs(2)*mock(idir)%kobs(2)+mock(idir)%kobs(3)*mock(idir)%kobs(3))
@@ -129,6 +131,10 @@ contains
              mock(idir)%kobs_perp_2 = (/0.0d0,0.0d0,1.0d0/)
           end if
        end do
+       ! initialise counters
+       peels_count = 0
+       rays_count = 0
+       detectors_count(:) = 0
        close(unit)
     else
        peeling_off = .false. 
@@ -215,28 +221,32 @@ contains
   end subroutine mock_projected_pos
     
 
-  subroutine peel_to_flux(peel_contribution,idir)
+  subroutine peel_to_flux(peel_nu,peel_contribution,idir)
     implicit none
-    real(kind=8),intent(in) :: peel_contribution
+    real(kind=8),intent(in)    :: peel_nu,peel_contribution
     integer(kind=4),intent(in) :: idir
+    mock(idir)%flux_hnu = mock(idir)%flux_hnu + peel_nu * planck * peel_contribution
     mock(idir)%flux = mock(idir)%flux + peel_contribution
+    return
   end subroutine peel_to_flux
     
   
-  subroutine peel_to_map(pp,peel_contribution,idir)
+  subroutine peel_to_map(pp,peel_nu,peel_contribution,idir)
 
     implicit none
-
-    real(kind=8),intent(in) :: pp(2),peel_contribution
+    real(kind=8),intent(in)    :: pp(2),peel_nu,peel_contribution
     integer(kind=4),intent(in) :: idir
-    integer(kind=4) :: ix,iy,n
-    real(kind=8) :: dx
+    integer(kind=4)            :: ix,iy,n
+    real(kind=8)               :: dx
     dx = mock(idir)%image_side
     n  = mock(idir)%image_npix
     ix = int((pp(1) + 0.5d0 * dx) /dx * n) + 1
     iy = int((pp(2) + 0.5d0 * dx) /dx * n) + 1
-    if (ix>0 .and. ix<=n .and. iy>0 .and. iy<=n) mock(idir)%image(ix,iy) = mock(idir)%image(ix,iy) + peel_contribution
-    
+    if (ix>0 .and. ix<=n .and. iy>0 .and. iy<=n) then
+       mock(idir)%image(ix,iy) = mock(idir)%image(ix,iy) + peel_contribution
+       mock(idir)%image_hnu = mock(idir)%image_hnu + peel_nu * planck * peel_contribution
+    endif
+
     return
 
   end subroutine peel_to_map
@@ -282,9 +292,8 @@ contains
   end subroutine peel_to_cube
 
   
-  subroutine dump_mocks(rank)
+  subroutine dump_mocks
     implicit none
-    integer(kind=4),intent(in) :: rank
     character(2000)            :: filename
     integer(kind=4)            :: i,j,k, iunit=133,sunit=134,funit=135,cunit=136,idir
     logical :: iopen=.false.,sopen=.false.,fopen=.false.,copen=.false.
@@ -293,15 +302,17 @@ contains
     do idir = 1,nDirections
        ! save flux
        if (.not. fopen) then 
-          write(filename,'(a,a,i5.5)') trim(mock_outputfilename),'_flux.',rank
+          write(filename,'(a,a)') trim(mock_outputfilename),'.flux'
           open(unit=funit,file=filename,form='unformatted',status='unknown')
           fopen = .true.
        end if
-       write(funit) mock(idir)%flux_aperture, mock(idir)%flux
+       ! normalize hnu by flux, i.e. the sum of exp(-tau)
+       mock(idir)%flux_hnu =  mock(idir)%flux_hnu / mock(idir)%flux
+       write(funit) mock(idir)%flux_aperture, mock(idir)%flux, mock(idir)%flux_hnu
        ! save spectrum
        if (mock(idir)%compute_spectrum) then 
           if (.not. sopen) then 
-             write(filename,'(a,a,i5.5)') trim(mock_outputfilename),'_spectrum.',rank
+             write(filename,'(a,a)') trim(mock_outputfilename),'.spectrum'
              open(unit=sunit,file=filename,form='unformatted',status='unknown')
              sopen = .true.
           end if
@@ -312,7 +323,7 @@ contains
        ! save image
        if (mock(idir)%compute_image) then 
           if (.not. iopen) then 
-             write(filename,'(a,a,i5.5)') trim(mock_outputfilename),'_image.',rank
+             write(filename,'(a,a)') trim(mock_outputfilename),'.image'
              open(unit=iunit,file=filename,form='unformatted',status='unknown')
              iopen = .true.
           end if
@@ -320,11 +331,14 @@ contains
           write(iunit) mock(idir)%image_side
           write(iunit) (mock(idir)%center(i),i=1,3)
           write(iunit) ((mock(idir)%image(i,j),i=1,mock(idir)%image_npix),j=1,mock(idir)%image_npix)
+          ! normalize hnu by flux, i.e. the sum of exp(-tau) over all pixels
+          mock(idir)%image_hnu =  mock(idir)%image_hnu / sum(mock(idir)%image)
+          write(iunit) mock(idir)%image_hnu
        end if
        ! save cube
        if (mock(idir)%compute_cube) then 
           if (.not. copen) then 
-             write(filename,'(a,a,i5.5)') trim(mock_outputfilename),'_cube.',rank
+             write(filename,'(a,a)') trim(mock_outputfilename),'.cube'
              open(unit=cunit,file=filename,form='unformatted',status='unknown')
              copen = .true.
           end if

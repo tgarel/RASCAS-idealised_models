@@ -7,6 +7,7 @@ program main
   use module_domain
   use module_constants
   use module_utils, only : print_rascas_header
+  use module_mock, only : read_mock_params, print_mock_params, peeling_off
 
   implicit none
 
@@ -127,11 +128,22 @@ program main
      print *,'min max pos z       =',minval(photgrid%xlast(3)),maxval(photgrid%xlast(3))
   endif
 
-
   ! write results
   if (verbose) print *,' '
   if (verbose) print*,'--> writing results in file: ',trim(fileout)
   call dump_photons(fileout,photgrid)
+
+  !--PEEL--
+  ! and dump mocks
+  if (peeling_off) then
+     print*,'--> writing mock to file'
+     call dump_mocks
+     print*,'mock statistics:'
+     print*,'   peels_count     = ',peels_count
+     print*,'   rays_count      = ',rays_count
+     print*,'   detectors_count = ',(detectors_count(i), i=1,nDirections)
+  end if
+  !--LEEP--
 
   call cpu_time(finish)
   if (verbose) then
@@ -198,6 +210,8 @@ contains
     DomDumpFile  = trim(DomDumpDir)//trim(DomDumpFile)
     
     call read_mesh_params(pfile)
+
+    call read_mock_params(pfile)
     
     return
 
@@ -221,6 +235,8 @@ contains
        write(unit,'(a,L1)')          '  verbose        = ',verbose
        write(unit,'(a)')             ' '
        call print_mesh_params(unit)
+       write(unit,'(a)')             ' '
+       if (peeling_off) call print_mock_params(unit)
     else
        write(*,'(a)')             '--------------------------------------------------------------------------------'
        write(*,'(a)')             ''
@@ -231,6 +247,8 @@ contains
        write(*,'(a,L1)')          '  verbose        = ',verbose
        write(*,'(a)')             ' '       
        call print_mesh_params
+       write(*,'(a)')             ' '
+       if (peeling_off) call print_mock_params
        write(*,'(a)')             ' '
        write(*,'(a)')             '--------------------------------------------------------------------------------'
        write(*,'(a)')             ' '
